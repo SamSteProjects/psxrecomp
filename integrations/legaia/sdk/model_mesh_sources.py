@@ -76,9 +76,14 @@ def _metadata(asset,binding):
     if sum(total.values())>MAX_BYTES:raise ProjectError('Model retained mesh inputs exceed 64 MiB')
     return records
 
-def validate(project,asset,binding,base):
+def validate(project,asset,binding,base,original,evidence_key):
     """Reconstruct each import from its original input and preceding native ledger."""
     records=_metadata(asset,binding);rows=operations(binding)
+    def retail_source(owner,scene):
+        if digest(project.imports.get(binding['source_scene_id']))!=evidence_key:raise ProjectError('Imported mesh source evidence changed during reconstruction')
+        if owner==asset and scene==binding['source_scene_id']:return original
+        return project._model_source(owner,scene)
+    retail_source(asset,binding['source_scene_id'])
     for record in records:
         content=read_source(project,record)
         start=record['first_operation'];end=start+record['operation_count']
@@ -87,6 +92,7 @@ def validate(project,asset,binding,base):
         before_ledger=prefix(start);before,_=replay_face_ledger(base,before_ledger)
         after,_=replay_face_ledger(base,prefix(end))
         view=copy(project);view.mode='edit';view.active_scene=binding['source_scene_id'];view.model_overrides=deepcopy(project.model_overrides)
+        view._model_source=retail_source
         initial={k:deepcopy(v) for k,v in binding.items() if k!='mesh_imports'}
         initial.update(asset_sha256=sha256(before).hexdigest(),byte_length=len(before),ledger=before_ledger)
         view.model_overrides[asset]=initial
@@ -101,6 +107,7 @@ def validate(project,asset,binding,base):
             from .model_mesh_batch import prepare
             mappings=recipe.pop('mappings');candidate,_,_=prepare(view,asset,content,mappings,initial['asset_sha256'],key,**recipe)
         if candidate!=after:raise ProjectError('Retained GLB recipe differs from its native ledger result')
+    retail_source(asset,binding['source_scene_id'])
     return deepcopy(records)
 
 def catalog(project,asset,key):

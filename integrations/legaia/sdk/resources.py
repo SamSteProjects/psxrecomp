@@ -24,7 +24,7 @@ def _verify(project, document):
 def model_shape_source(project, asset_id: str, format: str = 'tmd', layer: str = 'imported') -> dict:
     """Private source download for editing an existing model's local shape."""
     from hashlib import sha256
-    from importer.assets import load_model_source, decode_tmd
+    from importer.assets import decode_tmd
     if format not in ('tmd', 'obj', 'json'):
         raise ProjectError('Choose TMD, OBJ or JSON model source')
     if layer not in ('imported', 'authored'):
@@ -34,8 +34,7 @@ def model_shape_source(project, asset_id: str, format: str = 'tmd', layer: str =
     if asset is None:
         raise ProjectError('Choose a model from the active imported scene')
     with _disc_context(project.disc_path):
-        _verify(project, document)
-        data = load_model_source(project.disc_path, asset)
+        data = project._model_source(asset_id, project.active_scene)
         source_hash = sha256(data).hexdigest()
         if layer == 'authored':
             binding = project.model_overrides.get(asset_id)

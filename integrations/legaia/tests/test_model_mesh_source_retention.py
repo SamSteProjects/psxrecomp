@@ -76,6 +76,18 @@ class MeshSourceTests(unittest.TestCase):
         self.assertEqual(p.model_overrides[asset]['mesh_imports'],receipts)
         p.read_model_replacement(asset,p.model_overrides[asset])
 
+    def test_reconstruction_reuses_verified_retail_and_rejects_evidence_drift(self):
+        p,asset,donor=self.fixture();self.apply(p,asset,donor,fixtures.glb())
+        binding=p.model_overrides[asset]
+        from sdk.model_face_addition import base_content
+        original=p._model_source(asset,binding['source_scene_id']);base=base_content(p,asset,original,binding)
+        evidence=digest(p.imports[binding['source_scene_id']])
+        with patch.object(p,'_model_source',wraps=p._model_source) as source:
+            model_mesh_sources.validate(p,asset,binding,base,original,evidence)
+            self.assertLessEqual(source.call_count,len(binding['mesh_imports']))
+        p.imports[binding['source_scene_id']]['changed']=True
+        with self.assertRaisesRegex(ProjectError,'evidence changed'):model_mesh_sources.validate(p,asset,binding,base,original,evidence)
+
     def test_missing_changed_source_and_resealed_recipe_reject_native_read(self):
         p,asset,donor=self.fixture();content=fixtures.glb();self.apply(p,asset,donor,content)
         binding=p.model_overrides[asset];receipt=binding['mesh_imports'][0]

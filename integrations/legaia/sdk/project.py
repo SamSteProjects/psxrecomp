@@ -1333,18 +1333,11 @@ class ProjectService:
         self.redo_stack.clear()
 
     def _model_source(self, asset_id: str, scene_id: str):
-        from importer.pipeline import _disc_context, import_scene
-        from importer.assets import load_model_source
-        document = self.imports.get(scene_id)
-        if document is None or not self.disc_path:
-            raise ProjectError('Model shape requires an imported scene and its disc')
-        asset = next((a for a in document['assets']['models'] if a['semantic_id'] == asset_id), None)
-        if asset is None:
-            raise ProjectError('Unknown imported model identity')
-        with _disc_context(self.disc_path):
-            if import_scene(self.disc_path, document['scene']['name']) != document:
-                raise ProjectError('Model source differs from imported evidence')
-            return load_model_source(self.disc_path, asset)
+        from .model_sources import ModelSourceService
+        service=getattr(self,'_model_source_service',None)
+        if service is None:
+            service=ModelSourceService();self._model_source_service=service
+        return service.read(self,asset_id,scene_id)
 
     def _model_candidate_changes(self, asset_id, original, content):
         """Audit against actual Retail ownership, retaining an existing topology binding."""
@@ -1384,6 +1377,7 @@ class ProjectService:
         content = path.read_bytes()
         if hashlib.sha256(content).hexdigest() != binding['asset_sha256']:
             raise ProjectError('Model shape content hash differs from binding')
+        evidence_key = digest(self.imports.get(binding['source_scene_id']))
         original = self._model_source(asset_id, binding['source_scene_id'])
         if addition:
             from .model_face_addition import base_content
@@ -1394,7 +1388,7 @@ class ProjectService:
             qualify_face_ledger(base, binding['ledger'], content)
             if 'mesh_imports' in binding:
                 from .model_mesh_sources import validate
-                validate(self, asset_id, binding, base)
+                validate(self, asset_id, binding, base, original, evidence_key)
         elif removal:
             from importer.model_face_removal import qualify_face_removal
             qualify_face_removal(original, binding['source_sha256'], content, binding['removed_faces'])

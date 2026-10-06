@@ -38,6 +38,13 @@ class VerifiedDiscScope(unittest.TestCase):
             with self.assertRaisesRegex(ImportError, "changed"):
                 with pipeline._disc_context(path):
                     path.write_bytes(b"a changed synthetic disc")
+            with self.assertRaisesRegex(ImportError, "changed"):
+                with pipeline._disc_context(path):
+                    # Detect inner drift before the outer operation exits.
+                    with self.assertRaisesRegex(ImportError, "changed"):
+                        with pipeline._disc_context(path):
+                            path.write_bytes(b"nested changed synthetic disc")
+            self.assertIsNone(pipeline._active_disc_context.get())
             self.assertIsNone(pipeline._active_disc_context.get())
             with self.assertRaisesRegex(RuntimeError, "decoder failure"):
                 with pipeline._disc_context(path):

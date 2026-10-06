@@ -1,5 +1,36 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Verified model-source derivation cache - 2026-10-06
+
+**Implemented offline inspection performance:** model source reads share a bounded
+in-memory service for previously qualified scene metadata and immutable retail
+TMD bytes. A new operation still verifies the full supported disc hash before
+using cached derivations. Keys include scene identity, exact imported-document
+hash and verified disc digest. The service retains at most eight scene
+qualifications and 32 models/32 MiB; it never caches authored model files or
+retained GLB bytes. Qualification/decoder failures clear its derived entries.
+Project staging/Build-review deepcopies receive fresh independent service state.
+
+Retained-source reconstruction reuses the already verified Retail bytes inside
+its detached view, with imported-evidence checks before/after reconstruction.
+GLB bytes, native ledger spans and exact reconstructed results still qualify on
+every model read. Nested verified disc scopes now also check their file stamp
+on exit, preventing early cache publication after a nested read changes input.
+
+In the private retail Town01 model 0036 comparison, retained-model read was
+**8.44s before / 1.54s after**, with exact native bytes.
+Warm original-model reads were approximately0.45s and still verified the disc.
+These are local measurements, not general scene-loading/runtime guarantees.
+Evidence: `local-output/sdk-20260909/model-source-cache-20261006/proof.json`.
+Twenty-one focused cases passed, including the separately retail-enabled GLB
+HTTP workflow. Checks cover full hash rejection after same-size/same-mtime input
+mutation, exit drift, imported metadata drift, eviction/bounds, independent
+staging caches, source reconstruction and existing authoring/copy workflows.
+Actual editor GLB/receipt downloads and read-only normal Build review passed;
+all reference project files and history were held. No game launch, package
+installation or full-disc export. The full SDK goal remains active/incomplete.
+
+
 ## Retained source inputs in editable project copies - 2026-10-06
 
 **Implemented offline workflow:** Copy project and saved export input snapshots

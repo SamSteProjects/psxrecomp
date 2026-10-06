@@ -671,3 +671,16 @@ The scenery rotation-group service composes source-qualified per-cell position a
 ## Source-normal direction diagnostic — 2026-10-02
 
 Static model previews add triangle-aligned raw source normals and coverage metadata. Flat and Gouraud source references are decoded once in the importer; the editor and GPU renderer consume qualified SDK arrays. Authored previews refresh these arrays, partial animation geometry trims them consistently, and assembled posed scene assets discard them. Static normal coloring uses separate normal GPU buffers and inverse-transpose model transforms, without mode-change uploads. Texture alpha/STP and pick ownership remain identical, while grid/wireframe retain their prior appearance. Unposed-only UI/renderer guards prevent inventing animated directions. Structural normal-table source bounds remain hard requirements. See [workflow](legaia-model-source-normals.md).
+
+### Verified model-source service - 2026-10-06
+
+`SDK ModelSourceService` keeps immutable Retail TMD derivations and scene import
+qualifications behind `_disc_context`: each new operation still hashes the full
+disc, and nested scope exit checks detect changes before publishing cached data.
+Qualification keys bind the imported document and verified disc digest. LRU
+limits are eight scene qualifications, 32 models and32 MiB; caches/locks are
+process-local and omitted from persistence. Project deepcopies start with fresh
+services. Authored native files and original GLB receipts are read and qualified
+every time. Detached GLB reconstruction shares the one verified Retail source
+for that model, with an imported-evidence digest guard, not arbitrary disc reads.
+This belongs in the integration's source service; the editor consumes its APIs.

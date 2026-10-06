@@ -429,6 +429,8 @@ def _disc_context(disc: Path | str):
         if _disc_stamp(path) != active[1]:
             raise ImportError("Disc image changed during the verified import operation")
         yield active[2]
+        if _disc_stamp(path) != active[1]:
+            raise ImportError("Disc image changed during the verified import operation")
         return
     before = _disc_stamp(path)
     with Mode2Image(path) as image:
