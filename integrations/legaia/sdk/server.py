@@ -907,6 +907,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-glb-mapping.js": ("animation-glb-mapping.js", "text/javascript"),
                  "/animation-glb-sampling.js": ("animation-glb-sampling.js", "text/javascript"),
                  "/animation-sources.js": ("animation-sources.js", "text/javascript"),
+                 "/model-source-library.js": ("model-source-library.js", "text/javascript"),
                  "/animation-source-library.js": ("animation-source-library.js", "text/javascript"),
                  "/actor-animation-glb-target.js": ("actor-animation-glb-target.js", "text/javascript"),
                  "/animation-allocation.js": ("animation-allocation.js", "text/javascript"),
@@ -2285,6 +2286,18 @@ class EditorHandler(BaseHTTPRequestHandler):
                         self._json(200,self.server.state())
                     else:
                         operation=library if route=='/api/animation-source-library' else library_download if route.endswith('download') else library_removal_review
+                        self._json(200,operation(self.server.project,**body))
+                    return
+                if route in ('/api/model-source-library','/api/model-library-download','/api/model-library-removal-review','/api/model-library-remove'):
+                    expected={'expected_project_path'}
+                    if route!='/api/model-source-library':expected.update({'receipt_key','expected_library_key'})
+                    if route.endswith('/model-library-remove'):expected.add('review_key')
+                    if set(body)!=expected:raise ProjectError('Model input library requires exact fields')
+                    from .model_glb_sources import library,library_download,library_removal_review
+                    if route.endswith('/model-library-remove'):
+                        self.server.project.command(dict(body,type='remove_project_model_source'));self._json(200,self.server.state())
+                    else:
+                        operation=library if route=='/api/model-source-library' else library_download if route.endswith('download') else library_removal_review
                         self._json(200,operation(self.server.project,**body))
                     return
                 if route in ('/api/model-source-removal-review','/api/model-source-remove'):

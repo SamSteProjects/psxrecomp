@@ -865,3 +865,22 @@ released only when the last registered reference is removed. The browser keeps
 removal separate from downloads and Review, locks closing during publication and
 refreshes the parent editor from the returned project state. The retail model source
 cache and native package formats remain unchanged.
+
+
+### Project-wide model input library
+
+`model_glb_sources.library` validates all registered receipts and SHA-addressed
+files before returning a deterministic scene/model/receipt ordering and distinct
+byte totals. Its key binds project root, Edit/Live mode, the receipt collection and
+native model overrides; active scene and selection are deliberately independent.
+Library download and removal routes require the exact project root, library key
+and receipt. Download rechecks the key after reading. Reviewed removal recomputes
+the report and preserves the same metadata-only history and immutable source files.
+
+`editor/model-source-library.js` owns a project-level modal with scene/search
+filters, qualified original GLB/binding/receipt recovery, Refresh and explicit
+Review/removal. It consumes SDK responses without parsing retail structures.
+Recovery is available in Live mode; removal is exposed only in Edit mode. The
+panel refreshes after publication, and registered shared-byte accounting is
+separate from physical file deletion. Source receipts remain historical evidence,
+not authority to replay a stale external import.

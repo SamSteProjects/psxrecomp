@@ -15,6 +15,7 @@ import {openAssetReferences,qualifyAssetReferenceInstructionSite} from '/asset-r
 import {openActorAnimationAssignment} from '/actor-animation.js';
 import {mountProjectSettings} from '/project-settings.js';
 import {mountProjectCopy} from '/project-copy.js';
+import {mountModelSourceLibrary} from '/model-source-library.js';
 import {mountAnimationSourceLibrary} from '/animation-source-library.js';
 import {mountEnvironmentGroup} from '/environment-group.js';
 import {mountEnvironmentLayout} from '/environment-layout.js';
@@ -1424,6 +1425,7 @@ $('resource-refresh').onclick=refreshResources;
 const transitionsButton=document.createElement('button');transitionsButton.id='scene-transitions';transitionsButton.textContent='Scene transitions';$('resource-refresh').after(transitionsButton);
 let projectBookmarkNavigator=null;
 const projectTransitionsButton=document.createElement('button');projectTransitionsButton.id='project-transitions';projectTransitionsButton.textContent='Project transitions';transitionsButton.after(projectTransitionsButton);projectTransitionsButton.onclick=()=>openSceneTransitions(true);
+mountModelSourceLibrary({after:projectTransitionsButton,getState:()=>state,busy:()=>busy,setBusy,onApplied:next=>{state=next;render();notify('Model input receipt removed. Save project to persist.');},onError:error=>notify(error.message,true)});
 mountAnimationSourceLibrary({after:projectTransitionsButton,getState:()=>state,busy:()=>busy,setBusy,onApplied:next=>{state=next;render();notify('Animation input receipt removed. Save project to persist.');},onError:error=>notify(error.message,true)});
 projectBookmarkNavigator=mountProjectScriptBookmarks({after:projectTransitionsButton,getState:()=>state,busy:()=>busy||worldmapDraftPending||scriptDrafts.size>0||!!sceneAnimationController?.active(),onError:error=>notify(error.message,true),onOpen:async bookmark=>{
   const projectPath=state.project.path;

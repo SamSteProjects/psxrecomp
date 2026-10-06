@@ -1,5 +1,33 @@
 # Legaia SDK validation plan
 
+## 2026-10-06 checkpoint: project-wide model input library
+
+The editor now exposes Project model inputs beside the project browsing tools.
+Saved original GLBs, bindings and receipts can be searched by scene, model identity
+or hash across all recorded scenes, without changing the active scene or selecting
+the original model. Scene filters, receipt/unique-file/registered-byte totals,
+SHA-qualified downloads and explicit reviewed removal are integrated in one panel.
+Live mode permits recovery; removal requires Edit mode and creates one Undo/Redo
+step. Native model content and physical GLB files remain intact.
+
+The SDK library qualifies every registered file and binds root, mode, complete
+receipt collection and native model overrides into its library key. Stale keys,
+wrong project roots, missing receipts, changed files and extra request fields
+reject. Empty projects remain supported; existing receipt budgets still apply.
+
+Verification: 31 focused Python tests and five Node checks passed. A private retail
+project copy passed actual browser search, three independently verified downloads,
+Review/removal, one-step Undo/Redo, Save/Open, Build snapshot omission and independent
+native package/neighbor-byte readback. Cross-scene/shared-input behavior was checked
+in unit tests. Initial browser proof clicked during startup before any mutation;
+the completed proof waits for the editor startup response.
+Build `f002edf888522d59`, package SHA-256
+`8dc79289873e9591ac09d1e90912a32ba49553cd3edccae41b45a69e3f0a51b4`.
+Evidence: `local-output/sdk-20260909/model-source-library-20261006/proof.json`.
+Physical orphan cleanup remains open. No game was launched; manual gameplay checks
+and the full SDK goal remain outstanding.
+
+
 ## 2026-10-06 checkpoint: reviewed model input receipt removal
 
 The retained model inputs dialog now offers Review followed by explicit removal of

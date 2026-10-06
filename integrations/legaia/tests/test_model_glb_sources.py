@@ -89,4 +89,32 @@ class ModelSourceRemoval(unittest.TestCase):
                 p.mode='live'
                 with self.assertRaises(ProjectError):review_removal(p,**request)
 
+class ModelSourceLibrary(unittest.TestCase):
+    fixture=ModelSources.fixture
+    def test_cross_scene_recovery_removal_history_and_native_staleness(self):
+        import base64
+        from sdk.model_glb_sources import library,library_download,library_removal_review
+        source,raw,binding=self.fixture()
+        with TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory))
+            p.model_sources,row=retain(p,{},raw,binding,sha256(source).hexdigest(),'b'*64)
+            other=dict(binding,asset_id='asset://town0c/models/scene-tmd/0001',scene_id='scene://town0c')
+            p.model_sources,second=retain(p,p.model_sources,raw,other,sha256(source).hexdigest(),'c'*64)
+            value=library(p,str(p.root));self.assertEqual(value['receipt_count'],2);self.assertEqual(value['distinct_glb_count'],1);self.assertEqual(value['registered_byte_length'],len(raw))
+            p.active_scene='scene://different';self.assertEqual(library(p,str(p.root))['library_key'],value['library_key'])
+            request=dict(receipt_key=second['receipt_key'],expected_project_path=str(p.root),expected_library_key=value['library_key'])
+            self.assertEqual(base64.b64decode(library_download(p,**request)['glb_base64']),raw)
+            report=library_removal_review(p,**request);self.assertEqual(report['registered_bytes_released'],0)
+            p.model_overrides={'changed':{}}
+            with self.assertRaises(ProjectError):p.command(dict(request,type='remove_project_model_source',review_key=report['review_key']))
+            p.model_overrides={};before=deepcopy(p.model_sources)
+            p.command(dict(request,type='remove_project_model_source',review_key=report['review_key']))
+            self.assertEqual(len(p.undo_stack),1);self.assertEqual(p.model_overrides,{});self.assertEqual(read_source(p,second),raw)
+            p.undo();self.assertEqual(p.model_sources,before);p.redo();self.assertEqual(len(p.model_sources),1)
+            with self.assertRaises(ProjectError):library_download(p,**request)
+            p.mode='live';live=library(p,str(p.root));self.assertEqual(live['receipt_count'],1)
+            with self.assertRaises(ProjectError):library_removal_review(p,receipt_key=row['receipt_key'],expected_project_path=str(p.root),expected_library_key=live['library_key'])
+            source_path(p,row).write_bytes(raw[:-1])
+            with self.assertRaises(ProjectError):library(p,str(p.root))
+
 if __name__=='__main__':unittest.main()

@@ -840,8 +840,11 @@ per GLB. Receipt metadata removal is available through Review and explicit Remov
 retained model inputs dialog. It creates one Undo/Redo step and preserves the
 authored model and original GLB file. Review must be repeated if project or receipt
 state changes. Shared blobs release registered budget only after their last
-receipt is removed. Physical orphan cleanup and a project-wide model input
-library remain open.
+receipt is removed. Physical orphan cleanup remains open. The Project model
+inputs button provides recovery and reviewed removal across all recorded scenes,
+with scene filters and search by model identity or hash. It does not require
+selecting the original scene/model. Downloads verify the saved GLB before
+returning its original binding or receipt; export a fresh binding for a new Apply.
 Files may remain as unregistered cache entries after Undo or a failed publication.
 
 An old binding is intentionally stale after edits. Recover original inputs for

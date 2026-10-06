@@ -1870,6 +1870,10 @@ class ProjectService:
             return
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get('type') == 'remove_project_model_source':
+            from .model_glb_sources import library_remove_command
+            library_remove_command(self,command)
+            return
         if command.get('type') == 'remove_model_source':
             from .model_glb_sources import remove_command
             remove_command(self,command)

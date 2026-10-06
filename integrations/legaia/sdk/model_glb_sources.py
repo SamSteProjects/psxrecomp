@@ -129,3 +129,69 @@ def remove_command(project,command):
     project.model_sources=after
     project.undo_stack.append(dict(target='model_sources',before=before,after=deepcopy(after)));project.redo_stack.clear()
     return report
+
+
+def _library_key(project):
+    return digest(dict(project_path=str(project.root),mode=project.mode,
+                       sources=project.model_sources,native=project.model_overrides))
+
+
+def library(project,expected_project_path):
+    """Qualified historical model inputs, independent of scene and selection."""
+    if not isinstance(expected_project_path,str) or expected_project_path!=str(project.root):
+        raise ProjectError('Model input library project changed')
+    key=_library_key(project)
+    validate_files(project,project.model_sources)
+    rows=sorted((deepcopy(r) for r in project.model_sources.values()),
+                key=lambda r:(r['scene_id'],r['asset_id'],r['receipt_key']))
+    sizes={r['glb_sha256']:r['byte_length'] for r in rows}
+    if key!=_library_key(project):raise ProjectError('Model input library changed')
+    return dict(schema_version='legaia.model-source-library.v1',project_path=str(project.root),
+                library_key=key,mode=project.mode,imports=rows,receipt_count=len(rows),
+                distinct_glb_count=len(sizes),registered_byte_length=sum(sizes.values()),
+                project_changed=False,historical_inputs=True)
+
+
+def _library_receipt(project,receipt_key,expected_project_path,expected_library_key):
+    value=library(project,expected_project_path)
+    if not _hash(expected_library_key) or value['library_key']!=expected_library_key:
+        raise ProjectError('Model input library changed; refresh it')
+    row=next((r for r in value['imports'] if r['receipt_key']==receipt_key),None)
+    if row is None:raise ProjectError('Model input receipt is absent from Current')
+    return value,row
+
+
+def library_download(project,receipt_key,expected_project_path,expected_library_key):
+    import base64
+    value,row=_library_receipt(project,receipt_key,expected_project_path,expected_library_key)
+    raw=read_source(project,row)
+    if value['library_key']!=_library_key(project):raise ProjectError('Model input library changed')
+    return dict(value,selected=row,glb_base64=base64.b64encode(raw).decode('ascii'))
+
+
+def library_removal_review(project,receipt_key,expected_project_path,expected_library_key):
+    if project.mode!='edit':raise ProjectError('Model input removal requires Edit mode')
+    value,row=_library_receipt(project,receipt_key,expected_project_path,expected_library_key)
+    shared=sum(r['glb_sha256']==row['glb_sha256'] for r in value['imports'])
+    report=dict(schema_version='legaia.model-library-removal.v1',project_path=value['project_path'],
+        library_key=value['library_key'],receipt_key=receipt_key,glb_sha256=row['glb_sha256'],
+        scene_id=row['scene_id'],asset_id=row['asset_id'],
+        receipt_count_before=value['receipt_count'],receipt_count_after=value['receipt_count']-1,
+        registered_bytes_released=row['byte_length'] if shared==1 else 0,
+        native_content_changed=False,source_file_deleted=False)
+    report['review_key']=digest(report)
+    return report
+
+
+def library_remove_command(project,command):
+    if set(command)!={'type','receipt_key','expected_project_path','expected_library_key','review_key'}:
+        raise ProjectError('Model library removal requires exact reviewed fields')
+    report=library_removal_review(project,**{k:command[k] for k in ('receipt_key','expected_project_path','expected_library_key')})
+    if not _hash(command['review_key']) or report['review_key']!=command['review_key']:
+        raise ProjectError('Model input removal changed; review again')
+    before=deepcopy(project.model_sources);after=deepcopy(before);del after[command['receipt_key']]
+    validate_files(project,after)
+    project.model_sources=after
+    project.undo_stack.append(dict(target='model_sources',before=before,after=deepcopy(after)))
+    project.redo_stack.clear()
+    return report
