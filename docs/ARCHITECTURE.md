@@ -847,3 +847,21 @@ read-only input recovery; downloads verify exact originals and never treat an
 archived source key as Current authority. No native model, Build package or runtime
 format changes. Receipt management and project-wide model source browsing remain
 separate pending features.
+
+
+### Reviewed model source receipt removal
+
+`model_glb_sources.review_removal` seals the current scene/project source key,
+project root, selected receipt, complete model source collection digest and project
+document digest excluding that collection. The explicit removal route recomputes
+this report and requires its exact Review key and request fields before publication.
+This guards receipt-only changes that do not alter the scene preview source key.
+
+The `remove_model_source` command publishes only receipt metadata and creates one
+`model_sources` history entry. Undo/Redo validates all restored receipt files before
+changing state or history stacks. Native replacement collections remain unchanged;
+physical source files remain available for recovery. Shared GLB byte budget is
+released only when the last registered reference is removed. The browser keeps
+removal separate from downloads and Review, locks closing during publication and
+refreshes the parent editor from the returned project state. The retail model source
+cache and native package formats remain unchanged.

@@ -54,4 +54,39 @@ class ModelSources(unittest.TestCase):
                 apply(p,binding['asset_id'],source,raw,binding,dict(report,review_key='c'*64))
             self.assertEqual((p.model_overrides,p.model_sources,p.undo_stack,p.redo_stack),before)
 
+class ModelSourceRemoval(unittest.TestCase):
+    fixture = ModelSources.fixture
+    def test_reviewed_metadata_removal_shared_blob_and_history(self):
+        from sdk.model_glb_sources import review_removal
+        source,raw,binding=self.fixture()
+        with TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));p.active_scene=binding['scene_id']
+            p.model_sources,row=retain(p,{},raw,binding,sha256(source).hexdigest(),'b'*64)
+            p.model_sources,second=retain(p,p.model_sources,raw,binding,sha256(source).hexdigest(),'c'*64)
+            native=deepcopy(p.model_overrides);records=deepcopy(p.model_sources)
+            with patch('sdk.scene_preview.source_key',return_value='a'*64),patch.object(p,'_model_source',return_value=source):
+                request=dict(asset_id=binding['asset_id'],expected_source_key='a'*64,receipt_key=row['receipt_key'])
+                review=review_removal(p,**request);self.assertEqual(review['shared_blob_receipts'],2);self.assertEqual(review['registered_bytes_released'],0)
+                p.command(dict(request,type='remove_model_source',review_key=review['review_key']))
+                self.assertEqual(p.model_overrides,native);self.assertEqual(len(p.model_sources),1);self.assertEqual(len(p.undo_stack),1)
+                self.assertEqual(read_source(p,row),raw);p.undo();self.assertEqual(p.model_sources,records);p.redo();self.assertEqual(len(p.model_sources),1)
+                request['receipt_key']=second['receipt_key'];review=review_removal(p,**request);self.assertEqual(review['registered_bytes_released'],len(raw))
+                p.command(dict(request,type='remove_model_source',review_key=review['review_key']));self.assertEqual(p.model_sources,{})
+                self.assertEqual(read_source(p,row),raw);p.active_scene=None;p.save();self.assertEqual(ProjectService.open(p.root).model_sources,{})
+
+    def test_stale_project_collection_and_forged_review_fail_without_publication(self):
+        from sdk.model_glb_sources import review_removal
+        source,raw,binding=self.fixture()
+        with TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));p.active_scene=binding['scene_id'];p.model_sources,row=retain(p,{},raw,binding,sha256(source).hexdigest(),'b'*64)
+            with patch('sdk.scene_preview.source_key',return_value='a'*64),patch.object(p,'_model_source',return_value=source):
+                request=dict(asset_id=binding['asset_id'],expected_source_key='a'*64,receipt_key=row['receipt_key']);review=review_removal(p,**request)
+                before=deepcopy((p.model_sources,p.undo_stack,p.redo_stack))
+                with self.assertRaises(ProjectError):p.command(dict(request,type='remove_model_source',review_key='0'*64))
+                p.name='Changed project'
+                with self.assertRaises(ProjectError):p.command(dict(request,type='remove_model_source',review_key=review['review_key']))
+                self.assertEqual((p.model_sources,p.undo_stack,p.redo_stack),before)
+                p.mode='live'
+                with self.assertRaises(ProjectError):review_removal(p,**request)
+
 if __name__=='__main__':unittest.main()

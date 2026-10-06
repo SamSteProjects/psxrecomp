@@ -170,7 +170,7 @@ export async function openModelGlbEditor({assetId,getContext,busy,setBusy,onErro
     });
   }
   glb.onchange=manifest.onchange=readFiles;mapping.input.oninput=readFiles;
-  sources.onclick=async()=>{if(sources.disabled||!contextCurrent()||busy()!==false)return false;const {openModelSources}=await import('./model-sources.js');if(!contextCurrent()||busy()!==false)return false;return openModelSources({assetId,getContext,busy,setBusy,onError});};
+  sources.onclick=async()=>{if(sources.disabled||!contextCurrent()||busy()!==false)return false;const {openModelSources}=await import('./model-sources.js');if(!contextCurrent()||busy()!==false)return false;return openModelSources({assetId,getContext,busy,setBusy,onError,onApplied});};
   prepare.onclick=()=>run('export',async(signal,valid)=>{
     exportData=null;status.textContent='Preparing source-bound model export…';const value=await post('/api/model-glb-export',{asset_id:assetId},signal);if(!valid())return false;
     const binding=decodeModelGlbBinding(value?.binding,assetId,context),bytes=decodeGlb(value.content_base64);exportData={bytes,binding,filename:safeFilename(value.filename,'model.glb'),bindingFilename:safeFilename(value.binding_filename,'model.binding.json')};status.textContent='Export ready. Download both files and retain the binding JSON for review.';return true;

@@ -104,3 +104,28 @@ def download(project,asset_id,expected_source_key,receipt_key):
     from .scene_preview import source_key
     if source_key(project)!=expected_source_key:raise ProjectError('Model source recovery context changed')
     return dict(result,selected=record,glb_base64=base64.b64encode(raw).decode('ascii'))
+
+
+def review_removal(project,asset_id,expected_source_key,receipt_key):
+    if project.mode!='edit':raise ProjectError('Model input removal requires Edit mode')
+    value=catalog(project,asset_id,expected_source_key)
+    record=next((r for r in value['imports'] if r['receipt_key']==receipt_key),None)
+    if record is None:raise ProjectError('Model source receipt is absent from Current')
+    shared=sum(r['glb_sha256']==record['glb_sha256'] for r in project.model_sources.values())
+    native={k:v for k,v in project._document().items() if k!='model_sources'}
+    report=dict(schema_version='legaia.model-source-removal.v1',asset_id=asset_id,scene_id=value['scene_id'],
+                project_path=str(project.root),project_source_key=expected_source_key,receipt_key=receipt_key,
+                glb_sha256=record['glb_sha256'],receipt_count_before=len(project.model_sources),receipt_count_after=len(project.model_sources)-1,
+                shared_blob_receipts=shared,registered_bytes_released=record['byte_length'] if shared==1 else 0,
+                collection_key=digest(project.model_sources),native_key=digest(native),native_content_changed=False,source_file_deleted=False)
+    report['review_key']=digest(report);return report
+
+def remove_command(project,command):
+    if set(command)!={'type','asset_id','expected_source_key','receipt_key','review_key'}:raise ProjectError('Model source removal requires exact reviewed fields')
+    report=review_removal(project,**{k:command[k] for k in ('asset_id','expected_source_key','receipt_key')})
+    if not _hash(command['review_key']) or command['review_key']!=report['review_key']:raise ProjectError('Model sources changed; review removal again')
+    before=deepcopy(project.model_sources);after=deepcopy(before);del after[command['receipt_key']]
+    validate_files(project,after)
+    project.model_sources=after
+    project.undo_stack.append(dict(target='model_sources',before=before,after=deepcopy(after)));project.redo_stack.clear()
+    return report

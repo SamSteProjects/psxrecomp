@@ -1,5 +1,25 @@
 # Legaia SDK validation plan
 
+## 2026-10-06 checkpoint: reviewed model input receipt removal
+
+The retained model inputs dialog now offers Review followed by explicit removal of
+a selected receipt. Review binds the project context, complete receipt collection
+and native project document. Removal creates one metadata-only Undo/Redo step;
+the authored native model and original GLB file remain intact. Shared inputs free
+registered byte budget only when their last receipt is removed. Physical orphan
+cleanup and a project-wide model input library remain open.
+
+Verification: 30 focused Python tests and four Node checks passed. A private
+project copy passed actual editor Review/removal, wrong-key/extra-field/repeat
+rejection, one-step Undo/Redo, Save/Open and omitted removed inputs in Build
+snapshots. Independent package readback matched the unchanged native model and
+all neighboring decoded bytes. Shared-blob accounting was checked in unit tests.
+Build `402f72dba263da9a`, package SHA-256
+`19d4b2d34b285dd3949eed1014162f423cb7e84f3d7427b57272ea25302afee4`.
+Evidence: `local-output/sdk-20260909/model-glb-source-removal-20261006/proof.json`.
+No game was launched; gameplay verification and the broader SDK goal remain open.
+
+
 ## 2026-10-06 checkpoint: original model GLB input retention and recovery
 
 Successful fixed-layout model GLB Apply now retains the exact original GLB,

@@ -836,7 +836,12 @@ model edits; they describe the historical import, not the current model.
 Native content and input metadata share one Undo/Redo step. Save/Open, project
 copies and Build input snapshots retain registered sources. The project supports
 32 model import receipts and 64 MiB of distinct original GLBs, with a 32 MiB limit
-per GLB. Receipt metadata removal and physical orphan cleanup are not yet exposed.
+per GLB. Receipt metadata removal is available through Review and explicit Remove in the
+retained model inputs dialog. It creates one Undo/Redo step and preserves the
+authored model and original GLB file. Review must be repeated if project or receipt
+state changes. Shared blobs release registered budget only after their last
+receipt is removed. Physical orphan cleanup and a project-wide model input
+library remain open.
 Files may remain as unregistered cache entries after Undo or a failed publication.
 
 An old binding is intentionally stale after edits. Recover original inputs for

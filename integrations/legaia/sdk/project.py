@@ -1870,6 +1870,10 @@ class ProjectService:
             return
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get('type') == 'remove_model_source':
+            from .model_glb_sources import remove_command
+            remove_command(self,command)
+            return
         if command.get('type') == 'remove_project_animation_source':
             from .animation_sources import library_remove_command
             library_remove_command(self,command)
@@ -2817,6 +2821,11 @@ class ProjectService:
             raise ProjectError("Undo and redo require Edit mode")
         if not source:
             raise ProjectError("No command to " + ("undo" if field == "before" else "redo"))
+        if source[-1].get('target') == 'model_sources':
+            entry=source[-1];value=deepcopy(entry[field])
+            from .model_glb_sources import validate_files
+            validate_files(self,value);self.model_sources=value
+            source.pop();target.append(entry);return
         if source[-1].get('target') == 'model_source_import':
             entry=source[-1];value=deepcopy(entry[field])
             from .model_glb_sources import validate_files

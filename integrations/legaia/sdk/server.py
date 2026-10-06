@@ -2287,6 +2287,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                         operation=library if route=='/api/animation-source-library' else library_download if route.endswith('download') else library_removal_review
                         self._json(200,operation(self.server.project,**body))
                     return
+                if route in ('/api/model-source-removal-review','/api/model-source-remove'):
+                    expected={'asset_id','expected_source_key','receipt_key'}
+                    if route.endswith('/model-source-remove'):expected.add('review_key')
+                    if set(body)!=expected:raise ProjectError('Model source removal requires exact reviewed fields')
+                    if route.endswith('/model-source-remove'):
+                        self.server.project.command(dict(body,type='remove_model_source'));self._json(200,self.server.state())
+                    else:
+                        from .model_glb_sources import review_removal
+                        self._json(200,review_removal(self.server.project,**body))
+                    return
                 if route in ('/api/model-sources','/api/model-source-download'):
                     expected={'asset_id','expected_source_key'}
                     if route.endswith('download'):expected.add('receipt_key')
