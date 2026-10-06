@@ -2042,6 +2042,9 @@ class ProjectService:
             self.undo_stack.append({'entity_id': identifier, 'before': before, 'after': after or None})
             self.redo_stack.clear()
             return
+        if command.get('type')=='set_actor_draft_dialogue':
+            from .npc_dialogue import apply
+            apply(self,command);return
         if command.get('type')=='assign_actor_draft_donors':
             from .draft_donor_group import apply as assign_draft_donors
             assign_draft_donors(self,command);return
@@ -2738,7 +2741,7 @@ class ProjectService:
                 raise ValueError()
         except ValueError:
             raise ProjectError('Invalid authored actor UUID') from None
-        if not isinstance(draft, dict) or set(draft) != {'scene_id','donor_entity_id','position','name'}:
+        if not isinstance(draft, dict) or set(draft)-{'scene_id','donor_entity_id','position','name','dialogue'} or not {'scene_id','donor_entity_id','position','name'}<=set(draft):
             raise ProjectError('Invalid actor draft fields')
         if not isinstance(draft['name'],str) or not draft['name'].strip() or len(draft['name']) > 120:
             raise ProjectError('Actor draft name must contain 1 through 120 characters')
@@ -2749,6 +2752,8 @@ class ProjectService:
             raise ProjectError('Actor draft requires exact X/Z placement')
         for axis, value in draft['position'].items():
             encode_placement_coordinate(value, axis)
+        from .npc_dialogue import validate
+        validate(draft)
 
     def _apply_history(self, source: list, target: list, field: str) -> None:
         if self.mode != "edit":

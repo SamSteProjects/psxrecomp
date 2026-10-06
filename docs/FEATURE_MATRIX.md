@@ -1,5 +1,37 @@
 # Legaia SDK feature matrix
 
+## Author dialogue independently for an NPC - 2026-10-05
+
+NPC Inspector and registered Asset Details now offer **Edit NPC dialogue**.
+The workspace freshly verifies the retail donor's supported plain-glyph runs,
+shows retail and authored text separately, and reviews a complete NPC-local edit
+set before Apply. Checked runs override this NPC only; unchecking restores retail
+text. Shorter replacements are space-padded, longer text and control/substitution
+edits reject. Existing decoder gates for unknown stops, aliases and menu ownership
+remain intact. Static paths do not establish runtime dialogue reachability.
+
+One reviewed command updates the authored NPC draft with one Undo step. Undo/Redo,
+Save/Open, draft copies and authored-input freshness retain the NPC-local text.
+Changing donor while text is retained rejects with an explicit clear-first message;
+text-run identities cannot silently migrate to another donor. NPC presets still
+capture donor/placement definitions; text presets remain a separate future feature.
+
+Normal Build patches only the audited appended record, after allocation and before
+other scene composition, using freshly verified source glyph preimages and bounded
+equal-span offsets. Compressed and streaming MAN paths share the same adapter.
+Retail donor records, other NPCs, record extents, controls and section layout remain
+unchanged by these text edits. Build audits expose the NPC-owned text spans.
+
+Offline evidence: 41 focused Python checks and four Node contract suites pass. Real editor
+Review/Apply/Undo/Redo/Save workflows and inspected 540px layouts passed in private
+format6 fixed-span and format7 relocated projects. Normal packages independently
+read back exact NPC text; complete generated donor records match their prior
+Builds exactly. Asset Details reopening shows the persisted own text; its action
+row now wraps to keep buttons inside the dialog. Both source/generated
+comparisons show 26 changed bytes including placement headers. Evidence is under
+`local-output/sdk-20260909/npc-dialogue-20261005/`. No game was launched; spawning,
+reachability, text layout and runtime behavior remain deferred manual acceptance.
+
 ## Compare saved NPC records with retail donors - 2026-10-05
 
 The generated NPC script workspace now offers **Compare generated record with

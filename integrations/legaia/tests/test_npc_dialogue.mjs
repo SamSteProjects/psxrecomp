@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {decodeNpcDialogueSource,decodeNpcDialogueReview} from '../editor/npc-dialogue.js';
+const id='authored-actor://00000000-0000-4000-8000-000000000001',donor='scene://fixture/actors/man-p1/0001',run='script://fixture/actors/man-p1/0001/dialogue/0005/run/0006',key='a'.repeat(64),draft={scene_id:'scene://fixture',donor_entity_id:donor,position:{x:128,z:256},name:'Resident'},state={actor_drafts:{[id]:draft},scene:{id:draft.scene_id},project_copy_source_key:key};
+const source={schema_version:'legaia.npc-dialogue-source.v1',entity_id:id,scene_id:draft.scene_id,project_source_key:key,draft,options:{actor_id:donor,supported:true,runs:[{semantic_id:run,actor_id:donor,byte_length:5,max_length:5,text:'Hello',authored_text:null,effective_text:'Hello'}]},gameplay_verified:false,runtime_binding:'not_asserted'};
+const accepted=decodeNpcDialogueSource(source,id,state);accepted.draft.name='Detached';assert.equal(draft.name,'Resident');
+const request={entity_id:id,runs:{[run]:'Yo'}},review={schema_version:'legaia.npc-dialogue-review.v1',entity_id:id,project_source_key:key,current:draft,proposed:{...draft,dialogue:{donor_entity_id:donor,runs:request.runs}},review_key:'b'.repeat(64),gameplay_verified:false,runtime_binding:'not_asserted'};
+assert.deepEqual(decodeNpcDialogueReview(review,request,source,state),review);
+for(const mutate of [v=>v.project_source_key='c'.repeat(64),v=>v.draft.name='Wrong',v=>v.options.runs[0].effective_text='Forged',v=>v.options.runs[0].actor_id='scene://other/actors/man-p1/0001',v=>v.options.runs.push(v.options.runs[0])]){const v=structuredClone(source);mutate(v);assert.throws(()=>decodeNpcDialogueSource(v,id,state));}
+for(const mutate of [v=>v.project_source_key='c'.repeat(64),v=>v.proposed.dialogue.runs[run]='Wrong',v=>v.proposed.position.x=192,v=>v.runtime_binding='verified']){const v=structuredClone(review);mutate(v);assert.throws(()=>decodeNpcDialogueReview(v,request,source,state));}
+console.log('NPC-owned dialogue source, detached review, exact request and stale/forged rejection pass.');

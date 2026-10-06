@@ -292,3 +292,5 @@
 
 #scene-placement-group-dialog .dialog-actions{flex-wrap:wrap;justify-content:flex-start}
 #scene-placement-group-dialog .dialog-actions button{max-width:100%;white-space:normal;text-align:left}
+
+#asset-details .dialog-actions{flex-wrap:wrap}

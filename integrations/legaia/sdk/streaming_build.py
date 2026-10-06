@@ -105,6 +105,12 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
         if requests:
             from importer.man_actor_structure import append_actor_candidates
             candidate, actor_audit = append_actor_candidates(carrier.payload, sha256(carrier.payload).hexdigest(), requests)
+        npc_dialogue_audit=None
+        if any(item.get('dialogue') for item in project.actor_drafts.values() if item['scene_id']==scene_id):
+            from .npc_dialogue import patch_clones
+            from importer.dialogue_authoring import load_dialogue_authoring_context
+            npc_context=load_dialogue_authoring_context(project.disc_path,scene)
+            candidate,npc_dialogue_audit=patch_clones(project,scene_id,npc_context,candidate,actor_audit)
         if dialogue_edits:
             from importer.dialogue_authoring import load_dialogue_authoring_context
             context = load_dialogue_authoring_context(project.disc_path, scene)
@@ -206,7 +212,7 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
         existing_actor_placement_changes=placements, existing_actor_dialogue_changes=dialogue_changes, map_changes=map_audit,
         model_changes=model_audit, texture_changes=texture_audit, animation_changes=animation_audit, branch_changes=branch_changes, transition_changes=transition_changes, movement_changes=movement_changes, flag_changes=flag_changes, wait_changes=wait_changes, model_selector_changes=model_selector_changes, facing_changes=facing_changes, existing_actor_appearance_changes=appearance_changes,
         actor_changes=actor_audit, actor_pool_evidence=pool_evidence, man_padding_bytes=padding,
-        existing_actor_allocated_animation_changes=allocated_changes,
+        existing_actor_allocated_animation_changes=allocated_changes,npc_dialogue_changes=npc_dialogue_audit,
         final_man_sha256=sha256(candidate).hexdigest(), gameplay_verified=False,
         _asset_patches=patches,
         _rebuild_request=dict(entry_index=carrier.entry_index, chunk_header_offset=carrier.chunk_header_offset,

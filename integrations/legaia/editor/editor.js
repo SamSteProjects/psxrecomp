@@ -80,6 +80,7 @@ import {mountProjectScriptBookmarks} from '/project-script-bookmarks.js';
 import {openScriptComponentReset} from '/script-component-reset.js';
 import {mountScriptOwnerInspector} from '/script-owner-inspector.js';
 import {openNpcBuildScript} from './npc-build-script.js';
+import {openNpcDialogue} from './npc-dialogue.js';
 import {openNpcDonorScript} from './npc-donor-script.js';
 import {openDraftRepeat} from '/draft-repeat.js';
 import {openDraftGroup} from '/draft-group.js';
@@ -1770,6 +1771,7 @@ async function resolveProjectAsset(record){
 async function activateAsset(record,action=null){
   if(busy)return;
   try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
+  if(action==='edit-npc-dialogue'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC dialogue target changed. Reopen Asset Details.');openNpcDialogue({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api});return;}
   if(action==='inspect-npc-build-script'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC Build target changed. Reopen Asset Details.');openNpcBuildScript({entityId:record.id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});return;}
   if(action==='inspect-npc-donor-script'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC retail donor changed. Reopen Asset Details.');openNpcDonorScript({entityId:record.id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});return;}
   if(action==='inspect-npc-donor-model'){const model=npcDonorModel(record);if(!model||!state.model_references?.some(ref=>ref.source_id===record.id&&ref.target_id===model&&ref.scene_id===record.sceneId&&ref.kind==='draft_initial_model_assignment'&&ref.effective_donor_id===record.authoredRecord.donor_entity_id))throw new Error('NPC donor model assignment changed. Reopen Asset Details.');openModel(model,null,null,'imported');return;}
@@ -2931,6 +2933,7 @@ function renderInspector(){
     const rename=document.createElement('button');rename.type='submit';rename.textContent='Rename';nameForm.append(nameLabel,rename);$('draft-inspector-form').before(nameForm);
     nameForm.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'rename_actor_draft',entity_id:id,name:nameInput.value});};
     const presets=document.createElement('button');presets.id='npc-presets-button';presets.textContent='NPC presets...';presets.disabled=busy||!canEdit();presets.onclick=showTemplates;$('delete-npc-draft').before(presets);
+    const npcDialogue=document.createElement('button');npcDialogue.id='npc-dialogue-button';npcDialogue.textContent='Edit NPC dialogue...';npcDialogue.disabled=busy||!canEdit();npcDialogue.onclick=()=>openNpcDialogue({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,api});$('delete-npc-draft').before(npcDialogue);
     const buildScript=document.createElement('button');buildScript.id='npc-build-script-button';buildScript.textContent='Inspect saved Build script...';buildScript.disabled=busy||!state.capabilities?.actor_script_preview;buildScript.onclick=()=>openNpcBuildScript({entityId:id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});$('delete-npc-draft').before(buildScript);
     const donorScript=document.createElement('button');donorScript.id='npc-donor-script-button';donorScript.textContent='Inspect retail donor script...';donorScript.disabled=busy||!state.capabilities?.actor_script_preview;donorScript.onclick=()=>openNpcDonorScript({entityId:id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});$('delete-npc-draft').before(donorScript);
     const duplicate=document.createElement('button');duplicate.id='duplicate-npc-draft';duplicate.textContent='Duplicate draft';duplicate.title='Creates an independent draft at the same position, then selects it to move';$('delete-npc-draft').before(duplicate);

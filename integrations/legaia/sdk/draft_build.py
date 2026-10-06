@@ -340,6 +340,11 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
             candidate=source
             actor_audit=dict(drafts=[],source_sha256=sha256(source).hexdigest(),
                             result_sha256=sha256(source).hexdigest(),build_ready=False)
+        npc_dialogue_audit=None
+        if any(item.get('dialogue') for item in drafts.values()):
+            from .npc_dialogue import patch_clones
+            npc_context=load_dialogue_authoring_context(project.disc_path,scene)
+            candidate,npc_dialogue_audit=patch_clones(project,draft['scene_id'],npc_context,candidate,actor_audit)
         appearance_audit=[]
         if context:
             candidate,appearance_audit=context.patch_appended(candidate,assignments)
@@ -417,7 +422,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         selected_draft_id=draft_id,drafts=drafts,scene_id=draft['scene_id'],
         **({'_rebuild_request':request,'_asset_patches':map_patches} if defer_rebuild else {}),
         map_changes=map_audit,
-        texture_changes=texture_audit,model_changes=model_audit,animation_changes=animation_audit,
+        texture_changes=texture_audit,model_changes=model_audit,animation_changes=animation_audit,npc_dialogue_changes=npc_dialogue_audit,
         authored_state_key=input_key,
         imported_document_sha256=digest(document),source_disc_sha256=disc_hash,
         source_prot_sha256=prot_hash,result_prot_sha256=sha256(rebuilt).hexdigest(),

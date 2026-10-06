@@ -782,6 +782,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/draft-donor-group.js": ("draft-donor-group.js", "text/javascript"),
                  "/npc-script-comparison.js": ("npc-script-comparison.js", "text/javascript"),
                  "/npc-build-script.js": ("npc-build-script.js", "text/javascript"),
+                 "/npc-dialogue.js": ("npc-dialogue.js", "text/javascript"),
                  "/npc-donor-script.js": ("npc-donor-script.js", "text/javascript"),
                  "/npc-draft-inspector.js": ("npc-draft-inspector.js", "text/javascript"),
                  "/npc-presets.js": ("npc-presets.js", "text/javascript"),
@@ -2595,6 +2596,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'entity_id','build_id'}:raise ProjectError('NPC script comparison accepts authored NPC and saved Build identities only')
                     from .npc_script_compare import compare as compare_npc_scripts
                     self._json(200,compare_npc_scripts(self.server.project,body['entity_id'],body['build_id']));return
+                if route=='/api/npc-dialogue-source':
+                    from .npc_dialogue import source
+                    if set(body)!={'entity_id'}:raise ProjectError('NPC dialogue source requires identity only')
+                    self._json(200,source(self.server.project,body['entity_id']));return
+                if route=='/api/npc-dialogue-review':
+                    from .npc_dialogue import review
+                    self._json(200,review(self.server.project,body));return
                 if route=='/api/npc-build-script':
                     if set(body)!={'entity_id','build_id'}:raise ProjectError('Saved NPC script accepts authored NPC and saved Build identities only')
                     from .npc_build_script import inspect as inspect_npc_build_script

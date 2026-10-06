@@ -92,3 +92,25 @@ bytes, 507 equal common bytes and matching tails. Their generated MAN offsets
 were 44648 and 44720; the original donor offset was 8487. See
 `local-output/sdk-20260909/npc-script-comparison-20261005/proof.json` for read-only
 workflow and unchanged-project/file evidence. Gameplay verification remains open.
+
+## Give an NPC its own text
+
+Choose **Edit NPC dialogue...** in NPC Inspector, or **Edit NPC dialogue** in
+Asset Details. The available runs come from the freshly verified retail donor.
+Check a run to own its text and enter printable ASCII within the displayed limit.
+Uncheck it to remove that NPC's override. Choose **Review NPC dialogue**, then
+**Apply NPC dialogue**. Changing any control withdraws Apply until another review.
+One Undo restores the previous edit set; Save and reopening retain it.
+
+Retail donor text remains separate. Normal Build writes the supported glyph spans
+only into this NPC's audited appended MAN record, preserving its fixed extent and
+all controls. It supports both fixed-span and relocated packages. Clear the own
+text before changing donor; the old run identities belong to that donor. Existing
+NPC presets capture donor/placement definitions, without dialogue text.
+
+Private normal packages `3bf921d864bfda55` (fixed span) and `b016d788d0e9440f`
+(relocated) independently read back the authored text and unchanged donor text.
+Workflow/native evidence is in
+`local-output/sdk-20260909/npc-dialogue-20261005/proof.json`. This does not prove
+that the NPC spawns, its dialogue path executes, or the text fits the game box.
+Those gameplay checks remain deferred.
