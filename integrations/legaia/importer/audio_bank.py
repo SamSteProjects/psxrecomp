@@ -9,7 +9,7 @@ LIMITATIONS=[
     'Programs are 128 source slots; tone pages are packed source pages, not interchangeable program indices.',
     'Tone sample operands resolve only to bounded source size-table spans; note selection, unused-slot aliases and runtime program assignment are not evaluated.',
     'Sample spans and hashes do not establish ADPCM validity, audible duration, pitch, waveform rate or runtime residency.',
-    'Bank inspection is read-only; waveform decoding, playback and audio replacement remain unsupported.',
+    'Bank inspection is read-only; bounded waveforms and explicit-rate sample audition use separate inspectors. Runtime instruments and sequence playback remain unverified.',
 ]
 
 

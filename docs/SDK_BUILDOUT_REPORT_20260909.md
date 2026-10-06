@@ -1,5 +1,11 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Native VAB parameter codec groundwork (2026-10-06)
+
+A source-qualified codec now edits 27 existing master/program/tone scalar parameters in complete VAB banks. Explicit pinned-parser offsets and native u8/u16/signed16 widths own the edits; counts, allocation, reserved words, sample tables/bodies and nonbank/SEQ bytes stay unchanged. This is codec groundwork: SDK commands, bank editor controls and native Build composition remain open. Encoded ranges are not audible effect or runtime instrument claims.
+
+All nine focused Python checks passed without skips. Every one of the 202 qualified retail bank carriers passed a combined 27-field edit and exact physical-entry restoration; all three carrier shapes, sparse slots/packed pages, byte ownership, bounds and rejection were checked. The 16 unavailable banks stay unsupported. See [VAB parameter groundwork](legaia-audio-bank-authoring.md); private evidence is `local-output/sdk-20260909/audio-bank-authoring-codec-20261006/focused.log`. Bank/SEQ changes need one composed PROT overlay before native delivery is complete. No gameplay actions; the goal remains active and development remains solo.
+
 ## Sequence operand editor (2026-10-06)
 
 Audio source event selection now opens an editor with separate Retail, Current and reviewed Proposed operands. Channel and tempo fields use encoded bounds; Review/Apply/Discard, retail staging, Clear and refresh guards share the verified project command layer. Inputs/navigation lock during review; stale state withdraws proposals, and closing cancels read ownership. The source inspector and note timeline remain Retail views. Native sequence synthesis, bank/scene assignment and game playback are still unresolved.

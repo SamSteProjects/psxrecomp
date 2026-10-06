@@ -110,3 +110,7 @@ Run `python -m unittest test_audio_authoring test_audio_sequence_authoring test_
 ## Sequence operand editor (2026-10-06)
 
 Run the Node suites `test_audio_sequence_authoring.mjs`, `test_audio_sequence.mjs` and `test_audio_note_timeline.mjs`; source/current ownership, channel/tempo proposal spans/timing, stale and late-close guards all passed. Nine retail-enabled Python command/HTTP/inspection checks passed. Private browser evidence includes actual source event selection, review/discard, Apply/reload, no-op, Clear/Undo/stale refresh, invalid values, partial inspection, final wide/400px layouts and full native delivery of the browser-authored entry. Source/other authored state is preserved. This does not verify game sequence playback. See [sequence authoring](legaia-audio-sequence-authoring.md).
+
+## Native VAB parameter codec (2026-10-06)
+
+Run `python -m unittest test_audio_bank_authoring test_audio_bank -v` with the retail environment. Nine checks passed without skips/errors/failures. All 202 qualified retail bank carriers passed independently encoded 27-field edits and exact entry restoration. Fixtures cover scalar widths/identities, reserved/sample/opaque preservation, all carrier shapes, Current composition/no-op and rejection. These tests qualify a codec, not SDK commands, emitted native packages or audible playback. See [VAB parameter groundwork](legaia-audio-bank-authoring.md).
