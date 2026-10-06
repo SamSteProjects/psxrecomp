@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const source=fs.readFileSync(new URL('../editor/runtime-review.js',import.meta.url),'utf8');
-const {captureRuntimeReview,parseRuntimeReview,validateRuntimeReview,compareRuntimeReviews,historicalRuntimePositions,historicalRuntimeComparisonPositions,MAX_REVIEW_BYTES}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const {captureRuntimeReview,parseRuntimeReview,validateRuntimeReview,compareRuntimeReviews,historicalRuntimePositions,historicalRuntimeComparisonPositions,historicalSampleHits,MAX_REVIEW_BYTES}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const node={runtime_node_id:'runtime://sample/0x80001000',epoch_id:'epoch-1',observed_position:{x:1,y:-2,z:3},position_capture_frames:{before:10,after:11},candidate_entity_ids:['scene://town01/actors/man-p1/0001'],binding_confirmed:false,reason:null,
 decoded_fields:[{property:'heading_yaw',raw_numeric_value:1024,interpreted_value:{units:1024,degrees:90},confidence:'supported',evidence:['source'],applicability:'actor',unresolved:false,notes:'Captured sample'}],raw_prefix_base64:'DO_NOT_EXPORT',guard_token:'DO_NOT_EXPORT'};
 const input={scene_id:'scene://town01',epoch_id:'epoch-1',nodes:[node],exported_at:'2026-09-30T00:00:00.000Z'};
@@ -46,3 +46,5 @@ assert.equal(historicalRuntimeComparisonPositions(spatialA,spatialB,ctx,'baselin
 spatialCompare.nodes[0].observed_position.x=500;assert.equal(spatialA.nodes[0].observed_position.x,1);for(const context of [{...ctx,mode:'live'},{...ctx,scene_id:'scene://foreign'}])assert.throws(()=>historicalRuntimeComparisonPositions(spatialA,spatialB,context));assert.throws(()=>historicalRuntimeComparisonPositions(spatialA,spatialB,ctx,'future'));assert.throws(()=>historicalRuntimeComparisonPositions(spatialA,{...spatialB,profile_id:'foreign'},ctx));
 const bound=structuredClone(review);bound.nodes=Array.from({length:128},(_,i)=>({...structuredClone(review.nodes[0]),runtime_node_id:'key-'+i}));assert.equal(historicalRuntimeComparisonPositions(bound,bound,ctx).nodes.length,256);
 console.log('Historical spatial comparison: validated source files, detached colored layers, complete-key segments, file-only/missing samples, context and 256-sample bounds passed.');
+
+assert.deepEqual(historicalSampleHits([{id:'paired-key',x:10,y:20},{id:'paired-key',x:10,y:20},{id:'other',x:11,y:21},{id:'far',x:80,y:90}],{x:10,y:20}),['paired-key','other']);assert.deepEqual(historicalSampleHits([],{x:0,y:0}),[]);for(const samples of [Array(257).fill({id:'key',x:1,y:1}),[{id:'key',x:NaN,y:0}],[null]])assert.throws(()=>historicalSampleHits(samples,{x:0,y:0}));assert.throws(()=>historicalSampleHits([],{x:Infinity,y:0}));console.log('Historical sample picking: bounded screen-space hits, paired-key deduplication, ambiguity and invalid geometry guards passed.');

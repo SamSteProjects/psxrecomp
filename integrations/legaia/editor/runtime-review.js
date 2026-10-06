@@ -83,3 +83,8 @@ export function historicalRuntimeComparisonPositions(before,after,context,layer=
  const beforeById=new Map(a.nodes.map(node=>[node.runtime_node_id,node])),pairs=layer==='both'?b.nodes.flatMap(node=>{const first=beforeById.get(node.runtime_node_id);return first&&['x','y','z'].some(axis=>first.observed_position[axis]!==node.observed_position[axis])?[{runtime_node_id:node.runtime_node_id,before:first.observed_position,after:node.observed_position}]:[];}):[];
  return {comparison,review:comparison.before,nodes,pairs,layer,skipped:(layer==='comparison'?0:a.skipped)+(layer==='baseline'?0:b.skipped)};
 }
+
+export function historicalSampleHits(samples,point){
+ if(!Array.isArray(samples)||samples.length>256||!point||!Number.isFinite(point.x)||!Number.isFinite(point.y))throw new Error('Historical picking requires bounded projected samples.');
+ const hits=new Set();for(const sample of samples){if(!sample||typeof sample.id!=='string'||!sample.id||!Number.isFinite(sample.x)||!Number.isFinite(sample.y))throw new Error('Historical projected sample is invalid.');if(Math.hypot(sample.x-point.x,sample.y-point.y)<9)hits.add(sample.id);}return [...hits];
+}

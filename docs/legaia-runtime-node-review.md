@@ -1,5 +1,14 @@
 # Saved runtime node review
 
+## Inspect a displayed sample — 2026-10-06
+
+Choose a key under **Historical node sample**, then **Inspect historical sample**, or enable **Pick historical sample** and click an amber/blue marker. The detached review opens with that key as its text filter; single-file details expand to show XYZ, capture frames and evidence. Comparison inspection retains both files and their full report. Clear the text filter to browse the complete review; downloads retain the full original metadata. Inspection does not select imported entities, change camera state or establish runtime identity.
+
+Coincident baseline/comparison markers with the same key open one comparison. Different overlapping keys require choosing the selector. Picking has explicit priority over scene meshes and transform handles, includes occluded samples, and checks that source/camera/viewport context still matches. Dragging navigates the camera. Empty layers disable sample actions and pick mode. Existing source-change withdrawal applies.
+
+Focused hit tests and single/comparison retail-source browser workflows with synthetic files passed; captured-evidence dialogs were inspected. Camera, imported selection and authored data remained unchanged. Proofs: `local-output/sdk-20260909/historical-runtime-sample-inspector-20261006/proof.json` and `comparison/proof.json`. No real runtime or gameplay validation occurred.
+
+
 ## Compare files spatially — 2026-10-06
 
 After comparing two saved reviews in the dialog, choose **Show historical comparison positions** while their matching scene is loaded in Edit mode. Use **Historical samples** to show Both files, Baseline (blue) or Comparison (amber). Complete XYZ samples appear independently; skipped counts follow the selected layer. Dashed lines join differing complete samples sharing a declared key. File-only keys are unconnected. Lines do not establish movement paths, actor identity, a common process or capture order. Missing heights remain unknown.
