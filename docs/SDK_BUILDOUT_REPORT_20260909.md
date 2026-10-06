@@ -1,5 +1,33 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Portable NPC presets retain qualified flag-bit overrides - 2026-10-05
+
+NPC preset capture now freezes source-qualified flag entries alongside appearance,
+dialogue, waits, movement and facing. Flag-bearing exports use metadata-only
+`legaia.npc-preset-file.v7` with the existing 512 KiB bound; v1-v6 retain their
+previous schema selection and limits. Export/import and reviewed placement freshly
+qualify donor operands. The browser checks exact owner/PC namespaces and typed
+entries, preserves the complete reviewed draft and shows flag counts. The temporary
+flag-bearing capture rejection is removed. Runtime flag identity and story meaning
+remain unknown. See [NPC flag workflow](legaia-npc-flags.md).
+
+Validation: 18 focused Python checks and two Node suites pass. Tests cover frozen
+capture, independent library import without NPC creation, history/persistence,
+older-format rejection, malformed entries, special side-effect exclusions and
+fresh placement requalification. Actual retail browser capture/download/upload,
+Review withdrawal, library Apply/Undo/Redo, Save/reload and Review/Inspect/Apply new
+instance all pass. Existing entities/imports and the source NPC stay held. The
+540px import review was visually inspected. Recipient NPC
+`authored-actor://4df9310b-5efd-5626-be23-39aa19404402` retains bit0, sector0,
+wait11, own text, model105/animation13 and own movement X3200/Z5696/move10 at
+placement X3200/Z5824. Normal Build `248da4af5e7947dd` independently reopens all
+six families and preserved upper bits. Package SHA256:
+`0092b428d9d6ed60852905fa54a917adc6c0e98fe5de4220f10d4a026346e495`.
+Evidence: `local-output/sdk-20260909/npc-flags-presets-20261005/proof.json`.
+
+No game launch or full-disc export occurred. Manual runtime acceptance stays
+deferred and the full SDK goal remains active/incomplete.
+
 ## Source-qualified saved NPC flag explanations - 2026-10-05
 
 Saved-script comparison now labels NPC-owned flag-bit index bytes alongside

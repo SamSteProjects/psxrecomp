@@ -10,8 +10,10 @@ restores its Retail operand. Input changes withdraw the proposal.
 Apply makes one Undo step. Undo/Redo and Save/Open retain the complete NPC draft.
 Normal Build writes these operands to the final appended NPC record for both
 compressed and streaming scene carriers. Imported donor operands remain separate.
-Repetition qualifies and retains the flag entries. Flag-bearing NPC preset capture
-currently rejects; portable preset support is still pending.
+Repetition qualifies and retains the flag entries. NPC preset capture freezes
+qualified flags with the five other supported families. Flag-bearing files use
+metadata-only v7; export/import and reviewed new-instance placement requalify the
+source donor operands. Earlier preset versions retain their schemas and limits.
 
 The supported field is a **bit index**, not a true/false flag value. LFLAG
 SET/CLEAR/TEST support indices 0..15. Qualified GFLAG and CFLAG operations support
@@ -53,3 +55,13 @@ browser comparison explains 28 of31 changed Town01 bytes across all six families
 leaving three unexplained; both streaming NPC flag spans also qualify. The 540px
 table was visually inspected. Both projects retain documents, history and all
 file hashes.
+
+## Portable preset verification
+
+Eighteen focused Python checks and two Node suites pass. Actual browser capture,
+v7 download/upload, reviewed independent library import, Undo/Redo, Save/reload
+and reviewed new-instance scene placement pass. The 540px import review was
+visually inspected. Private recipient normal Build `248da4af5e7947dd` independently
+reopens bit0, sector0, wait11, own text, model105/animation13 and own movement
+X3200/Z5696/move10. Source NPC, imports and existing entities stay held. Evidence:
+`local-output/sdk-20260909/npc-flags-presets-20261005/proof.json`.

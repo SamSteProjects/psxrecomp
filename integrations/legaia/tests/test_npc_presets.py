@@ -191,4 +191,32 @@ class NpcPresetTests(unittest.TestCase):
             target.actor_templates[report['template']['id']].get('components')['NpcDraft'].pop('movement')
             self.assertEqual((target._document(),target.undo_stack,target.redo_stack),before)
 
+    def test_owned_flags_v7_freeze_transfer_placement_and_side_effect_guards(self):
+        from importer.flag_authoring import FlagAuthoringContext
+        from test_importer_dialogue_authoring import fixture
+        from test_wait_authoring import END
+        from sdk.npc_flags import review as flags_review
+        context=FlagAuthoringContext(fixture(b'\x31\xe2'+END)[0]);flag=context.options(self.donor)['targets'][0]['semantic_id'];p=self.p
+        disc=p.root/'fixture.bin';disc.write_bytes(b'synthetic');p.disc_path=str(disc)
+        with patch.object(ProjectService,'_flag_context',return_value=context),patch('importer.pipeline._disc_context',side_effect=lambda _:nullcontext()),patch('importer.pipeline.import_scene',return_value=self.doc):
+            change=dict(entity_id=self.original,entries={flag:dict(bit=3)});accepted=flags_review(p,change);p.command(dict(type='set_actor_draft_flags',**change,review_key=accepted['review_key']))
+            p.command(dict(type='create_npc_preset',entity_id=self.original,name='Flag guard'));template=next(t for t in p.actor_templates.values() if t['name']=='Flag guard');frozen=deepcopy(template)
+            value=export_file(p,template['id']);self.assertEqual(value['schema_version'],'legaia.npc-preset-file.v7');content=json.dumps(value)+' '*9000;self.assertEqual(parse(content),value)
+            for version in range(1,7):
+                with self.assertRaises(ProjectError):parse(json.dumps(dict(value,schema_version=f'legaia.npc-preset-file.v{version}')))
+            clear=dict(entity_id=self.original,entries={});accepted=flags_review(p,clear);p.command(dict(type='set_actor_draft_flags',**clear,review_key=accepted['review_key']));self.assertEqual(p.actor_templates[template['id']],frozen)
+            target=ProjectService(p.root/'flag-recipient');target.import_metadata(self.doc);target.disc_path=p.disc_path;before=deepcopy(target._document());report=transfer_review(target,content,'Transferred flags');self.assertEqual(target._document(),before)
+            target.command(dict(type='import_actor_template',content=content,name='Transferred flags',review_key=report['review_key']));self.assertFalse(target.actor_drafts)
+            request=dict(template_id=report['template']['id'],name='Flag instance',position=dict(x=192,z=576),expected_source_key=source_key(target));instance=review(target,request);self.assertEqual(instance['draft']['flags'],frozen['components']['NpcDraft']['flags'])
+            target.command(dict(type='instantiate_npc_preset',**request,review_key=instance['review_key']));self.assertEqual(ProjectService.open(target.save()).actor_drafts,target.actor_drafts);target.undo();self.assertFalse(target.actor_drafts);target.redo();self.assertEqual(target.actor_drafts[instance['entity_id']],instance['draft'])
+            before=deepcopy((target._document(),target.undo_stack,target.redo_stack))
+            for fields in (dict(bit=True),dict(bit=32),dict(bit=-1),dict(bit=3,upper_bits=0),dict(bit=8)):
+                forged=deepcopy(value);forged['template']['components']['NpcDraft']['flags']['entries'][flag]=fields
+                with self.assertRaises((ProjectError,NativeError)):transfer_review(target,json.dumps(forged),'Forged flags')
+            forged=deepcopy(value);forged['template']['components']['NpcDraft']['flags']['entries']={flag[:-4]+'ffff':dict(bit=0)}
+            with self.assertRaises((ProjectError,NativeError)):transfer_review(target,json.dumps(forged),'Missing flag target')
+            self.assertEqual((target._document(),target.undo_stack,target.redo_stack),before)
+            target.actor_templates[report['template']['id']]['components']['NpcDraft']['flags']['entries'][flag]=dict(bit=8)
+            with self.assertRaises((ProjectError,NativeError)):review(target,dict(request,name='Unsupported instance',expected_source_key=source_key(target)))
+
 if __name__=='__main__':unittest.main()

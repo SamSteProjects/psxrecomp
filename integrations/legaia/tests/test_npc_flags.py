@@ -76,7 +76,8 @@ class NpcFlagsTests(TestCase):
                 report=review(p,request);p.command(dict(type='set_actor_draft_flags',**request,review_key=report['review_key']));self.assertEqual(len(p.undo_stack),depth+1)
                 p.undo();self.assertEqual(p.actor_drafts,before);p.redo();self.assertEqual(ProjectService.open(p.save()).actor_drafts,after)
                 self.assertEqual(repeat_preview(p,dict(entity_id=id,count=1,step=dict(x=64,z=0),name='Flags copy'))['copies'][0]['draft']['flags'],after[id]['flags'])
-                with self.assertRaises(ProjectError):p.command(dict(type='create_npc_preset',entity_id=id,name='Flag preset'))
+                p.command(dict(type='create_npc_preset',entity_id=id,name='Flag preset'))
+                self.assertEqual(next(iter(p.actor_templates.values()))['components']['NpcDraft']['flags'],after[id]['flags'])
                 for value in (dict(donor_entity_id='wrong',entries=request['entries']),dict(donor_entity_id=ACTOR,entries={target['semantic_id']:dict(bit=True)})):
                     bad=deepcopy(after[id]);bad['flags']=value
                     with self.assertRaises(ProjectError):p._validate_actor_draft(id,bad)
