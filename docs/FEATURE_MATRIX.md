@@ -1,5 +1,30 @@
 # Legaia SDK feature matrix
 
+## Repair saved selections after NPC deletion - 2026-10-05
+
+Saved selections containing deleted NPCs now support **Replace with current
+placements**. Select available placements in the saved scene, then replace the
+membership. The set keeps its stable identity and name; one Undo restores its
+previous members, including missing NPC references. The dialog identifies
+unavailable NPCs and explains the repair path. Recall still rejects missing NPCs.
+
+Replacement proves the original import and MAP binding before dropping members,
+including removal of all scenery. New membership must be available in the owning
+scene. Stale keys, source drift, empty/invalid replacements or a project change
+during source proof reject before publication. Repair changes editor metadata only.
+
+Validation: 16 focused scene/actor selection Python cases and both Node selection
+suites passed. Checks cover source drift, stale keys, unavailable replacements,
+metadata Undo/Redo, persistence and unchanged Build identity. Actual private Town01
+browser checks passed the missing-member note, rejected Recall, same-ID/name repair,
+Undo/Redo, Save/reload, disk reopen and successful repaired NPC focus. The 540px
+message was inspected; no page errors occurred. Imports, game overrides, NPC data
+and Build input identity stayed unchanged. Evidence:
+`local-output/sdk-20260909/npc-selection-repair-20261005/proof.json`.
+No game launch, Build, installation or full-disc export ran for this metadata-only
+repair. Gameplay remains deferred; the full SDK goal stays active and work stays solo.
+See [Saved scene selections](legaia-scene-selections.md).
+
 ## Saved NPC selections feed group authoring - 2026-10-05
 
 Opening **Move NPC draft group...** now checks the NPC members of the current

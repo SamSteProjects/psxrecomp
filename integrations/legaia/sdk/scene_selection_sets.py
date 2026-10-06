@@ -78,10 +78,15 @@ def review_key(root, value):
 
 
 def source_binding(project, scene, identifiers):
-    """Prove current static membership against verified source MAP bytes."""
+    """Prove available current membership against verified source MAP bytes."""
+    return _source_binding(project, scene, identifiers, require_available=True)
+
+
+def _source_binding(project, scene, identifiers, *, require_available):
+    """A replacement may prove the old source without reviving deleted NPCs."""
     if project.mode != 'edit' or scene != project.active_scene:
         raise ProjectError('Selection set requires the active imported scene in Edit mode')
-    _, decorations = _members(project, scene, identifiers, require_available=True)
+    _, decorations = _members(project, scene, identifiers, require_available=require_available)
     before = source_key(project)
     map_hash = None
     if decorations:
@@ -140,10 +145,16 @@ def command(project, body):
         if kind == 'rename_scene_selection_set':
             after['name'] = _name(body['name'])
         elif kind == 'update_scene_selection_set':
-            # Prove the saved source before replacing membership, including removal of all decorations.
-            review(project, identifier, body['review_key'])
+            # Prove the old import/MAP binding even if an authored NPC was deleted.
+            # New membership must still be fully available; recall remains strict.
+            membership_key=source_key(project)
+            binding=_source_binding(project,before['scene_id'],before['entity_ids'],require_available=False)
+            if binding!={field:before[field] for field in ('import_sha256','map_sha256')}:
+                raise ProjectError('Saved scene selection source changed; replacement rejected')
             after.update(source_binding(project, before['scene_id'], body['entity_ids']))
             after['entity_ids'] = sorted(body['entity_ids'])
+            if source_key(project)!=membership_key:
+                raise ProjectError('Project changed while replacing saved selection membership')
         else:
             after = None
     if after is not None:

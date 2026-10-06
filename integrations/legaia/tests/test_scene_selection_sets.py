@@ -67,6 +67,27 @@ class SceneSelectionSetTests(unittest.TestCase):
         p.actor_drafts[npc]['scene_id']='scene://other'
         with self.assertRaises(ProjectError):source_binding(p,SCENE,[npc])
 
+    def test_missing_npc_replacement_repairs_identity_and_undo_retains_missing_members(self):
+        p=self.p;npc=self.npc();row=self.create([npc,ACTOR,IDS[0]],'Missing member')
+        p.command(dict(type='delete_actor_draft',entity_id=npc));baseline=deepcopy((p.imports,p.overrides,p.actor_drafts));build_key=authored_state_key(p);depth=len(p.undo_stack)
+        self.edit('update_scene_selection_set',row,entity_ids=[ACTOR]);repaired=deepcopy(p.scene_selection_sets[row['id']])
+        self.assertEqual(repaired['id'],row['id']);self.assertEqual(repaired['name'],row['name']);self.assertIsNone(repaired['map_sha256'])
+        self.assertEqual(len(p.undo_stack),depth+1);self.assertEqual((p.imports,p.overrides,p.actor_drafts),baseline);self.assertEqual(authored_state_key(p),build_key)
+        self.assertEqual(review(p,repaired['id'],review_key(p,repaired))['entity_ids'],[ACTOR]);p.undo();self.assertEqual(p.scene_selection_sets[row['id']],row)
+        with self.assertRaisesRegex(ProjectError,'unavailable'):review(p,row['id'],review_key(p,row))
+        p.redo();self.assertEqual(p.scene_selection_sets[row['id']],repaired);reopened=ProjectService.open(p.save());self.assertEqual(reopened.scene_selection_sets,p.scene_selection_sets)
+
+    def test_missing_npc_replacement_still_requires_old_map_and_new_available_members(self):
+        p=self.p;npc=self.npc();row=self.create([npc,IDS[0]])
+        p.command(dict(type='delete_actor_draft',entity_id=npc));before=deepcopy((p._document(),p.undo_stack,p.redo_stack))
+        with self.assertRaisesRegex(ProjectError,'unavailable'):self.edit('update_scene_selection_set',row,entity_ids=[npc])
+        changed=bytearray(self.source);changed[4*32+1]^=1;self.mock.return_value=bytes(changed)
+        with self.assertRaises(ProjectError):self.edit('update_scene_selection_set',row,entity_ids=[ACTOR])
+        self.assertEqual((p._document(),p.undo_stack,p.redo_stack),before);self.mock.return_value=self.source
+        with self.assertRaises(ProjectError):self.edit('update_scene_selection_set',row,entity_ids=[])
+        with self.assertRaises(ProjectError):command(p,dict(type='update_scene_selection_set',selection_set_id=row['id'],review_key='stale',entity_ids=[ACTOR]))
+        self.assertEqual((p._document(),p.undo_stack,p.redo_stack),before)
+
     def test_mixed_source_review_is_read_only_and_history_is_metadata_only(self):
         p = self.p; before = deepcopy(p.overrides); imports = deepcopy(p.imports)
         row = self.create([IDS[0], ACTOR], '  Wall and actor  ')
