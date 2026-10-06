@@ -968,3 +968,25 @@ scene. A local actual Town01 measurement reduced model-container decodes from
 118 to 2 and cold preview time from 19.445 to 11.611 seconds, with identical
 normalized output. Fresh SDK HTTP proof and operation-lifetime tests preserve
 full verification for each separate operation; no gameplay acceptance is claimed.
+
+
+### Signed static model transforms and native winding - 2026-10-06
+
+`model_glb_transforms` factors reflected local matrices into a proper rigid
+rotation and one signed axis, retaining the full affine hierarchy. Local magnitudes
+and composed singular values use the existing bounds. `ModelPose.reflected` derives
+from the final composed determinant. Its normal cofactor includes determinant sign
+so normalization restores original native magnitude with inverse-transpose direction.
+The positive-uniform quaternion path remains unchanged.
+
+Current v6 `model_glb` profiles reverse native winding for reflected mapped objects
+by exchanging corners 1 and 2. Existing qualified packet writers carry vertex refs,
+UV, Gouraud RGB and normal operands through that permutation; flat fields retain
+corner zero and opaque/material/padding bytes remain untouched. Legacy profiles
+reject reflections before source field publication. Review, pending audits, native
+replacement history, retained GLB receipts and normal Build require no format or
+endpoint changes. Reflections preserve allocation-ledger identities and tombstones.
+The glTF determinant/winding rule is format evidence; the native packet permutation
+and raw normal magnitude policy are independently implemented and checked against
+all 24 supported packet families. Private actual browser/Build proof does not claim
+in-game rendering or normal-based retail lighting acceptance.

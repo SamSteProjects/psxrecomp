@@ -25,7 +25,7 @@ BINDING_KEYS = {'schema_version', 'asset_id', 'scene_id', 'source_sha256',
 QUANTIZATION_KEYS = {'vertex_max_error', 'uv_max_error', 'color_max_error', 'normal_max_error',
                      'quantized_component_count'}
 LIMITATIONS = [
-    'Static rigid node transforms and parent groups bake positions and stored normals into the existing native objects. Positive axis scales bake positions; inverse-transpose normals preserve stored magnitude. Local shear, reflection and animated nodes reject.',
+    'Static node transforms and parent groups bake positions and stored normals into the existing native objects. Signed axis scales bake positions; inverse-transpose normals preserve stored magnitude. Current-profile reflections reverse native face winding with its UV, RGB and normal-reference corners. Local matrix shear and animated nodes reject.',
     'Preserved source-object tags identify renamed or reordered nodes; canonical object-N names are the legacy fallback. An explicit ordered node mapping may recover untagged external objects, but must agree with preserved identities. Conflicting or duplicate identities reject.',
     'Existing object, vertex and primitive layout only; no insertion or allocation.',
     'Existing packet corner references may select existing vertices in the same object; counts and capacities remain unchanged.',

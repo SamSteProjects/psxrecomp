@@ -1,5 +1,39 @@
 # Legaia SDK feature matrix
 
+## 2026-10-06 checkpoint: mirrored model GLB transforms
+
+Current-profile fixed-layout model editing now imports signed nonzero axis scales
+and reflected static TRS/matrices through parent hierarchies. Positions bake into
+native source coordinates. Inverse-transpose normal directions retain their
+stored magnitude, including the determinant sign. The final composed orientation
+controls winding: reflected native triangles/quads exchange corners 1 and 2,
+carrying vertex references, UV bytes, Gouraud RGB and Gouraud normal references
+together. Flat fields, material words, command bytes, padding, capacities and
+source provenance stay fixed. Two cancelling reflections do not reverse faces.
+Local/composed scale magnitude limits and integer-domain checks remain in force.
+Legacy GLB profiles reject reflected objects; current v6 has every required field.
+Animation/skinning and local matrix shear remain unsupported by this model path.
+
+Validation: 70 focused Python tests and three Node checks passed, including all
+24 packet families against independent native packing, nondegenerate quad winding,
+signed normal orthogonality, TRS/matrix equivalence, cancellation, mixed objects,
+legacy rejection, retained additions/removal bases and ordinary history. Actual
+browser Review -> proposed textured preview -> Return -> Apply passed with a fresh
+Town01 model0009 export, renamed/reordered objects and a reflected nonuniform
+matrix parent. Wrong Review/zero scale/stale binding rejected. Undo/Redo and
+Save/Open preserved the exact candidate. Normal private Build independently
+decoded to the expected model; neighboring container bytes remained unchanged.
+Proof: `local-output/sdk-20260909/model-glb-reflection-20261006/proof.json`.
+Build `4d46cd1c3a7a6abb`, package SHA-256
+`7510b165dfddc87adacd5ec79a4005d1d284ef97a73c7fa80c44b888f50ed8d0`.
+Native model SHA-256
+`886d5dfa69b1c78dec6329be19a8523e2cfbb24cd3138a09cef41cd671e5445e`.
+No game launch, runtime attachment or installation occurred. In-game rendering
+and lighting verification stays deferred; it does not block further offline
+SDK work. The full SDK goal remains active and incomplete. This supersedes earlier
+reflection exclusions for current-profile fixed-layout model imports.
+
+
 ## 2026-10-06 checkpoint: bounded model container reuse during scene generation
 
 Cold scene generation now reuses immutable decoded model LZS sections within one

@@ -117,5 +117,30 @@ class AddedModelGlbTests(unittest.TestCase):
         self.assertEqual(fresh['topology_sha256'],binding['topology_sha256'])
         self.assertEqual(roundtrip['pending_changes'],[])
 
+    def test_reflected_import_keeps_allocated_faces_and_retired_base(self):
+        from test_model_glb import rewrite
+        from test_model_glb_hierarchy import group
+        from test_model_glb_reflection import mirrored_native
+        for removed in (False, True):
+            with self.subTest(removed=removed):
+                p,asset=self.fixture(removed=removed)
+                before=p.read_model_replacement(asset,p.model_overrides[asset])
+                topology=source(p,asset,'a'*64)['topology']['faces']
+                content,binding,_=model_glb.export_model(p,asset)
+                reflected=rewrite(content,lambda d,b:group(d,dict(scale=[-1,1,1])))
+                report=model_glb.preview_import(p,asset,reflected,binding)
+                history=len(p.undo_stack)
+                model_glb.apply_import(p,asset,reflected,binding,report['review_key'])
+                candidate=p.read_model_replacement(asset,p.model_overrides[asset])
+                self.assertEqual(candidate,mirrored_native(before,[-1,1,1]))
+                self.assertEqual(len(p.undo_stack),history+1)
+                self.assertEqual(source(p,asset,'a'*64)['topology']['faces'],topology)
+                if removed:self.assertEqual(p.model_overrides[asset]['base_binding']['format'],'tmd-face-removal-v1')
+                p.undo();self.assertEqual(p.read_model_replacement(asset,p.model_overrides[asset]),before)
+                p.redo();self.assertEqual(p.read_model_replacement(asset,p.model_overrides[asset]),candidate)
+                _,fresh,roundtrip=model_glb.export_model(p,asset)
+                self.assertEqual(fresh['topology_sha256'],binding['topology_sha256'])
+                self.assertEqual(roundtrip['pending_changes'],[])
+
 
 if __name__=='__main__':unittest.main()

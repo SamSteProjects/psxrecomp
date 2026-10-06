@@ -732,7 +732,7 @@ Unlit sentinel attributes, unrepresented native vector slots, padding, packet
 layout and opaque bytes remain intact. Display NORMAL remains ignored. Aliased
 corners must agree after transformation and source-domain quantization.
 
-Local matrix shear, reflection, perspective, skinning, morphs, animation, cycles,
+Local matrix shear, perspective, skinning, morphs, animation, cycles,
 multiple-parent trees, detached nodes and unowned meshes reject. Rotating lit
 objects with an old profile that cannot author stored normals rejects; unlit
 legacy objects and translation-only imports retain their supported field scope.
@@ -757,7 +757,7 @@ the existing reviewed quantization diagnostics. Unused native vectors, packet
 layout, padding, image/material fields and unlit sentinels remain unchanged.
 
 Uniform matrix decomposition uses the existing rigid orientation checks with
-float32 tolerance. Negative or zero TRS scales, local matrix shear, reflection, perspective,
+float32 tolerance. Zero TRS scales, local matrix shear, perspective,
 matrix-plus-TRS and excessive composed scales reject. Positive nonuniform scale
 is supported as described below.
 Animation GLB imports retain their existing unit-scale requirement. Scene
@@ -789,7 +789,7 @@ without forming squared normal equations. Reciprocal/cross-axis cancellation is
 accepted when the actual composed transform stays bounded; out-of-range
 intermediate ancestors still reject. Only floating-point boundary noise is
 allowed (64 ulps of the largest measured scale). Native integer-domain and
-quantization checks remain separate. Negative/zero scales, reflection, perspective, local shear, animation
+quantization checks remain separate. Zero scales, perspective, local matrix shear, animation
 and skinning remain unsupported. Legacy lit profiles without stored-normal
 editing reject nonuniform transforms; unlit legacy geometry remains supported.
 
@@ -872,3 +872,33 @@ that historical result. A match proves byte equality only; use a fresh export an
 Review for a new edit. Comparison does not change project state or create an Undo
 step. The matching retail disc is required for comparison, while saved input
 recovery remains available separately.
+
+
+## Bake mirrored model transforms - 2026-10-06
+
+Export Current through Edit model through GLB, retain the fresh binding and source
+attributes, and apply signed nonzero node scale or a static reflected matrix in
+your external editor. Parent groups, renamed source-tagged objects and explicit
+object mapping retain their usual ownership rules. Review selected files, inspect
+the proposed model, return and explicitly Apply. Undo/Redo, Save/Open and normal
+Build include the result and retain the original GLB input receipt.
+
+The current v6 profile supports mirrors by baking the full composed transform
+and reversing the native face corners when its determinant is negative. This
+follows the [glTF transform/winding rule](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#instantiation).
+The native implementation exchanges corners 1 and 2 for triangles and quads,
+retaining the quad diagonal. UVs, Gouraud RGB and normal-reference words follow
+their vertex corner; flat fields and all material/command/padding bytes keep their
+owners. Normal directions use signed inverse-transpose transformation with their
+original source magnitude restored before integer rounding. This magnitude policy
+belongs to the native SDK and is separate from glTF display normals.
+
+An even number of reflections that cancels in the final transform does not reverse
+native winding. Each local scale magnitude and composed singular scale remains
+within 1/1024..1024. Zero/singular transforms, overflow, local matrix shear,
+skinning and animation reject. Older profiles cannot import a reflected object;
+export again using Current. Keep source triangle identities and their original
+GLB index winding; the SDK applies determinant-based native winding correction.
+Do not reverse the GLB source indices yourself. This creates a reviewed native
+replacement without allocating new objects, vectors or packets. Gameplay rendering
+and lighting acceptance remains deferred.

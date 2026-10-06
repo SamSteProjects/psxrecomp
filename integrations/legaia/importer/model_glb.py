@@ -47,7 +47,7 @@ LIMITATIONS = [
     'Edit raw byte-domain baked RGB through _LEGAIA_SOURCE_RGB; display COLOR_0 is not imported.',
     'Edit stored signed-i16 normal XYZ through _LEGAIA_SOURCE_NORMAL in retail [x,y,z] axes, without the POSITION Y flip or normalization; display NORMAL is ignored.',
     'Unlit corners retain normal XYZ sentinel [32768,32768,32768] and normal index -1; no normal tables or slots are allocated.',
-    'Static transforms with positive axis scales bake existing positions; inverse-transpose normal directions preserve stored magnitude. No reflection, skinning, animation or topology allocation.',
+    'Static signed axis scales bake existing positions; inverse-transpose normal directions preserve stored magnitude. Current-profile reflections reverse native face winding with its UV, RGB and normal-reference corners. No skinning, animation or topology allocation.',
     'Keep source-object tags (or object-N names) and all source identity attributes; import in Blender with Merge Vertices disabled and export custom attributes enabled.',
     'Duplicate seam and quad corners must agree after source-domain quantization.',
     'Edit exact stored CLUT/TPage words and shared group ABE through _LEGAIA_SOURCE_MATERIAL; reserved CLUT, TPage ABR and reserved bits survive. Untextured words remain -1.',
@@ -389,6 +389,9 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict, *, obj
         if tagged or canonical or ('mesh' in node and object_node_indices is None):
             source_object_identity(node, len(inspection['objects']))
     mapping, poses = static_model_hierarchy(doc, len(inspection['objects']), object_node_indices)
+    reflected_objects = {identity for identity, index in mapping.items() if poses[index].reflected}
+    if reflected_objects and profile['schema_version'] != PROFILE_SCHEMA:
+        raise ImportError('Model GLB reflections require the current profile with editable vertex, RGB and normal references')
     owned_nodes = set(mapping.values())
     if any('mesh' in node and index not in owned_nodes for index,node in enumerate(nodes)):
         raise ImportError('Model GLB mesh node is absent from the source object mapping')
@@ -630,21 +633,28 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict, *, obj
             for (object_id, normal_id), xyz in normal_values.items():
                 if object_id == identity:
                     struct.pack_into('<3h', result, offset + normal_id * 8, *xyz)
+    def source_corner(field):
+        # Triangles and native quads use the same 1<->2 permutation. For a
+        # quad this reverses both (0,1,2) and (1,3,2) without changing its
+        # diagonal. Flat RGB/normal fields own corner zero and stay fixed.
+        corner = field['corner_index']
+        return 3-corner if field['object_index'] in reflected_objects and corner in (1, 2) else corner
+
     for field, _width in _primitive_field_locations(inspection):
         if references_enabled and field.get('field') == 'vertex_index':
-            key = field['object_index'], field['primitive_index'], field['corner_index']
+            key = field['object_index'], field['primitive_index'], source_corner(field)
             struct.pack_into('<H', result, field['byte_offset'], reference_values[key] * 8)
         elif field.get('field') == 'uv':
-            key = field['object_index'], field['primitive_index'] * 4 + field['corner_index']
+            key = field['object_index'], field['primitive_index'] * 4 + source_corner(field)
             point = uv_values[key]
             result[field['byte_offset']] = point[0 if field['axis'] == 'u' else 1]
         elif color_enabled and field.get('field') == 'color':
-            key = field['object_index'], field['primitive_index'], field['corner_index']
+            key = field['object_index'], field['primitive_index'], source_corner(field)
             result[field['byte_offset']] = color_values[key]['rgb'.index(field['axis'])]
     if normal_references_enabled:
         from .model_normal_references import _normal_field_locations
         for field, _width in _normal_field_locations(effective_tmd, inspection):
-            key = field['object_index'], field['primitive_index'], field['corner_index']
+            key = field['object_index'], field['primitive_index'], source_corner(field)
             struct.pack_into('<H', result, field['byte_offset'], normal_reference_values[key] * 8)
     if materials_enabled:
         for offset, content in apply_material_values(effective_tmd, inspection, source_material_bindings, material_values, group_values):

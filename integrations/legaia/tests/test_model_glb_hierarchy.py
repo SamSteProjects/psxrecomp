@@ -84,7 +84,6 @@ class ModelHierarchy(unittest.TestCase):
         glb, profile = export_model_glb(source, decode_tmd(source))
         for transform in [dict(scale=[0,1,1]), dict(rotation=[0,0,0,0]),
                           dict(translation=[True,0,0]), dict(translation=[1e300,0,0]),
-                          dict(matrix=[-1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]),
                           dict(matrix=[1,0,0,0,1,1,0,0,0,0,1,0,0,0,0,1]),
                           dict(matrix=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],translation=[0,0,0])]:
             with self.subTest(transform=transform), self.assertRaises(ImportError):
