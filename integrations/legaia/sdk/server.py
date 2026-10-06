@@ -823,6 +823,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/wall-pattern.js": ("wall-pattern.js", "text/javascript"),
                  "/floor-picking.js": ("floor-picking.js", "text/javascript"),
                  "/floor-rectangle.js": ("floor-rectangle.js", "text/javascript"),
+                 "/floor-pattern.js": ("floor-pattern.js", "text/javascript"),
                  "/collision-rectangle.js": ("collision-rectangle.js", "text/javascript"),
                  "/model-normal-length.js": ("model-normal-length.js", "text/javascript"),
                  "/model-normal-users.js": ("model-normal-users.js", "text/javascript"),

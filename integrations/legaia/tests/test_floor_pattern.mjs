@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {decodeFloorPattern,captureFloorPattern,transformFloorPattern,floorPatternDraft,repeatFloorPattern} from '../editor/floor-pattern.js';
+const lut=Array.from({length:16},(_,i)=>i*32),rect={row_start:0,row_end:1,column_start:0,column_end:2,tier:'current'},edits=[{row:0,column:0,tier:0},{row:0,column:2,tier:'retail'},{row:1,column:1,tier:15}];
+const p=captureFloorPattern(rect,edits,lut);assert.equal(p.cells.length,3);assert.equal(p.width,3);assert.equal(p.height,2);assert.deepEqual(decodeFloorPattern(JSON.parse(JSON.stringify(p))),p);
+assert.deepEqual(transformFloorPattern(p,3),transformFloorPattern(transformFloorPattern(transformFloorPattern(p,1),1),1));assert.deepEqual(transformFloorPattern(transformFloorPattern(p,0,true),0,true),p);assert.deepEqual(transformFloorPattern(p,0,false,true).cells,[{x:1,z:0,tier:15},{x:0,z:1,tier:0},{x:2,z:1,tier:'retail'}]);
+const draft=floorPatternDraft(p,0,125,lut);assert.equal(draft.rectangle.column_end,127);assert.equal(draft.cell_edits[2].column,126);assert.equal(draft.rectangle.tier,'current');assert.throws(()=>floorPatternDraft(p,127,125,lut));assert.throws(()=>floorPatternDraft(p,0,126,lut));
+const foreign=[...lut];foreign[0]=12;assert.throws(()=>floorPatternDraft(p,0,0,foreign),/different destination/);foreign[0]=0;foreign[1]=12;assert.doesNotThrow(()=>floorPatternDraft(p,0,0,foreign));
+const duplicateHeights=[...lut];duplicateHeights[1]=lut[0];assert.equal(floorPatternDraft(p,0,0,duplicateHeights).cell_edits[0].tier,0);
+const r=repeatFloorPattern(p,2,2,1,2);assert.equal(r.width,7);assert.equal(r.height,6);assert.equal(r.cells.length,12);assert(!r.cells.some(c=>c.x===3||c.z===2||c.z===3));assert.deepEqual(repeatFloorPattern(p),p);assert.throws(()=>repeatFloorPattern(p,128));assert.throws(()=>repeatFloorPattern(p,2,2,127));
+for(const change of [v=>v.cells.push({...v.cells[0]}),v=>v.height_lut[0]=true,v=>v.height_lut.pop(),v=>v.cells[0].tier='current',v=>v.cells[0].x=3,v=>v.width=128,v=>v.extra=1]){const v=structuredClone(p);change(v);if(v.width===128)v.height=128;assert.throws(()=>decodeFloorPattern(v));}
+assert.throws(()=>captureFloorPattern(rect,[],lut));assert.equal(captureFloorPattern({...rect,tier:'retail'},[],lut).cells.length,6);const copied=decodeFloorPattern(p);copied.cells[0].tier=3;copied.height_lut[0]=9;assert.equal(p.cells[0].tier,0);assert.equal(p.height_lut[0],0);
+const max=captureFloorPattern({row_start:0,row_end:31,column_start:0,column_end:127,tier:0},[],lut);assert.equal(max.cells.length,4096);assert(Buffer.byteLength(JSON.stringify(max,null,2))<512*1024);
+console.log('Floor authored capture, transforms, exact tier-height qualification, zero-row placement, sparse repeat/gaps and file budgets passed.');

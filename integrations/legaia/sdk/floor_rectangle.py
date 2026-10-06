@@ -47,9 +47,10 @@ def review(project,scene,rectangle,cell_edits=None):
     if source_key(project)!=before:raise ProjectError('Project changed while reviewing floor selectors')
     key=digest(dict(project_source_key=before,scene=scene,source_sha256=source_hash,rectangle=rectangle,floor_height_lut=lut,floor_source_record=record,**({'cell_edits':cells} if patterned else {})))
     value=dict(source_sha256=source_hash,edits=edits)
+    canonical_authored=dict(authored,edits=sorted(authored['edits'],key=lambda e:(e['row'],e['column']))) if authored else None
     return dict(**({'cell_edits':cells} if patterned else {}),schema_version='legaia.floor-rectangle-review.v2' if patterned else 'legaia.floor-rectangle-review.v1',project_source_key=before,scene_id=scene,source_sha256=source_hash,review_key=key,
                 rectangle=deepcopy(rectangle),floor_height_lut=deepcopy(lut),floor_source_record=deepcopy(record),rows=rows,selector_count=count,effective_change_count=sum(r['effective']!=r['proposed'] for r in rows),
-                authored_selector_count=len(edits),audited_selector_count=len(audit),project_change=authored!=(value if edits else None),value=value,
+                authored_selector_count=len(edits),audited_selector_count=len(audit),project_change=canonical_authored!=(value if edits else None),value=value,
                 scope='source-MAP-floor-selectors-only',gameplay_verified=False,
                 limitations=['Selectors reference existing MAN heights; LUT values are not edited.',
                              'Floor grid row zero is supported; wall-biased row/Z coordinates do not apply.',
@@ -61,6 +62,7 @@ def apply(project,command):
     if 'cell_edits' in command and not isinstance(command['cell_edits'],list):raise ProjectError('Floor paint Apply requires a selector list')
     result=review(project,command['entity_id'],command['rectangle'],command.get('cell_edits'))
     if result['review_key']!=command['review_key']:raise ProjectError('Floor inputs changed since Review')
+    if not result['project_change']:return
     project.command(dict(type='set_floor_tiers',entity_id=command['entity_id'],value=result['value']) if result['value']['edits'] else dict(type='clear_floor_tiers',entity_id=command['entity_id']))
 
 

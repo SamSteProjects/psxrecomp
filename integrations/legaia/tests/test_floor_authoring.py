@@ -57,8 +57,10 @@ class FloorPaint(unittest.TestCase):
   with tempfile.TemporaryDirectory() as d:
    p=ProjectService(Path(d));p.import_metadata(floor_fixture());source=bytes([0xa5])*0x12000;h=sha256(source).hexdigest()
    with patch.object(ProjectService,'_environment_source',return_value=source),patch('sdk.floor_rectangle.load_environment_placements',return_value=context(p,source)),http_server(p) as (_,post):
-    p.command(dict(type='set_floor_tiers',entity_id=p.active_scene,value=dict(source_sha256=h,edits=[dict(row=0,column=1,tier=8),dict(row=127,column=127,tier=9)])));before=deepcopy(p.overrides);depth=len(p.undo_stack)
-    rect={**RECT,'tier':'current'};cells=[dict(row=0,column=1,tier='retail'),dict(row=0,column=0,tier=3)];body=dict(entity_id=p.active_scene,rectangle=rect,cell_edits=cells)
+    p.command(dict(type='set_floor_tiers',entity_id=p.active_scene,value=dict(source_sha256=h,edits=[dict(row=127,column=127,tier=9),dict(row=0,column=1,tier=8)])));before=deepcopy(p.overrides);depth=len(p.undo_stack)
+    rect={**RECT,'tier':'current'}
+    noop=review(p,p.active_scene,rect,[]);self.assertFalse(noop['project_change']);p.command(dict(type='apply_floor_rectangle',entity_id=p.active_scene,rectangle=rect,cell_edits=[],review_key=noop['review_key']));self.assertEqual(p.overrides,before);self.assertEqual(len(p.undo_stack),depth)
+    cells=[dict(row=0,column=1,tier='retail'),dict(row=0,column=0,tier=3)];body=dict(entity_id=p.active_scene,rectangle=rect,cell_edits=cells)
     status,r=post('/api/floor-rectangle-review',body);self.assertEqual(status,200,r);self.assertEqual(r['schema_version'],'legaia.floor-rectangle-review.v2');self.assertEqual(p.overrides,before);self.assertEqual(r['effective_change_count'],2)
     command=dict(type='apply_floor_rectangle',**body,review_key=r['review_key']);self.assertEqual(post('/api/command',{**command,'cell_edits':[dict(row=0,column=0,tier=4)]})[0],400)
     for bad in [None,cells*2,[dict(row=2,column=0,tier=1)],[dict(row=0,column=0,tier=True)],[dict(row=0,column=0,tier='current')]]:self.assertEqual(post('/api/floor-rectangle-review',{**body,'cell_edits':bad})[0],400)
