@@ -787,6 +787,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/actor-animation.js': ('actor-animation.js', 'text/javascript'),
                  "/build-review.js": ("build-review.js", "text/javascript"),
                  "/build-history.js": ("build-history.js", "text/javascript"),
+                 "/asset-build-history.js": ("asset-build-history.js", "text/javascript"),
                  "/project-copy.js": ("project-copy.js", "text/javascript"),
                  "/scene-selection-sets.js": ("scene-selection-sets.js", "text/javascript"),
                  "/scene-placement-group.js": ("scene-placement-group.js", "text/javascript"),

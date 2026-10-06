@@ -74,3 +74,35 @@ retail validation occurs before snapshot metadata hashing. All29 focused checks
 covering the five failing workflows passed; an additional six-check history set
 passed, including exact binding and rejection of conflicting current-input
 receipts. Fresh retail-enabled discovery on `ba77695b6e4e86210a2d921e1e5d9935c706e611` subsequently passed all498 tests; all24 Node files and26 syntax checks also passed. Browser verification after the correction retained the nine-change report and explicit incomplete entry, with unchanged authored metadata and no game launch. The corrected wide screenshot was inspected.
+
+## Inspect one asset's emitted Build records
+
+Open an asset's Details and choose **Inspect saved Build records...**. The dialog
+lists completed project-local receipts in identity order; this is not a newest-first
+claim. Invalid/incomplete entries remain available in the general Build history,
+and bounded-scan coverage is explicit. Choose a Build and **Verify saved package**.
+Only after the existing SDK verification service checks its receipt, audit,
+manifest, payload files and ZIP does the dialog show matching records.
+
+**Exact audit asset ID** means the selected stable ID equals a report row's
+`asset_id`. **Include exact audit owner matches** additionally shows rows whose
+`owner_id` equals the selected ID, labeled **Exact audit owner ID**. It does not
+infer an ownership graph or treat a source script/scene membership as a matching
+asset. Toggle owner matching to inspect direct IDs alone. Before/After, scene,
+field, scope and full emitted record details retain SDK values. Results have
+128-row Previous/Next pages; paging does not truncate the matched inventory or
+nested model-coordinate, texture or composition ledgers.
+
+The dialog shows archive/source-disc hashes and whether the saved receipt matches
+current authored inputs. Package integrity and current-input match remain separate.
+Fresh server inputs are checked after list/verification responses. If project,
+source membership, asset record or inputs change, reopen the asset Details.
+Changing Build selection withdraws prior records. Closing cancels requests and
+removes the dialog; detached paging callbacks cannot alter replacement results.
+
+A missing match means only that the exact ID is not recorded in that audit.
+Unchanged native content may not have an edit record, shared IDs retain independent
+source memberships, and runtime consumers remain unverified. This is generated
+audit evidence, not a native asset preview or gameplay acceptance. The dialog does
+not create a Build, author, save a project, install output or launch the game.
+Project templates retain their existing project-only workflow.

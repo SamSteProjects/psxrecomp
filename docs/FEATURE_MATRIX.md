@@ -1,5 +1,41 @@
 # Legaia SDK feature matrix
 
+## Asset Database → verified saved Build records — 2026-10-05
+
+**Asset Details → Inspect saved Build records...** connects a selected stable asset
+ID to saved normal-Build completion receipts. Choose a completed Build in explicit
+identity order and verify its receipt, audit, manifest, payload files and ZIP before
+viewing matching emitted audit records. The SDK's existing Build-history service
+owns file verification; this adds no alternative Build or authoring path.
+
+Exact audit asset-ID matches and optional exact owner-ID matches are labeled
+separately. All matching rows remain available in 128-row pages, with full audit
+details including native model coordinate ledgers. Current-input match is separate
+from artifact integrity. Receipt hashes/kind/count and current input identity are
+qualified against the selected history entry; fresh server state is checked before
+presenting verification. Source, asset membership, input/Build selection changes
+withdraw results. Pending controls and detached paging callbacks are guarded.
+
+Absence from an audit does not prove unused/deleted/native-absent content. A shared
+ID does not prove the selected source membership was emitted. Source-disc integrity
+and gameplay remain unverified; templates are project metadata and retain their
+own workflow. The dialog issues no authoring, project Save, Build or Run operation.
+
+Validation: six focused Python Build-history integrity cases, new asset-record
+matching and existing Build-history Node contracts, plus module syntax pass.
+A private normal Town01 Build completes and verifies through the SDK service;
+actual Asset Details → saved Build → verification retains the full 130-word model
+coordinate ledger. Controlled detached DTO checks cover all 301 rows across pages,
+stale server-input withdrawal and inert removed page callbacks. The 540px layout
+is inspected. Browser inspection leaves the project document, history and every
+file unchanged, with no page errors or authoring/Save/Build/Run requests. The first
+harness attempt read hidden detail text incorrectly; corrected readback passes.
+Private package SHA256:
+`22df98883fdf40a9bbb33c02662de555ab7de4cf2523742bf89b9377c130dce9`.
+Evidence: `local-output/sdk-20260909/asset-build-records-20261005/proof.json`.
+No game, installation or full-disc export ran. Full SDK/runtime acceptance remains
+unproven and the goal active; work stays solo.
+
 ## Shared scenery Inspector section controls — 2026-10-05
 
 Scenery now uses the same session-only component collapse and keyboard navigation

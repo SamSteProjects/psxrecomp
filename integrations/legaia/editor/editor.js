@@ -9,6 +9,7 @@ import {environmentYawMatrix,yawFromDrag,environmentRotationCommand} from '/envi
 import {mountBuildReview,validResourceRelocation} from '/build-review.js';
 import {mountDraftOutputReview} from '/draft-review.js';
 import {mountBuildHistory} from '/build-history.js';
+import {openAssetBuildHistory} from '/asset-build-history.js';
 import {openAssetReferences,qualifyAssetReferenceInstructionSite} from '/asset-references.js';
 import {openActorAnimationAssignment} from '/actor-animation.js';
 import {mountProjectSettings} from '/project-settings.js';
@@ -1617,6 +1618,7 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
   const evidence=document.createElement('div');evidence.className='dialog-actions';evidence.style.flexWrap='wrap';
   try{mountAssetRecordDownload(evidence,{record,getState:()=>state,current:exportCurrent,busy:()=>busy,onError:error=>notify(error.message,true)});}catch(error){const note=document.createElement('p');note.className='field-note';note.textContent=error.message;evidence.append(note);}
   $('asset-source-data').parentElement.before(evidence);
+  if(record.type!=='template'&&state.build_review_source_key){const button=document.createElement('button');button.textContent='Inspect saved Build records...';button.dataset.assetBuildHistory='';button.onclick=()=>{if(busy||!exportCurrent())return;assetDetails.close();openAssetBuildHistory({record,getState:()=>state,current:()=>exportContext===resourceStateKey()&&JSON.stringify(lookup().find(item=>item.id===record.id))===exportSnapshot,busy:()=>busy,setBusy,onError:error=>notify(error.message,true)});};evidence.append(button);}
   const source=isAuthored?(record.authoredRecord.source_record ?? record.data?.source_record ?? record.data?.components?.RetailMetadata ?? {note:'No additional imported provenance is attached to this authored record.'}):record.data;
   $('asset-source-data').textContent=JSON.stringify(source,null,2);
   if(record.projectMembership){

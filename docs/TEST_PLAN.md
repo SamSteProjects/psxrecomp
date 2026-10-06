@@ -1,5 +1,26 @@
 # Legaia SDK validation plan
 
+## Asset saved-Build evidence checkpoint — 2026-10-05
+
+Six focused Python Build-history integrity cases, new asset matching/receipt
+Node contracts, existing Build-history decoder checks and module syntax pass.
+Cover exact direct versus owner IDs, full nested ledger retention, detached data,
+current versus historical inputs, receipt/hash/kind/count mismatch, malformed
+identity and no-record semantics. Private normal Town01 Build and actual saved
+package verification pass. Asset Details inspection equals SDK verification and
+retains all 130 model coordinate words. Controlled DTO UI checks cover complete
+301-row paging, removed callback inertia, fresh-server source-key withdrawal and
+close cleanup. Pending Verify is disabled and 540px actions/layout are inspected.
+The initial harness used hidden `innerText`; corrected full record readback passes.
+Inspection leaves project document/history/files unchanged and creates no output;
+fixture setup performs the private normal Build. No game or install ran.
+Proof: `local-output/sdk-20260909/asset-build-records-20261005/proof.json`.
+Campaign follow-up: multiple real receipts, all asset families, owner-only records,
+zero matches, invalid/incomplete/truncated histories, selecting another Build,
+closing during verification, stale source membership and package file tampering
+between list/verify. Shared-ID membership and source-disc/native gameplay integrity
+are separate evidence gates; absence from an edit audit is not absence from a game.
+
 ## Shared scenery Inspector layout checkpoint — 2026-10-05
 
 Three focused Node Inspector checks and module syntax pass. Actual private
