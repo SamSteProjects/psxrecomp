@@ -15,12 +15,12 @@ class Element{
  addEventListener(name,callback){this.listeners[name]=callback;} showModal(){this.open=true;}
  close(){this.open=false;this.listeners.close?.();} remove(){this.removed=true;}
 }
-globalThis.document={createElement:tag=>new Element(tag),body:new Element('body')};
+globalThis.document={createElement:tag=>new Element(tag),createElementNS:(_,tag)=>new Element(tag),body:new Element('body')};
 const find=(node,tag)=>node.tag===tag?node:node.children.map(child=>find(child,tag)).find(Boolean);
 let current={...context,projectPath:'C:/private/project'},resolve;
 const response=()=>({ok:true,text:async()=>JSON.stringify(report)});
 let view=openAudioSequence({record:{id:context.assetId,label:'Source'},getContext:()=>current,busy:()=>false,request:async()=>response()});
-try{await view.ready;assert.equal(find(view.dialog,'tbody').children.length,3);current={...current,sourceKey:'f'.repeat(64)};await new Promise(done=>setTimeout(done,350));assert.equal(find(view.dialog,'tbody').children.length,0);assert(view.dialog.children.some(n=>n.textContent?.includes('sources changed')));}finally{view.dispose();}
+try{await view.ready;assert.equal(find(view.dialog,'tbody').children.length,3);const buttons=node=>[...(node.tag==='button'?[node]:[]),...node.children.flatMap(buttons)];buttons(view.dialog).find(n=>n.textContent==='Show note timeline').onclick();const svg=find(view.dialog,'svg');assert(svg);const timeline=find(view.dialog,'section');assert(timeline);assert(svg.children.some(n=>n.tag==='rect'));current={...current,sourceKey:'f'.repeat(64)};await new Promise(done=>setTimeout(done,350));assert.equal(find(view.dialog,'tbody').children.length,0);assert(timeline.removed);assert(view.dialog.children.some(n=>n.textContent?.includes('sources changed')));}finally{view.dispose();}
 current={...context,projectPath:'C:/private/project'};
 view=openAudioSequence({record:{id:context.assetId,label:'Source'},getContext:()=>current,busy:()=>false,request:()=>new Promise(done=>resolve=done)});view.dispose();resolve(response());await view.ready;assert(view.dialog.removed);assert.equal(find(view.dialog,'tbody').children.length,0);
 console.log('Source-context withdrawal clears rows; close aborts ownership and late responses cannot publish events.');

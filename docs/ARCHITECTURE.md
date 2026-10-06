@@ -6,6 +6,8 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+`audio-note-timeline.js` derives bounded encoded-note relationships from the already qualified sequence DTO. FIFO same-channel/key pairing is explicit display policy, not runtime voice identity. `audio-sequence.js` owns lazy timeline lifecycle, source withdrawal and source-row navigation. The timeline introduces no endpoint, command or authored state; its only server change is static module registration.
+
 `animation_glb_rig.py` qualifies an explicitly selected skin's joint manifest and inverse-bind accessor; the existing animation decoder samples rigid joint/ancestor channels without importing mesh skinning. Both SDK workflows normalize `external_skin_index` into source-bound Review identities and retained recipes. `animation-glb-rig.js` validates those bindings and Review evidence; shared mapping controls own skin selection and invalidation.
 
 `audio_waveform.py` shares source qualification and prefix decoding between metadata inspection and private PCM preview. `/api/audio-pcm` emits a bounded source-qualified preview payload without adding bytes to project metadata. `audio-waveform-contract.js` owns the shared metadata DTO; `audio-audition.js` verifies PCM SHA/envelopes, owns explicit-rate Play/Stop/context cleanup and writes exact mono WAV locally. Playback uses the browser [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/createBuffer); preview settings never become retail/runtime pitch or authored bank data.
