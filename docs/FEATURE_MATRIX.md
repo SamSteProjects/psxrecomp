@@ -1,5 +1,26 @@
 # Legaia SDK feature matrix
 
+## Equal-pose GLB selections require distinct Review keys - 2026-10-06
+
+Imported-actor GLB Review now directly includes any explicit selected animation
+index in its digest. Previously two clips in the same uploaded file could
+quantize to identical native poses and share a key, allowing Apply with a
+different index from the reviewed choice. Whole-file hashing and candidate
+hashing alone do not distinguish this case. Implicit single-clip digests remain
+byte-for-byte compatible. Retained UUID Review already includes the selection
+in its full analysis digest and needed no implementation change.
+
+**Verification:** 17 focused Python checks passed. The pinned `a060db0c` SDK
+reproduced colliding Review keys on a private retail fixture. Current imported
+and retained HTTP workflows produced equal native candidates with distinct
+keys, rejected mismatched Apply without mutation, accepted matching Apply in
+one Undo step, and passed Undo/Redo and Save/Open. Native candidates match the
+pinned baseline; imported data and the reference project are unchanged. Proof:
+`local-output/sdk-20260909/animation-glb-selection-digest-20261006/proof.json`.
+No Build or game launch was needed for this review-identity-only correction.
+Parent-transform baking is still unimplemented; the full SDK goal remains open.
+
+
 ## External animation object names retain native identity - 2026-10-06
 
 Rigid GLB nodes may now use readable external names, or omit display names,

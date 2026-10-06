@@ -179,3 +179,12 @@ The original binding remains qualified against the current source clip and
 project. Whole-file hashing and native candidate Review bind the edited file;
 Apply never trusts a display name as runtime identity. In external exporters,
 enable custom properties/extras or preserve the original `object-N` names.
+
+## Equivalent clips still require their own Review
+
+The imported-actor Review digest includes any explicit selected animation
+index, in addition to the binding, whole-file hash, native candidate and authored
+contribution. Two clips can quantize to identical native poses; their reviewed
+keys still differ. A key reviewed for one index cannot authorize Apply for the
+other. Implicit single-clip requests retain the prior digest format. Retained
+UUID Review already binds the index through its full analysis report.

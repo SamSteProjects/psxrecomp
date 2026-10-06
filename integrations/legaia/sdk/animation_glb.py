@@ -166,8 +166,13 @@ def _prepare(project, entity_id: str, content: bytes, binding: dict, *, animatio
         report['ownership']['channel_owner_entity_id'] = channel_owner
         report['limitations'].append(
             f'Channel edits belong to imported clip witness {channel_owner}; all users of this shared clip are affected. Initial model/clip assignments remain separate.')
-    report['review_key'] = digest(dict(binding=binding, glb_sha256=glb_hash,
-                                     candidate_sha256=candidate_hash, proposed_value=value))
+    review_identity = dict(binding=binding, glb_sha256=glb_hash,
+                           candidate_sha256=candidate_hash, proposed_value=value)
+    if animation_index is not None:
+        # Distinct clips may quantize to identical native poses. The explicit
+        # choice must remain part of authorization even when their bytes match.
+        review_identity['file_animation_index'] = animation_index
+    report['review_key'] = digest(review_identity)
     command = (dict(type='set_animation_channels', entity_id=channel_owner, value=value) if edits else
                dict(type='clear_animation_channels', entity_id=channel_owner))
     snapshot['proposed_owners'] = proposed_owners
