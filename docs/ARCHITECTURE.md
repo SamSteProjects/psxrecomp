@@ -6,6 +6,8 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+`source_build_script.py` resolves imported script owners in verified emitted MAN carriers, reusing bounded saved-package/PROT qualification from `npc_build_script.py` and existing native layout/instruction readers. It introduces no authored state or serializer. `source-build-script.js` owns receipt selection, source/state freshness checks, raw-record hash/difference qualification, bounded paired display and local download; the script dialog owns disposal and shared busy state.
+
 `effect_color_authoring.py` qualifies five-byte RGB/signed-intensity source windows over existing decoded instruction/owner evidence. `ScriptEffectColors` is project-local authored state, owned by the command service and shared script operand/reset registries. `effect_colors.merge_patch` independently checks native composition audits. Both MAN Build gates include this family, preventing a color-only scene from silently bypassing fixed operand serialization. `script-effect-colors.js` owns the typed forms; the main editor supplies selection, source context and command lifecycle.
 
 `audio-note-timeline.js` derives bounded encoded-note relationships from the already qualified sequence DTO. FIFO same-channel/key pairing is explicit display policy, not runtime voice identity. `audio-sequence.js` owns lazy timeline lifecycle, source withdrawal and source-row navigation. The timeline introduces no endpoint, command or authored state; its only server change is static module registration.

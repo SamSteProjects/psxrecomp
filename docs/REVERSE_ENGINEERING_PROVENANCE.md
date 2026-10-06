@@ -1,5 +1,10 @@
 # Legaia reverse-engineering provenance
 
+## Emitted imported script record comparison (2026-10-06)
+
+Pinned Andrew revision `d6e64c68ede25813d35db20980da82a1a025549b`, `crates/asset/src/man_section.rs`, supplies existing partition/count/record-offset structure. The new comparison reuses this qualified SDK layout reader and instruction decoder rather than copying reference runtime code. Retail disc and actual emitted package bytes establish record identity and differences; decoded paths retain stops/opaque regions and do not prove execution. See [workflow and actual native acceptance](legaia-source-build-script.md).
+
+
 ## EFFECT sub0 fixed color operands (2026-10-06)
 
 Pinned Andrew reference `d6e64c68ede25813d35db20980da82a1a025549b`, `crates/engine-vm/src/field/step/effect.rs`, `op_34` sub0, establishes a preserved selector followed by three encoded RGB bytes and little-endian signed16 intensity, with fixed `header_size + 6` continuation. Existing retail script decoding supplies reached PCs and exact record ownership; fresh Town01 source qualification found ten writable instances. The authoring adapter independently preserves selector/header/continuation/opaque data and validates package record readback. Reference host-call naming is format evidence, not proof of visual color space, effect ownership, initial actor color, shader behavior or executed story path. No reference revision advance or external runtime dependency was introduced. Private source and native evidence: `local-output/sdk-20260909/script-effect-color-20261006/`.

@@ -1,5 +1,12 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Retail versus saved Build script comparison (2026-10-06)
+
+Imported actor and standalone script editors now expose a read-only comparison with an intact saved Build matching current inputs. The SDK reads actual native MAN records from relocated PROT or qualified overlays, verifies source disc/package receipts, retains retail/generated hashes and offsets, and reports exact changed record bytes alongside paired decoded paths. Bounded display and a complete local comparison download preserve stops/opaque regions. Stale inputs, ambiguous records and layout changes reject inspection. This does not establish script execution or gameplay acceptance.
+
+Actual Town01 editor receipt selection/comparison/download and wide/narrow layouts passed; the emitted record exactly matches the independently decoded preceding color-edit Build. HTTP boundaries, stale input rejection and unchanged project/history were verified. Details and acceptance hashes: [source Build script guide](legaia-source-build-script.md). Private evidence: `local-output/sdk-20260909/source-build-script-20261006/`. Development remains solo; gameplay verification stays deferred.
+
+
 ## Fixed source effect color/intensity authoring (2026-10-06)
 
 Qualified source scripts now expose an **EFFECT_COLOR_INTENSITY** operand editor with encoded red/green/blue bytes (0–255) and signed16 intensity (-32768–32767). Retail, authored and effective values remain separate. Apply/Clear use project commands, atomic history and Save/Open. Source instruction rows link to the editor; standalone script assets, component navigation/reset and source-bound operand file/bundle workflows recognize `ScriptEffectColors`. No renderer or runtime memory write is introduced.

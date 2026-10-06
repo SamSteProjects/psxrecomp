@@ -187,6 +187,7 @@ class EditorServer(ThreadingHTTPServer):
         from .script_branches import state_key as script_state_key
         state['script_authoring_state_key'] = script_state_key(self.project)
         state['capabilities']['script_branch_authoring'] = bool(self.project.disc_path)
+        state['capabilities']['source_build_script_inspection'] = bool(self.project.disc_path)
         from .worldmap_authoring import state_key as worldmap_state_key
         state['worldmap_authoring_state_key'] = worldmap_state_key(self.project)
         state['capabilities']['worldmap_authoring'] = bool(self.project.disc_path and self.project.imports)
@@ -917,6 +918,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-operands.js": ("script-operands.js", "text/javascript"),
                  "/script-effect-colors.js": ("script-effect-colors.js", "text/javascript"),
                  "/script-branches.js": ("script-branches.js", "text/javascript"),
+                 "/source-build-script.js": ("source-build-script.js", "text/javascript"),
                  "/worldmap-authoring.js": ("worldmap-authoring.js", "text/javascript"),
                  "/worldmap-geometry.js": ("worldmap-geometry.js", "text/javascript"),
                  "/worldmap-placement-editor.js": ("worldmap-placement-editor.js", "text/javascript"),
@@ -1043,6 +1045,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_authoring import snapshot, review
                     self._json(200, snapshot(self.server.project) if not body else
                                review(self.server.project, body['entity_id'], body['values'])[0])
+                    return
+                if route == '/api/source-build-script':
+                    if set(body) != {'entity', 'build_id'} or not isinstance(body['entity'], str) or not isinstance(body['build_id'], str):
+                        raise ProjectError('Saved script comparison requires only imported owner and Build identity')
+                    from .source_build_script import inspect
+                    self._json(200, inspect(self.server.project, body['entity'], body['build_id']))
                     return
                 if route in ('/api/script-branches', '/api/script-branch-review'):
                     expected = {'entity'} if route == '/api/script-branches' else {'entity', 'branch_id', 'value'}
