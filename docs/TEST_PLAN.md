@@ -1,5 +1,36 @@
 # Legaia SDK validation plan
 
+## Actor inspector GLB routing for retained assignments - 2026-10-06
+
+**Implemented offline workflow:** the actor inspector now exposes GLB editing
+without first entering imported channel authoring. Imported actors use the
+existing rigid-channel editor. Actors with an allocated initial assignment open
+the existing retained UUID GLB editor directly; no assignment clearing or
+replacement capture is needed. The read-only resolver qualifies the current
+scene source, selected actor, exact assignment UUID/hash/model and active library
+row. Late actor, assignment, project or source changes reject before opening.
+A capture from another actor sharing the qualified model remains supported.
+Retained content Apply continues through the existing single command that updates
+all referring initial assignments together. This adds no native serializer and
+keeps imported and retained GLB sidecar contracts distinct.
+
+**Verification:** 12 inspector-schema Python checks, the retail retained GLB
+roundtrip/frame-growth/reference/Undo-Redo/reopen test, and three Node checks
+(actor routing, library lifecycle, component action guards) passed. JavaScript
+syntax checks passed. A real private Town01 full-editor browser check opened the
+assigned actor action, loaded the matching retained dialog and prepared export
+with zero page errors. Wide/narrow captures were inspected. Assignment and
+history stayed unchanged. The new resolver has an explicit static server route.
+An older schema expectation was refreshed for already registered NPC branch,
+model-selector and flag actions.
+
+Private evidence: `local-output/sdk-20260909/actor-animation-glb-20261006/`
+(`proof.json`, saved private fixture, browser script and wide/narrow captures).
+No game launch, installation, full-disc export or new native package was performed.
+Manual initial playback/timing and general external animation retargeting remain
+pending; this workflow does not require immediate gameplay verification.
+
+
 ## Verified model-source derivation cache - 2026-10-06
 
 **Implemented offline inspection performance:** model source reads share a bounded

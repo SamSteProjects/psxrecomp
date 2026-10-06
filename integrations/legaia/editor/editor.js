@@ -51,6 +51,7 @@ import {mountTransitionGraphWorkspace} from '/transition-graph-workspace.js';
 import {openModelPrimitiveEditor,decodeModelPrimitives} from '/model-primitives.js';
 import {nativeSceneFaceAtTriangle} from '/model-face-picking.js';
 import {openAnimationGlbEditor} from '/animation-glb.js';
+import {resolveActorAnimationGlbTarget} from '/actor-animation-glb-target.js';
 import {openAnimationAllocationEditor} from '/animation-allocation.js';
 import {openRetainedAnimationAsset,decodeRetainedAnimationAsset} from './retained-animation-assets.js';
 import {openAnimationRecordLibrary,allocatedAnimationExportRequest} from '/animation-record-library.js';
@@ -3110,6 +3111,7 @@ function renderInspector(){
     'clear-appearance':{requiresEdit:true,canRun:canEditAppearance,run:()=>api('/api/command',{type:'clear_actor_appearance',entity_id:entity.id})},
     'preview-appearance':{run:()=>openModel(components.ActorAppearance.effective.asset_id,'authored-appearance',entity.id)},
     'preview-initial-animation':{run:()=>openModel(components.ActorAppearance.effective.asset_id,'authored-initial-animation',entity.id)},
+    'edit-actor-animation-glb':{requiresEdit:true,canRun:()=>Boolean(components.ActorAllocatedAnimation?.authored?.record_id)||components.Animation?.preview_support?.supported===true,run:()=>inspectAnimationGlb(entity)},
     'manage-allocated-clips':{requiresEdit:true,canRun:()=>state.capabilities?.actor_animation_assignment===true,run:()=>inspectSavedAnimationRecords(entity)},
     'preview-allocated-initial-animation':{canRun:()=>Boolean(components.ActorAllocatedAnimation?.authored?.record_id),run:()=>openModel(components.ActorAllocatedAnimation.authored.model_asset_id,'authored-initial-animation',entity.id)},
     'inspect-model':{run:()=>openModel(components.ModelRenderer.asset_id)},
@@ -3228,6 +3230,12 @@ async function inspectAnimationAllocation(entity){
 }
 async function inspectAnimationGlb(entity){
   if(busy||state.project.mode!=='edit')return;
+  let retainedRow;
+  setBusy(true);
+  try{retainedRow=await resolveActorAnimationGlbTarget({entityId:entity.id,getActor:()=>selected(),getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key})});}
+  catch(error){notify(error.message,true);return;}
+  finally{setBusy(false);}
+  if(retainedRow){await inspectRetainedAnimationGlb(entity,retainedRow);return;}
   animationGlbEditor?.dispose();animationGlbEntityId=entity.id;
   animationGlbEditor=await openAnimationGlbEditor({entityId:entity.id,
     getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key}),

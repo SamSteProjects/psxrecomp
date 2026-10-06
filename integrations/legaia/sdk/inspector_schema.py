@@ -65,12 +65,13 @@ def inspector_schema():
                           {'id':'initial_selection','label':'Selector identity','path':['initial_selection'],'type':'string','empty_label':'Inherited/imported','state':'derived'},
                           {'id':'gameplay_verified','label':'Gameplay verified','path':['gameplay_verified'],'type':'boolean','empty_label':'Unknown','state':'evidence-status'}],
             'actions':[{'id':'manage-allocated-clips','label':'Manage allocated clips','capability':'actor_animation_assignment','requires_edit':True},
-                       {'id':'preview-allocated-initial-animation','label':'Preview allocated initial animation','capability':'actor_animation_assignment','when':['authored','record_id']}],
+                       {'id':'preview-allocated-initial-animation','label':'Preview allocated initial animation','capability':'actor_animation_assignment','when':['authored','record_id']},
+                       {'id':'edit-actor-animation-glb','label':'Edit assigned clip through GLB','capability':'actor_animation_authoring','requires_edit':True,'when':['authored','record_id']}],
             'details':[{'label':'Retained assignment witness','path':['authored']}],
             'notes':['Manage retained clips to review replacement, content edits or clear the assignment. The native selector resolves during Review and Build.',
                      'Imported source remains separate. Scripts may replace the initial clip; gameplay and playback timing remain unverified.']},
         'Animation':{'label':'Animation channels','layout':'read-only-properties',
-            'actions':[{'id':'preview-scene-animation','label':'Preview imported scene animation','capability':'actor_animation_preview','when':['preview_support','supported']},{'id':'author-animation-channels','label':'Author animation channels','capability':'actor_animation_authoring','requires_edit':True,'when':['preview_support','supported']}],
+            'actions':[{'id':'edit-actor-animation-glb','label':'Edit actor clip through GLB','capability':'actor_animation_authoring','requires_edit':True,'when':['preview_support','supported']},{'id':'preview-scene-animation','label':'Preview imported scene animation','capability':'actor_animation_preview','when':['preview_support','supported']},{'id':'author-animation-channels','label':'Author animation channels','capability':'actor_animation_authoring','requires_edit':True,'when':['preview_support','supported']}],
             'properties':[{'id':'imported_id','label':'Imported ID','path':['imported_id'],'type':'integer','state':'read-only-retail'}],
             'notes':['Timing, live animation state and retargeting are not inferred from an imported association.']}
     },'unknown_component_policy':'read-only-details','live_writes':False}

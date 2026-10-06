@@ -903,6 +903,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/texture-usage.js": ("texture-usage.js", "text/javascript"),
                  "/runtime-review.js": ("runtime-review.js", "text/javascript"),
                  "/animation-glb.js": ("animation-glb.js", "text/javascript"),
+                 "/actor-animation-glb-target.js": ("actor-animation-glb-target.js", "text/javascript"),
                  "/animation-allocation.js": ("animation-allocation.js", "text/javascript"),
                  "/animation-record-library.js": ("animation-record-library.js", "text/javascript"),
                  "/retained-animation-assets.js": ("retained-animation-assets.js", "text/javascript"),

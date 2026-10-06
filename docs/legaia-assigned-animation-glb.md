@@ -57,3 +57,25 @@ Package SHA256: `2d9eaec92f5076624af50f568c6494cd2f01b4b3b27b7f39becb60f2b3ad0aa
 Decoded ANM SHA256: `f79ee9a8e4bbf594b6d0fc6fc642f5bbbb747b89a046a2dc934e07c7d8bc9e11`.
 Private evidence: `local-output/sdk-20260909/assigned-animation-glb-20261002/parent/`.
 Gameplay verification remains deferred.
+
+## Direct actor inspector entry for allocated clips - 2026-10-06
+
+Select the actor and choose **Allocated initial animation → Edit assigned clip
+through GLB**. The Animation channels component also exposes **Edit actor clip
+through GLB** for supported imported associations. Both actions resolve the
+actor's current assignment before opening an editor.
+
+An allocated assignment opens **Edit retained clip in GLB** for its exact active
+UUID. Prepare/download its GLB and retained binding, edit externally, choose the
+files, then Review, Preview and Apply. Explicit captured-frame mapping supports
+retained frame growth; Apply updates every referring initial assignment hash in
+one normal command. Export and Review leave the assignment untouched. A stale
+assignment, source, actor selection, model/hash mismatch or retired record rejects.
+
+The direct entry reuses retained interchange, content validation and Build;
+it does not make allocated records compatible with the imported v1/v2 binding
+API. Imported channel authoring and its existing sidecars remain unchanged.
+The full-editor private Town01 export check, wide/narrow captures and unchanged
+history proof are in `local-output/sdk-20260909/actor-animation-glb-20261006/`.
+Retail retained GLB roundtrip, frame growth, reference updates, Undo/Redo and
+Save/Open passed separately. Gameplay playback and timing remain deferred.
