@@ -65,3 +65,23 @@ this layer** includes those unused rows. **Frame mesh** resets zoom without
 resetting orbit. Switching layers or framing preserves the reviewed candidate;
 these camera controls do not author coordinates, change native bounds or add
 history entries. Other surviving objects remain part of the visible model frame.
+
+## Position imported vertices with a native origin
+
+Set **Native origin offset** X/Y/Z in the GLB import dialog before Review or Map
+section donors. The origin is added in native model units after baked GLB node
+transforms, unit scaling and `[x,-y,z]` conversion. Native Y increases downward.
+Changing an offset withdraws Review and rechecks source geometry, retaining the
+chosen source section and UV channel. The mapped-section dialog displays and
+uses the same origin for every selected section; change it in the import dialog
+before mapping. Review reports the exact chosen XYZ offset. Apply stores the
+resulting native vector coordinates with the ordinary topology command/ledger.
+
+Offsets may be fractional; positions round after translation. Each component
+must be finite and within -32768..32767, and final positions must fit that range.
+Rounding can collapse a triangle, which rejects Review. Offsets do not move scene
+entities or change normals, UVs, colors, winding or node-transform provenance.
+All instances of the shared model inherit its imported geometry. Zero preserves
+older behavior. The API's optional `source_offset` is a three-number XYZ array,
+bound through inventory, Review, scene Review and Apply. Different nonzero
+offsets require fresh Review even if their rounded native candidates match.

@@ -1,5 +1,41 @@
 # Legaia SDK status — 2026-10-06
 
+## Native origin offsets in GLB import - 2026-10-06
+
+The GLB importer now exposes explicit **Native origin offset** X/Y/Z controls.
+Offsets apply after node-hierarchy transforms, unit scaling and Y reflection,
+before native integer rounding. They move imported vertices inside the shared
+model; they do not move actor placements, rotate normals or change UVs. Native
+Y increases downward. Map section donors inherits one common chosen origin for
+all selected sections. Existing append, group/object replacement and preserved
+source-section modes compose with this origin.
+
+Inventory, Review, scene Review and Apply accept optional `source_offset` XYZ.
+Components must be finite numbers from -32768 through 32767; final rounded
+coordinates still must fit signed native storage and nondegenerate triangles.
+Missing/zero offsets preserve existing reports and behavior. Nonzero origin
+metadata is present in inventory/geometry/reports and bound to Review keys,
+including identical rounded candidates. Changing an input withdraws Review and
+refreshes source inventory while retaining UV/section choices. Normal Build
+serializes the shifted authored vectors through the existing model ledger.
+
+Validation passed 19 focused Python cases, including Node report guards. Actual
+browser input/reinventory, single-donor Review, origin-withdrawal and mapped
+Review/Apply passed without page errors. Private retail Town01 model0036 mapped
+three sections into two objects at `[1500,256,-1000]`, retired 177 original faces,
+and imported 6 faces with normals/UVs unchanged. One-step Undo/Redo, Save/Open,
+reference-project preservation and exact native normal-Build readback passed.
+Desktop and 540-pixel captures were inspected.
+
+Private Build `05d29e44e4b276ed`; package SHA-256
+`ce8275cd30f033178cce644431ef8ccda873485c41e24668f62ac352f146dd1e`;
+model SHA-256
+`081f0f637d0b2cc3f0b10ee41fa6205b31eeaa9988298cbffb6af156e467c1d2`.
+Evidence: `local-output/sdk-20260909/model-mesh-offset-20261006/`.
+No game launch, mod installation or full-disc export occurred. Gameplay acceptance
+remains queued; arbitrary images/layouts and general animation import remain
+incomplete. The full SDK goal remains active.
+
 ## Visible geometry framing for GLB comparisons - 2026-10-06
 
 Single-donor and mapped-section GLB dialogs now expose **Camera framing** and
