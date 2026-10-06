@@ -640,3 +640,23 @@ All instances of the shared model inherit its imported geometry. Zero preserves
 older behavior. The API's optional `source_offset` is a three-number XYZ array,
 bound through inventory, Review, scene Review and Apply. Different nonzero
 offsets require fresh Review even if their rounded native candidates match.
+
+## Orient imported geometry
+
+Set **Native import rotation (degrees)** X/Y/Z before Review or Map section
+donors. Angles use native model axes (Y increases downward), rotating X, then Y,
+then Z with active right-handed matrices. Conversion order is baked GLB node
+transform, unit scale, `[x,-y,z]`, native rotation, native origin offset, and
+integer rounding. Positions rotate around the native origin; offset is added
+afterward. Normal directions rotate with the mesh before Q12 conversion. UVs,
+colors and oriented winding retain their existing source interpretation.
+
+Angles may be fractional and must be finite within -360..360 degrees. Final
+coordinates still must fit signed native storage; collapsed rounded triangles
+reject. Changing angles withdraws Review and refreshes inventory, retaining
+selected section/UV choices. Map section donors uses one common orientation
+chosen in the import dialog. The optional API `source_rotation` is an XYZ array
+bound through inventory, Review, scene Review and Apply. A full turn still needs
+its own Review key, even if bytes match zero rotation. Zero preserves earlier
+behavior. Rotation changes shared static model geometry, not actor facing,
+animation channels or retail node provenance.

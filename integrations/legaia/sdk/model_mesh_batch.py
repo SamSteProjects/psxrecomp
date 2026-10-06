@@ -2,6 +2,7 @@
 from copy import copy,deepcopy
 from hashlib import sha256
 from importer.model_mesh_append import inspect_append_mesh,mesh_source_offset
+from importer.model_mesh_orientation import mesh_source_rotation
 from importer.model_face_addition import MAX_NEW_FACES
 from . import model_mesh_append
 from .model_face_addition import _context,_budget
@@ -9,14 +10,14 @@ from .project import ProjectError,digest
 from .scene_preview import source_key
 
 
-def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,material_colors=False,scene_index=None,uv_set=0,source_scale=1,replace_objects=False,source_offset=(0,0,0)):
-    source_offset=mesh_source_offset(source_offset)
+def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,material_colors=False,scene_index=None,uv_set=0,source_scale=1,replace_objects=False,source_offset=(0,0,0),source_rotation=(0,0,0)):
+    source_offset=mesh_source_offset(source_offset);source_rotation=mesh_source_rotation(source_rotation)
     if type(replace_objects) is not bool:raise ProjectError('Object replacement choice must be boolean')
     if type(uv_set) is not int or not 0<=uv_set<=7:raise ProjectError('Choose a default source UV set from 0 through 7')
     _,effective,_,_,_,topology=_context(project,asset_id,expected_key)
     if sha256(effective).hexdigest()!=expected_sha256:
         raise ProjectError('Model changed since mesh donor mapping')
-    inventory=inspect_append_mesh(content,scene_index=scene_index,source_scale=source_scale,source_offset=source_offset)
+    inventory=inspect_append_mesh(content,scene_index=scene_index,source_scale=source_scale,source_offset=source_offset,source_rotation=source_rotation)
     if not isinstance(mappings,list) or not 1<=len(mappings)<=16:
         raise ProjectError('Choose 1 through 16 source GLB sections for donor mapping')
     donors={face['face_id']:face for face in topology['faces']};replaced=set()
@@ -48,7 +49,7 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,mat
     for row in mappings:
         key=source_key(view);source=model_mesh_append.source(view,asset_id,key)
         candidate,binding,report=model_mesh_append.prepare(view,asset_id,content,row['donor_face_id'],
-            source['effective_sha256'],key,new_group=True,replace_group=row['replace_group'],primitive_index=row['primitive_index'],material_colors=material_colors,scene_index=scene_index,uv_set=row.get('uv_set',uv_set),source_scale=source_scale,source_offset=source_offset)
+            source['effective_sha256'],key,new_group=True,replace_group=row['replace_group'],primitive_index=row['primitive_index'],material_colors=material_colors,scene_index=scene_index,uv_set=row.get('uv_set',uv_set),source_scale=source_scale,source_offset=source_offset,source_rotation=source_rotation)
         candidates[binding['asset_sha256']]=candidate;view.model_overrides[asset_id]=deepcopy(binding)
         steps.append(dict(source=source,review=report))
     retirement=None
@@ -84,6 +85,7 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,mat
         report['limitations'][3]='All original Current geometry in mapped donor objects is retired after every selected section is allocated. Newly mapped sections remain; other objects and original vector rows remain.'
     if inventory.get('source_scale',1)!=1:report['source_scale']=inventory['source_scale']
     if any(source_offset):report['source_offset']=source_offset
+    if any(source_rotation):report['source_rotation']=source_rotation
     if uv_set:report['uv_set']=uv_set
     if scene_index is not None:report['selected_scene_index']=scene_index
     if material_colors:
@@ -97,8 +99,8 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,mat
 def review(*args,**kwargs):return prepare(*args,**kwargs)[2]
 
 
-def apply(project,*args,review_key,material_colors=False,scene_index=None,uv_set=0,source_scale=1,replace_objects=False,source_offset=(0,0,0)):
-    candidate,binding,report=prepare(project,*args,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,replace_objects=replace_objects,source_offset=source_offset)
+def apply(project,*args,review_key,material_colors=False,scene_index=None,uv_set=0,source_scale=1,replace_objects=False,source_offset=(0,0,0),source_rotation=(0,0,0)):
+    candidate,binding,report=prepare(project,*args,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,replace_objects=replace_objects,source_offset=source_offset,source_rotation=source_rotation)
     if report['review_key']!=review_key:raise ProjectError('GLB donor mappings changed after Review')
     asset_id,_,_,_,expected_key=args
     project._publish_model_ledger(asset_id,candidate,binding,expected_key,'Mesh donor mapping')

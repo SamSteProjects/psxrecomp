@@ -38,7 +38,7 @@ LIMITATIONS=[
 ]
 
 
-def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,replace_object=False,preserve_primitives=False,primitive_index=None,material_colors=False,scene_index=None,uv_set=0,source_scale=1,source_offset=(0,0,0)):
+def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,replace_object=False,preserve_primitives=False,primitive_index=None,material_colors=False,scene_index=None,uv_set=0,source_scale=1,source_offset=(0,0,0),source_rotation=(0,0,0)):
     if type(new_group) is not bool or type(replace_group) is not bool or type(replace_object) is not bool or type(preserve_primitives) is not bool or type(material_colors) is not bool:
         raise ProjectError('Mesh packet-group choice must be boolean')
     if replace_group and replace_object:
@@ -57,7 +57,7 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
     obj=objects[donor['object_index']]
     row=obj['primitives'][donor['current_primitive_index']]
     if row['corner_count']!=3:raise ProjectError('Select a native triangle donor for a triangle mesh')
-    geometry=decode_append_mesh(content,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,source_offset=source_offset)
+    geometry=decode_append_mesh(content,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,source_offset=source_offset,source_rotation=source_rotation)
     normals=[];references=[];imported_faces=0
     for directions in geometry['triangle_normals']:
         if row['normal_indices'] is None or directions is None:
@@ -187,6 +187,10 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
         report['source_offset']=geometry['source_offset']
         report['review_key']=digest(dict(base_review_key=report['review_key'],source_offset=geometry['source_offset']))
         report['limitations'].append('Adds the explicit native XYZ origin offset after node transforms, unit scaling and Y reflection, before signed coordinate rounding. Normals, winding, UVs and actor placements are unchanged by translation.')
+    if geometry.get('source_rotation'):
+        report['source_rotation']=geometry['source_rotation']
+        report['review_key']=digest(dict(base_review_key=report['review_key'],source_rotation=geometry['source_rotation']))
+        report['limitations'].append('Rotates native positions and normal directions about the import origin in XYZ degree order (Rz Ry Rx), after node transforms, unit scaling and Y reflection, before origin translation and native rounding. Actor placements and animation channels are unchanged.')
     if uv_set:
         report['uv_set']=uv_set
         report['review_key']=digest(dict(base_review_key=report['review_key'],uv_set=uv_set))

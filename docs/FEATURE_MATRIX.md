@@ -1,5 +1,45 @@
 # Legaia SDK feature matrix
 
+## Native import orientation in GLB authoring - 2026-10-06
+
+The GLB importer now exposes **Native import rotation (degrees)** for X/Y/Z.
+Active right-handed rotations apply in X, then Y, then Z order (`Rz Ry Rx`)
+after node transforms, unit scaling and GLB Y reflection, before origin offset
+and integer rounding. Normal directions use the same rotation before normalized
+Q12 conversion. UVs, colors and winding retain their source conversion. This
+orients static imported geometry inside the shared native model; actor facing,
+scene placement and animation channels remain separate.
+
+Inventory, Review, scene Review and Apply accept optional `source_rotation` XYZ
+degrees. Values must be finite numbers in -360..360. Missing/zero rotations
+preserve earlier reports/behavior. Nonzero rotation metadata is bound throughout
+the candidate chain and Review keys, even for a full turn yielding identical
+native bytes. Editing an angle withdraws Review and rechecks source inventory,
+retaining section/UV choices. Map section donors inherits the chosen rotation
+and origin for all selected sections. Native coordinate/normal and topology
+budgets remain enforced. Oversized numeric rotation/offset/scale inputs now
+reject cleanly before floating-point conversion can overflow.
+
+Validation: 21 focused regression cases passed, including Node report guards;
+the affected 11 cases were rechecked after the numeric-guard adjustment. Checks
+cover native axes, rotation order, node/scale/offset composition, rotated normals,
+limits, distinct Review keys for identical bytes, read-only posed scene Review,
+atomic history and native Build. Actual browser angle editing/reinventory,
+single-donor Review, stale Review withdrawal and mapped Apply passed. Private
+Town01 model0036 used rotation `[90,0,90]` and offset `[1500,256,-1000]` across
+three sections/two objects, retiring 177 faces and importing 6. Undo/Redo,
+Save/Open, reference-project preservation and exact native Build readback passed.
+Rotation controls and desktop/540-pixel comparison captures were inspected.
+
+Private Build `2d06d44bda9966bb`; package SHA-256
+`b2a234864b5e973cff5d0a7347eea0e0209310ea452436fcc3e50eddb9430b56`;
+model SHA-256
+`1f62042c41586d80a362e00eab55cd1929243eff76d416890d4505183cfcc7df`.
+Evidence: `local-output/sdk-20260909/model-mesh-rotation-20261006/`.
+No game launch, mod installation or full-disc export occurred. Gameplay acceptance
+remains deferred. Arbitrary images/layouts, general animation import and the
+broader SDK specification remain incomplete; the goal remains active.
+
 ## Native origin offsets in GLB import - 2026-10-06
 
 The GLB importer now exposes explicit **Native origin offset** X/Y/Z controls.

@@ -13,11 +13,12 @@ from .model_vector_allocation import MAX_NEW_VECTORS
 from .model_mesh_material import color_factor
 from .model_mesh_scene import scene_source
 from .model_mesh_sources import mesh_sources,source_binding
+from .model_mesh_orientation import mesh_source_rotation,rotation_matrix,rotate_native
 from .model_mesh_transform import transform_point,transform_normal,IDENTITY
 
 
 def mesh_source_scale(value):
-    if type(value) not in (int,float) or not math.isfinite(value) or not 1e-6<=value<=1e6:
+    if type(value) not in (int,float) or not 1e-6<=value<=1e6 or not math.isfinite(value):
         raise ImportError('Native units per GLB unit must be finite and between 0.000001 and 1000000')
     return float(value)
 
@@ -25,20 +26,20 @@ def mesh_source_scale(value):
 
 def mesh_source_offset(value):
     if (not isinstance(value,(list,tuple)) or len(value)!=3 or
-            any(type(n) not in (int,float) or not math.isfinite(n) or not -32768<=n<=32767 for n in value)):
+            any(type(n) not in (int,float) or not -32768<=n<=32767 or not math.isfinite(n) for n in value)):
         raise ImportError('Native mesh origin offset requires three finite XYZ values from -32768 through 32767')
     return [float(n) for n in value]
 
 
-def inspect_append_mesh(content,*,scene_index=None,source_scale=1,source_offset=(0,0,0)):
+def inspect_append_mesh(content,*,scene_index=None,source_scale=1,source_offset=(0,0,0),source_rotation=(0,0,0)):
     """Qualify bounded sections independently; inventory is not a mesh allocation."""
-    source_scale=mesh_source_scale(source_scale);source_offset=mesh_source_offset(source_offset)
+    source_scale=mesh_source_scale(source_scale);source_offset=mesh_source_offset(source_offset);source_rotation=mesh_source_rotation(source_rotation)
     doc,binary=_read_glb(content);content_hash=sha256(content).hexdigest()
     sources,canonical,scope=mesh_sources(doc,scene_index,allow_empty=True,with_scope=True)
     selection=scene_source(doc,scene_index)
     if not sources:
         return dict(schema_version='legaia.model-mesh-file.v1',glb_sha256=content_hash,primitives=[],triangle_count=0,read_only=True,scene_source=selection,
-                    **({'static_scope':scope} if scope else {}),**({'source_scale':source_scale} if source_scale!=1 else {}),**({'source_offset':source_offset} if any(source_offset) else {}))
+                    **({'static_scope':scope} if scope else {}),**({'source_scale':source_scale} if source_scale!=1 else {}),**({'source_offset':source_offset} if any(source_offset) else {}),**({'source_rotation':source_rotation} if any(source_rotation) else {}))
     materials=doc.get('materials',[])
     if not isinstance(materials,list) or len(materials)>128:
         raise ImportError('Mesh material inventory exceeds its bounded source slots')
@@ -47,7 +48,7 @@ def inspect_append_mesh(content,*,scene_index=None,source_scale=1,source_offset=
         # Reuse parsed immutable input and qualified scene ownership. Geometry remains
         # local to one section so inventory never claims an oversized native append.
         geometry=_decode_mesh(doc,binary,content_hash,sources,canonical,scope,
-                              primitive_index=index,scene_index=scene_index,source_scale=source_scale,source_offset=source_offset)
+                              primitive_index=index,scene_index=scene_index,source_scale=source_scale,source_offset=source_offset,source_rotation=source_rotation)
         if first is None:first=geometry
         if 'uv_sources' in geometry:uv_sets.append(geometry['uv_sources'][0]['sets'])
         primitive=source['primitive'];material=primitive.get('material');name=None
@@ -61,7 +62,7 @@ def inspect_append_mesh(content,*,scene_index=None,source_scale=1,source_offset=
             source_mode=primitive.get('mode',4),material_index=material,material_name=name))
     return dict(schema_version='legaia.model-mesh-file.v1',glb_sha256=content_hash,
         primitives=rows,triangle_count=sum(row['triangle_count'] for row in rows),read_only=True,
-        **({'source_scale':source_scale} if source_scale!=1 else {}),**({'source_offset':source_offset} if any(source_offset) else {}),
+        **({'source_scale':source_scale} if source_scale!=1 else {}),**({'source_offset':source_offset} if any(source_offset) else {}),**({'source_rotation':source_rotation} if any(source_rotation) else {}),
         **({'static_scope':scope} if scope else {}),
         **({'uv_sets':uv_sets} if uv_sets else {}),
         **({'scene_source':first['scene_source']} if 'scene_source' in first else {}),
@@ -69,16 +70,17 @@ def inspect_append_mesh(content,*,scene_index=None,source_scale=1,source_offset=
         **({'node_sources':[source_binding(row) for row in sources]} if not canonical else {}))
 
 
-def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=None, material_colors=False,scene_index=None,uv_set=0,source_scale=1,source_offset=(0,0,0)):
-    source_scale=mesh_source_scale(source_scale);source_offset=mesh_source_offset(source_offset)
+def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=None, material_colors=False,scene_index=None,uv_set=0,source_scale=1,source_offset=(0,0,0),source_rotation=(0,0,0)):
+    source_scale=mesh_source_scale(source_scale);source_offset=mesh_source_offset(source_offset);source_rotation=mesh_source_rotation(source_rotation)
     doc,binary=_read_glb(content)
     sources,canonical,scope=mesh_sources(doc,scene_index,with_scope=True)
     return _decode_mesh(doc,binary,sha256(content).hexdigest(),sources,canonical,scope,
                         preserve_primitives=preserve_primitives,primitive_index=primitive_index,
-                        material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,source_offset=source_offset)
+                        material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,source_offset=source_offset,source_rotation=source_rotation)
 
 
-def _decode_mesh(doc,binary,content_hash,sources,canonical,scope,*,preserve_primitives=False,primitive_index=None,material_colors=False,scene_index=None,uv_set=0,source_scale=1,source_offset=(0,0,0)):
+def _decode_mesh(doc,binary,content_hash,sources,canonical,scope,*,preserve_primitives=False,primitive_index=None,material_colors=False,scene_index=None,uv_set=0,source_scale=1,source_offset=(0,0,0),source_rotation=(0,0,0)):
+    orientation=rotation_matrix(source_rotation)
     if type(preserve_primitives) is not bool or type(material_colors) is not bool:
         raise ImportError('Mesh primitive preservation and material RGB choices must be boolean')
     if type(uv_set) is not int or not 0<=uv_set<=7:raise ImportError('Choose a source UV set from 0 through 7')
@@ -170,7 +172,7 @@ def _decode_mesh(doc,binary,content_hash,sources,canonical,scope,*,preserve_prim
             for index in ((triangle[0],triangle[2],triangle[1]) if transform['winding_reversed'] else triangle):
                 owner=(source['node_index'],attrs['POSITION'],index)
                 if owner not in owners:
-                    values=[value*source_scale for value in transform_point(transform,positions[index])];values[1]=-values[1];values=[value+source_offset[a] for a,value in enumerate(values)]
+                    values=[value*source_scale for value in transform_point(transform,positions[index])];values[1]=-values[1];values=rotate_native(orientation,values);values=[value+source_offset[a] for a,value in enumerate(values)]
                     quantized=[round(value) for value in values]
                     if any(not -32768<=value<=32767 for value in quantized):
                         raise ImportError('Mesh append positions exceed signed native coordinates')
@@ -184,7 +186,7 @@ def _decode_mesh(doc,binary,content_hash,sources,canonical,scope,*,preserve_prim
                     color_points.append(list(colors[index]))
                     if material_colors:source_colors.append(list(original_colors[index]) if original_colors is not None else [1,1,1,1])
                 if normals is not None:
-                    direction=transform_normal(transform,normals[index]);direction[1]=-direction[1]
+                    direction=transform_normal(transform,normals[index]);direction[1]=-direction[1];direction=rotate_native(orientation,direction)
                     length=math.hypot(*direction)
                     if length<=1e-12:raise ImportError('Mesh append requires nonzero referenced normals')
                     scaled=[value/length*4096 for value in direction]
@@ -209,6 +211,7 @@ def _decode_mesh(doc,binary,content_hash,sources,canonical,scope,*,preserve_prim
     if scope:result['static_scope']=scope
     if source_scale!=1:result['source_scale']=source_scale
     if any(source_offset):result['source_offset']=source_offset
+    if any(source_rotation):result['source_rotation']=source_rotation
     if len(selection['scenes'])>1:result['scene_source']=selection
     if material_colors:result.update(material_colors=True,material_factors=material_factors,source_triangle_colors=source_triangle_colors)
     if preserve_primitives:result.update(schema_version='legaia.model-mesh-append-geometry.v5',primitive_ranges=primitive_ranges)
