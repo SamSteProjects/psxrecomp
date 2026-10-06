@@ -1,5 +1,15 @@
 # Saved runtime node review
 
+## Compare a saved sample with actor coordinates
+
+1. Open **Observed nodes**, load a saved review (or two-file comparison), and show its historical positions in the matching Edit-mode scene.
+2. Select an imported actor from the hierarchy and choose a **Historical node sample** key.
+3. Choose **Compare selected actor coordinates**. Read the separate retail/current/authored and viewport native/surface columns; the lower table reports captured minus reference. Both-file mode shows each captured layer separately.
+4. Use **Download coordinate comparison** to retain the detached metadata snapshot. Close and compare again after changing the source, actor, representation, key, file or layer; export of the old snapshot is disabled.
+
+Unknown native Y remains unknown. A viewport surface height is preview evidence, not a native placement. File candidate IDs, matching numbers and declared epochs do not confirm an actor, process, session or coordinate convention. This action changes no project or runtime state. Tables scroll horizontally when the window is narrow; detailed evidence notes are expandable. Acceptance used synthetic captures over the retail scene, not new game observations. See the current status and the `historical-actor-coordinate-comparison-20261006` private proof directory.
+
+
 ## Inspect a displayed sample — 2026-10-06
 
 Choose a key under **Historical node sample**, then **Inspect historical sample**, or enable **Pick historical sample** and click an amber/blue marker. The detached review opens with that key as its text filter; single-file details expand to show XYZ, capture frames and evidence. Comparison inspection retains both files and their full report. Clear the text filter to browse the complete review; downloads retain the full original metadata. Inspection does not select imported entities, change camera state or establish runtime identity.

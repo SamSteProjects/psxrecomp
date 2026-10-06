@@ -908,6 +908,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-facing.js": ("script-facing.js", "text/javascript"),
                  "/texture-usage.js": ("texture-usage.js", "text/javascript"),
                  "/runtime-review.js": ("runtime-review.js", "text/javascript"),
+                 "/historical-actor-comparison.js": ("historical-actor-comparison.js", "text/javascript"),
                  "/animation-glb.js": ("animation-glb.js", "text/javascript"),
                  "/animation-glb-clips.js": ("animation-glb-clips.js", "text/javascript"),
                  "/animation-glb-mapping.js": ("animation-glb-mapping.js", "text/javascript"),

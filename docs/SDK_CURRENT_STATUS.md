@@ -2,7 +2,7 @@
 
 This is the current overview of the buildout, not a claim that the full SDK goal is complete. Detailed dated entries in the [feature matrix](FEATURE_MATRIX.md) and [buildout report](SDK_BUILDOUT_REPORT_20260909.md) retain their original source revisions and acceptance boundaries. Older unsupported-feature statements are historical when a later checkpoint implements the same workflow.
 
-The current implementation baseline is `5591cc37`, followed by the offline test-maintenance checkpoint described below. Production SDK and runtime code are unchanged by that checkpoint. Development is continuing solo, with gameplay verification deferred.
+The integrated verification baseline is `5591cc37`, followed by test-maintenance checkpoint `80d330db`. The latest feature adds selected-actor coordinate comparison to the historical inspector; native runtime and Build implementations are unchanged by it. Development is continuing solo, with gameplay verification deferred.
 
 | Subsystem | Current capability | Remaining boundary |
 | --- | --- | --- |
@@ -19,10 +19,16 @@ The current implementation baseline is `5591cc37`, followed by the offline test-
 | Collision and floor authoring | Source wall quadrants, rectangles and reusable patterns; exact native floor selectors, mixed painting/patterns and sixteen MAN floor heights, with Current/Proposed previews and audited native delivery. | Source selectors/heights do not prove runtime collision, ramps, dynamic blockers or scripted paints. Gameplay verification remains deferred. |
 | Transitions and world map | Source resources/graph navigation, supported encoded arrivals, trigger/script/region edits and qualified world-map placement/geometry workflows. | Reachability/travel and complete MAPDSIP/native coverage are not established. |
 | Runtime bridge | Guarded read-only discovery/observation, executable/process/witness/epoch checks, bounded nodes, candidate correlation and existing Live follow. | Candidate identity is not confirmed generally; runtime writes and broad cross-scene/savestate acceptance are incomplete. No runtime is attached for this work. |
-| Historical runtime inspector | Saved decoded reviews, file comparison, colored viewport samples/declared-key segments, framing and marker/selector inspection of capture evidence. | Files are user-supplied historical metadata, not authenticated Live evidence. Missing axes stay unknown; matching keys do not prove a common process or actor lifetime. |
+| Historical runtime inspector | Saved decoded reviews, file comparison, colored viewport samples/declared-key segments, framing, marker/selector inspection and selected-actor native/surface coordinate comparison with metadata download. | Files are user-supplied historical metadata, not authenticated Live evidence. Missing axes stay unknown; matching keys do not prove a common process or actor lifetime. |
 | Project and commands | Reviewed authored changes, validation, atomic history, dirty tracking, Save/Open, project copy, retained inputs/receipts and reusable authoring presets. | Imported provenance stays immutable; unsupported changes remain rejected. |
 | Build/output | Normal private native packages, source-aware composition, allocation/relocation qualification, reports/readback and supported disc-export infrastructure. | Compilation/package readback alone is not gameplay acceptance. No game, installed mod or full-disc export was run in this verification pass. |
 | Runtime stability | Identified release/precompile, restore ownership, CD/XA, initialization/pacing, audio reporting and input fixes remain recorded in the [parity ledger](legaia-release-parity.md). | Startup audio overflow, field/cross-scene restore performance and the ledger's other manual boundaries remain open; no new patch is justified by a stale test assertion. |
+
+## Latest feature: historical actor coordinate comparison
+
+In Edit mode, show a historical file or comparison in the viewport, select an imported actor and a historical node key, then choose **Compare selected actor coordinates**. The table separates retail/current/override positions from viewport surface height and shows captured-minus-reference deltas. It supports the selected historical file layers and metadata download. Unknown native heights remain unknown; candidate metadata does not establish identity. Source/selection/layer/file changes disable export of stale snapshots. Historical toolbar controls now refresh after request completion.
+
+Node checks and fresh retail-scene browsers with synthetic file samples passed the coordinate/download workflow and existing paired-overlay regression. Wide/narrow screenshots inspected; no page errors, game launch or runtime attachment. Imported/authored state and its Build state key were preserved. Evidence: `local-output/sdk-20260909/historical-actor-coordinate-comparison-20261006/final/proof.json` and `regression/proof.json`. Real coordinate/identity correlation and gameplay acceptance remain deferred.
 
 ## Offline verification checkpoint
 
