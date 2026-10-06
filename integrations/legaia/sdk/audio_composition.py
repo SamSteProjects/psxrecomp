@@ -24,9 +24,11 @@ def merge(original, candidates):
 def read_entry(project, identifier, original=None):
     from .audio_authoring import read as read_sequence
     from .audio_bank_authoring import read as read_bank
+    from .audio_sample_authoring import read as read_samples
     candidates=[]
     for kind,collection,reader in (('sequence',project.audio_overrides,read_sequence),
-                                   ('bank',project.audio_bank_overrides,read_bank)):
+                                   ('bank',project.audio_bank_overrides,read_bank),
+                                   ('samples',project.audio_sample_overrides,read_samples)):
         binding=collection.get(identifier)
         if binding is None:continue
         source,candidate,_,audit=reader(project,identifier,binding)
@@ -42,10 +44,12 @@ def prepare_overlays(project,image,archive):
     from .audio_bank_authoring import prepare_overlays as bank_overlays
     seq,seq_changes=sequence_overlays(project,image,archive)
     banks,bank_changes=bank_overlays(project,image,archive)
+    from .audio_sample_authoring import prepare_overlays as sample_overlays
+    samples,sample_changes=sample_overlays(project,image,archive)
     groups={}
-    for kind,items in (('sequence',seq),('bank',banks)):
+    for kind,items in (('sequence',seq),('bank',banks),('samples',samples)):
         for overlay in items:groups.setdefault(overlay['prot_entry_index'],[]).append((kind,overlay))
-    result=[];changes=seq_changes+bank_changes
+    result=[];changes=seq_changes+bank_changes+sample_changes
     for index,items in sorted(groups.items()):
         first=items[0][1];offset,size=first['offset'],first['size']
         original=image.read_user(0,offset,size,image.size//2352*2048)

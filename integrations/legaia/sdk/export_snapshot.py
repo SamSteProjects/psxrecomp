@@ -10,6 +10,8 @@ def capture_export_inputs(project, *, max_bytes=None, max_files=None):
     validate_audio(project)
     from .audio_bank_authoring import validate_collection as validate_banks
     validate_banks(project)
+    from .audio_sample_authoring import validate_collection as validate_samples
+    validate_samples(project)
     key = authored_state_key(project)
     files = {}
     total = 0

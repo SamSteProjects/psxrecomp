@@ -104,7 +104,7 @@ def options(project, asset_id, expected_entry_sha256, expected_source_key):
                 source_record=record, current_entry_sha256=_hash(current),
                 current_sequence_sha256=_hash(current[start:start+size]),
                 binding_source_scene_id=binding['source_scene_id'] if binding else project.active_scene,
-                bank_authored=asset_id in project.audio_bank_overrides,
+                bank_authored=asset_id in project.audio_bank_overrides,samples_authored=asset_id in project.audio_sample_overrides,
                 authored_edits=deepcopy(binding['edits']) if binding else [],
                 retail=source_report, current=current_report, max_edits=MAX_EDITS,
                 project_changed=False, runtime_state='not_observed')

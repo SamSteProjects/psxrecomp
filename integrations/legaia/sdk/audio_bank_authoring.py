@@ -104,7 +104,7 @@ def options(project,asset_id,expected_entry_sha256,expected_source_key):
     return dict(schema_version='legaia.audio-bank-authoring.v1',asset_id=asset_id,scene_id=project.active_scene,
                 source_key=expected_source_key,authoring_key=key,source_record=record,
                 current_entry_sha256=_hash(current),binding_source_scene_id=binding['source_scene_id'] if binding else project.active_scene,
-                sequence_authored=asset_id in project.audio_overrides,
+                sequence_authored=asset_id in project.audio_overrides,samples_authored=asset_id in project.audio_sample_overrides,
                 authored_edits=deepcopy(binding['edits']) if binding else [],retail=_profile(bank),current=_profile(effective),
                 max_edits=MAX_EDITS,project_changed=False,runtime_state='not_observed')
 
@@ -115,12 +115,17 @@ def review(project,asset_id,expected_entry_sha256,expected_authoring_key,edits):
     body,current,bank,record,binding=_current(project,asset_id,expected_entry_sha256)
     effective,pieces,_=bank_from_entry(current)
     isolated=bytearray(body)
-    for p in pieces:isolated[p['entry_offset']:p['entry_offset']+p['size_bytes']]=effective[p['bank_offset']:p['bank_offset']+p['size_bytes']]
+    for row in _rows(bank):
+        at,width=row['bank_byte_offset'],row['byte_length']
+        owner=next(p for p in pieces if p['bank_offset']<=at and at+width<=p['bank_offset']+p['size_bytes'])
+        position=owner['entry_offset']+at-owner['bank_offset']
+        isolated[position:position+width]=current[position:position+width]
     changed,audit=replace_audio_bank_parameters(body,bytes(isolated),expected_source_sha256=_hash(body),
         expected_current_sha256=_hash(bytes(isolated)),edits=edits)
     candidate=bytearray(current)
-    for p in pieces:candidate[p['entry_offset']:p['entry_offset']+p['size_bytes']]=changed[p['entry_offset']:p['entry_offset']+p['size_bytes']]
+    for position in audit['changed_entry_byte_offsets']:candidate[position]=changed[position]
     candidate=bytes(candidate);audit.update(before_entry_sha256=_hash(current),after_entry_sha256=_hash(candidate))
+    audit['bank'].update(before_sha256=_hash(effective),after_sha256=_hash(bank_from_entry(candidate)[0]))
     merged={_identity(e):deepcopy(e) for e in (binding['edits'] if binding else [])}
     merged.update({_identity(e):deepcopy(e) for e in edits})
     final=_normalise(bank,list(merged.values()))

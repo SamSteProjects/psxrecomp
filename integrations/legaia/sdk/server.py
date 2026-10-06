@@ -163,6 +163,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["audio_sequence_authoring"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["audio_bank_authoring"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["audio_sample_source_inputs"] = bool(self.project.disc_path and self.project.active_scene)
+        state["capabilities"]["audio_sample_authoring"] = bool(self.project.disc_path and self.project.active_scene)
         from .scene_preview import source_key
         try:
             state["scene_preview_source_key"] = source_key(self.project)
@@ -1983,6 +1984,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .resources import audio_bank_preview
                     self._json(200, audio_bank_preview(self.server.project, **body))
                     return
+                if route in ('/api/audio-sample-authoring','/api/audio-sample-review'):
+                    from .audio_sample_authoring import options,review
+                    fields={'asset_id','expected_entry_sha256','sample_index','expected_authoring_key'}
+                    if route.endswith('-review'):
+                        fields.add('operation')
+                        if body.get('operation')=='apply':fields.add('receipt_key')
+                    if set(body)!=fields:raise ProjectError('Native sample authoring requires exact source and reviewed fields')
+                    self._json(200,(options if route.endswith('-authoring') else review)(self.server.project,**body));return
                 if route == '/api/audio-sample-source-review':
                     from .audio_sample_sources import review
                     if set(body)!={'asset_id','expected_entry_sha256','expected_bank_sha256','sample_index','expected_sample_sha256','expected_authoring_key','wav_base64'}:

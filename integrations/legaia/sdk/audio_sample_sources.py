@@ -139,6 +139,8 @@ def review_removal(project,receipt_key,expected_authoring_key):
     if project.mode!='edit':raise ProjectError('WAV receipt removal requires Edit mode')
     result=library(project,expected_authoring_key);record=next((r for r in result['imports'] if r['receipt_key']==receipt_key),None)
     if record is None:raise ProjectError('WAV receipt is absent from Current')
+    if any(row['receipt_key']==receipt_key for binding in project.audio_sample_overrides.values() for row in binding['samples']):
+        raise ProjectError('Clear the native sample binding before removing its retained WAV input')
     shared=sum(r['wav_sha256']==record['wav_sha256'] for r in project.audio_sample_sources.values())
     report=dict(schema_version='legaia.audio-sample-source-removal.v1',authoring_key=expected_authoring_key,receipt_key=receipt_key,
         wav_sha256=record['wav_sha256'],source_file_deleted=False,native_content_changed=False,
