@@ -71,3 +71,24 @@ and inspected narrow layouts. Generated record SHA-256 values are
 `7e83fc9a87e25a26e793651a6d6470097329646dce63f1eed7d0387ff82ce8b3`
 (relocation). See `local-output/sdk-20260909/npc-saved-build-script-20261005/`.
 Source projects, files and Build input identities remain unchanged; no game ran.
+
+## Compare the emitted record with its retail donor
+
+From **Inspect saved Build script...**, inspect a current verified receipt and
+choose **Compare generated record with retail donor**. The SDK freshly reads
+both records; the browser independently checks the exact relative byte changes.
+The comparison shows their separate MAN offsets and hashes, changed/common byte
+counts, script-tail equality and each changed byte. An absent byte is displayed
+as **Absent**. Differences are paginated at 128 rows per page.
+
+Header labels cover bytes before both recorded script entries. All other bytes
+are labelled script or remaining record bytes, including opaque and unvisited
+data. Relative byte alignment is not a semantic instruction or branch comparison;
+equal tails do not prove equal runtime behavior. This view edits nothing and does
+not launch the game. Close it to return to the generated record workspace.
+
+The actual fixed-span and relocated package checks each found two changed header
+bytes, 507 equal common bytes and matching tails. Their generated MAN offsets
+were 44648 and 44720; the original donor offset was 8487. See
+`local-output/sdk-20260909/npc-script-comparison-20261005/proof.json` for read-only
+workflow and unchanged-project/file evidence. Gameplay verification remains open.

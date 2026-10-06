@@ -1,5 +1,31 @@
 # Legaia SDK validation plan
 
+## Compare saved NPC records with retail donors - 2026-10-05
+
+The generated NPC script workspace now offers **Compare generated record with
+retail donor**. Both records are freshly inspected against the current project,
+verified source disc and intact saved Build receipt. The dialog compares exact
+bytes at the same relative record offsets and retains separate retail and
+generated MAN offsets, record hashes, lengths and script-entry offsets.
+
+Changes before both script entries are labelled record header; other changes
+are labelled script or remaining record bytes. Missing bytes are explicit, and
+large differences are paginated in groups of 128. Script tails include opaque
+and unvisited data. Matching bytes establish neither instruction equivalence
+nor runtime spawning, scheduling or execution. Closing returns to the generated
+record workspace with the selected NPC retained. Stale inputs and inconsistent
+comparison counts, bytes, scopes or identities reject before rendering.
+
+Offline evidence: focused Python and Node comparison, generated-record and
+retail-source checks pass. Real browser comparison passed format6 fixed-span
+and format7 relocated packages, including inspected 540px layouts. Both have
+2 changed header bytes and 507 identical common bytes; their script tails match.
+Retail MAN offset 8487 remains distinct from generated offsets 44648 and 44720.
+Project history, authored inputs and every preexisting file remained unchanged;
+no Save, Build or game launch occurred. Evidence is under
+`local-output/sdk-20260909/npc-script-comparison-20261005/`. Manual gameplay
+verification remains deferred; this milestone is read-only package evidence.
+
 ## Inspect NPC scripts emitted in saved Builds - 2026-10-05
 
 NPC Inspector and Asset Details now offer **Inspect saved Build script...**.
@@ -23,7 +49,7 @@ Inspector contracts pass. Actual browser workflows passed both Inspector entries
 generated/retail separation, path navigation and inspected 540px layouts for a
 format6 fixed-span package and a format7 relocated package. Stale-input receipts
 reject. Final bounded payload reads and record/hash guards accept both actual
-package responses. Generated offsets are44648 and44720 respectively. Project,
+package responses. Generated offsets are44648 and 44720 respectively. Project,
 history, Build input identity and preexisting files are unchanged. No new Build,
 Save, game launch, install or disc export occurred. Evidence:
 `local-output/sdk-20260909/npc-saved-build-script-20261005/` (`proof.json`,
