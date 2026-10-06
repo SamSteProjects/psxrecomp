@@ -1,5 +1,41 @@
 # General model topology allocation work
 
+## Retail 512-face delivery and packet allocation performance - 2026-10-06
+
+The expanded mesh capacity now has a private retail normal-Build proof. Town01
+model 0036 replaced one 44-face donor group with 512 triangles and 1,536 distinct
+new vertices. All 133 retained packets remained byte-exact. The emitted compressed
+pack verified all 114 model slots, including existing neighbor overrides, and
+held the five other resource sections. Review stayed read-only; one-step Undo/Redo,
+Save/Open, imported facts and the source reference project were preserved.
+
+Build `e8d7fab1e309a97f` has package SHA-256
+`e931e795d441b30b7b60e37411f6fac82f327aac1e7bc456ee7a17a5364b1fa2`.
+Its decoded model SHA-256 is
+`b6fe27e3864e721531c55337d387a366bc42b511f1b96755aa5dfc05567d5e59`.
+A fresh normal Build with the optimized allocator produced the identical package
+SHA-256, with current-input verification and project history held.
+Private evidence is under
+`local-output/sdk-20260909/retail-mesh-capacity-20261006/`.
+
+Face/group allocation also no longer patches and requalifies an entire model
+once per new face. It inspects the immutable source once, reuses the existing
+typed operand writer on each bounded packet, and qualifies the complete assembled
+model once. Public primitive authoring retains its existing source/candidate
+qualification. Packet layout, material/footer ownership, normal/vertex domains,
+source hashes and candidate validation remain enforced.
+
+A direct 512-face retail comparison against revision `0963a9c2` produced identical
+allocation bytes and audit: one measured allocation took 6.448 seconds before and
+0.009 seconds after. Full saved model replay took 0.654 seconds. These are focused
+serialization timings, not a gameplay or general editor performance claim.
+Forty-three focused tests passed with retail primitive checks enabled, including
+all 24 packet families and constant source/final qualification counts at 1 and
+512 faces. No game was launched, no mod was installed, and no full-disc export
+was performed. Manual rendered/gameplay/performance acceptance remains queued;
+the broader SDK goal stays active and solo.
+
+
 ## Authored model capacity expanded to 512 faces - 2026-10-06
 
 The model ledger and native face/group/object allocation paths now allow 512

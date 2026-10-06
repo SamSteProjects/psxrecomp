@@ -10,7 +10,7 @@ from .assets import MAX_MODEL_BYTES
 from .core import ImportError
 from .model_face_addition import MAX_NEW_FACES
 from .model_face_removal import _groups
-from .model_primitives import _qualified_model, patch_model_primitives
+from .model_primitives import _qualified_model, inspect_model_primitives, _write_primitive_edit
 
 MAX_NEW_GROUPS = 64
 
@@ -27,11 +27,13 @@ def _identity(value, prefix, seen):
 
 
 def allocate_model_groups(data, expected_sha256, requests):
-    inspection, _ = _qualified_model(data)
+    inspection = inspect_model_primitives(data, include_normal_references=True)
     if sha256(data).hexdigest() != expected_sha256:
         raise ImportError('Group allocation source hash changed')
     if not isinstance(requests, list) or not 1 <= len(requests) <= MAX_NEW_GROUPS:
         raise ImportError(f'Group allocation requires 1..{MAX_NEW_GROUPS} groups')
+    primitive_rows = {(obj['object_index'], row['primitive_index']): (obj, row)
+                      for obj in inspection['objects'] for row in obj['primitives']}
     groups = {}
     for owner, start, count, stride, first in _groups(data, inspection):
         groups.setdefault(owner, []).append((start, count, stride, first))
@@ -61,10 +63,11 @@ def allocate_model_groups(data, expected_sha256, requests):
                     or not isinstance(fields, dict) or 'vertices' not in fields
                     or not set(fields) <= {'vertices', 'uvs', 'colors', 'normal_indices'}):
                 raise ImportError('Allocated face must use its group donor and supported typed fields')
-            edited, _ = patch_model_primitives(data, expected_sha256,
-                [dict(object_index=owner, primitive_index=donor, **fields)])
             at = start + 8 + (donor - first) * stride
-            packets.append((face['face_id'], edited[at:at + stride], donor))
+            packet = bytearray(data[at:at + stride])
+            _write_primitive_edit(packet, dict(object_index=owner, primitive_index=donor, **fields),
+                                  primitive_rows, set(), offset_origin=at)
+            packets.append((face['face_id'], bytes(packet), donor))
         footer = data[start + 8 + count * stride:start + 8 + (count + 1) * stride]
         payload = bytes(descriptor) + b''.join(packet for _, packet, _ in packets) + footer
         pending.setdefault(owner, []).append((request['group_id'], donor_group, stride, packets, payload))

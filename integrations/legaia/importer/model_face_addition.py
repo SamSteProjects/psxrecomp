@@ -8,18 +8,20 @@ import struct
 from uuid import UUID
 from .assets import MAX_MODEL_BYTES
 from .core import ImportError
-from .model_primitives import _qualified_model, patch_model_primitives
+from .model_primitives import _qualified_model, inspect_model_primitives, _write_primitive_edit
 from .model_face_removal import _groups
 
 MAX_NEW_FACES = 512
 
 
 def add_model_faces(data, expected_sha256, additions):
-    inspection, _ = _qualified_model(data)
+    inspection = inspect_model_primitives(data, include_normal_references=True)
     if sha256(data).hexdigest() != expected_sha256:
         raise ImportError('New-face source hash changed')
     if not isinstance(additions, list) or not 0 < len(additions) <= MAX_NEW_FACES:
         raise ImportError(f'New-face codec requires 1..{MAX_NEW_FACES} authored faces')
+    primitive_rows = {(obj['object_index'], row['primitive_index']): (obj, row)
+                      for obj in inspection['objects'] for row in obj['primitives']}
     groups, object_groups = {}, {}
     for owner, start, count, stride, first in _groups(data, inspection):
         rows = object_groups.setdefault(owner, [])
@@ -48,10 +50,11 @@ def add_model_faces(data, expected_sha256, additions):
         fields = addition['fields']
         if not first <= donor < first+count or not isinstance(fields, dict) or 'vertices' not in fields or not set(fields) <= {'vertices', 'uvs', 'colors', 'normal_indices'}:
             raise ImportError('New-face donor must belong to its group and fields must include vertices')
-        edited, _ = patch_model_primitives(data, expected_sha256,
-            [dict(object_index=owner, primitive_index=donor, **fields)])
         at = start+8+(donor-first)*stride
-        packets.setdefault((owner, group), []).append((face_id, edited[at:at+stride], donor))
+        packet = bytearray(data[at:at+stride])
+        _write_primitive_edit(packet, dict(object_index=owner, primitive_index=donor, **fields),
+                              primitive_rows, set(), offset_origin=at)
+        packets.setdefault((owner, group), []).append((face_id, bytes(packet), donor))
     insertions = []
     for identity, rows in packets.items():
         start, count, stride, _ = groups[identity]

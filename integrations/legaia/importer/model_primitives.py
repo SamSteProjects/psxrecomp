@@ -111,6 +111,53 @@ def _primitive_field_locations(inspection: dict):
                                'byte_offset': row['byte_offset'] + corner * 4 + axis}, 1
 
 
+def _write_primitive_edit(result, edit, rows, seen, *, offset_origin=0):
+    """Write proven operands into model or packet bytes from a qualified source.
+
+    Callers own source qualification and final candidate validation. The internal
+    offset origin permits packet allocation to reuse the same typed field checks.
+    """
+    if (not isinstance(edit, dict) or
+            not {'object_index', 'primitive_index'} < set(edit) or
+            not set(edit) <= {'object_index', 'primitive_index', 'vertices', 'uvs', 'colors', 'normal_indices'}):
+        raise ImportError('Primitive edits require existing identities and vertices, UVs, colors or normal references only')
+    if any(type(edit[key]) is not int for key in ('object_index', 'primitive_index')):
+        raise ImportError('Primitive identities must be integer source indices')
+    identity = edit['object_index'], edit['primitive_index']
+    if identity not in rows or identity in seen:
+        raise ImportError('Primitive identity is missing or duplicated in this model')
+    seen.add(identity)
+    obj, row = rows[identity]
+    corners, vi, _textured, _gouraud, uv, _baked = _layout(row['flags'])
+    base = row['byte_offset'] - offset_origin
+    if 'vertices' in edit:
+        vertices = edit['vertices']
+        if (not isinstance(vertices, list) or len(vertices) != corners or
+                any(type(value) is not int or not 0 <= value < min(obj['vertex_count'], 8192)
+                    for value in vertices)):
+            raise ImportError('Face references must fit the existing object and u16 SVECTOR offsets')
+        struct.pack_into(f'<{corners}H', result, base + vi, *(value * 8 for value in vertices))
+    if 'normal_indices' in edit:
+        values, source = edit['normal_indices'], row['normal_indices']
+        if (source is None or not isinstance(values, list) or len(values) != len(source) or
+                any(type(v) is not int or not 0 <= v < min(obj['normal_count'], 8192) for v in values)):
+            raise ImportError('Normal references must fit the existing lit packet and object normal table')
+        relative = (18 if corners == 3 else 20) if row['gouraud'] else (12 if corners == 3 else 20)
+        struct.pack_into(f'<{len(values)}H', result, base + relative, *(v * 8 for v in values))
+    for field, width in (('uvs', 2), ('colors', 3)):
+
+        if field not in edit:
+            continue
+        values, source = edit[field], row[field]
+        if (source is None or not isinstance(values, list) or len(values) != len(source) or
+                any(not isinstance(value, list) or len(value) != width or
+                    any(type(v) is not int or not 0 <= v <= 255 for v in value) for value in values)):
+            raise ImportError(f'Primitive {field} must match the stored byte-valued layout')
+        for corner, value in enumerate(values):
+            at = base + ((uv + (0, 4, 8, 10)[corner]) if field == 'uvs' else corner * 4)
+            result[at:at + width] = bytes(value)
+
+
 def patch_model_primitives(data: bytes, expected_sha256: str, edits: list[dict]):
     """Patch existing face/UV/RGB/normal-reference fields while preserving every other byte."""
     inspection = inspect_model_primitives(data, include_normal_references=True)
@@ -123,44 +170,6 @@ def patch_model_primitives(data: bytes, expected_sha256: str, edits: list[dict])
     result = bytearray(data)
     seen = set()
     for edit in edits:
-        if (not isinstance(edit, dict) or
-                not {'object_index', 'primitive_index'} < set(edit) or
-                not set(edit) <= {'object_index', 'primitive_index', 'vertices', 'uvs', 'colors', 'normal_indices'}):
-            raise ImportError('Primitive edits require existing identities and vertices, UVs, colors or normal references only')
-        if any(type(edit[key]) is not int for key in ('object_index', 'primitive_index')):
-            raise ImportError('Primitive identities must be integer source indices')
-        identity = edit['object_index'], edit['primitive_index']
-        if identity not in rows or identity in seen:
-            raise ImportError('Primitive identity is missing or duplicated in this model')
-        seen.add(identity)
-        obj, row = rows[identity]
-        corners, vi, _textured, _gouraud, uv, _baked = _layout(row['flags'])
-        base = row['byte_offset']
-        if 'vertices' in edit:
-            vertices = edit['vertices']
-            if (not isinstance(vertices, list) or len(vertices) != corners or
-                    any(type(value) is not int or not 0 <= value < min(obj['vertex_count'], 8192)
-                        for value in vertices)):
-                raise ImportError('Face references must fit the existing object and u16 SVECTOR offsets')
-            struct.pack_into(f'<{corners}H', result, base + vi, *(value * 8 for value in vertices))
-        if 'normal_indices' in edit:
-            values, source = edit['normal_indices'], row['normal_indices']
-            if (source is None or not isinstance(values, list) or len(values) != len(source) or
-                    any(type(v) is not int or not 0 <= v < min(obj['normal_count'], 8192) for v in values)):
-                raise ImportError('Normal references must fit the existing lit packet and object normal table')
-            relative = (18 if corners == 3 else 20) if row['gouraud'] else (12 if corners == 3 else 20)
-            struct.pack_into(f'<{len(values)}H', result, base + relative, *(v * 8 for v in values))
-        for field, width in (('uvs', 2), ('colors', 3)):
-
-            if field not in edit:
-                continue
-            values, source = edit[field], row[field]
-            if (source is None or not isinstance(values, list) or len(values) != len(source) or
-                    any(not isinstance(value, list) or len(value) != width or
-                        any(type(v) is not int or not 0 <= v <= 255 for v in value) for value in values)):
-                raise ImportError(f'Primitive {field} must match the stored byte-valued layout')
-            for corner, value in enumerate(values):
-                at = base + ((uv + (0, 4, 8, 10)[corner]) if field == 'uvs' else corner * 4)
-                result[at:at + width] = bytes(value)
+        _write_primitive_edit(result, edit, rows, seen)
     from .model_authoring import replace_model_content
     return replace_model_content(data, expected_sha256, bytes(result), allow_normal_references=True)
