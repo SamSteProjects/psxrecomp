@@ -37,3 +37,21 @@ for(const [instruction,mnemonic,relative] of [[[0x38,0xa3,0x80],'CAM_CFG',1],[[0
  }
 }
 console.log('Facing explanations independently qualify both raw opcode forms, typed sectors, upper flags, dispatch, modes and parked targets.');
+
+for(const opcode of Array.from({length:9},(_,i)=>0x2b+i))for(const extended of [false,true]){
+ const instruction=[opcode|(extended?128:0),...(extended?[7]:[]),226],mnemonic=['LFLAG_SET','LFLAG_CLEAR','LFLAG_TEST','GFLAG_SET','GFLAG_CLEAR','GFLAG_TEST','CFLAG_SET','CFLAG_CLEAR','CFLAG_TEST'][opcode-0x2b],relative=extended?2:1;
+ const flags=structuredClone(report),flagsState=structuredClone(state),pc=5,at=pc+relative,face=`script://town01/actors/man-p1/0012/flag-bit/${pc.toString(16).padStart(4,'0')}`,a=[0,8,9,0,0,...instruction],b=[...a];b[at]=(a[at]&224)|3;
+ flagsState.actor_drafts[id].flags={donor_entity_id:owner,entries:{[face]:{bit:3}}};flags.retail.draft=flagsState.actor_drafts[id];flags.generated.draft=flagsState.actor_drafts[id];
+ const makeRecord=(data,offset,index)=>({...record(Buffer.from(data).toString('hex'),offset,index),script_offset:5,byte_length:data.length});flags.retail.inspection.record=makeRecord(a,128,12);flags.generated.inspection.record=makeRecord(b,1000,53);
+ const sourceSpan={record_index:12,byte_offset:128,byte_length:a.length};flagsState.scene.entities[0].components.RetailMetadata.source_record=sourceSpan;flags.retail.donor_source_record=sourceSpan;flags.retail.inspection.source_record=sourceSpan;flags.generated.inspection.source_record={...flags.generated.inspection.source_record,byte_length:b.length};flags.retail.inspection.instructions=[{pc,mnemonic,target_context:instruction[0]&128?7:null}];
+ flags.difference={comparison_scope:'same_relative_record_byte_offsets',retail_length:a.length,generated_length:b.length,changed_byte_count:1,unchanged_common_byte_count:a.length-1,record_bytes_equal:false,script_tail_bytes_equal:false,changes:[{relative_offset:at,retail_byte:a[at],generated_byte:b[at],scope:'script_or_remaining_record_bytes'}]};flags.authored_spans=[{category:'own_flag',source_operand_id:face,relative_offset:at,byte_length:1,before_hex:a[at].toString(16),after_hex:b[at].toString(16)}];
+ assert.deepEqual(decodeNpcScriptComparison(flags,id,flagsState,entry),flags);
+ for(const mutate of [v=>v.authored_spans[0].source_operand_id=face.replace('0012','0040'),v=>v.authored_spans[0].relative_offset++,v=>v.authored_spans[0].byte_length=2,v=>v.authored_spans.push(v.authored_spans[0]),v=>v.retail.inspection.instructions[0].target_context=255,v=>v.retail.inspection.stops=[{reason:'unknown'}],v=>v.authored_spans[0].bit=7]){const bad=structuredClone(flags);mutate(bad);assert.throws(()=>decodeNpcScriptComparison(bad,id,flagsState,entry));}
+ for(const index of [at,pc,...(extended?[pc+1]:[])]){
+  const bad=structuredClone(flags),changed=[...b];changed[index]^=32;bad.generated.inspection.record=makeRecord(changed,1000,53);bad.authored_spans[0].after_hex=changed[at].toString(16);assert.throws(()=>decodeNpcScriptComparison(bad,id,flagsState,entry),/NPC flag explanation/);
+ }
+ for(const bit of [true,32,...(mnemonic.startsWith('LFLAG_')?[16]:[]),...(mnemonic==='CFLAG_SET'?[8]:[]),...(mnemonic==='CFLAG_CLEAR'?[10]:[])]){
+  const bad=structuredClone(flags),badState=structuredClone(flagsState);badState.actor_drafts[id].flags.entries[face]={bit};bad.retail.draft=badState.actor_drafts[id];bad.generated.draft=badState.actor_drafts[id];assert.throws(()=>decodeNpcScriptComparison(bad,id,badState,entry),/NPC flag explanation/);
+ }
+}
+console.log('Flag explanations qualify all nine ordinary/extended operations, authored indices and exact byte spans.');

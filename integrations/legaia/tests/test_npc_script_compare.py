@@ -75,4 +75,30 @@ class ScriptComparisonTests(unittest.TestCase):
             bad=dict(self.record(bytes(changed),entry),byte_offset=start,record_index=index)
             with self.assertRaises(ProjectError):authored_spans(metadata,'npc-a',retail,bad,draft)
 
+
+    def test_flag_spans_source_width_upper_bits_dispatch_and_receipt_guards(self):
+        from copy import deepcopy
+        from test_npc_flags import NpcFlagsTests,ACTOR
+        from sdk.npc_flags import patch_allocated_flags
+        from importer.man_layout import read_man_layout
+        for opcode in range(0x2b,0x34):
+            for extended in (False,True):
+                instruction=bytes([opcode|(128 if extended else 0)])+(b'\x07' if extended else b'')+b'\xe2'
+                context,candidate,allocations=NpcFlagsTests().fixture(instruction);target=context.options(ACTOR)['targets'][0];values=dict(bit=3)
+                result,audit=patch_allocated_flags(context,candidate,allocations,[dict(draft_id='npc-a',donor_entity_id=ACTOR,entries={target['semantic_id']:values})])
+                offset,raw,entry=context._source.verified_record(ACTOR);index=allocations['drafts'][0]['record_index'];final=next(r for r in read_man_layout(result)['records'] if r['partition']==1 and r['record_index']==index);start,length=final['byte_offset'],final['byte_length']
+                retail=dict(self.record(raw,entry),byte_offset=offset,record_index=1);generated=dict(self.record(result[start:start+length],entry),byte_offset=start,record_index=index);draft=dict(donor_entity_id=ACTOR,flags=dict(donor_entity_id=ACTOR,entries={target['semantic_id']:values}));metadata={'npc_flags_changes':audit}
+                spans=authored_spans(metadata,'npc-a',retail,generated,draft);self.assertEqual(len(spans),1);self.assertEqual(spans[0]['category'],'own_flag');self.assertEqual(spans[0]['byte_length'],1);self.assertEqual(authored_spans({},'npc-a',retail,generated,draft),[])
+                for change in (dict(pc=True),dict(record_index=1),dict(donor_entity_id='wrong'),dict(flag_id='wrong'),dict(source_record_sha256='0'*64),dict(mnemonic='UNKNOWN'),dict(target_context=255),dict(record_relative_byte_offset=0),dict(after_bit=0),dict(field='upper_flags'),dict(before_byte=0)):
+                    forged=deepcopy(metadata);forged['npc_flags_changes']['changes'][0].update(change)
+                    with self.assertRaises(ProjectError):authored_spans(forged,'npc-a',retail,generated,draft)
+                for changed in ({},dict(bit=2),dict(bit=True),dict(bit=32),dict(bit=3,flags=0)):
+                    forged=deepcopy(draft);forged['flags']['entries'][target['semantic_id']]=changed
+                    with self.assertRaises(ProjectError):authored_spans(metadata,'npc-a',retail,generated,forged)
+                forged=deepcopy(metadata);forged['npc_flags_changes']['changes']*=2
+                with self.assertRaises(ProjectError):authored_spans(forged,'npc-a',retail,generated,draft)
+                for relative in (target['pc'],target['decoded_byte_offset']-offset):
+                    changed=bytearray(bytes.fromhex(generated['raw_hex']));changed[relative]^=128;bad=dict(self.record(bytes(changed),entry),byte_offset=start,record_index=index)
+                    with self.assertRaises(ProjectError):authored_spans(metadata,'npc-a',retail,bad,draft)
+
 if __name__=='__main__':unittest.main()

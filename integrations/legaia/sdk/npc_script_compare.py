@@ -9,8 +9,8 @@ from .build_history import _load,verify_build
 def authored_spans(metadata,entity_id,retail,generated,draft):
     """Qualify receipt rows against both exact records; unexplained bytes stay so."""
     a,b=(bytes.fromhex(r['raw_hex']) for r in (retail,generated))
-    spans=[];occupied=set();movement_expected={};facing_expected={};prefix='script://'+draft['donor_entity_id'].removeprefix('scene://')+'/'
-    for key,category in [('npc_appearance_changes','initial_appearance'),('npc_dialogue_changes','own_dialogue'),('npc_wait_changes','own_wait'),('npc_movement_changes','own_movement'),('npc_facing_changes','own_facing')]:
+    spans=[];occupied=set();movement_expected={};facing_expected={};flags_expected={};prefix='script://'+draft['donor_entity_id'].removeprefix('scene://')+'/'
+    for key,category in [('npc_appearance_changes','initial_appearance'),('npc_dialogue_changes','own_dialogue'),('npc_wait_changes','own_wait'),('npc_movement_changes','own_movement'),('npc_facing_changes','own_facing'),('npc_flags_changes','own_flag')]:
         value=metadata.get(key)
         if value is None:continue
         if not isinstance(value,dict) or not isinstance(value.get('changes'),list) or len(value['changes'])>8192:
@@ -65,6 +65,27 @@ def authored_spans(metadata,entity_id,retail,generated,draft):
                 header_end=pc+(2 if expected['target_context'] is not None else 1)+(expected['mnemonic']=='NPC_RUN')
                 if a[pc:header_end]!=b[pc:header_end] or (expected['mnemonic']=='CAM_CFG' and a[relative+1]!=b[relative+1]):
                     raise ProjectError('NPC facing comparison dispatch or CAM_CFG mode differs')
+                before,after=bytes([expected['before_byte']]),bytes([expected['after_byte']])
+            elif category=='own_flag':
+                from importer.flag_authoring import patch_flag_bit
+                from importer.core import ImportError as NativeError
+                owner=row.get('flag_id');pc=row.get('pc')
+                if (type(pc) is not int or not 0<=pc<=65535 or owner!=prefix+f'flag-bit/{pc:04x}' or
+                    row.get('donor_entity_id')!=draft['donor_entity_id'] or
+                    draft.get('flags',{}).get('donor_entity_id')!=draft['donor_entity_id']):
+                    raise ProjectError('NPC flag comparison differs from its source owner')
+                requested=draft.get('flags',{}).get('entries',{}).get(owner)
+                if owner not in flags_expected:
+                    try:
+                        _,flags_expected[owner]=patch_flag_bit(a,retail['script_offset'],pc,requested,base_offset=retail['byte_offset'])
+                        patch_flag_bit(b,generated['script_offset'],pc,requested)
+                    except NativeError as error:raise ProjectError('NPC flag comparison target is not qualified') from error
+                expected=next(iter(flags_expected[owner]),None)
+                if expected is None or any(type(row.get(k)) is not type(v) or row[k]!=v for k,v in expected.items() if k!='decoded_byte_offset') or source_at!=expected['decoded_byte_offset']:
+                    raise ProjectError('NPC flag comparison differs from its decoded source operand')
+                header_end=pc+(2 if expected['target_context'] is not None else 1)
+                if a[pc:header_end]!=b[pc:header_end]:
+                    raise ProjectError('NPC flag comparison dispatch differs')
                 before,after=bytes([expected['before_byte']]),bytes([expected['after_byte']])
             elif category=='initial_appearance':
                 if 'appearance' not in draft:raise ProjectError('NPC appearance comparison has no authored binding')

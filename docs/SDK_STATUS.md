@@ -1,5 +1,30 @@
 # Legaia SDK status — 2026-10-05
 
+## Source-qualified saved NPC flag explanations - 2026-10-05
+
+Saved-script comparison now labels NPC-owned flag-bit index bytes alongside
+appearance, dialogue, waits, movement and facing. Each explanation is bound to the
+current NPC's typed request, source donor/PC/opcode/context, exact native source
+change, final record allocation and saved before/after bytes. Both records must
+qualify the supported instruction; widths and special side effects stay excluded.
+Upper bits, extended dispatch, no-op receipts, stale/forged metadata and overlap
+are checked independently. Other differences remain unexplained. This does not
+assert runtime flag identity, story meaning or behavioral equivalence.
+
+Validation: 13 focused Python checks and the Node comparison suite pass, including
+all nine operations in ordinary/extended forms, forged receipts, typed values,
+upper bits and dispatch. Existing saved Town01 Build `9ad4a9c1b39b7fda` explains
+28 of31 changed bytes across all six authored families, leaving three unexplained.
+Streaming Build `ee3148f1c5861326` independently qualifies one flag span in each of
+two NPC records. Actual read-only browser comparison renders all six labels; its
+540px table was visually inspected. Project documents, history and all file hashes
+stay unchanged for both projects. Evidence:
+`local-output/sdk-20260909/npc-flags-script-comparison-20261005/proof.json`.
+
+No new Build, game launch or full-disc export was needed. Flag-bearing portable
+presets remain to be connected. Manual gameplay acceptance stays deferred and the
+full SDK goal remains active/incomplete.
+
 ## NPC-owned flag authoring through editor and normal Build - 2026-10-05
 
 NPC flags now connect source-qualified inspection and review to the root Inspector

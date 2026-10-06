@@ -23,8 +23,9 @@ context, layout and every unrelated byte.
 
 Runtime variable identity and story meaning remain unknown. This workflow does
 not establish actor flag isolation, branch execution, scheduling, visible behavior
-or gameplay acceptance. Saved-script comparison can inspect the resulting record;
-it does not yet label flag edits as explained authored spans.
+or gameplay acceptance. Saved-script comparison labels exact flag-bit changes as source-qualified authored
+spans, alongside appearance, text, waits, movement and facing. Other differences
+remain unexplained; this is byte accounting, not execution equivalence.
 
 ## Evidence
 
@@ -44,3 +45,11 @@ families retained. Evidence:
 Native two-clone byte preservation is recorded separately in
 `local-output/sdk-20260909/npc-flags-native-20261005/proof.json`.
 No game launch or full-disc export was used.
+
+Saved comparison evidence:
+`local-output/sdk-20260909/npc-flags-script-comparison-20261005/proof.json`.
+Thirteen focused Python checks and the Node comparison suite pass. Read-only
+browser comparison explains 28 of31 changed Town01 bytes across all six families,
+leaving three unexplained; both streaming NPC flag spans also qualify. The 540px
+table was visually inspected. Both projects retain documents, history and all
+file hashes.
