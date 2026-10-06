@@ -1,10 +1,9 @@
-import {decodeBuildHistory,decodeBuildVerification} from './build-history.js';
+import {decodeBuildHistory,decodeBuildVerification,decodeBuildVerificationForEntry} from './build-history.js';
 const hash=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 const stable=value=>typeof value==='string'&&value.length<=1024&&/^[a-z][a-z0-9-]*:\/\/[^\s\x00-\x20\x7f<>"']+$/.test(value);
 export function assetBuildRecords(value,entry,assetId,key,includeOwned=true){
-  if(!stable(assetId)||!hash(key)||typeof includeOwned!=='boolean'||entry?.status!=='completed'||!/^[a-f0-9]{16}$/.test(entry.id)||!hash(entry.archive_sha256)||!hash(entry.source_disc_sha256)||!['retail','authored'].includes(entry.build_kind)||!Number.isSafeInteger(entry.change_count)||entry.change_count<0)throw new Error('Unsupported asset or saved Build identity.');
-  const verified=decodeBuildVerification(value,entry.id),receipt=verified.receipt;
-  if(!receipt||!hash(receipt.authored_state_key)||receipt.archive_sha256!==entry.archive_sha256||receipt.source_disc_sha256!==entry.source_disc_sha256||receipt.build_kind!==entry.build_kind||verified.report.change_count!==entry.change_count||verified.matches_current_inputs!==(receipt.authored_state_key===key))throw new Error('Saved Build receipt or current inputs changed. Reopen asset Build records.');
+  if(!stable(assetId)||typeof includeOwned!=='boolean')throw new Error('Unsupported asset identity or audit relationship.');
+  const verified=decodeBuildVerificationForEntry(value,entry,key);
   return verified.report.changes.filter(row=>row.asset_id===assetId||includeOwned&&row.owner_id===assetId).map(row=>({relationship:row.asset_id===assetId?'Exact audit asset ID':'Exact audit owner ID',record:row}));
 }
 export function openAssetBuildHistory({record,getState,current,busy,setBusy,onError,request=fetch}){

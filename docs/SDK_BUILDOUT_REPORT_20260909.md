@@ -1,5 +1,33 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## General Build history fresh-input and receipt qualification — 2026-10-05
+
+General **Build history** now qualifies fresh `/api/state` after list, verification
+and comparison responses, before displaying their results. A changed server
+project path or authored-input key rejects even when the editor's cached state
+has not refreshed. Closed dialogs abort and reject late responses.
+
+Explicit package verification also binds its returned receipt to the selected
+history entry: archive/source-disc hashes, build kind and report count must agree,
+and `matches_current_inputs` must equal the receipt/input-key comparison. General
+and asset-specific Build inspection share this validator. A mismatch withdraws
+report rows instead of presenting stale current-input or package claims. List summaries
+identify the input match when listed, so an old snapshot is not a fresh claim. Metadata
+input match, package integrity, unchecked source disc and unverified gameplay
+remain distinct; no native Build or authoring path changes.
+
+Validation: expanded general/asset Build-history Node contracts and module
+syntax pass. Actual browser verifies the existing private saved package, then
+controlled fresh-server input mismatch withdraws verification rows and rejects
+listing before rendering entries. A changed returned archive receipt hash rejects
+against its selected history entry despite current server inputs. Close cleanup,
+540px failure layout and zero page errors pass; project document, history and all
+files stay unchanged. No new Build, authoring, Save, Run, installation or full-disc
+export occurs. Evidence:
+`local-output/sdk-20260909/build-history-freshness-20261005/proof.json`.
+Runtime/source-disc acceptance stays deferred, work remains solo and the full SDK
+goal remains active.
+
 ## Asset Database → verified saved Build records — 2026-10-05
 
 **Asset Details → Inspect saved Build records...** connects a selected stable asset

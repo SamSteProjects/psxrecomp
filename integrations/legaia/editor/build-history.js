@@ -15,6 +15,12 @@ export function decodeBuildVerification(value,id){
   for(const row of r.changes)if(!row||!['asset_id','scene','field','scope'].every(key=>typeof row[key]==='string')||!('before' in row)||!('after' in row))throw new Error('Invalid saved Build change');
   return structuredClone(value);
 }
+export function decodeBuildVerificationForEntry(value,entry,key){
+  if(!hash(key)||entry?.status!=='completed'||!/^[a-f0-9]{16}$/.test(entry.id)||!hash(entry.archive_sha256)||!hash(entry.source_disc_sha256)||!['retail','authored'].includes(entry.build_kind)||!Number.isSafeInteger(entry.change_count)||entry.change_count<0)throw new Error('Unsupported saved Build receipt identity.');
+  const verified=decodeBuildVerification(value,entry.id),receipt=verified.receipt;
+  if(!receipt||!hash(receipt.authored_state_key)||receipt.archive_sha256!==entry.archive_sha256||receipt.source_disc_sha256!==entry.source_disc_sha256||receipt.build_kind!==entry.build_kind||verified.report.change_count!==entry.change_count||verified.matches_current_inputs!==(receipt.authored_state_key===key))throw new Error('Saved Build receipt or current inputs changed. Reopen Build history.');
+  return verified;
+}
 export function decodeBuildComparison(value,left,right,key){
   if(value?.schema_version!=='legaia.build-comparison.v1'||value.left_id!==left||value.right_id!==right||left===right||value.project_source_key!==key||!hash(key)||!hash(value.source_disc_sha256)||value.integrity!=='both_packages_verified'||value.gameplay_verified!==false||value.source_disc_integrity!=='not_checked'||value.comparison_scope!=='saved_audit_records_only'||!Array.isArray(value.differences)||value.differences.length>65536||value.difference_count!==value.differences.length||!Number.isSafeInteger(value.unchanged_change_count)||value.unchanged_change_count<0)throw new Error('Invalid or stale saved Build comparison');
   for(const row of value.differences){if(!['only_left_audit','only_right_audit','different_audit'].includes(row.status)||!['scene','owner_id','asset_id','field','scope'].every(k=>typeof row.identity?.[k]==='string')||row.status==='only_left_audit'&&(row.left===null||row.right!==null)||row.status==='only_right_audit'&&(row.right===null||row.left!==null)||row.status==='different_audit'&&(!row.left||!row.right))throw new Error('Invalid compared audit record');for(const side of ['left','right'])if(row[side]!==null&&(!row[side]||!('before' in row[side])||!('after' in row[side])))throw new Error('Missing compared audit values');}
@@ -30,7 +36,17 @@ export function mountBuildHistory({after,getState,busy,setBusy}){
     const list=document.createElement('div');list.style.maxHeight='60vh';list.style.overflow='auto';const close=document.createElement('button');close.textContent='Close';close.onclick=()=>dialog.close();const controller=new AbortController();
     dialog.append(title,status,list,close);document.body.append(dialog);dialog.showModal();dialog.addEventListener('close',()=>{controller.abort();dialog.remove();});
     const context=()=>dialog.open&&getState().project.path===root&&getState().build_review_source_key===key;
-    const request=async(route,body)=>{if(!context())throw new Error('Project inputs changed. Reopen Build history.');const response=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal});const value=await response.json();if(!response.ok)throw new Error(value.error||'Saved Build request failed');if(!context())throw new Error('Project inputs changed. Reopen Build history.');return value;};
+    const request=async(route,body)=>{
+      if(!context())throw new Error('Project inputs changed. Reopen Build history.');
+      const response=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal});
+      const value=await response.json();if(!response.ok)throw new Error(value.error||'Saved Build request failed');
+      if(!context())throw new Error('Project inputs changed. Reopen Build history.');
+      const currentResponse=await fetch('/api/state',{cache:'no-store',signal:controller.signal});
+      if(!currentResponse.ok)throw new Error('Could not qualify current server inputs. Reopen Build history.');
+      const latest=await currentResponse.json();
+      if(!context()||latest.project?.path!==root||latest.build_review_source_key!==key||!hash(key))throw new Error('Server project inputs changed. Reopen Build history.');
+      return value;
+    };
     setBusy(true);
     try{
       const result=decodeBuildHistory(await request('/api/builds',{}));
@@ -53,13 +69,13 @@ export function mountBuildHistory({after,getState,busy,setBusy}){
         const section=document.createElement('section'),heading=document.createElement('h3');heading.textContent=item.id;section.append(heading);
         const summary=document.createElement('p');section.append(summary);
         if(item.status!=='completed'){summary.textContent=item.status==='legacy_or_incomplete'?'No completion receipt: older or incomplete Build. Input match and integrity unavailable. Rebuild to record a receipt.':`Invalid saved Build: ${item.error||'Metadata could not be read'}`;list.append(section);continue;}
-        summary.textContent=`${item.build_kind==='retail'?'Retail baseline':'Authored package'} · ${item.change_count} audited changes · ${item.matches_current_inputs?'Matches current authored inputs':'Different authored inputs'}`;
+        summary.textContent=`${item.build_kind==='retail'?'Retail baseline':'Authored package'} · ${item.change_count} audited changes · ${item.matches_current_inputs?'Matched inputs when listed':'Different inputs when listed'}`;
         const provenance=document.createElement('details'),label=document.createElement('summary'),paths=document.createElement('pre');label.textContent='Saved package and recorded hashes';paths.style.overflowWrap='anywhere';paths.style.whiteSpace='pre-wrap';paths.textContent=`Package: ${item.archive_path}\nArchive SHA-256: ${item.archive_sha256}\nSource disc SHA-256: ${item.source_disc_sha256}`;provenance.append(label,paths);section.append(provenance);
         const check=document.createElement('button');check.textContent='Verify saved files and open report';const outcome=document.createElement('p');outcome.setAttribute('role','status');outcome.textContent='Package integrity not checked. Source disc and gameplay not checked.';const report=document.createElement('div');
         packageOutcomes.set(item.id,outcome);
         check.onclick=async()=>{
           if(busy())return;check.disabled=true;setBusy(true);outcome.textContent='Checking receipt, audit, manifest, payload files and package ZIP…';report.replaceChildren();
-          try{const verified=decodeBuildVerification(await request('/api/builds/verify',{id:item.id}),item.id);outcome.textContent=`Saved package integrity verified · ${verified.matches_current_inputs?'matches current authored inputs':'different authored inputs'}. Source disc integrity and gameplay remain unverified.`;
+          try{const verified=decodeBuildVerificationForEntry(await request('/api/builds/verify',{id:item.id}),item,key);outcome.textContent=`Saved package integrity verified · ${verified.matches_current_inputs?'matches current authored inputs':'different authored inputs'}. Source disc integrity and gameplay remain unverified.`;
             const counts=document.createElement('p');counts.textContent=`${verified.report.change_count} changes · ${verified.report.overlay_bytes.toLocaleString()} overlay bytes`;report.append(counts);
             const table=document.createElement('table');table.className='build-change-table';const head=document.createElement('tr');for(const name of ['Asset','Field','Before','After']){const cell=document.createElement('th');cell.textContent=name;head.append(cell);}table.append(head);
             for(const change of verified.report.changes.slice(0,256)){const row=document.createElement('tr');for(const value of [change.asset_id,change.field,change.before,change.after]){const cell=document.createElement('td');cell.style.overflowWrap='anywhere';cell.textContent=typeof value==='string'?value:JSON.stringify(value);row.append(cell);}table.append(row);}const wrap=document.createElement('div');wrap.style.overflowX='auto';wrap.append(table);report.append(wrap);

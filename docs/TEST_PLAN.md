@@ -1,5 +1,22 @@
 # Legaia SDK validation plan
 
+## General saved-Build freshness checkpoint — 2026-10-05
+
+Expanded general/asset Node Build-history contracts and module syntax pass.
+Receipt binding covers archive/disc hashes, kind, report count and current-input
+flag agreement with the receipt key. Actual private saved package verification
+passes; controlled stale `/api/state` responses withdraw verification tables and
+reject history listing before rendering entries, even with unchanged local cache.
+A forged returned receipt hash rejects against the selected list entry after a
+valid server-state check. Close removes the dialog, 540px failure screenshot is
+inspected and no page errors occur. Project document/history/files stay unchanged;
+no new Build, Command/Save/Run, game, install or full-disc export occurs.
+Proof: `local-output/sdk-20260909/build-history-freshness-20261005/proof.json`.
+Campaign follow-up: compare responses during server changes, server path switches,
+GET-state failures, close during freshness reads, additional input receipts and
+package replacement between list/verify. This fixes presentation freshness and
+receipt selection binding; native package serialization and runtime are unchanged.
+
 ## Asset saved-Build evidence checkpoint — 2026-10-05
 
 Six focused Python Build-history integrity cases, new asset matching/receipt

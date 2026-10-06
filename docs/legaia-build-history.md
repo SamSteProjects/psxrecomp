@@ -106,3 +106,24 @@ source memberships, and runtime consumers remain unverified. This is generated
 audit evidence, not a native asset preview or gameplay acceptance. The dialog does
 not create a Build, author, save a project, install output or launch the game.
 Project templates retain their existing project-only workflow.
+
+## Fresh server inputs and selected receipt binding
+
+General and asset-specific saved-Build views retain the project/input context
+opened by the user. General history now checks fresh server state after listing,
+package verification and audit comparison, before showing results. A changed
+server path/input key rejects even if the editor's cached state still looks current.
+Reopen history after refreshing the project. Closing cancels pending requests.
+
+Explicit **Verify saved files and open report** also qualifies the returned receipt
+against the selected list entry. Archive and source-disc hashes, build kind and
+change count must match; the verified current-input flag must agree with that
+receipt's authored-input key. General and asset-specific views use one bounded
+receipt validator. Mismatch failures show no emitted report table. Package
+integrity alone cannot legitimize a different selected receipt or stale input
+context. Source-disc integrity and gameplay are still not checked here.
+
+List summaries use **Matched inputs when listed** or **Different inputs when listed**.
+They describe that list snapshot; the explicit verification outcome reports its
+fresh qualified input comparison. A stale-response failure does not preserve a
+list summary that claims a current comparison.
