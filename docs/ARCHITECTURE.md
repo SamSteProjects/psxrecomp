@@ -6,6 +6,8 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+`model-vertex-connectivity.js` derives bounded object-local selections from qualified Current preview triangle indices and ranges. The movement editor owns local selection/staleness/draft locks; the existing saved-group service owns persistence and history. Connectivity does not infer spatial welding or runtime ownership, and this module introduces no authored geometry or serialization.
+
 `model_vertex_grid.py` qualifies an explicit selected-axis/source-unit grid operation through the existing native vector writer, preserves signed16 bounds and audits against retail layout. Project object-preview and model-replacement history own Review/Apply; the movement editor owns local staging, source freshness and complete candidate/scene qualification. Native Build reuses the existing model replacement composition.
 
 `script-node-layers.js` renders selected source boundaries from the already qualified branch snapshot/review DTOs. It validates bounded raw spans and source shape, derives exact per-node byte differences, and keeps unavailable/unvisited paths explicit. `script-branches.js` owns selection and review lifecycle, Current composition remains in SDK operand writers, and stale/failed/discarded reviews withdraw the renderer. No new endpoint, authored state or serializer is introduced.

@@ -1,5 +1,12 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Connected and inverse model vertex selections (2026-10-06)
+
+The 3D movement editor now expands selected vertices through Current object preview triangles and inverts a group within its object-local table. These are local selection actions; coordinates/normals/topology and history stay unchanged until an explicit group Save. Existing saved-group Recall, Undo/Redo and Save/Open preserve the exact selection. Coincident positions/shared normals are not links; malformed/cross-object triangle references and results over4096 vertices reject atomically. Geometry drafts lock these selection tools.
+
+Actual Town01 editor selection/recall, no-op and wide/narrow checks passed; source/model state is preserved. Fresh native Build packages before/after group Save are byte-identical. Focused connectivity and existing movement Node guards pass. See [Current vertex connectivity](legaia-model-vertex-connectivity.md); private evidence is in `local-output/sdk-20260909/vertex-connectivity-20261006/`. Gameplay stays deferred and development remains solo.
+
+
 ## Native-grid snapping for selected model vertices (2026-10-06)
 
 The existing 3D model movement editor now stages a selected group's Current object-local coordinates onto a native-unit grid, with explicit X/Y/Z axes and integer spacing. Halfway values round away from zero; signed16 overflow rejects the whole operation. Draft/Current/Retail and scene Review/Return remain separate from one atomic Apply. Selected rows/axes change; normals, topology and other rows/objects retain their existing native qualification. Already snapped rows are a no-op; Undo/Redo and Save/Open use the model replacement workflow. This adds authored geometry, not a runtime grid or actor-placement rule.
