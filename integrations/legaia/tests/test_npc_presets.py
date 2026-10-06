@@ -32,6 +32,37 @@ class NpcPresetTests(unittest.TestCase):
         self.assertEqual(len(p.undo_stack),depth+1);self.assertEqual(p.imports[self.doc['scene']['semantic_id']],self.doc)
         after=deepcopy(p.actor_drafts);p.undo();self.assertEqual(p._document(),before);p.redo();self.assertEqual(p.actor_drafts,after)
         restored=ProjectService.open(p.save());self.assertEqual(restored.actor_drafts,after);self.assertEqual(restored.actor_templates,frozen)
+    def test_owned_dialogue_freezes_transfers_and_instances_independently(self):
+        from test_importer_dialogue_authoring import fixture
+        from sdk.npc_dialogue import review as text_review
+        from sdk.template_files import NPC_DIALOGUE_SCHEMA
+        context,_=fixture();p=self.p;run=context.options(self.donor)['runs'][0]['semantic_id']
+        disc=p.root/'fixture.bin';disc.write_bytes(b'synthetic');p.disc_path=str(disc)
+        with patch.object(ProjectService,'_dialogue_context',return_value=context), patch('importer.pipeline._disc_context',side_effect=lambda _:nullcontext()), patch('importer.pipeline.import_scene',return_value=self.doc):
+            request=dict(entity_id=self.original,runs={run:'Yo'});text=text_review(p,request)
+            p.command(dict(type='set_actor_draft_dialogue',**request,review_key=text['review_key']))
+            p.command(dict(type='create_npc_preset',entity_id=self.original,name='Speaking resident'))
+            captured=next(t for t in p.actor_templates.values() if t['name']=='Speaking resident');frozen=deepcopy(captured)
+            p.command(dict(type='delete_actor_draft',entity_id=self.original));self.assertEqual(p.actor_templates[captured['id']],frozen)
+            value=export_file(p,captured['id']);self.assertEqual(value['schema_version'],NPC_DIALOGUE_SCHEMA)
+            content=json.dumps(value)+' '*9000;self.assertEqual(parse(content),value)
+            legacy=export_file(p,self.preset)
+            with self.assertRaises(ProjectError):parse(json.dumps(legacy)+' '*9000)
+            wrong=deepcopy(value);wrong['schema_version']=NPC_SCHEMA
+            with self.assertRaises(ProjectError):parse(json.dumps(wrong))
+            target=ProjectService(p.root/'text-recipient');target.import_metadata(self.doc);target.disc_path=p.disc_path
+            transfer=transfer_review(target,content,'Transferred speaker');target.command(dict(type='import_actor_template',content=content,name='Transferred speaker',review_key=transfer['review_key']))
+            target=ProjectService.open(target.save());template_id=transfer['template']['id']
+            placement_request=dict(template_id=template_id,name='Speaker instance',position=dict(x=256,z=640),expected_source_key=source_key(target))
+            placement=review(target,placement_request);target.command(dict(type='instantiate_npc_preset',**placement_request,review_key=placement['review_key']))
+            instance=placement['entity_id'];self.assertEqual(target.actor_drafts[instance]['dialogue'],frozen['components']['NpcDraft']['dialogue'])
+            after=deepcopy(target.actor_drafts);target.undo();self.assertFalse(target.actor_drafts);target.redo();self.assertEqual(target.actor_drafts,after)
+            edit=dict(entity_id=instance,runs={run:'Hey'});new=text_review(target,edit);target.command(dict(type='set_actor_draft_dialogue',**edit,review_key=new['review_key']))
+            self.assertEqual(target.actor_templates[template_id]['components']['NpcDraft']['dialogue']['runs'][run],'Yo')
+            self.assertEqual(ProjectService.open(target.save()).actor_drafts,target.actor_drafts)
+            bad=deepcopy(value);bad['template']['components']['NpcDraft']['dialogue']['runs'][run]='Too long'
+            with self.assertRaises(NativeError):transfer_review(target,json.dumps(bad),'Invalid speaker')
+
     def test_stale_malformed_live_and_imported_apply_reject_without_mutation(self):
         p=self.p;request=self.request();report=review(p,request);before=deepcopy((p._document(),p.undo_stack,p.redo_stack))
         for change in ({'template_id':[]},{'expected_source_key':[]},{'position':{'x':32,'z':576}},{'position':{'x':True,'z':576}},{'extra':True}):

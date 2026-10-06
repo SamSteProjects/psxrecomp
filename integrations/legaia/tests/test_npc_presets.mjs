@@ -14,3 +14,9 @@ assert.deepEqual(decodeNpcPresetScene(response,report,base),response.scene);
 for(const change of [{donor_entity_id:'wrong'},{authored_position:{x:256,z:576}},{display_position:{x:192,y:20,z:576}},{model_to_scene:Array(16).fill(0)}])assert.throws(()=>decodeNpcPresetScene({...response,scene:{...response.scene,entities:[...base.entities,{...row,...change}]}},report,base));
 assert.throws(()=>decodeNpcPresetScene({...response,scene:{...response.scene,entities:[{...base.entities[0],name:'changed'},row]}},report,base));
 console.log('NPC preset source, donor, requested placement and detached scene checks pass.');
+
+const ownedTemplate=structuredClone(template),ownedDialogue={donor_entity_id:donor,runs:{'script://fixture/actors/001/dialogue/0005/run/0006':'Yo'}};ownedTemplate.components.NpcDraft.dialogue=ownedDialogue;
+const ownedState={...state,actor_templates:[{...ownedTemplate,application:{available:false}}]},ownedReport={...report,template:ownedTemplate,draft:{...report.draft,dialogue:ownedDialogue}};
+assert.deepEqual(decodeNpcPresetReview(ownedReport,request,ownedState),ownedReport);
+for(const mutate of [v=>delete v.draft.dialogue,v=>v.draft.dialogue.runs['script://fixture/actors/001/dialogue/0005/run/0006']='Wrong',v=>v.draft.dialogue.donor_entity_id='wrong']){const v=structuredClone(ownedReport);mutate(v);assert.throws(()=>decodeNpcPresetReview(v,request,ownedState));}
+console.log('NPC instance review retains exact frozen own-dialogue metadata and rejects loss or substitution.');

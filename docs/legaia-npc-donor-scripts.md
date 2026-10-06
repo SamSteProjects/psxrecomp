@@ -105,8 +105,8 @@ One Undo restores the previous edit set; Save and reopening retain it.
 Retail donor text remains separate. Normal Build writes the supported glyph spans
 only into this NPC's audited appended MAN record, preserving its fixed extent and
 all controls. It supports both fixed-span and relocated packages. Clear the own
-text before changing donor; the old run identities belong to that donor. Existing
-NPC presets capture donor/placement definitions, without dialogue text.
+text before changing donor; the old run identities belong to that donor. NPC presets also retain supported own dialogue when captured; each new instance
+gets an independent copy.
 
 Private normal packages `3bf921d864bfda55` (fixed span) and `b016d788d0e9440f`
 (relocated) independently read back the authored text and unchanged donor text.
@@ -114,3 +114,24 @@ Workflow/native evidence is in
 `local-output/sdk-20260909/npc-dialogue-20261005/proof.json`. This does not prove
 that the NPC spawns, its dialogue path executes, or the text fits the game box.
 Those gameplay checks remain deferred.
+
+## Reuse and transfer an NPC with its dialogue
+
+After authoring the NPC text, open **NPC draft presets**, enter a preset name and
+choose **Capture selected NPC preset**. The preset freezes the current own text;
+its library card reports the run count. Later NPC text edits or removal do not
+change that captured definition. **Review new NPC instance** retains the frozen
+text at the requested new placement. Apply creates one independent draft; its
+text can then be edited separately with **Edit NPC dialogue**.
+
+**Export preset JSON** writes NPC format v2 when own text is present. Import that
+file into a project with the matching retail scene/import, review the library
+addition, then review a new instance separately. Importing a preset changes no
+NPCs. The original captured NPC need not exist in the recipient. Text-bearing
+files are bounded at 512 KiB; older donor-only files retain their 8 KiB bound.
+Only user-authored glyph edits are included, without retail/native script bytes.
+Both transfer and placement revalidate the supported donor spans.
+
+The private two-project browser workflow and complete padded text readback are
+recorded in `local-output/sdk-20260909/npc-dialogue-presets-20261005/proof.json`.
+Gameplay acceptance remains deferred.

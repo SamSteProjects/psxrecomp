@@ -1,5 +1,33 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Retain NPC dialogue in reusable presets - 2026-10-05
+
+Capturing an NPC preset now freezes its supported own dialogue with the retail
+donor, name and native-grid placement defaults. Later edits or deletion of the
+capture NPC do not change the preset. Reviewed placement deep-copies those edits
+into an independent new NPC, where normal dialogue authoring and Build apply.
+Capture, transfer and placement reverify the text runs through the existing
+source-qualified equal-span serializer; unknown/aliased runs, controls, oversized
+text and a mismatched donor reject. Runtime state and other script edits remain
+outside this snapshot.
+
+NPC preset JSON v2 carries only source-bound preset metadata and user-authored
+text edits, with a 512 KiB file bound. Donor-only NPC v1 and ordinary actor preset
+files retain their 8 KiB bound and original format. A version/content mismatch
+rejects. The editor displays the owned-run count and verifies that placement
+retains the exact captured text. No retail script bytes or native packets are
+included in the portable file.
+
+Offline evidence: 16 focused Python checks and the NPC preset/file browser
+contracts pass. A real two-project browser workflow captured text, downloaded
+and uploaded v2 JSON, reviewed/imported a new library identity, passed Undo/Redo
+and Save/reload, then reviewed scene placement and created an independent NPC.
+Existing source drafts/imports and recipient scene entities remained unchanged.
+The inspected 540px layout is readable. Normal Build `2e2e86485096975f` reads
+back the complete authored glyph span including space padding. Evidence is under
+`local-output/sdk-20260909/npc-dialogue-presets-20261005/`. No game was launched;
+manual spawning, reachability and dialogue-layout acceptance remain deferred.
+
 ## Author dialogue independently for an NPC - 2026-10-05
 
 NPC Inspector and registered Asset Details now offer **Edit NPC dialogue**.

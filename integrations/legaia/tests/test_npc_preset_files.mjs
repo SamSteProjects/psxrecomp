@@ -10,3 +10,11 @@ for(const edit of [v=>v.source.import_sha256='wrong',v=>v.source.capture_draft_i
 for(const edit of [v=>v.schema_version='legaia.actor-preset-file.v1',v=>v.source_import_sha256='b'.repeat(64),v=>v.payload='private']){const bad=structuredClone(file);edit(bad);assert.throws(()=>decodePresetFileExport(bad,template));}
 const bad=structuredClone(report);bad.template.components.NpcDraft.name='Changed';assert.throws(()=>decodePresetImportReview(bad,JSON.stringify(file),'Transferred guard'));
 console.log('NPC preset file schema, source hashes, metadata-only shape and reviewed transfer checks pass.');
+
+const owned=structuredClone(template),run='script://town01/actors/man-p1/0012/dialogue/0048/run/0049';owned.components.NpcDraft.dialogue={donor_entity_id:owned.source.entity_id,runs:{[run]:'SDK resident'}};
+const ownedFile={schema_version:'legaia.npc-preset-file.v2',source_import_sha256:hash,template:owned},ownedReport={...report,template:{...owned,id:report.template.id,name:report.template.name}};
+assert.deepEqual(decodePresetFileExport(ownedFile,owned),ownedFile);assert.deepEqual(decodePresetImportReview(ownedReport,JSON.stringify(ownedFile)+' '.repeat(9000),'Transferred guard'),ownedReport);
+assert.throws(()=>decodePresetFileExport({...ownedFile,schema_version:NPC_PRESET_FILE_SCHEMA},owned));assert.throws(()=>decodePresetImportReview(report,JSON.stringify(file)+' '.repeat(9000),'Transferred guard'));
+for(const mutate of [v=>v.components.NpcDraft.dialogue.donor_entity_id='wrong',v=>v.components.NpcDraft.dialogue.runs[run]='|',v=>v.components.NpcDraft.dialogue.payload='native',v=>v.components.NpcDraft.dialogue.runs={'script://town01/actors/man-p1/0049/dialogue/0048/run/0049':'Wrong'}]){const v=structuredClone(owned);mutate(v);assert.throws(()=>validateNpcPresetMetadata(v));}
+const detached=validateNpcPresetMetadata(owned);detached.components.NpcDraft.dialogue.runs[run]='Independent';assert.equal(owned.components.NpcDraft.dialogue.runs[run],'SDK resident');
+console.log('NPC own dialogue metadata, v2 transfer, retained v1 bounds and forged donor/control rejection pass.');
