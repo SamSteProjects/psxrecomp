@@ -1,5 +1,31 @@
 # Legaia SDK feature matrix
 
+## NPC-owned wait operand native adapter - 2026-10-05
+
+Added a source-qualified serializer for independent WAIT_FRAMES operands on
+allocated NPC scripts. Requests bind a draft, recorded retail script donor and
+supported stable wait IDs with integer duration_ticks0..32767. The adapter resolves
+final record indices after all appends, verifies extent/local entry ownership,
+rejects aliases/retail targets, requalifies current instruction layout and checks
+exact operand preimages. Only selected two-byte targets can change. Limits are
+128 drafts and1024 targets per candidate. Seconds and runtime scheduling are not
+inferred; unknown/stopped source paths remain unsupported.
+
+Nine focused checks pass across NPC waits, existing wait/appearance/dialogue
+adapters. Coverage includes two independent clones, ordinary/extended waits,
+boundaries, source-identical no-op, stale preimages, final offsets, aliases,
+malformed ownership/values and decoder stops. Fresh town01 discovery qualifies
+waits for actors0040/0044/0046. A retail two-clone candidate from actor0040 holds
+independent11/22-tick targets, composed with the existing model/animation appearance
+patch. Layout, all non-wait candidate bytes, donor candidate record and every
+project file/history entry remain unchanged. Append's supported spawn-reference
+rebasing is already part of the pre-wait candidate baseline; this is not a claim
+that append preserves raw retail records byte-for-byte.
+Evidence: `local-output/sdk-20260909/npc-waits-native-20261005/proof.json`.
+Project commands, persistence, presets, editor controls and normal Build integration
+remain next. No game was launched; runtime timing acceptance stays deferred.
+The full SDK goal remains active and incomplete.
+
 ## Review NPC appearance in the placed scene - 2026-10-05
 
 The NPC appearance picker now offers **Inspect NPC appearance in scene** after
