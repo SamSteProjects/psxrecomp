@@ -68,6 +68,11 @@ def capture_export_inputs(project, *, max_bytes=None, max_files=None):
     validate_model_sources(project,sources)
     for record in sources.values():
         store(f"Authored/Models/GLBSources/{record['glb_sha256']}.glb",read_model_source(project,record))
+    from .audio_sample_sources import validate_files as validate_wav_sources,read_source as read_wav_source
+    wav_sources=getattr(project,'audio_sample_sources',{})
+    validate_wav_sources(project,wav_sources)
+    for record in wav_sources.values():
+        store(f"Authored/Audio/Sources/{record['wav_sha256']}.wav",read_wav_source(project,record))
     if authored_state_key(project) != key:
         raise ProjectError('Project changed while capturing export inputs')
     return key, files

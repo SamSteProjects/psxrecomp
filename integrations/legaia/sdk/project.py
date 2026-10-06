@@ -126,6 +126,7 @@ class ProjectService:
         self.audio_bank_overrides: dict[str, dict] = {}
         self.animation_sources: dict[str, dict] = {}
         self.model_sources: dict[str, dict] = {}
+        self.audio_sample_sources: dict[str, dict] = {}
         self.active_scene: str | None = None
         self.selected: str | None = None
         self.undo_stack: list[dict] = []
@@ -214,6 +215,7 @@ class ProjectService:
                 **({"texture_additions": deepcopy(self.texture_additions)} if self.texture_additions else {}),
                 **({"animation_sources": deepcopy(self.animation_sources)} if self.animation_sources else {}),
                 **({"model_sources": deepcopy(self.model_sources)} if self.model_sources else {}),
+                **({"audio_sample_sources": deepcopy(self.audio_sample_sources)} if self.audio_sample_sources else {}),
                 **({"audio_overrides": deepcopy(self.audio_overrides)} if self.audio_overrides else {}),
                 **({"audio_bank_overrides": deepcopy(self.audio_bank_overrides)} if self.audio_bank_overrides else {}),
                 **({"model_overrides": deepcopy(self.model_overrides)} if self.model_overrides else {})}
@@ -254,7 +256,7 @@ class ProjectService:
         labels = {"name": "Project name", "retail_source": "Retail source",
                   "imports": "Imported scenes", "active_scene": "Active scene",
                   "authored": "Scene and game-data edits", "actor_templates": "Actor presets",
-                  "texture_additions": "New texture slots", "texture_overrides": "Texture replacements", "model_overrides": "Model content", "audio_overrides": "Audio sequence operands", "audio_bank_overrides": "Audio bank parameters",
+                  "texture_additions": "New texture slots", "texture_overrides": "Texture replacements", "model_overrides": "Model content", "audio_overrides": "Audio sequence operands", "audio_bank_overrides": "Audio bank parameters", "audio_sample_sources": "Retained WAV inputs",
                   "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "scene_views": "Saved scene views", "model_vertex_groups": "Saved model vertex groups", "script_bookmarks": "Saved script bookmarks"}
         return [label for key, label in labels.items()
                 if digest(document.get(key)) != self.saved_sections.get(key)]
@@ -264,7 +266,7 @@ class ProjectService:
         self.saved_digest = digest(document)
         self.saved_sections = {key: digest(document.get(key)) for key in
                                ("name", "retail_source", "imports", "active_scene",
-                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_bank_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views", "model_vertex_groups", "script_bookmarks")}
+                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_bank_overrides", "audio_sample_sources", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views", "model_vertex_groups", "script_bookmarks")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):
@@ -1921,6 +1923,10 @@ class ProjectService:
         self._command(command)
 
     def _command(self, command: dict) -> None:
+        from .audio_sample_sources import COMMANDS as wav_commands, command as wav_command
+        if isinstance(command.get("type"),str) and command["type"] in wav_commands:
+            wav_command(self,command)
+            return
         from .audio_bank_authoring import COMMANDS as bank_commands, command as bank_command
         if isinstance(command.get('type'), str) and command['type'] in bank_commands:
             bank_command(self, command)
@@ -2954,6 +2960,11 @@ class ProjectService:
             raise ProjectError("Undo and redo require Edit mode")
         if not source:
             raise ProjectError("No command to " + ("undo" if field == "before" else "redo"))
+        if source[-1].get('target') == 'audio_sample_sources':
+            entry=source[-1];value=deepcopy(entry[field])
+            from .audio_sample_sources import validate_files
+            validate_files(self,value);self.audio_sample_sources=value
+            source.pop();target.append(entry);return
         if source[-1].get('target') == 'model_sources':
             entry=source[-1];value=deepcopy(entry[field])
             from .model_glb_sources import validate_files
@@ -3060,6 +3071,8 @@ class ProjectService:
         validate_files(self,self.animation_sources)
         from .model_glb_sources import validate_files as validate_model_sources
         validate_model_sources(self,self.model_sources)
+        from .audio_sample_sources import validate_files as validate_wav_sources
+        validate_wav_sources(self,self.audio_sample_sources)
         document = self._document()
         path = self.root / "project.legaia.json"
         atomic_write(path, canonical(document))
@@ -3085,6 +3098,9 @@ class ProjectService:
         from .model_glb_sources import validate_collection as model_source_collection, validate_files as model_source_files
         result.model_sources=model_source_collection(raw.get("model_sources",{}))
         model_source_files(result,result.model_sources)
+        from .audio_sample_sources import validate_collection as wav_sources,validate_files as wav_source_files
+        result.audio_sample_sources=deepcopy(raw.get("audio_sample_sources",{}))
+        wav_sources(result.audio_sample_sources);wav_source_files(result,result.audio_sample_sources)
         for item in raw["imports"]:
             if not isinstance(item, dict) or not all(isinstance(item.get(key), str) for key in ("sha256", "file", "scene")):
                 raise ProjectError("Invalid project import reference")
@@ -3791,6 +3807,7 @@ class ProjectService:
                 "model_overrides": deepcopy(self.model_overrides),
                 "audio_overrides": deepcopy(self.audio_overrides),
                 "audio_bank_overrides": deepcopy(self.audio_bank_overrides),
+                "audio_sample_sources": deepcopy(self.audio_sample_sources),
                 "authored_assets": self.authored_assets(),
                 "history": {"can_undo": bool(self.undo_stack), "can_redo": bool(self.redo_stack)},
                 "diagnostics": ["Scene viewport uses verified model poses where supported and explicit markers otherwise; scripted visibility is not reconstructed.",

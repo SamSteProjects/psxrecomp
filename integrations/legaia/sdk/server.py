@@ -162,6 +162,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["animation_preview"] = bool(self.project.disc_path)
         state["capabilities"]["audio_sequence_authoring"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["audio_bank_authoring"] = bool(self.project.disc_path and self.project.active_scene)
+        state["capabilities"]["audio_sample_source_inputs"] = bool(self.project.disc_path and self.project.active_scene)
         from .scene_preview import source_key
         try:
             state["scene_preview_source_key"] = source_key(self.project)
@@ -978,6 +979,8 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/text-json-preview", "/api/text-json-import") else 32768
+            if urlsplit(self.path).path in ('/api/audio-sample-source-review','/api/audio-sample-source-retain'):
+                request_limit = 2 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/model-face-addition-preview', '/api/model-face-addition'):
                 request_limit = 256 * 1024
             if urlsplit(self.path).path in ('/api/model-material-preview', '/api/model-material-scene-preview', '/api/model-material-apply'):
@@ -1980,6 +1983,22 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .resources import audio_bank_preview
                     self._json(200, audio_bank_preview(self.server.project, **body))
                     return
+                if route == '/api/audio-sample-source-review':
+                    from .audio_sample_sources import review
+                    if set(body)!={'asset_id','expected_entry_sha256','expected_bank_sha256','sample_index','expected_sample_sha256','expected_authoring_key','wav_base64'}:
+                        raise ProjectError('WAV source review requires exact source and input fields')
+                    self._json(200,review(self.server.project,**body));return
+                if route == '/api/audio-sample-source-retain':
+                    if set(body)!={'asset_id','expected_entry_sha256','expected_bank_sha256','sample_index','expected_sample_sha256','expected_authoring_key','wav_base64','review_key'}:
+                        raise ProjectError('WAV retention requires exact reviewed source and input fields')
+                    self.server.project.command(dict(type='retain_audio_sample_source',**body))
+                    self._json(200,self.server.state());return
+                if route in ('/api/audio-sample-sources','/api/audio-sample-source-download','/api/audio-sample-source-removal-review'):
+                    from .audio_sample_sources import library,download,review_removal
+                    fields={'expected_authoring_key'} if route=='/api/audio-sample-sources' else {'expected_authoring_key','receipt_key'}
+                    if set(body)!=fields:raise ProjectError('WAV source recovery requires exact Current input fields')
+                    function=library if route=='/api/audio-sample-sources' else download if route.endswith('-download') else review_removal
+                    self._json(200,function(self.server.project,**body));return
                 if route in ('/api/audio-bank-authoring','/api/audio-bank-review'):
                     from .audio_bank_authoring import options as bank_options, review as bank_review
                     expected = ({'asset_id','expected_entry_sha256','expected_source_key'}

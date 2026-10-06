@@ -1,5 +1,11 @@
 # Testing
 
+## Reviewed retained WAV inputs (2026-10-06)
+
+Source-qualified WAV review now creates recoverable historical input receipts through exact HTTP/command fields. Retention/removal use history and dirty tracking; Save/Open, copies and export snapshots verify the exact hash-addressed WAV bytes. Normal native Builds preserve WAV-input sidecars keyed by authored input identity, while unchanged native bank/SEQ artifacts can be reused with distinct input receipts. Frozen sidecars remain readable independently of later Current source removal and reject modified files/metadata. Retaining a WAV does not apply its candidate to game data; native sample bindings, shared bank/SEQ/sample composition and editor preview/import controls remain next.
+
+Fifteen retail-enabled source/bank/SEQ regression checks plus one frozen-input snapshot check passed. The initial HTTP size failure was fixed with dedicated bounded Review/Retain routes. Fresh before/after native Builds retained exact WAV sidecar bytes and identical bank/SEQ edits/overlay bytes/native ZIP (`d8d4dc95410712ba9fe59ec708a120c0f889dfebae20cae0cc25072582da9647`); Save/Open and Current input receipt verification passed. See [sample authoring and retained inputs](legaia-audio-sample-authoring.md). Private proof: `local-output/sdk-20260909/audio-sample-sources-20261006/`. No game launch, attachment, installation or full-disc export. The goal remains active and development stays solo.
+
 ## PCM WAV/native sample codec groundwork (2026-10-06)
 
 A source-qualified mono signed16 WAV-to-SPU-ADPCM codec now replaces a complete bounded sample prefix without changing allocation, loop/end flags, trailing bytes, VAB tables, other samples or SEQ chunks. Predictor/shift trials use closed-loop native integer history and report decoded PCM hash and lossy encoding errors. Input WAV rate is metadata only; runtime rate/pitch and instrument assignment remain unknown. Persistent sample bindings, shared bank/SEQ/sample Build composition and editor import/preview controls are still open.

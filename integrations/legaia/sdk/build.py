@@ -42,6 +42,7 @@ def authored_state_key(project) -> str:
                                 "models": getattr(project, "model_overrides", {}),
                                 **({"audio": project.audio_overrides} if getattr(project, "audio_overrides", {}) else {}),
                                 **({"audio_bank": project.audio_bank_overrides} if getattr(project, "audio_bank_overrides", {}) else {}),
+                                **({"audio_sample_sources": project.audio_sample_sources} if getattr(project,"audio_sample_sources",{}) else {}),
                                 **({"animation_sources": project.animation_sources} if getattr(project,"animation_sources",{}) else {}),
                                 **({"model_sources": project.model_sources} if getattr(project,"model_sources",{}) else {})}).encode("utf-8"))
 
@@ -1474,6 +1475,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                'runtime_status':'package_built_not_launched', 'feature_id':'placements'}
     receipt_bytes = (canonical_json(receipt, pretty=True)+'\n').encode('utf-8')
     primary_receipt = destination / 'build-receipt.json'
+    from .audio_sample_sources import preserve_build_inputs
+    preserve_build_inputs(project,destination,input_key,boundary)
     _guard_output(primary_receipt,boundary)
     if primary_receipt.exists():
         from .project import read_metadata_json
