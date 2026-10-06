@@ -1,5 +1,11 @@
 # Legaia SDK feature matrix
 
+## Sequence operand editor (2026-10-06)
+
+Audio source event selection now opens an editor with separate Retail, Current and reviewed Proposed operands. Channel and tempo fields use encoded bounds; Review/Apply/Discard, retail staging, Clear and refresh guards share the verified project command layer. Inputs/navigation lock during review; stale state withdraws proposals, and closing cancels read ownership. The source inspector and note timeline remain Retail views. Native sequence synthesis, bank/scene assignment and game playback are still unresolved.
+
+Nine retail-enabled focused Python checks, three Node contract suites and affected-module syntax checks passed. Actual browser Review/Discard, Apply/reload, no-op, Clear/Undo, invalid values, event navigation and partial inspection passed with no page errors. Final wide/400px reviewed proposal screenshots were inspected with no horizontal overflow. The browser-authored edit survived Save/Open and exact full-entry directory/ZIP native readback, with unchanged imports/other authored state. See [sequence authoring](legaia-audio-sequence-authoring.md); private evidence is `local-output/sdk-20260909/audio-sequence-editor-20261006/`. Gameplay remains deferred; development stays solo and the goal stays active.
+
 ## Persistent SEQ operands and native delivery (2026-10-06)
 
 The native audio codec now has source-qualified SDK commands, atomic Undo/Redo, dirty/authored-resource tracking, Save/Open and project-copy validation. Review preserves project state; Apply revalidates its source/state/proposal key. Restoring retail values or clearing removes the binding. Build independently encodes requested operands and preserves full native entries in both fixed overlays and composed PROT relocation, with audio-specific reports. Browser editing controls are the next integration; source/audio playback assignment and gameplay remain unverified.

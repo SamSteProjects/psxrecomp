@@ -106,3 +106,7 @@ Run `python -m unittest test_audio_sequence_authoring test_audio_sequence -v` wi
 ## Persistent audio operands and native delivery (2026-10-06)
 
 Run `python -m unittest test_audio_authoring test_audio_sequence_authoring test_audio_sequence test_build_report test_project_workflow -v` with the same retail environment. All 31 focused checks passed. Private native proofs cover exact full-entry fixed overlay and relocated PROT delivery, directory/ZIP integrity, preserved imported metadata and existing script/animation composition, and stale Build inputs after Clear/Undo. Browser editing controls are pending; these checks do not establish audible game playback. See [SEQ authoring and delivery](legaia-audio-sequence-authoring.md).
+
+## Sequence operand editor (2026-10-06)
+
+Run the Node suites `test_audio_sequence_authoring.mjs`, `test_audio_sequence.mjs` and `test_audio_note_timeline.mjs`; source/current ownership, channel/tempo proposal spans/timing, stale and late-close guards all passed. Nine retail-enabled Python command/HTTP/inspection checks passed. Private browser evidence includes actual source event selection, review/discard, Apply/reload, no-op, Clear/Undo/stale refresh, invalid values, partial inspection, final wide/400px layouts and full native delivery of the browser-authored entry. Source/other authored state is preserved. This does not verify game sequence playback. See [sequence authoring](legaia-audio-sequence-authoring.md).

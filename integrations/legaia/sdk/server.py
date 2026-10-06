@@ -821,6 +821,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/project-settings.js": ("project-settings.js", "text/javascript"),
                  "/asset-references.js": ("asset-references.js", "text/javascript"),
                  "/audio-sequence.js": ("audio-sequence.js", "text/javascript"),
+                 "/audio-sequence-authoring.js": ("audio-sequence-authoring.js", "text/javascript"),
                  "/audio-note-timeline.js": ("audio-note-timeline.js", "text/javascript"),
                  "/audio-bank.js": ("audio-bank.js", "text/javascript"),
                  "/audio-waveform.js": ("audio-waveform.js", "text/javascript"),

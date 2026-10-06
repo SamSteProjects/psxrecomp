@@ -11,7 +11,7 @@ LIMITATIONS = [
     'Times integrate declared SEQ ticks and tempo changes; they do not establish runtime playback cadence, duration or loop behavior.',
     'Encoded note/program/controller operands do not resolve waveform instruments or scene playback assignments.',
     'Unknown/truncated events stop decoding at their source record; no end-of-track or event length is invented.',
-    'Source sequence inspection is read-only; waveform synthesis, playback and audio authoring are not implemented.',
+    'Source sequence inspection is read-only; fixed-width SDK edits use the separate operand editor. Waveform synthesis and sequence playback remain incomplete.',
 ]
 
 
