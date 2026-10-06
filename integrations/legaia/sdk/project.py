@@ -123,6 +123,7 @@ class ProjectService:
         self.texture_additions: dict[str, dict] = {}
         self.model_overrides: dict[str, dict] = {}
         self.audio_overrides: dict[str, dict] = {}
+        self.audio_bank_overrides: dict[str, dict] = {}
         self.animation_sources: dict[str, dict] = {}
         self.model_sources: dict[str, dict] = {}
         self.active_scene: str | None = None
@@ -214,6 +215,7 @@ class ProjectService:
                 **({"animation_sources": deepcopy(self.animation_sources)} if self.animation_sources else {}),
                 **({"model_sources": deepcopy(self.model_sources)} if self.model_sources else {}),
                 **({"audio_overrides": deepcopy(self.audio_overrides)} if self.audio_overrides else {}),
+                **({"audio_bank_overrides": deepcopy(self.audio_bank_overrides)} if self.audio_bank_overrides else {}),
                 **({"model_overrides": deepcopy(self.model_overrides)} if self.model_overrides else {})}
 
     @property
@@ -252,7 +254,7 @@ class ProjectService:
         labels = {"name": "Project name", "retail_source": "Retail source",
                   "imports": "Imported scenes", "active_scene": "Active scene",
                   "authored": "Scene and game-data edits", "actor_templates": "Actor presets",
-                  "texture_additions": "New texture slots", "texture_overrides": "Texture replacements", "model_overrides": "Model content", "audio_overrides": "Audio sequence operands",
+                  "texture_additions": "New texture slots", "texture_overrides": "Texture replacements", "model_overrides": "Model content", "audio_overrides": "Audio sequence operands", "audio_bank_overrides": "Audio bank parameters",
                   "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "scene_views": "Saved scene views", "model_vertex_groups": "Saved model vertex groups", "script_bookmarks": "Saved script bookmarks"}
         return [label for key, label in labels.items()
                 if digest(document.get(key)) != self.saved_sections.get(key)]
@@ -262,7 +264,7 @@ class ProjectService:
         self.saved_digest = digest(document)
         self.saved_sections = {key: digest(document.get(key)) for key in
                                ("name", "retail_source", "imports", "active_scene",
-                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views", "model_vertex_groups", "script_bookmarks")}
+                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_bank_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views", "model_vertex_groups", "script_bookmarks")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):
@@ -1919,6 +1921,10 @@ class ProjectService:
         self._command(command)
 
     def _command(self, command: dict) -> None:
+        from .audio_bank_authoring import COMMANDS as bank_commands, command as bank_command
+        if isinstance(command.get('type'), str) and command['type'] in bank_commands:
+            bank_command(self, command)
+            return
         from .audio_authoring import COMMANDS as audio_commands, command as audio_command
         if isinstance(command.get('type'), str) and command['type'] in audio_commands:
             audio_command(self, command)
@@ -3007,7 +3013,7 @@ class ProjectService:
             collection, identifier = self.actor_selection_sets, entry['selection_set_id']
         elif entry.get('target') == 'actor_drafts':
             collection, identifier = self.actor_drafts, entry['entity_id']
-        elif entry.get("target") in ("texture_overrides", "texture_additions", "model_overrides", "audio_overrides"):
+        elif entry.get("target") in ("texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_bank_overrides"):
             collection, identifier = getattr(self, entry['target']), entry["asset_id"]
         else:
             collection = self.actor_templates if entry.get("target") == "actor_templates" else self.overrides
@@ -3027,6 +3033,8 @@ class ProjectService:
     def save(self) -> Path:
         from .audio_authoring import validate_collection as validate_audio
         validate_audio(self)
+        from .audio_bank_authoring import validate_collection as validate_banks
+        validate_banks(self)
         from .texture_slots import validate_collection
         validate_collection(self)
         from .animation_record_ledger import validate as validate_animation_records
@@ -3290,6 +3298,9 @@ class ProjectService:
         result.audio_overrides = deepcopy(raw.get("audio_overrides", {}))
         from .audio_authoring import validate_collection as validate_audio
         validate_audio(result)
+        result.audio_bank_overrides = deepcopy(raw.get("audio_bank_overrides", {}))
+        from .audio_bank_authoring import validate_collection as validate_banks
+        validate_banks(result)
         from .allocated_animation_assignment import validate_binding
         for identifier,components in result.overrides.items():
             if 'ActorAllocatedAnimation' in components:
@@ -3610,11 +3621,21 @@ class ProjectService:
                             'scene_id':scene_id, 'source_scene':self.imports[scene_id]['scene']['name'],
                             'changes':[{'tmd-face-addition-v1':'TMD count-changing face addition','tmd-face-removal-v1':'TMD count-changing face removal','tmd-content-v3':'TMD normal-reference/content replacement','tmd-content-v2':'TMD material/content replacement','tmd-content-v1':'TMD content replacement'}.get(binding['format'],'TMD shape replacement')], 'authored':deepcopy(binding),
                             'source_record':deepcopy(asset['source_record'])})
+        for identifier, binding in sorted(self.audio_bank_overrides.items()):
+            if identifier in self.audio_overrides:
+                continue
+            records.append(dict(id=identifier, kind="audio", name="VAB "+identifier.rsplit("/",1)[-1],
+                                scene_id=binding["source_scene_id"], source_scene="Global source audio",
+                                changes=[f"Bank parameters: {len(binding['edits'])} fields"],
+                                authored=deepcopy(binding), source_record=deepcopy(binding["source_record"])))
         for identifier, binding in sorted(self.audio_overrides.items()):
             scene_id = binding['source_scene_id']
-            records.append(dict(id=identifier, kind='audio', name='SEQ '+identifier.rsplit('/',1)[-1],
+            bank_binding = self.audio_bank_overrides.get(identifier)
+            records.append(dict(id=identifier, kind='audio', name=('VAB + SEQ ' if bank_binding else 'SEQ ')+identifier.rsplit('/',1)[-1],
                                 scene_id=scene_id, source_scene='Global source audio',
-                                changes=[f"Sequence operands: {len(binding['edits'])} events"],
+                                changes=[f"Sequence operands: {len(binding['edits'])} events"]+
+                                        ([f"Bank parameters: {len(bank_binding['edits'])} fields"] if bank_binding else []),
+                                **({'authored_bank':deepcopy(bank_binding)} if bank_binding else {}),
                                 authored=deepcopy(binding), source_record=deepcopy(binding['source_record'])))
         for identifier, binding in sorted(self.texture_overrides.items()):
             scene_id = binding["source_scene_id"]
@@ -3769,6 +3790,7 @@ class ProjectService:
                 "actor_drafts": deepcopy(self.actor_drafts),
                 "model_overrides": deepcopy(self.model_overrides),
                 "audio_overrides": deepcopy(self.audio_overrides),
+                "audio_bank_overrides": deepcopy(self.audio_bank_overrides),
                 "authored_assets": self.authored_assets(),
                 "history": {"can_undo": bool(self.undo_stack), "can_redo": bool(self.redo_stack)},
                 "diagnostics": ["Scene viewport uses verified model poses where supported and explicit markers otherwise; scripted visibility is not reconstructed.",

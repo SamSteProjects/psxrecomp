@@ -161,6 +161,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["texture_png_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["animation_preview"] = bool(self.project.disc_path)
         state["capabilities"]["audio_sequence_authoring"] = bool(self.project.disc_path and self.project.active_scene)
+        state["capabilities"]["audio_bank_authoring"] = bool(self.project.disc_path and self.project.active_scene)
         from .scene_preview import source_key
         try:
             state["scene_preview_source_key"] = source_key(self.project)
@@ -1977,6 +1978,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Bank inspection requires exact source identity and freshness fields')
                     from .resources import audio_bank_preview
                     self._json(200, audio_bank_preview(self.server.project, **body))
+                    return
+                if route in ('/api/audio-bank-authoring','/api/audio-bank-review'):
+                    from .audio_bank_authoring import options as bank_options, review as bank_review
+                    expected = ({'asset_id','expected_entry_sha256','expected_source_key'}
+                                if route.endswith('-authoring') else
+                                {'asset_id','expected_entry_sha256','expected_authoring_key','edits'})
+                    if set(body) != expected:
+                        raise ProjectError('Bank authoring requires exact source and reviewed freshness fields')
+                    self._json(200, (bank_options if route.endswith('-authoring') else bank_review)(self.server.project, **body))
                     return
                 if route in ('/api/audio-sequence-authoring','/api/audio-sequence-review'):
                     from .audio_authoring import options as audio_options, review as audio_review

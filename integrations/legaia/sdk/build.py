@@ -41,6 +41,7 @@ def authored_state_key(project) -> str:
                                 "texture_additions": getattr(project, "texture_additions", {}),
                                 "models": getattr(project, "model_overrides", {}),
                                 **({"audio": project.audio_overrides} if getattr(project, "audio_overrides", {}) else {}),
+                                **({"audio_bank": project.audio_bank_overrides} if getattr(project, "audio_bank_overrides", {}) else {}),
                                 **({"animation_sources": project.animation_sources} if getattr(project,"animation_sources",{}) else {}),
                                 **({"model_sources": project.model_sources} if getattr(project,"model_sources",{}) else {})}).encode("utf-8"))
 
@@ -131,6 +132,7 @@ def package_change_kinds(edits) -> list[str]:
         'script-branch-target-only': 'script branch destinations',
         'worldmap-menu-record-only': 'world-map landmarks',
         'audio-SEQ-fixed-operands-only': 'native audio sequence operands',
+        'audio-VAB-fixed-parameters-only': 'native audio bank parameters',
         'model-pack-topology-relocation': 'model topology and shared pack edits',
         'model-pack-content-relocation': 'model content exceeding compressed source capacity',
         'animation-bank-allocation-relocation': 'allocated animation records',
@@ -214,6 +216,8 @@ def build_report(audit) -> dict:
                         "scope": change.get("scope", "initial-man-placement-only"),
                         **({"event_offset": change["event_offset"], "entry_byte_offset": change["entry_byte_offset"], "byte_length": change["byte_length"]}
                            if change.get("scope") == "audio-SEQ-fixed-operands-only" else {}),
+                        **({key:change[key] for key in ("bank_byte_offset","entry_byte_offset","byte_length","signed","slot","page","index") if key in change}
+                           if change.get("scope") == "audio-VAB-fixed-parameters-only" else {}),
                         **({'composition_changes': deepcopy(change['composition_changes'])}
                            if 'composition_changes' in change else {})})
     return {"schema_version": "legaia.build-report.v1", "changes": changes,
@@ -770,7 +774,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         worldmap_overlays, worldmap_changes = prepare_worldmap_overlay(project, _image, disc_hash)
         overlays.extend(worldmap_overlays)
         audit_edits.extend(worldmap_changes)
-        from .audio_authoring import prepare_overlays as prepare_audio_overlays
+        from .audio_composition import prepare_overlays as prepare_audio_overlays
         audio_overlays, audio_changes = prepare_audio_overlays(project, _image, archive)
         overlays.extend(audio_overlays)
         audit_edits.extend(audio_changes)
@@ -1360,7 +1364,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         description = 'Private source-bound model shapes and optional authored scene data.'
         feature_description = 'Apply verified model coordinate edits and other packaged overrides; model topology and materials remain source-owned.'
     change_kinds = package_change_kinds(audit_edits)
-    if len(change_kinds) > 1 or any(kind in change_kinds for kind in ('native audio sequence operands', 'animation channels', 'source collision walls', 'source floor selectors', 'source floor heights', 'source region bounds', 'other audited scene data')):
+    if len(change_kinds) > 1 or any(kind in change_kinds for kind in ('native audio sequence operands', 'native audio bank parameters', 'animation channels', 'source collision walls', 'source floor selectors', 'source floor heights', 'source region bounds', 'other audited scene data')):
         package_suffix = ' authored scene data'
         feature_name = 'Authored scene data'
     if change_kinds:

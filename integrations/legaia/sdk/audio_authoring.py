@@ -1,5 +1,5 @@
 """Persistent source-qualified SEQ operands and raw native PROT delivery."""
-from copy import deepcopy
+from copy import deepcopy, copy
 from hashlib import sha256
 from importer.audio_catalog import read_audio_sequence, decode_audio_entry
 from importer.audio_sequence import inspect_sequence
@@ -83,6 +83,8 @@ def _current(project, asset_id, entry_sha256):
         bound_source, current, bound_record, _ = read(project, asset_id, binding)
         if bound_source != body or bound_record != record:
             raise ProjectError('Audio override no longer refers to the same global source entry')
+    from .audio_composition import read_entry
+    current = read_entry(project, asset_id, body)
     return body, current, sequence, record, binding
 
 
@@ -102,6 +104,7 @@ def options(project, asset_id, expected_entry_sha256, expected_source_key):
                 source_record=record, current_entry_sha256=_hash(current),
                 current_sequence_sha256=_hash(current[start:start+size]),
                 binding_source_scene_id=binding['source_scene_id'] if binding else project.active_scene,
+                bank_authored=asset_id in project.audio_bank_overrides,
                 authored_edits=deepcopy(binding['edits']) if binding else [],
                 retail=source_report, current=current_report, max_edits=MAX_EDITS,
                 project_changed=False, runtime_state='not_observed')
@@ -111,8 +114,13 @@ def review(project, asset_id, expected_entry_sha256, expected_authoring_key, edi
     if project.mode != 'edit' or expected_authoring_key != source_key(project):
         raise ProjectError('Audio authored state changed or is not in Edit mode; inspect again')
     body, current, sequence, record, binding = _current(project, asset_id, expected_entry_sha256)
-    candidate, audit = replace_audio_entry_sequence(body, current,
-        expected_source_sha256=_hash(body), expected_current_sha256=_hash(current), edits=edits)
+    start, size = record['sequence_offset'], record['sequence_size_bytes']
+    end = start + size
+    isolated = body[:start] + current[start:end] + body[end:]
+    changed, audit = replace_audio_entry_sequence(body, isolated,
+        expected_source_sha256=_hash(body), expected_current_sha256=_hash(isolated), edits=edits)
+    candidate = current[:start] + changed[start:end] + current[end:]
+    audit.update(before_entry_sha256=_hash(current), after_entry_sha256=_hash(candidate))
     merged = {e['event_offset']: deepcopy(e) for e in (binding['edits'] if binding else [])}
     merged.update({e['event_offset']: deepcopy(e) for e in edits})
     final_edits = _normalise(inspect_sequence(sequence), list(merged.values()))
@@ -120,12 +128,13 @@ def review(project, asset_id, expected_entry_sha256, expected_authoring_key, edi
         raise ProjectError('Audio entry exceeds 256 authored source events')
     after = (dict(format='seq-operands-v1', source_scene_id=binding['source_scene_id'] if binding else project.active_scene,
                   source_record=record, edits=final_edits) if final_edits else None)
-    if after:
-        _, reconstructed, _, _ = read(project, asset_id, after)
-        if reconstructed != candidate:
-            raise ProjectError('Composed audio operands differ from their native reconstruction')
-    elif candidate != body:
-        raise ProjectError('Cleared audio operands do not restore retail bytes')
+    from .audio_composition import read_entry
+    view = copy(project)
+    view.audio_overrides = deepcopy(project.audio_overrides)
+    if after:view.audio_overrides[asset_id] = after
+    else:view.audio_overrides.pop(asset_id, None)
+    if read_entry(view, asset_id, body) != candidate:
+        raise ProjectError('Composed audio operands differ from their native reconstruction')
     if source_key(project) != expected_authoring_key:
         raise ProjectError('Audio state changed while reviewing operands')
     report = dict(schema_version='legaia.audio-sequence-review.v1', asset_id=asset_id,

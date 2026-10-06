@@ -1,5 +1,11 @@
 # Testing
 
+## Persistent VAB parameters and shared bank/SEQ delivery (2026-10-06)
+
+Source-qualified bank parameter editing now has Retail/Current metadata, reviewed atomic commands, history, dirty tracking, Save/Open, project copies, Build input snapshots and native audits. Bank and sequence bindings remain independent; one composed native PROT entry preserves both families. Clear or retail restoration of either family preserves the other, and cross-family changes invalidate old reviews. Shared authored audio appears once in the project asset list. Empty bank metadata preserves legacy document and Build input identity.
+
+The 26 regression checks and six focused bank/composition checks passed; two affected lifecycle/HTTP checks were rerun after integration cleanup. Both fresh fixed-span and relocated Builds passed independent full-entry directory/ZIP readback with all 27 bank fields, sequence edits and prior authored changes preserved. Actual sequence-editor Review/Apply/Clear against a bank-authored project passed with no page errors. The bank editing GUI remains the next step; these HTTP/command and Build capabilities do not establish audible effects, instrument assignment or runtime playback. See [bank authoring and shared delivery](legaia-audio-bank-authoring.md). Private proof: `local-output/sdk-20260909/audio-bank-native-20261006/`. No game launch, attachment, installation or full-disc export. The broader goal stays active and work remains solo.
+
 ## Running the tests
 
 ```sh
