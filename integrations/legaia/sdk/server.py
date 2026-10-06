@@ -1740,6 +1740,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .environment_group import review
                     self._json(200,review(self.server.project,body['entity_id'],body['entity_ids'],body['delta']))
                     return
+                if route == '/api/floor-rectangle-review':
+                    if set(body)!={'entity_id','rectangle'}:raise ProjectError('Floor Review requires scene and rectangle only')
+                    from .floor_rectangle import review
+                    self._json(200,review(self.server.project,body['entity_id'],body['rectangle']))
+                    return
                 if route == '/api/collision-rectangle-review':
                     if set(body) not in ({'entity_id','rectangle'},{'entity_id','rectangle','cell_edits'}):raise ProjectError('Wall rectangle review requires scene, rectangle and optional quadrant edits only')
                     if 'cell_edits' in body and not isinstance(body['cell_edits'],list):raise ProjectError('Wall paint requires a quadrant edit list')

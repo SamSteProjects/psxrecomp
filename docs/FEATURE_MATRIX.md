@@ -1,5 +1,14 @@
 # Legaia SDK feature matrix
 
+## 2026-10-06: native floor-selector authoring backend
+
+A distinct `FloorTiers` scene component now authors existing MAN height selectors in the MAP low nibble, independently of wall quadrants. The bounded floor rectangle service exposes read-only source-qualified Review and sealed Apply, supporting tier 0..15 or restoration to each selected retail value. Canonical floor rows/columns are 0..127, including row zero; the wall-biased row/Z convention is not reused. At most 4096 combined authored selectors are accepted. Imported MAP/MAN disc identity, MAP hash, LUT values and MAN provenance bind the Review; changed inputs or project state reject Apply.
+
+Normal commands preserve other scene components, support one Undo step, dirty tracking, Save/Open and component review. Ordinary Build and the shared MAP composer merge low-nibble changes with wall high-nibble edits while rejecting overlapping edits; audits identify floor masks and before/after tiers. Existing LUT entries, ramp flags/records and other native spans are not changed. Shared selectors can affect neighboring surfaces and placed objects; complete live floor heights and gameplay behavior remain unverified.
+
+Validation: four focused Python floor cases and seven existing wall rectangle/paint cases passed. Private retail HTTP Review/Apply, stale rectangle rejection, one Undo step, Undo/Redo and Save/Open passed. Independent full MAP construction matched both ordinary Build and the shared composer exactly, including wall/floor edits in the same byte. Native MAP SHA-256 `77fdc3c86a4f14bbdd7948a4734d916a6358aa23c2cf24ae72ae14666f387820`; package SHA-256 `2c21fc94ca8259ad88dd988b488e7be7e0914d53b6dc938d08443dffb30f0392`. Evidence: `local-output/sdk-20260909/floor-authoring-20261006/proof.json`. The shared composer was exercised with Town01, not with an actual appended-NPC or streaming scene. Status: writable SDK backend; editor controls and Current authored terrain/placement preview are pending next. No game launch, runtime attachment or installation occurred. The full SDK goal remains incomplete.
+
+
 ## 2026-10-06: repeated wall-pattern placement
 
 Source wall patterns now support repeated rows/columns with explicit gaps in whole 128-unit native grid cells. Stage repeated pattern expands the current authored operations into one Current-baseline draft, preserving quadrant parity and all untouched gap bits. A fresh Review is required before the single atomic Apply. Counts do not change the draft until Stage; repeating again repeats the newly staged pattern. The expanded pattern remains downloadable in the existing portable format and supports rotation/mirroring.

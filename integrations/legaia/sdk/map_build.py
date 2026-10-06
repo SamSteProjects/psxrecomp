@@ -7,9 +7,9 @@ from .project import ProjectError
 
 
 def prepare_map_patch(project, scene_id, components, archive):
-    if not isinstance(components,dict) or not components or set(components)-{'Environment','Collision'}:
+    if not isinstance(components,dict) or not components or set(components)-{'Environment','Collision','FloorTiers'}:
         raise ProjectError('MAP composition supports scenery and collision only')
-    for key,validator in (('Environment',project._validate_environment),('Collision',project._validate_collision)):
+    for key,validator in (('Environment',project._validate_environment),('Collision',project._validate_collision),('FloorTiers',project._validate_floor_tiers)):
         if key in components:
             validator(scene_id,components[key])
     scene=project.imports[scene_id]['scene']['name']
@@ -28,10 +28,19 @@ def prepare_map_patch(project, scene_id, components, archive):
                 raise ProjectError('Collision wall edit overlaps scenery changes')
             merged[offset]=(merged[offset]&~mask)|(wall_data[offset]&mask)
         changed=bytes(merged)
+    floors=[]
+    if 'FloorTiers' in components:
+        from importer.floor_authoring import patch_floor_tiers
+        binding=components['FloorTiers'];floor_data,floors=patch_floor_tiers(original,binding['source_sha256'],binding['edits']);merged=bytearray(changed)
+        for row in floors:
+            offset=row['byte_offset']
+            if (changed[offset]^original[offset])&15:raise ProjectError('Floor selector overlaps another MAP edit')
+            merged[offset]=(merged[offset]&0xf0)|(floor_data[offset]&15)
+        changed=bytes(merged)
     if len(changed)!=len(original):
         raise ProjectError('MAP composition changed its source span size')
     return dict(offset=entry.start_lba*2048,payload=changed,expected_sha256=sha256(original).hexdigest()),dict(
-        scene_id=scene_id,map_entry_index=entry.index,byte_length=len(changed),environment_changes=environment,collision_changes=walls,
+        scene_id=scene_id,map_entry_index=entry.index,byte_length=len(changed),environment_changes=environment,collision_changes=walls,floor_changes=floors,
         source_sha256=sha256(original).hexdigest(),result_sha256=sha256(changed).hexdigest())
 
 

@@ -490,6 +490,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     scene_edits: dict[str, dict] = {}
     environment_edits = {}
     collision_edits = {}
+    floor_edits = {}
     region_edits = {}
     trigger_edits = {}
     trigger_script_edits = {}
@@ -541,6 +542,10 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             components = {k:v for k,v in components.items() if k != 'TriggerCells'}
             if not components:
                 continue
+        if isinstance(components,dict) and 'FloorTiers' in components:
+            project._validate_floor_tiers(identifier,components['FloorTiers']);floor_edits[identifier]=components['FloorTiers']
+            components={k:v for k,v in components.items() if k!='FloorTiers'}
+            if not components:continue
         if isinstance(components, dict) and "Collision" in components:
             project._validate_collision(identifier, components["Collision"])
             collision_edits[identifier] = components["Collision"]
@@ -709,7 +714,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             "model_selectors": {}, "branches": {}})
     # Reimport before using authored locators: modified/stale metadata cannot
     # redirect an otherwise disc-identity-valid overlay onto unrelated bytes.
-    for scene_id in sorted(set(scene_edits) | set(texture_edits) | set(environment_edits) | set(animation_edits) | animation_ledgers | set(collision_edits) | set(region_edits)) or project.imports:
+    for scene_id in sorted(set(scene_edits) | set(texture_edits) | set(environment_edits) | set(animation_edits) | animation_ledgers | set(collision_edits) | set(floor_edits) | set(region_edits)) or project.imports:
         document = project.imports[scene_id]
         fresh = import_scene(project.disc_path, document["scene"]["name"])
         if canonical_json(document) != canonical_json(fresh):
@@ -773,7 +778,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                                  "payload": payload, "sha256": _hash(payload), "expected_sha256": patch['expected_sha256'],
                                  'carrier': metadata['carriers'][index], **evidence})
             audit_edits.extend({**change, "scene": scene, "semantic_id": change["animation_id"]} for change in changes)
-        for scene_id in sorted(set(environment_edits) | set(collision_edits) | set(region_edits) | set(trigger_edits) | set(trigger_script_edits)):
+        for scene_id in sorted(set(environment_edits) | set(collision_edits) | set(floor_edits) | set(region_edits) | set(trigger_edits) | set(trigger_script_edits)):
             binding = environment_edits.get(scene_id)
             from importer.environment_authoring import patch_environment_overrides
             from importer.environment import load_environment_placements
@@ -797,6 +802,15 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                         raise BuildError("Collision wall edit overlaps a scenery edit")
                     merged[offset] = (merged[offset] & ~mask) | (wall_data[offset] & mask)
                 changed = bytes(merged)
+            floor_changes=[]
+            if scene_id in floor_edits:
+                from importer.floor_authoring import patch_floor_tiers
+                floors=floor_edits[scene_id];floor_data,floor_changes=patch_floor_tiers(original,floors['source_sha256'],floors['edits']);merged=bytearray(changed)
+                for row in floor_changes:
+                    offset=row['byte_offset']
+                    if (changed[offset]^original[offset])&15:raise BuildError('Floor selector overlaps another MAP edit')
+                    merged[offset]=(merged[offset]&0xf0)|(floor_data[offset]&15)
+                changed=bytes(merged)
             region_changes = []
             if scene_id in region_edits:
                 from importer.region_authoring import patch_field_regions
@@ -831,6 +845,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 else:
                     allowed.update(range(row['byte_offset'], row['byte_offset']+2))
             allowed.update(row["byte_offset"] for row in wall_changes)
+            allowed.update(row["byte_offset"] for row in floor_changes)
             allowed.update(row["byte_offset"] for row in region_changes)
             allowed.update(row["byte_offset"] for row in trigger_changes)
             allowed.update(row["byte_offset"] for row in script_trigger_changes)
@@ -840,7 +855,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             disc_user_size = (_image.size // 2352) * 2048
             if _image.read_user(0, location, len(original), disc_user_size) != original:
                 raise BuildError("Environment MAP overlay differs from its original disc span")
-            if changes or wall_changes or region_changes or trigger_changes or script_trigger_changes:
+            if changes or wall_changes or floor_changes or region_changes or trigger_changes or script_trigger_changes:
                 overlays.append({"scene":scene, "offset":location, "size":len(changed),
                                  "file":f"assets/{scene}-environment.map", "payload":changed,
                                  "sha256":_hash(changed), "expected_sha256":_hash(original)})
@@ -850,6 +865,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                                        if 'allocation' in row else f"environment://{scene}/field-map/records/{row['record_index']:03d}"),
                         "scope":row.get('scope', 'shared-MAP-transform-only')})
                 audit_edits.extend({**row, "scene": scene, "semantic_id": f"collision://{scene}/field-map"} for row in wall_changes)
+                audit_edits.extend({**row, "scene": scene, "semantic_id": f"collision://{scene}/field-map"} for row in floor_changes)
                 audit_edits.extend({**row, "scene": scene, "semantic_id": row["region_id"]} for row in region_changes)
                 audit_edits.extend({**row, "scene": scene, "semantic_id": row["trigger_id"]} for row in trigger_changes)
                 audit_edits.extend({**row, "scene": scene, "semantic_id": row["trigger_id"]} for row in script_trigger_changes)

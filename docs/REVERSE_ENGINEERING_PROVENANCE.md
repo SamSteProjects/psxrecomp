@@ -517,3 +517,8 @@ Positive source-Y quarter turns rotate X/Z displacement as (dx,dz)→(dz,-dx), a
 ## Source-normal direction diagnostic — 2026-10-02
 
 Qualified raw normal references address eight-byte signed XYZ SVECTOR rows. Independent raw table/packet walking matches119 Town01 models and all404lit/14,321unlit triangles. Invalid packet references withdraw their normal visualization while existing normal-table structural errors still reject the source. A prior reference1→2 at model0009 byte2940 selects identical vectors and correctly produces no visual difference; a separate2→3 probe changes only triangles116/117. XYZ3332 affects114/115. The browser opposite-direction normal0 edit changes only3332/3333/3335 relative to its saved authored input. Reopened package retains material bytes131/138 and reference2940, preserves neighboring decoded members/padding and154,547 compressed capacity. Actual GPU sourceY reflection gives purple127/0/127 against default255/0/0; pick identity is unchanged. This is direction inspection, not retail lighting or pose-normal reconstruction. See [workflow](legaia-model-source-normals.md).
+
+
+## 2026-10-06: native floor selectors
+
+The independent source MAP low-nibble serializer is based on directly inspected pinned `field_objects.rs`, `scene/scene_ty.rs::field_floor_height_lut` and `world/field_elevation.rs` at `d6e64c68ede25813d35db20980da82a1a025549b`. The pin is unchanged. The cited Ghidra 80019278 text is absent from that Git tree and was not used as directly inspected evidence. Native selector/LUT structure and ramp separation are reference evidence; private retail full-byte Build equality establishes serializer delivery, not live movement or complete scene height parity. See [floor authoring](legaia-floor-authoring.md).

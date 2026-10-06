@@ -104,7 +104,7 @@ class ProjectService:
     FORMAT = "legaia.project.v1"
     REVIEW_COMPONENTS = frozenset({"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions",
                                   "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches",
-                                  "Environment", "AnimationChannels", "AnimationRecords", "Collision", "RegionBounds", "TriggerCells", "TriggerScripts"})
+                                  "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "RegionBounds", "TriggerCells", "TriggerScripts"})
 
     def __init__(self, root: Path, name: str = "Legaia project") -> None:
         self.root = root.resolve()
@@ -609,6 +609,12 @@ class ProjectService:
         if not isinstance(value, dict) or set(value) != {"source_sha256", "edits"}:
             raise ProjectError("Collision override requires source SHA256 and wall edits")
         patch_collision_walls(self._environment_source(identifier), value["source_sha256"], value["edits"])
+
+    def _validate_floor_tiers(self, identifier: str, value: dict) -> None:
+        from importer.floor_authoring import patch_floor_tiers
+        if not isinstance(identifier,str) or identifier not in self.imports:raise ProjectError('Floor owner must be an imported scene')
+        if not isinstance(value,dict) or set(value)!={'source_sha256','edits'}:raise ProjectError('Floor override requires source SHA256 and selector edits only')
+        patch_floor_tiers(self._environment_source(identifier),value['source_sha256'],value['edits'])
 
     def _validate_region_bounds(self, identifier: str, value: dict) -> dict | None:
         from importer.region_authoring import patch_field_regions, region_authoring_options
@@ -2187,6 +2193,10 @@ class ProjectService:
             from .environment_group import apply
             apply(self,command)
             return
+        if command.get('type')=='apply_floor_rectangle':
+            from .floor_rectangle import apply
+            apply(self,command)
+            return
         if command.get('type')=='apply_collision_rectangle':
             from .collision_rectangle import apply
             apply(self,command)
@@ -2268,6 +2278,21 @@ class ProjectService:
                     self.overrides[identifier] = after
                 self.undo_stack.append({'entity_id': identifier, 'before': before, 'after': deepcopy(after)})
                 self.redo_stack.clear()
+            return
+        if command.get('type') in ('set_floor_tiers', 'clear_floor_tiers'):
+            setting=command['type']=='set_floor_tiers'
+            if set(command)!=({'type','entity_id','value'} if setting else {'type','entity_id'}):raise ProjectError('Floor commands require owner and selector override only')
+            identifier=command['entity_id']
+            if not isinstance(identifier,str) or identifier not in self.imports:raise ProjectError('Floor owner must be an imported scene')
+            before=deepcopy(self.overrides.get(identifier));after=deepcopy(before or {})
+            if setting:
+                value=deepcopy(command['value']);self._validate_floor_tiers(identifier,value);after['FloorTiers']=value
+            else:after.pop('FloorTiers',None)
+            after=after or None
+            if before!=after:
+                if after is None:self.overrides.pop(identifier,None)
+                else:self.overrides[identifier]=after
+                self.undo_stack.append({'entity_id':identifier,'before':before,'after':deepcopy(after)});self.redo_stack.clear()
             return
         if command.get("type") in ("set_collision_walls", "clear_collision_walls"):
             setting = command["type"] == "set_collision_walls"
@@ -2980,7 +3005,7 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements"}:
                 raise ProjectError("Unsupported authored component")
             if 'WorldMapPlacements' in components:
                 from .worldmap_placements import validate
@@ -3007,6 +3032,9 @@ class ProjectService:
                 value = result._validate_trigger_cells(identifier, components['TriggerCells'])
                 if value is not None:
                     result.overrides.setdefault(identifier, {})['TriggerCells'] = value
+            if "FloorTiers" in components:
+                result._validate_floor_tiers(identifier,components['FloorTiers'])
+                result.overrides.setdefault(identifier,{})['FloorTiers']=deepcopy(components['FloorTiers'])
             if "Collision" in components:
                 result._validate_collision(identifier, components["Collision"])
                 result.overrides.setdefault(identifier, {})["Collision"] = deepcopy(components["Collision"])
@@ -3345,6 +3373,7 @@ class ProjectService:
                 authored={'WorldMapMenu': deepcopy(worldmap)}))
         for scene_id, document in sorted(self.imports.items()):
             environment = self.overrides.get(scene_id, {}).get("Environment")
+            floor_tiers = self.overrides.get(scene_id, {}).get("FloorTiers")
             collision = self.overrides.get(scene_id, {}).get("Collision")
             scene_changes, scene_authored = [], {}
             animation_records = self.overrides.get(scene_id,{}).get('AnimationRecords')
@@ -3355,6 +3384,9 @@ class ProjectService:
             if environment:
                 scene_changes.append(f"Scenery transforms: {len(environment.get('edits', []))} shared records, {len(environment.get('instances', []))} individual cells")
                 scene_authored["Environment"] = deepcopy(environment)
+            if floor_tiers:
+                scene_changes.append(f"Floor tiers: {len(floor_tiers['edits'])} authored selectors")
+                scene_authored['FloorTiers']=deepcopy(floor_tiers)
             if collision:
                 scene_changes.append(f"Collision walls: {len(collision['edits'])} authored bits")
                 scene_authored["Collision"] = deepcopy(collision)
