@@ -1,5 +1,37 @@
 # Legaia SDK validation plan
 
+## 2026-10-06 checkpoint: positive uniform model scale
+
+Fixed-layout model GLB imports now bake positive uniform node and parent scale
+through TRS or uniformly scaled affine matrices. Model-specific transform
+composition multiplies child translations by parent scale before rotation, and
+bakes composed scale into represented positions. Raw normal magnitudes stay
+intact; normals use only the composed rotation. Local and composed scales are
+bounded 1/1024..1024, alongside the existing native signed-i16, alias, topology,
+source ownership and capacity checks. Zero/negative TRS scales, nonuniform scale,
+shear, reflection and perspective reject. Animation GLB retains unit scale.
+
+Validation: 44 focused Python checks and both model GLB Node checks passed.
+The actual resource browser completed Review/Pose/Return/Apply for a retail model
+with scaled parent matrix, fractional object scale and translated child. Exact
+independent native calculations covered all represented positions, and its
+44 lit normal operands stayed intact. Identity-scale no-op, native
+material-face qualification, nonuniform and excessive scale rejection, wrong
+Review and stale binding rejection passed. Ordinary native authoring remained one
+history step, with exact Undo/Redo and Save/Open.
+
+Normal Build `0619403f0e09be22` package SHA-256:
+`9b5d470ac05ab943d248b5abfc6dbad081a553deefb240f85e79f80d684f935d`.
+Independent native model readback matched
+`c9c6464c58d7616929443da00bbe29bbd75e7f8c83a9d1b2dc30346819f9cf46` exactly; neighboring
+decoded bytes, imported metadata and retail source remained unchanged.
+Evidence: `local-output/sdk-20260909/model-glb-uniform-scale-20261006/proof.json`,
+`browser-proof.json`, `proposed-model.png` and `review-returned.png`.
+No game launched. Scene placement, native animation timing and gameplay lighting
+are separate concerns; gameplay verification remains deferred. Full SDK goal
+remains active, including nonuniform scale, general skinning and reported gaps.
+
+
 ## 2026-10-06 checkpoint: fixed-layout model rigid hierarchy baking
 
 Static rigid GLB object transforms and parent groups now bake into existing native

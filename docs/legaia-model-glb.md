@@ -732,10 +732,34 @@ Unlit sentinel attributes, unrepresented native vector slots, padding, packet
 layout and opaque bytes remain intact. Display NORMAL remains ignored. Aliased
 corners must agree after transformation and source-domain quantization.
 
-Scale, shear, reflection, perspective, skinning, morphs, animation, cycles,
+Nonuniform scale, shear, reflection, perspective, skinning, morphs, animation, cycles,
 multiple-parent trees, detached nodes and unowned meshes reject. Rotating lit
 objects with an old profile that cannot author stored normals rejects; unlit
 legacy objects and translation-only imports retain their supported field scope.
 Use Review, inspect the proposed model, close to Return, then Apply. Undo/Redo,
 Save/Open and normal Build use the existing native replacement pipeline. These
 are geometry edits and do not move scene instances or establish retail lighting.
+
+
+## Bake positive uniform model scale
+
+Fixed-layout GLB editing accepts positive uniform scale on source object nodes
+and their parent groups, through `scale: [s,s,s]` or a uniformly scaled affine
+matrix. Local scales and every composed ancestor scale must stay in
+`1/1024..1024`. This bounds the interchange transform; represented native vectors
+must also fit their existing signed-i16 domains after quantization.
+
+Scale composes with rotation and translation in glTF order. A parent scale
+multiplies child translations as well as mesh positions; a node's own scale does
+not multiply its own translation. Raw stored normal magnitudes are preserved;
+only composed rotation affects them. Fractional position results round through
+the existing reviewed quantization diagnostics. Unused native vectors, packet
+layout, padding, image/material fields and unlit sentinels remain unchanged.
+
+Uniform matrix decomposition uses the existing rigid orientation checks with
+float32 tolerance. Negative or zero TRS scales, nonuniform scale, shear,
+reflection, perspective, matrix-plus-TRS and excessive composed scales reject.
+Animation GLB imports retain their existing unit-scale requirement. Scene
+placements are separate authored values. Use a fresh binding and the ordinary
+Review/Pose/Return/Apply, Undo/Redo, Save/Open and normal Build workflow; gameplay
+appearance remains deferred.

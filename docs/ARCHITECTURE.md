@@ -762,3 +762,20 @@ capacity, object count and packet topology are unchanged. Material-face selectio
 continues through complete Current native roundtrip qualification and the shared
 object resolver, including transform-only groups. Review schemas, authorization,
 commands and normal Build serializers remain unchanged.
+
+
+### Model-only uniform scale composition (2026-10-06)
+
+`importer.model_glb_transforms.static_model_hierarchy` extracts bounded positive
+uniform scale from copied node TRS or affine matrix metadata, then delegates
+source mapping, tree validation and rigid orientation qualification to the
+existing animation hierarchy implementation. Model poses carry translation,
+rotation and composed scale. Parent scale affects child translation before parent
+rotation; native positions receive the composed scale before rotation/translation.
+Raw stored normals retain magnitude and use only the composed orientation.
+
+The original GLB metadata is not mutated. Local and composed scales are bounded
+1/1024..1024, while existing source integer, alias and packet guards still qualify
+native output. Model binding/review schemas, Project commands and Build formats
+stay unchanged. Animation import keeps unit scale; this module does not extend
+native animation formats or scene-instance transforms.

@@ -16,7 +16,8 @@ import math
 import re
 import struct
 
-from .animation_glb import _read_glb, _nodes, _hierarchy_order, _sample_hierarchy, _rotate_vector
+from .animation_glb import _read_glb, _rotate_vector
+from .model_glb_transforms import static_model_hierarchy
 from .assets import decode_tmd
 from .core import ImportError
 from .export import encode_model_glb
@@ -46,7 +47,7 @@ LIMITATIONS = [
     'Edit raw byte-domain baked RGB through _LEGAIA_SOURCE_RGB; display COLOR_0 is not imported.',
     'Edit stored signed-i16 normal XYZ through _LEGAIA_SOURCE_NORMAL in retail [x,y,z] axes, without the POSITION Y flip or normalization; display NORMAL is ignored.',
     'Unlit corners retain normal XYZ sentinel [32768,32768,32768] and normal index -1; no normal tables or slots are allocated.',
-    'Static rigid node transforms and parents are baked into existing positions and stored normal words; no scale, skinning, animation or topology allocation.',
+    'Static rigid transforms and positive uniform scales bake existing positions; stored normals rotate without scaling. No nonuniform scale, skinning, animation or topology allocation.',
     'Keep source-object tags (or object-N names) and all source identity attributes; import in Blender with Merge Vertices disabled and export custom attributes enabled.',
     'Duplicate seam and quad corners must agree after source-domain quantization.',
     'Edit exact stored CLUT/TPage words and shared group ABE through _LEGAIA_SOURCE_MATERIAL; reserved CLUT, TPage ABR and reserved bits survive. Untextured words remain -1.',
@@ -387,8 +388,7 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
         canonical = isinstance(name, str) and re.fullmatch(r'object-(0|[1-9][0-9]*)', name)
         if tagged or canonical or 'mesh' in node:
             source_object_identity(node, len(inspection['objects']))
-    mapping, static, parents = _nodes(doc, len(inspection['objects']))
-    poses = _sample_hierarchy(_hierarchy_order(mapping, parents, 1), parents, static, {}, 0)
+    mapping, poses = static_model_hierarchy(doc, len(inspection['objects']))
     reachable, stack = set(), list(scenes[0]['nodes'])
     while stack:
         index = stack.pop()
@@ -428,12 +428,12 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
 
     for identity, node_index in mapping.items():
         node = nodes[node_index]
-        translation, rotation = poses[node_index]
+        translation, rotation, scale = poses[node_index]
         if (not normals_enabled and any(not row['baked_colors'] for row in inspection['objects'][identity]['primitives'])
                 and any(abs(v) > 1e-12 for v in rotation[:3])):
             raise ImportError('Rigid model rotation requires a profile with stored normal authoring')
         def position(value):
-            return [v+t for v,t in zip(_rotate_vector(rotation, value), translation)]
+            return [v+t for v,t in zip(_rotate_vector(rotation, [v * scale for v in value]), translation)]
         def normal(value):
             # Raw normal attributes use native XYZ, unlike glTF POSITION.
             converted = _rotate_vector(rotation, [value[0], -value[1], value[2]])
