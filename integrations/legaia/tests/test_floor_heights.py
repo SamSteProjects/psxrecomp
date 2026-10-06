@@ -25,9 +25,12 @@ class FloorHeights(unittest.TestCase):
   with tempfile.TemporaryDirectory() as d:
    p=ProjectService(Path(d));p.import_metadata(floor_fixture());source=fixture();h=sha256(source).hexdigest();record=dict(disc_sha256='a'*64,payload_sha256=h);heights=[0]*16;heights[3]=-96
    with patch('sdk.floor_heights.context',return_value=(source,record)),http_server(p) as (_,post):
-    before=deepcopy(p._document());body=dict(entity_id=p.active_scene,heights=heights);status,r=post('/api/floor-height-review',body);self.assertEqual(status,200,r);self.assertEqual(p._document(),before);self.assertEqual(r['retail'],[0]*16);self.assertEqual(r['effective_change_count'],1)
+    before=deepcopy(p._document());status,initial=post('/api/floor-height-context',dict(entity_id=p.active_scene));self.assertEqual(status,200,initial);self.assertEqual(initial['current'],[0]*16);self.assertEqual(initial['proposed'],initial['current']);self.assertFalse(initial['project_change']);self.assertEqual(post('/api/floor-height-context',dict(entity_id=p.active_scene,extra=1))[0],400);body=dict(entity_id=p.active_scene,heights=heights);status,r=post('/api/floor-height-review',body);self.assertEqual(status,200,r);self.assertEqual(p._document(),before);self.assertEqual(r['retail'],[0]*16);self.assertEqual(r['effective_change_count'],1)
     for bad in [heights[:-1],[True]+heights[1:],[32768]+heights[1:]]:self.assertEqual(post('/api/floor-height-review',{**body,'heights':bad})[0],400)
-    command=dict(type='apply_floor_heights',**body,review_key=r['review_key']);self.assertEqual(post('/api/command',{**command,'heights':[0]*16})[0],400);self.assertEqual(p.undo_stack,[]);self.assertEqual(post('/api/command',command)[0],200);self.assertEqual(len(p.undo_stack),1);authored=deepcopy(p.overrides);p.undo();self.assertEqual(p.overrides,{});p.redo();self.assertEqual(p.overrides,authored);self.assertEqual(ProjectService.open(p.save()).overrides,authored)
+    command=dict(type='apply_floor_heights',**body,review_key=r['review_key']);self.assertEqual(post('/api/command',{**command,'heights':[0]*16})[0],400);self.assertEqual(p.undo_stack,[]);self.assertEqual(post('/api/command',command)[0],200);self.assertEqual(len(p.undo_stack),1);authored=deepcopy(p.overrides)
+    from sdk.floor_heights import proposal_view
+    proposal=proposal_view(p,review(p,p.active_scene,[0]*16));self.assertNotIn('FloorHeights',proposal.overrides.get(p.active_scene,{}));self.assertEqual(p.overrides,authored)
+    p.undo();self.assertEqual(p.overrides,{});p.redo();self.assertEqual(p.overrides,authored);self.assertEqual(ProjectService.open(p.save()).overrides,authored)
     stale=review(p,p.active_scene,heights);p.name='changed'
     with self.assertRaises(ProjectError):p.command(dict(command,review_key=stale['review_key']))
     noop=review(p,p.active_scene,heights);depth=len(p.undo_stack);p.command(dict(command,review_key=noop['review_key']));self.assertEqual(len(p.undo_stack),depth)

@@ -56,3 +56,20 @@ def apply(project,command):
     if command['review_key']!=result['review_key']:raise ProjectError('Floor height inputs changed since Review')
     if not result['project_change']:return
     project.command(dict(type='set_floor_heights',entity_id=command['entity_id'],value=result['value']) if result['value']['edits'] else dict(type='clear_floor_heights',entity_id=command['entity_id']))
+
+
+def inspect(project,scene):
+    before=source_key(project);source,record=context(project,scene)
+    current=effective_lut(project,scene,list(struct.unpack_from('<16h',source,2)),record['payload_sha256'])
+    result=review(project,scene,current)
+    if before!=result['project_source_key']:raise ProjectError('Floor height context changed during inspection')
+    return result
+
+def proposal_view(project,report):
+    from copy import copy
+    if report['project_source_key']!=source_key(project):raise ProjectError('Floor height proposal context changed since Review')
+    view=copy(project);view.overrides=deepcopy(project.overrides);components=view.overrides.setdefault(report['scene_id'],{})
+    if report['value']['edits']:components['FloorHeights']=deepcopy(report['value'])
+    else:components.pop('FloorHeights',None)
+    if not components:view.overrides.pop(report['scene_id'],None)
+    return view

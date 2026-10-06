@@ -823,6 +823,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/wall-pattern.js": ("wall-pattern.js", "text/javascript"),
                  "/floor-picking.js": ("floor-picking.js", "text/javascript"),
                  "/floor-rectangle.js": ("floor-rectangle.js", "text/javascript"),
+                 "/floor-heights.js": ("floor-heights.js", "text/javascript"),
                  "/floor-pattern.js": ("floor-pattern.js", "text/javascript"),
                  "/collision-rectangle.js": ("collision-rectangle.js", "text/javascript"),
                  "/model-normal-length.js": ("model-normal-length.js", "text/javascript"),
@@ -1758,6 +1759,26 @@ class EditorHandler(BaseHTTPRequestHandler):
                     proposed=self.server.scene_previews.preview(view,lambda asset,*args,**kwargs:self.server.model_preview(asset,*args,effective_shape=True,project_view=view,**kwargs),load_scene_actor_animation_catalog,load_environment_preview_catalog,terrain_preview)
                     if source_key(project)!=report['project_source_key'] or preview_source_key(project)!=scene_key:raise ProjectError('Project changed during floor scene inspection')
                     self._json(200,dict(schema_version='legaia.floor-rectangle-scene.v1',review=report,scene_preview_source_key=scene_key,scene=dict(proposed,representation='authored')));return
+                if route == '/api/floor-height-context':
+                    if set(body)!={'entity_id'}:raise ProjectError('Floor height context requires exact scene identity')
+                    from .floor_heights import inspect
+                    self._json(200,inspect(self.server.project,body['entity_id']));return
+                if route == '/api/floor-height-scene':
+                    if set(body)!={'entity_id','heights','review_key'}:raise ProjectError('Floor height scene requires exact reviewed fields')
+                    from .floor_heights import review,proposal_view
+                    from .scene_preview import source_key as preview_source_key
+                    from .project_copy import source_key
+                    from importer.scene_animation import load_scene_actor_animation_catalog
+                    from importer.environment import load_environment_preview_catalog
+                    from .terrain_preview import terrain_preview
+                    project=self.server.project
+                    if body['entity_id']!=project.active_scene:raise ProjectError('Floor height scene must match the active scene')
+                    report=review(project,body['entity_id'],body['heights'])
+                    if report['review_key']!=body['review_key']:raise ProjectError('Floor height inputs changed since Review')
+                    scene_key=preview_source_key(project);view=proposal_view(project,report)
+                    proposed=self.server.scene_previews.preview(view,lambda asset,*args,**kwargs:self.server.model_preview(asset,*args,effective_shape=True,project_view=view,**kwargs),load_scene_actor_animation_catalog,load_environment_preview_catalog,terrain_preview)
+                    if source_key(project)!=report['project_source_key'] or preview_source_key(project)!=scene_key:raise ProjectError('Project changed during floor height scene inspection')
+                    self._json(200,dict(schema_version='legaia.floor-height-scene.v1',review=report,scene_preview_source_key=scene_key,scene=dict(proposed,representation='authored')));return
                 if route == '/api/floor-height-review':
                     if set(body)!={'entity_id','heights'}:raise ProjectError('Floor height Review requires scene and height list only')
                     from .floor_heights import review
