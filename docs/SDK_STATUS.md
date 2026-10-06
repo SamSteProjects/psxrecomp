@@ -1,5 +1,28 @@
 # Legaia SDK status — 2026-10-05
 
+## NPC-owned flag operand serialization foundation - 2026-10-05
+
+Appended NPC records now have a native serializer for source-qualified LFLAG,
+GFLAG and CFLAG SET/CLEAR/TEST bit indices. It resolves final record allocations,
+requires each donor-qualified instruction and operand preimage, preserves the
+upper three operand bits and extended dispatch context, and changes only the
+requested low five bits. Existing width and special side-effect exclusions remain
+in force. No-op requests still require an exact preimage. Unsupported paths,
+foreign owners, duplicate requests and invalid typed values reject.
+
+Validation: 14 focused Python checks pass, including all nine supported operations
+with ordinary and extended dispatch. A fresh private retail Town01 proof appends
+two donor0040 clones, composes independent appearance, waits and movement, then
+sets separate flag-bit indices 3 and 4. Exactly two bytes change; the source donor,
+MAN layout, upper bits, all unrelated bytes, project files and history stay held.
+Evidence: `local-output/sdk-20260909/npc-flags-native-20261005/proof.json`.
+
+This is a serialization foundation, not yet an editor/project/normal Build
+feature. Presets and saved-script explanations also remain to be connected.
+Runtime variable identity, story meaning and gameplay effects are not asserted.
+No game launch or full-disc export occurred. Manual gameplay acceptance remains
+deferred and the full SDK goal remains active/incomplete.
+
 ## Keep dense source scenes previewable with authored NPCs - 2026-10-05
 
 The Rayman viewport failure was a combined entity-budget mismatch, not an endless
