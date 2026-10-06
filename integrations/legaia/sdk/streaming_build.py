@@ -116,6 +116,12 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
             context = load_dialogue_authoring_context(project.disc_path, scene)
             context.patch(dialogue_edits, original=carrier.payload)
             candidate, dialogue_changes = context.patch_appended(candidate, dialogue_edits)
+        npc_movement_audit=None
+        if any('movement' in item for item in project.actor_drafts.values() if item['scene_id']==scene_id):
+            from .npc_movement import patch_project as patch_npc_movements
+            from importer.movement_authoring import load_movement_authoring_context
+            npc_movement_context=load_movement_authoring_context(project.disc_path,scene)
+            candidate,npc_movement_audit=patch_npc_movements(project,scene_id,npc_movement_context,candidate,actor_audit)
         npc_wait_audit=None
         if any('waits' in item for item in project.actor_drafts.values() if item['scene_id']==scene_id):
             from .npc_waits import patch_project as patch_npc_waits
@@ -224,7 +230,7 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
         existing_actor_placement_changes=placements, existing_actor_dialogue_changes=dialogue_changes, map_changes=map_audit,
         model_changes=model_audit, texture_changes=texture_audit, animation_changes=animation_audit, branch_changes=branch_changes, transition_changes=transition_changes, movement_changes=movement_changes, flag_changes=flag_changes, wait_changes=wait_changes, model_selector_changes=model_selector_changes, facing_changes=facing_changes, existing_actor_appearance_changes=appearance_changes,
         actor_changes=actor_audit, actor_pool_evidence=pool_evidence, man_padding_bytes=padding,
-        existing_actor_allocated_animation_changes=allocated_changes,npc_dialogue_changes=npc_dialogue_audit,npc_appearance_changes=npc_appearance_audit,npc_wait_changes=npc_wait_audit,
+        existing_actor_allocated_animation_changes=allocated_changes,npc_dialogue_changes=npc_dialogue_audit,npc_appearance_changes=npc_appearance_audit,npc_wait_changes=npc_wait_audit,npc_movement_changes=npc_movement_audit,
         final_man_sha256=sha256(candidate).hexdigest(), gameplay_verified=False,
         _asset_patches=patches,
         _rebuild_request=dict(entry_index=carrier.entry_index, chunk_header_offset=carrier.chunk_header_offset,

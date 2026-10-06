@@ -1,5 +1,36 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Independently author NPC script movement - 2026-10-05
+
+NPC Inspector and registered Asset Details now offer **Edit NPC script movement**.
+The source-qualified picker groups reached instructions and exposes only their
+supported X/Z and encoded move-selector fields. Each field has a retail value and
+an independent own-override checkbox. Review preserves unselected operands; input
+changes withdraw Apply. Apply/Clear use one NPC history step. Undo/Redo and
+Save/Open retain script donor, appearance, dialogue, waits, name and placement.
+Changing script donor requires clearing retained movement first.
+
+The editor labels encoded dispatch context as unresolved. Script targets remain
+separate from placement/live coordinates; selector meaning, Y, depth, branch
+execution and runtime behavior are not inferred. Native serialization composes
+NPC movement before other supported edits against final allocated record IDs.
+Normal compressed/streaming MAN paths record npc_movement_changes separately.
+Preset capture temporarily rejects movement-bearing drafts rather than omitting
+fields; capture/transfer/placement support remains next.
+
+Validation: 40 focused Python checks and two Node suites pass. Actual root editor
+source loading, field Review/Apply, withdrawal, Clear, Undo/Redo and Save/reload
+passed; the 540px grouped dialog was inspected. Normal Build `f58172af849a0417`
+independently reopened the emitted NPC record with X3200/Z5696/move selector 10,
+retained 11-tick wait, own dialogue and model105/animation13. Imports and authored
+placement remained fixed. Package SHA256:
+`46cca87024e38f696ab6749d2b151e1792e2abc8d4ec1fce620b02bb07567c08`.
+Evidence: `local-output/sdk-20260909/npc-movement-editor-20261005/proof.json`.
+The actual package check covers compressed MAN; streaming integration has not yet
+received a separate retail package check for NPC movement. Saved-script comparison
+still leaves movement/other unqualified changes unexplained. No game was launched.
+Gameplay remains deferred and the full SDK goal stays active/incomplete.
+
 ## NPC-owned movement operand serializer - 2026-10-05
 
 Added native serialization for source-qualified movement operands in allocated

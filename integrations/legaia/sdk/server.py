@@ -200,6 +200,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_candidate_inspection"] = bool(self.project.disc_path)
         state["capabilities"]["actor_dialogue_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_wait_authoring"] = bool(self.project.disc_path)
+        state["capabilities"]["actor_movement_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["text_font_preview"] = bool(self.project.disc_path)
         state["capabilities"]["scene_text_search"] = bool(self.project.disc_path and self.project.active_scene)
         from .resources import scene_text_state_key, project_text_state_key, project_transition_state_key
@@ -785,6 +786,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/npc-build-script.js": ("npc-build-script.js", "text/javascript"),
                  "/npc-dialogue.js": ("npc-dialogue.js", "text/javascript"),
                  "/npc-waits.js": ("npc-waits.js", "text/javascript"),
+                 "/npc-movement.js": ("npc-movement.js", "text/javascript"),
                  "/npc-appearance.js": ("npc-appearance.js", "text/javascript"),
                  "/npc-donor-script.js": ("npc-donor-script.js", "text/javascript"),
                  "/npc-draft-inspector.js": ("npc-draft-inspector.js", "text/javascript"),
@@ -2599,6 +2601,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'entity_id','build_id'}:raise ProjectError('NPC script comparison accepts authored NPC and saved Build identities only')
                     from .npc_script_compare import compare as compare_npc_scripts
                     self._json(200,compare_npc_scripts(self.server.project,body['entity_id'],body['build_id']));return
+                if route=='/api/npc-movement-source':
+                    from .npc_movement import source
+                    if set(body)!={'entity_id'}:raise ProjectError('NPC movement source requires identity only')
+                    self._json(200,source(self.server.project,body['entity_id']));return
+                if route=='/api/npc-movement-review':
+                    from .npc_movement import review
+                    self._json(200,review(self.server.project,body));return
                 if route=='/api/npc-waits-source':
                     from .npc_waits import source
                     if set(body)!={'entity_id'}:raise ProjectError('NPC wait source requires identity only')

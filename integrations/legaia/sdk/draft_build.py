@@ -345,6 +345,12 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
             from .npc_dialogue import patch_clones
             npc_context=load_dialogue_authoring_context(project.disc_path,scene)
             candidate,npc_dialogue_audit=patch_clones(project,draft['scene_id'],npc_context,candidate,actor_audit)
+        npc_movement_audit=None
+        if any('movement' in item for item in drafts.values()):
+            from .npc_movement import patch_project as patch_npc_movements
+            from importer.movement_authoring import load_movement_authoring_context
+            npc_movement_context=load_movement_authoring_context(project.disc_path,scene)
+            candidate,npc_movement_audit=patch_npc_movements(project,draft['scene_id'],npc_movement_context,candidate,actor_audit)
         npc_wait_audit=None
         if any('waits' in item for item in drafts.values()):
             from .npc_waits import patch_project as patch_npc_waits
@@ -433,7 +439,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         selected_draft_id=draft_id,drafts=drafts,scene_id=draft['scene_id'],
         **({'_rebuild_request':request,'_asset_patches':map_patches} if defer_rebuild else {}),
         map_changes=map_audit,
-        texture_changes=texture_audit,model_changes=model_audit,animation_changes=animation_audit,npc_dialogue_changes=npc_dialogue_audit,npc_appearance_changes=npc_appearance_audit,npc_wait_changes=npc_wait_audit,
+        texture_changes=texture_audit,model_changes=model_audit,animation_changes=animation_audit,npc_dialogue_changes=npc_dialogue_audit,npc_appearance_changes=npc_appearance_audit,npc_wait_changes=npc_wait_audit,npc_movement_changes=npc_movement_audit,
         authored_state_key=input_key,
         imported_document_sha256=digest(document),source_disc_sha256=disc_hash,
         source_prot_sha256=prot_hash,result_prot_sha256=sha256(rebuilt).hexdigest(),
