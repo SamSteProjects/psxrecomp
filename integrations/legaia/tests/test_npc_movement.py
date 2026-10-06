@@ -77,7 +77,8 @@ class NpcMovementTests(TestCase):
                 p.command(dict(type='set_actor_draft_movement',**request,review_key=proposal['review_key']));after=deepcopy(p.actor_drafts)
                 self.assertEqual(source(p,identifier)['options']['targets'][0]['effective_values'],dict(x=128,z=target['values']['z']));self.assertEqual(len(p.undo_stack),history+1)
                 p.undo();self.assertEqual(p.actor_drafts,before);p.redo();self.assertEqual(p.actor_drafts,after);self.assertEqual(ProjectService.open(p.save()).actor_drafts,after)
-                with self.assertRaises(ProjectError):p.command(dict(type='create_npc_preset',entity_id=identifier,name='Cannot omit movement'))
+                p.command(dict(type='create_npc_preset',entity_id=identifier,name='Moving resident'))
+                self.assertEqual(next(iter(p.actor_templates.values()))['components']['NpcDraft']['movement'],after[identifier]['movement'])
                 wrong=deepcopy(after[identifier]);wrong['movement']['donor_entity_id']='wrong'
                 with self.assertRaises(ProjectError):p._validate_actor_draft(identifier,wrong)
                 reset=dict(entity_id=identifier,entries={});proposal=review(p,reset);p.command(dict(type='set_actor_draft_movement',**reset,review_key=proposal['review_key']));self.assertEqual(p.actor_drafts,before);p.undo();self.assertEqual(p.actor_drafts,after)

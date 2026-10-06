@@ -182,5 +182,9 @@ separately from the NPC placement. Check individual X/Z or move-selector fields,
 Review, then Apply. Uncheck and apply to restore the retail operand. Save persists
 bindings and normal Build emits them; Undo/Redo restore the prior metadata.
 Dispatch context and selector meaning remain unresolved. Y and NPC_RUN depth are
-held. Clear movement before changing script donor. Preset capture currently rejects
-movement-bearing drafts rather than dropping their script fields.
+held. Clear movement before changing script donor. Preset capture retains
+supported movement with own appearance, dialogue and waits. Movement-bearing
+exports use v5; earlier preset formats remain valid for their supported fields.
+Transfer and separate reviewed placement requalify the retail instruction targets.
+Library import creates no NPC until placement Apply. Script targets remain separate
+from the instance X/Z defaults. See the latest checkpoint in [SDK status](SDK_STATUS.md).

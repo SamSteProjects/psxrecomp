@@ -127,4 +127,33 @@ class NpcPresetTests(unittest.TestCase):
             malformed=deepcopy(value);malformed['template']['components']['NpcDraft']['waits']['entries'][wait]['duration_ticks']=True
             with self.assertRaises(ProjectError):transfer_review(target,json.dumps(malformed),'Forged wait')
 
+    def test_owned_movement_v5_transfer_frozen_placement_and_source_rejection(self):
+        from importer.movement_authoring import MovementAuthoringContext
+        from test_importer_dialogue_authoring import fixture
+        from test_wait_authoring import END
+        from sdk.npc_movement import review as movement_review
+        context=MovementAuthoringContext(fixture(b'\x23\0\x80'+END)[0]);movement=context.options(self.donor)['targets'][0]['semantic_id'];p=self.p
+        disc=p.root/'fixture.bin';disc.write_bytes(b'synthetic');p.disc_path=str(disc)
+        with patch.object(ProjectService,'_movement_context',return_value=context),patch('importer.pipeline._disc_context',side_effect=lambda _:nullcontext()),patch('importer.pipeline.import_scene',return_value=self.doc):
+            request=dict(entity_id=self.original,entries={movement:dict(x=256)});result=movement_review(p,request);p.command(dict(type='set_actor_draft_movement',**request,review_key=result['review_key']))
+            p.command(dict(type='create_npc_preset',entity_id=self.original,name='Moving guard'));template=next(t for t in p.actor_templates.values() if t['name']=='Moving guard');frozen=deepcopy(template)
+            reset=dict(entity_id=self.original,entries={});result=movement_review(p,reset);p.command(dict(type='set_actor_draft_movement',**reset,review_key=result['review_key']));self.assertEqual(template,frozen)
+            value=export_file(p,template['id']);self.assertEqual(value['schema_version'],'legaia.npc-preset-file.v5');content=json.dumps(value)+' '*9000;self.assertEqual(parse(content),value)
+            for version in range(1,5):
+                with self.assertRaises(ProjectError):parse(json.dumps(dict(value,schema_version=f'legaia.npc-preset-file.v{version}')))
+            target=ProjectService(p.root/'moving-recipient');target.import_metadata(self.doc);target.disc_path=p.disc_path;before=deepcopy(target._document());report=transfer_review(target,content,'Transferred movement');self.assertEqual(target._document(),before)
+            target.command(dict(type='import_actor_template',content=content,name='Transferred movement',review_key=report['review_key']));self.assertFalse(target.actor_drafts)
+            request=dict(template_id=report['template']['id'],name='Moving instance',position=dict(x=192,z=576),expected_source_key=source_key(target));instance=review(target,request);self.assertEqual(instance['draft']['movement'],frozen['components']['NpcDraft']['movement'])
+            target.command(dict(type='instantiate_npc_preset',**request,review_key=instance['review_key']));self.assertEqual(ProjectService.open(target.save()).actor_drafts,target.actor_drafts);target.undo();self.assertFalse(target.actor_drafts);target.redo();self.assertEqual(target.actor_drafts[instance['entity_id']],instance['draft'])
+            before=deepcopy((target._document(),target.undo_stack,target.redo_stack))
+            for fields in (dict(x=True),dict(x=32),dict(x=16385),dict(move_id=256),dict(y=64)):
+                forged=deepcopy(value);forged['template']['components']['NpcDraft']['movement']['entries'][movement]=fields
+                with self.assertRaises(ProjectError):transfer_review(target,json.dumps(forged),'Forged movement')
+            # Typed metadata alone cannot qualify an opcode or target absent from retail.
+            forged=deepcopy(value);forged['template']['components']['NpcDraft']['movement']['entries']={movement[:-4]+'ffff':dict(x=128)}
+            with self.assertRaises((ProjectError,NativeError)):transfer_review(target,json.dumps(forged),'Missing target')
+            forged=deepcopy(value);forged['template']['components']['NpcDraft']['movement']['entries'][movement]=dict(move_id=1)
+            with self.assertRaises((ProjectError,NativeError)):transfer_review(target,json.dumps(forged),'Wrong opcode field')
+            self.assertEqual((target._document(),target.undo_stack,target.redo_stack),before)
+
 if __name__=='__main__':unittest.main()

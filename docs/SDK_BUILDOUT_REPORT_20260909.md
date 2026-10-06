@@ -1,5 +1,36 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Movement-bearing NPC presets - 2026-10-05
+
+NPC preset capture now freezes supported own script movement together with
+appearance, dialogue and waits. Export uses **legaia.npc-preset-file.v5** when
+movement is present, with the existing 512 KiB metadata bound. Formats v1-v4
+remain supported. Capture, export/import and reviewed placement freshly qualify
+the donor-owned instruction targets and operand fields; malformed owners, types,
+grid coordinates, missing targets and unsupported opcode fields reject. Frozen
+metadata stays independent of subsequent source-draft edits. Import adds only a
+library entry; a separate reviewed placement creates the NPC.
+
+The library/import summary reports movement target counts. Review changes withdraw
+Apply, and exact reviewed placement metadata must retain all supported edit families.
+Script movement coordinates remain separate from the chosen NPC placement.
+
+Validation: 35 focused Python checks passed, one existing optional check skipped,
+and two Node suites passed. The actual editor captured/downloaded/uploaded a v5
+preset, reviewed an independent library import, exercised Undo/Redo and Save/reload,
+and reviewed/inspected/applied an independent instance. Existing entities and source
+draft/import metadata stayed fixed. The 540px import dialog was visually inspected.
+Normal compressed MAN Build `4725587333eecfe2` was independently reopened: emitted
+NPC movement X3200/Z5696/selector10, own wait11, own text and model105/animation13
+all survived transfer. Chosen placement X3200/Z5760 remained independent.
+Package SHA256: `48a4564f2c96a8224f1413583f8732262a74c05d3ed2565f211a97272f001ed8`.
+Evidence: `local-output/sdk-20260909/npc-movement-presets-20261005/proof.json`.
+The private readback helper initially expected a hex field instead of an audit byte;
+corrected readback passed against the existing Build without rerunning gameplay.
+No game was launched. Runtime dispatch/selector behavior and streaming retail
+package acceptance remain unverified; gameplay is deferred. The full SDK goal is
+active/incomplete.
+
 ## Independently author NPC script movement - 2026-10-05
 
 NPC Inspector and registered Asset Details now offer **Edit NPC script movement**.
@@ -15,8 +46,8 @@ separate from placement/live coordinates; selector meaning, Y, depth, branch
 execution and runtime behavior are not inferred. Native serialization composes
 NPC movement before other supported edits against final allocated record IDs.
 Normal compressed/streaming MAN paths record npc_movement_changes separately.
-Preset capture temporarily rejects movement-bearing drafts rather than omitting
-fields; capture/transfer/placement support remains next.
+Movement-bearing NPC preset capture/transfer/placement is now supported; see the
+latest v5 checkpoint above.
 
 Validation: 40 focused Python checks and two Node suites pass. Actual root editor
 source loading, field Review/Apply, withdrawal, Clear, Undo/Redo and Save/reload
