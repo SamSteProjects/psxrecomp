@@ -27,6 +27,8 @@ from .core import ImportError
 MAX_GLB_BYTES = 32 * 1024 * 1024
 MAX_GLTF_ITEMS = 16384
 MAX_KEYS = 65536
+# Room for all 64 rigid TRS triplets plus bounded neutral ancestor tracks.
+MAX_ANIMATION_TRACKS = 256
 MAX_ANIMATION_COMPONENTS = 1_000_000
 ANGLE_EQUIVALENCE_RADIANS = 1e-5
 MAX_ANGULAR_ERROR_DEGREES = 2.2
@@ -266,15 +268,19 @@ def _tracks(doc, accessors, mapping, duration):
     if not animations:
         return {}
     animation = _object(animations[0], "animation")
-    samplers = _array(animation.get("samplers"), "animation samplers", 128)
-    channels = _array(animation.get("channels"), "animation channels", 128)
+    samplers = _array(animation.get("samplers"), "animation samplers", MAX_ANIMATION_TRACKS)
+    channels = _array(animation.get("channels"), "animation channels", MAX_ANIMATION_TRACKS)
     tracks, allowed, time_cache = {}, set(mapping.values()), {}
     for channel in channels:
         channel = _object(channel, "animation channel")
         target = _object(channel.get("target"), "animation target")
         node, path = target.get("node"), target.get("path")
-        if type(node) is not int or node not in allowed or path not in ("translation", "rotation"):
-            raise ImportError("Animation targets must be mapped object translation or rotation only")
+        if (type(node) is not int or not 0 <= node < len(doc['nodes']) or
+                path not in ("translation", "rotation", "scale") or
+                (path != "scale" and node not in allowed)):
+            raise ImportError("Animation targets require mapped translation/rotation or exact identity scale")
+        if "matrix" in doc['nodes'][node]:
+            raise ImportError("Animated GLB nodes cannot contain matrices")
         if (node, path) in tracks:
             raise ImportError("GLB contains duplicate animation target channels")
         si = _integer(channel.get("sampler"), 0, len(samplers) - 1, "animation sampler index")
@@ -293,7 +299,7 @@ def _tracks(doc, accessors, mapping, duration):
         tolerance = max(1e-7, abs(endpoint) * 2 ** -23)
         if times[-1] > endpoint + tolerance:
             raise ImportError("Animation key times exceed the existing clip duration; retiming is unsupported")
-        values = accessors.read(sampler.get("output"), "VEC3" if path == "translation" else "VEC4")
+        values = accessors.read(sampler.get("output"), "VEC4" if path == "rotation" else "VEC3")
         cubic = mode == "CUBICSPLINE"
         if cubic and len(times) < 2:
             raise ImportError("CUBICSPLINE animation requires at least two keyframes")
@@ -307,6 +313,16 @@ def _tracks(doc, accessors, mapping, duration):
                     _unit_quaternion(row, "rotation key")
             else:
                 values = [_unit_quaternion(row, "rotation key") for row in values]
+        if path == "scale":
+            # Native rigid records have no scale channel. Prove a constant unit
+            # curve over every interval, not just at the sampled PSX frames.
+            # glTF Hermite tangents are derivatives: interior incoming and
+            # outgoing tangents must be zero. The first incoming and final
+            # outgoing tangents never participate in an interval.
+            keys = values[1::3] if cubic else values
+            tangents = values[2:-3:3] + values[3::3] if cubic else []
+            if any(row != [1, 1, 1] for row in keys) or any(row != [0, 0, 0] for row in tangents):
+                raise ImportError("Native rigid animation supports only provably constant identity scale tracks")
         tracks[(node, path)] = (times, values, mode)
     return tracks
 

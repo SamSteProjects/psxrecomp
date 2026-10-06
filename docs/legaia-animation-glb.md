@@ -70,7 +70,7 @@ The importer validates self-contained GLB 2 chunks, tightly packed FLOAT
 animation accessors, explicit object mapping, finite TR values and strictly
 increasing nonnegative timestamps. STEP, LINEAR and CUBICSPLINE channels and mapped static
 node TR values are supported. Unsupported interpolation, transformed hierarchy,
-scale/matrix animation, ambiguous objects, external/sparse data and unsupported
+nonunit scale/animated matrices, ambiguous objects, external/sparse data and unsupported
 extensions reject. Mesh-only `KHR_materials_unlit` declarations are ignored.
 These interoperability rules follow the primary
 [glTF 2.0 specification](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html).
@@ -103,3 +103,31 @@ stays under `local-output/sdk-20260909/animation-glb-20261002/`.
 Offline editor/Build verification does not establish in-game clip selection,
 animation timing, actor identity or gameplay acceptance. Those checks remain
 deferred alongside the wider unfinished SDK.
+
+## Constant unit-scale tracks - 2026-10-06
+
+Files exported by external editors may include neutral scale channels alongside
+translation/rotation. Both imported-channel and retained UUID GLB workflows now
+accept STEP, LINEAR and CUBICSPLINE scale tracks that stay exactly `[1,1,1]`.
+Review identifies this support. Native records store no scale channels, so
+accepted neutral tracks leave the rigid animation content unchanged.
+
+For cubic curves, every key value must be unit scale and participating outgoing
+and incoming tangents must be zero. The first incoming and last outgoing tangents
+are unused and may contain finite values. The importer checks every segment,
+not only native sample times. Scale changes, nonfinite/malformed keys, duplicate
+targets and animated matrices reject. Identity ancestors may have neutral scale
+tracks but animated ancestor translation/rotation remains unsupported. Static
+node scales must also remain unit. These rules follow the primary
+[Khronos glTF 2.0 TRS and animation specification](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html),
+including the Hermite interpolation formula in Appendix C.5.
+
+The importer allows at most 256 samplers/channels, covering 64 object TRS triplets
+and neutral ancestors. Existing 32 MiB GLB, 65536 keys/accessor, one million
+components and 4096 native object-frame budgets remain enforced. No binding or
+report schema changed. Ordinary files without scale tracks retain their behavior.
+
+Private evidence in `local-output/sdk-20260909/animation-glb-identity-scale-20261006/`
+covers imported and retained no-op/Review/pose/Apply, actual editor preview/Return,
+Undo/Redo, Save/Open and exact relocated native ANM readback from normal Build
+`3174f674d5c90450`. Gameplay playback/timing and general retargeting remain deferred.

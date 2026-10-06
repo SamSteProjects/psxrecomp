@@ -1,5 +1,42 @@
 # Legaia SDK status — 2026-10-06
 
+## GLB constant unit-scale interoperability - 2026-10-06
+
+**Implemented external animation compatibility:** imported-channel and retained
+UUID GLB workflows now accept provably constant `[1,1,1]` scale tracks from
+external editors. STEP/LINEAR keys must all be exactly unit scale. Cubic values
+must be unit and every tangent participating in an interval must be zero; unused
+first incoming/final outgoing tangents may be finite nonzero values. This proves
+neutral scale over the whole curve, including between native frame samples.
+Identity ancestors may carry neutral scale tracks; their animated translation,
+rotation and matrices remain unsupported. Native rigid records have no scale
+channel, so neutral tracks add no native edits. Nonunit/nonfinite scale,
+intermediate cubic excursions, duplicate targets, malformed accessors/times and
+animated matrices reject. The 256-track bound accommodates all 64 object TRS
+triplets plus neutral ancestors; the existing key/component/native budgets hold.
+Review exposes this support in both SDK workflows without changing sidecars or
+report schemas. General retargeting and native scale animation remain incomplete.
+
+**Verification:** 22 focused importer/cubic/scale checks and three Node
+GLB/routing/library checks passed. A real private Town01 browser workflow reviewed
+an edited GLB containing cubic unit-scale tracks and an identity root scale track,
+rendered its proposed pose, returned and applied it with zero page errors.
+Pose and narrow Review captures were inspected. Retail imported and retained
+no-op imports preserved exact content; both Review/pose/Apply, Undo/Redo and
+Save/Open passed. Normal Build `3174f674d5c90450` passed independent relocation
+carrier ANM readback. Package SHA-256:
+`256afa0542cf80dee8d7c6146666352cc3340bd4c8301a41f35fe79e4dad415a`.
+Native bank SHA-256:
+`95b3e07936a68715cd51db48cfb80ceff4a86527aa25046a973343a97a2af959`.
+Private reference files stayed unchanged. No game launch, installation or
+full-disc export occurred; gameplay playback/timing remains deferred.
+
+Evidence: `local-output/sdk-20260909/animation-glb-identity-scale-20261006/`
+(`verify.py`, browser script, GLB/binding, captures and `proof.json`). Interpolation
+and TRS interpretation follow the primary Khronos glTF 2.0 specification,
+sections 3.5.3, 3.11 and Appendix C.5. The full SDK/runtime goal stays open.
+
+
 ## Independent retained animation duplication - 2026-10-06
 
 **Implemented editor workflow:** Saved allocated clips now offers **Review

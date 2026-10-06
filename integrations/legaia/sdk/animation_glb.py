@@ -158,6 +158,7 @@ def _prepare(project, entity_id: str, content: bytes, binding: dict) -> tuple[di
             other_contributors=sorted(owner for owner, contribution in snapshot['owners'].items()
                                       if owner != channel_owner and contribution['animation_id'] == binding['animation_id'])),
         limitations=['Existing rigid-object channels and frame count only; mesh edits are ignored.',
+                     'Constant unit-scale tracks are accepted; native scale animation is unsupported.',
                      'The selected interchange rate does not establish retail playback timing.',
                      'Translation is rounded to source integers; Euler rotations use the existing eight-bit angle lattice.',
                      'Normal Build retains source capacities; runtime playback remains unverified.'])
