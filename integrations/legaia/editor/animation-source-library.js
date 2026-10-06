@@ -1,3 +1,4 @@
+import {decodeRetainedAnimationAsset} from './retained-animation-assets.js';
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
 const el=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
@@ -23,12 +24,27 @@ export function decodeLibraryRemoval(value,catalog,record){
   if(!object(value)||value.schema_version!=='legaia.animation-library-removal.v1'||value.project_path!==catalog.project_path||value.library_key!==catalog.library_key||value.receipt_key!==record.receipt_key||value.glb_sha256!==record.glb_sha256||value.scene_id!==record.scene_id||value.target_id!==record.target_id||value.kind!==record.kind||!hash(value.review_key)||value.native_content_changed!==false||value.source_file_deleted!==false||value.receipt_count_before!==catalog.receipt_count||value.receipt_count_after!==catalog.receipt_count-1||value.registered_bytes_released!==(shared===1?record.byte_length:0))throw new Error('Animation library removal differs from its reviewed input.');
   return structuredClone(value);
 }
-function save(content,type,name){let url,link;try{url=URL.createObjectURL(new Blob([content],{type}));link=el('a');link.href=url;link.download=name;document.body.append(link);link.click();}finally{link?.remove();if(url)URL.revokeObjectURL(url);}}
-export function mountAnimationSourceLibrary({after,getState,busy,setBusy,onApplied,onError=()=>{}}){
-  const button=el('button','Project animation inputs');button.id='project-animation-inputs';after.after(button);
-  button.onclick=()=>openAnimationSourceLibrary({getState,busy,setBusy,onApplied,onError});return {button};
+export async function navigateAnimationSource({record,catalog,getState,readLibrary,changeScene,refreshAssets,getAssets,openActor,openClip,busy=()=>false}){
+  const held=structuredClone(record),path=catalog.project_path,key=catalog.library_key,mode=catalog.mode;
+  const current=()=>getState().project?.path===path&&getState().project?.mode===mode;
+  const qualify=async()=>{if(busy()||!current())throw new Error('Project changed before animation input navigation.');const fresh=decodeAnimationSourceLibrary(await readLibrary(path),path);if(!current()||fresh.mode!==mode||fresh.library_key!==key||!fresh.imports.some(row=>same(row,held)))throw new Error('Saved animation input changed. Refresh the library.');};
+  await qualify();if(getState().scene?.id!==held.scene_id&&!await changeScene(held.scene_id))throw new Error('The animation input source scene could not be opened.');
+  await qualify();if(getState().scene?.id!==held.scene_id)throw new Error('Animation input scene changed during navigation.');
+  if(held.kind==='imported'){
+    const entities=getState().scene?.entities;if(!Array.isArray(entities)||entities.filter(row=>row.id===held.target_id).length!==1)throw new Error('The saved input source actor is absent from its current scene.');
+    await openActor(held.target_id);return true;
+  }
+  await refreshAssets();await qualify();if(getState().scene?.id!==held.scene_id)throw new Error('Animation input scene changed during navigation.');
+  const matches=getAssets().filter(row=>row.type==='animation'&&row.sceneId===held.scene_id&&row.data?.scope==='authored-retained'&&row.data?.retained_record?.record_id===held.target_id);
+  if(matches.length!==1)throw new Error('The saved input retained clip is absent from the current asset catalog.');
+  const clip=matches[0];decodeRetainedAnimationAsset(clip);await openClip(clip);return true;
 }
-export async function openAnimationSourceLibrary({getState,busy=()=>false,setBusy=()=>{},onApplied=()=>{},onError=()=>{}}){
+function save(content,type,name){let url,link;try{url=URL.createObjectURL(new Blob([content],{type}));link=el('a');link.href=url;link.download=name;document.body.append(link);link.click();}finally{link?.remove();if(url)URL.revokeObjectURL(url);}}
+export function mountAnimationSourceLibrary({after,getState,busy,setBusy,onApplied,onOpen=null,onError=()=>{}}){
+  const button=el('button','Project animation inputs');button.id='project-animation-inputs';after.after(button);
+  button.onclick=()=>openAnimationSourceLibrary({getState,busy,setBusy,onApplied,onOpen,onError});return {button};
+}
+export async function openAnimationSourceLibrary({getState,busy=()=>false,setBusy=()=>{},onApplied=()=>{},onOpen=null,onError=()=>{}}){
   const path=getState().project?.path,mode=getState().project?.mode;if(typeof path!=='string'||!path||busy())return false;
   const dialog=el('dialog');dialog.id='animation-source-library-dialog';dialog.className='project-dialog';Object.assign(dialog.style,{width:'min(900px,94vw)',maxHeight:'90vh',overflowY:'auto'});
   const status=el('p','Verifying saved animation inputs…'),error=el('p'),search=el('input'),scene=el('select'),list=el('div'),refresh=el('button','Refresh animation inputs'),close=el('button','Close animation inputs');status.setAttribute('role','status');error.setAttribute('role','alert');search.setAttribute('aria-label','Search animation inputs');search.placeholder='Scene, target, kind or hash';scene.setAttribute('aria-label','Animation input scene');refresh.type=close.type='button';
@@ -51,6 +67,7 @@ export async function openAnimationSourceLibrary({getState,busy=()=>false,setBus
     for(const record of rows){const section=el('section');section.dataset.receiptKey=record.receipt_key;Object.assign(section.style,{borderTop:'1px solid #364146',padding:'12px 0',overflowWrap:'anywhere'});section.append(el('p',`${record.scene_id} · ${record.kind==='retained'?'Retained clip':'Imported actor'} · ${record.target_id}`),el('p',`GLB ${record.glb_sha256} · ${record.byte_length} bytes · clip ${record.animation_index??'implicit single/static'}`),el('p',`Reviewed native result ${record.candidate_sha256}`));
       const actions=el('div');actions.className='dialog-actions';actions.style.flexWrap='wrap';
       for(const [part,label] of [['glb','Download saved animation GLB'],['binding','Download saved animation binding'],['receipt','Download saved animation receipt']]){const b=el('button',label);b.type='button';b.onclick=()=>run(signal=>recover(record,part,signal));controls.push(b);actions.append(b);}
+      if(typeof onOpen==='function'){const open=el('button',record.kind==='imported'?'Open source actor':'Open retained source clip');open.type='button';open.onclick=async()=>{const held=catalog;const verified=await run(async signal=>{const value=decodeAnimationSourceLibrary(await post('/api/animation-source-library',{expected_project_path:path},signal),path);if(!current())return false;if(value.mode!==mode||value.library_key!==held.library_key||!value.imports.some(r=>same(r,record)))throw new Error('Saved animation input changed. Refresh the library.');return true;});if(!verified||!current())return;dispose();try{await onOpen(structuredClone(record),structuredClone(held));}catch(e){onError(e);}};controls.push(open);actions.append(open);}
       const detail=el('p');if(mode==='edit'){const review=el('button','Review input removal'),apply=el('button','Remove reviewed input');review.type=apply.type='button';apply.hidden=true;let held=null;
         review.onclick=()=>run(async signal=>{held=null;apply.hidden=true;const value=await post('/api/animation-library-removal-review',request(record),signal);if(!current())return false;held=decodeLibraryRemoval(value,catalog,record);detail.textContent=`${held.receipt_count_before} → ${held.receipt_count_after} receipts · ${held.registered_bytes_released} registered bytes freed. Native animation content and the local GLB file stay intact. Undo restores the receipt.`;apply.hidden=false;return true;});
         apply.onclick=()=>{const reviewed=held;if(!reviewed)return false;return run(async signal=>{removing=true;update();try{const next=await post('/api/animation-library-remove',{...request(record),review_key:reviewed.review_key},signal);if(!current()||held!==reviewed)return false;if(!object(next?.project)||next.project.path!==path||next.project.mode!=='edit')throw new Error('Input removal returned invalid project state.');held=null;await onApplied(next);await load(signal);return true;}catch(e){held=null;apply.hidden=true;throw e;}finally{removing=false;update();}});};controls.push(review,apply);actions.append(review,apply);

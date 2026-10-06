@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {decodeAnimationSourceLibrary,filterAnimationSourceLibrary,decodeLibraryRemoval} from '../editor/animation-source-library.js';
+import {decodeAnimationSourceLibrary,filterAnimationSourceLibrary,decodeLibraryRemoval,navigateAnimationSource} from '../editor/animation-source-library.js';
 const path='C:/private/project',scene='scene://town01',target=scene+'/actors/man-p1/0011';
 const row={schema_version:'legaia.animation-source.v1',kind:'imported',scene_id:scene,target_id:target,receipt_key:'a'.repeat(64),glb_sha256:'b'.repeat(64),candidate_sha256:'c'.repeat(64),review_key:'d'.repeat(64),byte_length:28,animation_index:null,source_frame_indices:null,binding:{scene_id:scene,entity_id:target}};
 const value={schema_version:'legaia.animation-source-library.v1',project_path:path,library_key:'e'.repeat(64),mode:'edit',imports:[row],receipt_count:1,distinct_glb_count:1,registered_byte_length:28,project_changed:false,historical_inputs:true};
@@ -10,3 +10,17 @@ const removal={schema_version:'legaia.animation-library-removal.v1',project_path
 assert.deepEqual(decodeLibraryRemoval(removal,value,row),removal);
 for(const mutate of [v=>v.native_content_changed=true,v=>v.source_file_deleted=true,v=>v.library_key='a'.repeat(64),v=>v.receipt_count_after=1,v=>v.registered_bytes_released=0,v=>v.kind='retained']){const bad=structuredClone(removal);mutate(bad);assert.throws(()=>decodeLibraryRemoval(bad,value,row));}
 console.log('Project-wide animation input library identity, bounds, search and removal guards passed.');
+
+let current={project:{path,mode:'edit'},scene:{id:'scene://other',entities:[]}},opened=[],reads=0;
+const options={record:row,catalog:value,getState:()=>current,readLibrary:async()=>{reads++;return structuredClone(value);},changeScene:async id=>{current.scene={id,entities:[{id:target}]};return true;},refreshAssets:async()=>{},getAssets:()=>[],openActor:async id=>opened.push(id),openClip:async clip=>opened.push(clip.id)};
+assert.equal(await navigateAnimationSource(options),true);assert.equal(reads,2);assert.deepEqual(opened,[target]);
+for(const modify of [o=>o.busy=()=>true,o=>o.readLibrary=async()=>({...value,library_key:'f'.repeat(64)}),o=>o.getState=()=>({...current,project:{path:'other',mode:'edit'}}),o=>o.getState=()=>({...current,scene:{id:scene,entities:[]}}),o=>o.getState=()=>({...current,scene:{id:scene,entities:[{id:target},{id:target}]}})]){const test={...options};modify(test);await assert.rejects(()=>navigateAnimationSource(test));}
+const uuid='12345678-1234-4123-8123-123456789abc',clipId=`animation://town01/authored-record/${uuid}`,model='asset://town01/models/scene-tmd/0000',sha='a'.repeat(64);
+const retained={...row,kind:'retained',target_id:uuid,binding:{scene_id:scene,record_id:uuid},source_frame_indices:[0,1]},catalog={...value,imports:[retained]};
+const clipRow={record_id:uuid,animation_id:clipId,entity_id:target,channel_owner_entity_id:target,model_source_entity_id:target,donor_asset_id:model,donor_animation_id:'animation://town01/scene-anm/0001',record_sha256:sha,frame_count:2,object_count:1,active:false,runtime_assigned:false,assigned_actor_ids:[]};
+const asset={id:clipId,type:'animation',sceneId:scene,data:{semantic_id:clipId,asset_kind:'animation',scope:'authored-retained',authored_animation_record:true,frame_count:2,bone_count:1,model_asset_id:model,retained_record:clipRow,source_record:{source_kind:'authored_animation_record',record_id:uuid,record_sha256:sha,ledger_sha256:sha,donor_record_sha256:sha,donor_animation_id:clipRow.donor_animation_id}}};
+let refreshed=0;const saved={...options,record:retained,catalog,readLibrary:async()=>structuredClone(catalog),refreshAssets:async()=>{refreshed++;},getAssets:()=>[asset]};
+assert.equal(await navigateAnimationSource(saved),true);assert.equal(refreshed,1);assert.deepEqual(opened,[target,clipId]);
+for(const getAssets of [()=>[],()=>[asset,asset],()=>[{...asset,type:'model'}],()=>[{...asset,sceneId:'scene://other'}],()=>[{...asset,data:{...asset.data,retained_record:{...clipRow,record_sha256:'bad'}}}]])await assert.rejects(()=>navigateAnimationSource({...saved,getAssets}));
+let count=0;await assert.rejects(()=>navigateAnimationSource({...saved,readLibrary:async()=>{count++;return count<3?structuredClone(catalog):{...catalog,library_key:'f'.repeat(64)};}}));assert.equal(opened.length,2);
+console.log('Saved animation input navigation preserves actor versus retained UUID identity and rejects stale/missing/ambiguous targets.');

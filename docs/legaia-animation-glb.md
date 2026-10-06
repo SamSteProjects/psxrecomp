@@ -324,3 +324,17 @@ choices, qualified separately from fresh retail identity. Changes invalidate
 Review; invalid values block Review. Original-input recovery and receipt history
 retain the choice through Undo/Redo, Save/Open and project copies. This sampling
 feature does not establish native gameplay speed or animation acceptance.
+
+
+### Open saved input sources
+
+In Project animation inputs, Open source actor navigates to the saved input's
+scene, selects its actor and opens the normal inspector. The actor inspector shows
+current project state; the saved input does not restore an older animation or
+replace a current retained assignment. Open retained source clip instead opens
+the exact saved clip UUID from a freshly verified source-scene asset catalog.
+Use its existing Preview, Edit retained content, Edit retained GLB or lifecycle
+controls. A retained clip's captured actor is provenance, not an instruction to
+assign the clip to that actor. Obtain a fresh GLB binding before editing again.
+Navigation changes editor scene/selection only; explicit exports create files
+under Exports, while Apply remains a separate reviewed authoring action.

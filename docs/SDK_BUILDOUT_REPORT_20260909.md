@@ -1,5 +1,26 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-06 checkpoint: saved animation input source navigation
+
+Project animation inputs now exposes Open source actor for imported inputs and
+Open retained source clip for retained inputs. Navigation verifies the receipt and
+project library before and after switching to its source scene. Actor inputs select
+the exact source entity in the normal hierarchy/viewport/inspector. Retained inputs
+refresh the SDK asset catalog and open the exact retained UUID through its existing
+inspector, including current preview, content/GLB editing and lifecycle controls.
+Captured clip identity stays separate from an actor's current assignment.
+
+Five Node checks passed. An actual private retail editor workflow started from
+town0c for both paths, selected the town01 source actor, opened the exact retained
+clip, and downloaded a fresh retained GLB binding through the normal authoring UI.
+Native overrides, retained inputs, history and non-export files stayed unchanged;
+the explicit export generated normal files under Exports. Stale/missing/duplicate
+actor or clip targets, wrong asset types and changed library contexts reject.
+No native Apply, Build, runtime attach or game launch was performed for navigation.
+Evidence: `local-output/sdk-20260909/animation-source-navigation-20261006/proof.json`.
+The full SDK goal and manual gameplay acceptance remain open.
+
+
 ## 2026-10-06 checkpoint: historical model input versus current native content
 
 Project model inputs now offers Compare current native model. The read-only SDK

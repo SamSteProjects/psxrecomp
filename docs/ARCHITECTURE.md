@@ -913,3 +913,21 @@ hash equality claims, representation and no-write claims. The operation never
 changes the active scene, selected entity, receipt collection or command history.
 It reports current-byte equality, not historical binding replay authority or
 validated in-game appearance.
+
+
+### Animation input source navigation
+
+`navigateAnimationSource` captures a saved receipt, project root, mode and library
+key, requalifies it before and after scene navigation, then resolves target kind.
+Imported inputs require one exact current scene entity and use normal selection.
+Retained inputs refresh the SDK asset catalog, recheck the library and require one
+source-scene authored-retained animation with the exact UUID. The existing retained
+asset decoder validates the current record, model, source hashes and provenance
+before the existing clip inspector opens. Actor assignment is not substituted for
+retained clip identity, and historical bindings are never replayed.
+
+The parent editor supplies scene/selection APIs and current asset/inspector services.
+The library modal releases its read operation before handing off navigation; close
+or context changes during verification prevent the handoff. Native authoring and
+command history are unaffected; current inspector controls own any later explicit
+export, Review or Apply.
