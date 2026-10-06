@@ -1293,13 +1293,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     return
                 if route in ('/api/model-mesh-batch-preview','/api/model-mesh-batch','/api/model-mesh-batch-scene-preview'):
                     fields={'asset_id','content_base64','mappings','expected_sha256','source_key'}
+                    if 'replace_objects' in body:fields.add('replace_objects')
                     if 'material_colors' in body:fields.add('material_colors')
                     if 'uv_set' in body:fields.add('uv_set')
                     if 'source_scale' in body:fields.add('source_scale')
                     if 'scene_index' in body:fields.add('scene_index')
                     if route!='/api/model-mesh-batch-preview':fields.add('review_key')
                     if route.endswith('-scene-preview'):fields.update(('proposed_sha256','entity_id','all_instances'))
-                    if set(body)!=fields or type(body.get('material_colors',False)) is not bool or not isinstance(body['asset_id'],str) or not 0<len(body['asset_id'])<=512 or any(not isinstance(body[key],str) or len(body[key])!=64 or any(c not in '0123456789abcdef' for c in body[key]) for key in fields & {'source_key','expected_sha256','review_key','proposed_sha256'}):
+                    if set(body)!=fields or any(type(body.get(choice,False)) is not bool for choice in ('material_colors','replace_objects')) or not isinstance(body['asset_id'],str) or not 0<len(body['asset_id'])<=512 or any(not isinstance(body[key],str) or len(body[key])!=64 or any(c not in '0123456789abcdef' for c in body[key]) for key in fields & {'source_key','expected_sha256','review_key','proposed_sha256'}):
                         raise ProjectError('Mesh donor mapping requires exact model, source and review identities')
                     if not isinstance(body['content_base64'],str) or not 0<len(body['content_base64'])<=44739244:
                         raise ProjectError('Mesh donor mapping requires bounded GLB bytes')
@@ -1309,10 +1310,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from . import model_mesh_batch
                     args=(body['asset_id'],payload,body['mappings'],body['expected_sha256'],body['source_key'])
                     if route=='/api/model-mesh-batch':
-                        model_mesh_batch.apply(self.server.project,*args,review_key=body['review_key'],material_colors=body.get('material_colors',False),scene_index=body.get('scene_index'),uv_set=body.get('uv_set',0),source_scale=body.get('source_scale',1))
+                        model_mesh_batch.apply(self.server.project,*args,review_key=body['review_key'],material_colors=body.get('material_colors',False),scene_index=body.get('scene_index'),uv_set=body.get('uv_set',0),source_scale=body.get('source_scale',1),replace_objects=body.get('replace_objects',False))
                         self._json(200,self.server.state())
                     else:
-                        candidate,binding,report=model_mesh_batch.prepare(self.server.project,*args,material_colors=body.get('material_colors',False),scene_index=body.get('scene_index'),uv_set=body.get('uv_set',0),source_scale=body.get('source_scale',1))
+                        candidate,binding,report=model_mesh_batch.prepare(self.server.project,*args,material_colors=body.get('material_colors',False),scene_index=body.get('scene_index'),uv_set=body.get('uv_set',0),source_scale=body.get('source_scale',1),replace_objects=body.get('replace_objects',False))
                         if route.endswith('-scene-preview'):
                             if type(body['all_instances']) is not bool or not isinstance(body['entity_id'],str) or not 0<len(body['entity_id'])<=512 or report['review_key']!=body['review_key'] or report['proposed_sha256']!=body['proposed_sha256']:
                                 raise ProjectError('Mesh donor mapping scene proposal differs from Review')

@@ -36,3 +36,20 @@ group to object replacement requires a fresh Review.
 
 See the current [SDK status](SDK_STATUS.md) for focused checks, private retail
 Build hashes and the outstanding manual gameplay acceptance queue.
+
+## Multiple section donors and mapped objects
+
+To retain different native materials for imported sections, choose **Map GLB
+section donors**, select the sections to import, and choose each section's native
+triangle donor and source UV channel. Enable **Replace all existing geometry in
+mapped donor objects**, then Review and Apply. All selected sections allocate
+before original geometry retires, so multiple sections may use original donors
+in the same object. Sections mapped to different objects replace those objects
+together. Unmapped objects remain. Skipped source sections allocate nothing.
+
+This batch mode uses `replace_objects=true` and V2 batch Review, independently of
+the single-donor `replace_object` option above. Per-section `replace_group=true`
+is incompatible. Review lists the original retired face count and selected
+objects; changing the mode invalidates it. Each group retains its chosen donor's
+native layout and texture binding. Shared asset instances, historical budgets,
+qualified pose limits and normal Build behavior remain as described above.

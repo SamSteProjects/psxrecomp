@@ -9,7 +9,8 @@ from .project import ProjectError,digest
 from .scene_preview import source_key
 
 
-def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,material_colors=False,scene_index=None,uv_set=0,source_scale=1):
+def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,material_colors=False,scene_index=None,uv_set=0,source_scale=1,replace_objects=False):
+    if type(replace_objects) is not bool:raise ProjectError('Object replacement choice must be boolean')
     if type(uv_set) is not int or not 0<=uv_set<=7:raise ProjectError('Choose a default source UV set from 0 through 7')
     _,effective,_,_,_,topology=_context(project,asset_id,expected_key)
     if sha256(effective).hexdigest()!=expected_sha256:
@@ -25,6 +26,7 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,mat
                 or not isinstance(row['donor_face_id'],str) or row['donor_face_id'] not in donors
                 or type(row['replace_group']) is not bool or type(row.get('uv_set',uv_set)) is not int or not 0<=row.get('uv_set',uv_set)<=7):
             raise ProjectError('Mesh donor mappings require exact source order, Current faces and boolean replacement choices')
+        if replace_objects and row['replace_group']:raise ProjectError('Object replacement cannot also replace individual donor groups')
         donor=donors[row['donor_face_id']];group=(donor['object_index'],donor['group_index'])
         if group in replaced:raise ProjectError('A replaced donor group cannot supply another section in the same batch')
         if row['replace_group']:
@@ -48,6 +50,18 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,mat
             source['effective_sha256'],key,new_group=True,replace_group=row['replace_group'],primitive_index=row['primitive_index'],material_colors=material_colors,scene_index=scene_index,uv_set=row.get('uv_set',uv_set),source_scale=source_scale)
         candidates[binding['asset_sha256']]=candidate;view.model_overrides[asset_id]=deepcopy(binding)
         steps.append(dict(source=source,review=report))
+    retirement=None
+    if replace_objects:
+        from . import model_face_removal
+        replaced_objects=sorted({donors[row['donor_face_id']]['object_index'] for row in mappings})
+        retired_ids=[face['face_id'] for face in topology['faces'] if face['object_index'] in replaced_objects]
+        key=source_key(view);mesh_source=model_mesh_append.source(view,asset_id,key)
+        face_source=model_face_removal.source(view,asset_id,key)
+        current={face['face_id']:face for face in mesh_source['topology']['faces']}
+        selections=[dict(object_index=current[identity]['object_index'],primitive_index=current[identity]['current_primitive_index']) for identity in retired_ids]
+        candidate,_,removed=model_face_removal.prepare(view,asset_id,selections,mesh_source['effective_sha256'],key)
+        binding=removed.pop('_binding');removed.pop('_effective')
+        retirement=dict(mesh_source=mesh_source,source=face_source,review=removed)
     report=dict(schema_version='legaia.model-mesh-batch-review.v1',asset_id=asset_id,
         project_source_key=expected_key,effective_sha256=expected_sha256,source_sha256=binding['source_sha256'],
         proposed_sha256=binding['asset_sha256'],glb_sha256=inventory['glb_sha256'],mappings=deepcopy(mappings),
@@ -62,6 +76,11 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,mat
             'Only explicitly selected donor groups are replaced; shared replacement ownership is rejected.',
             'Native donor layouts and texture bindings supply materials; no new images, packet families or animation channels are allocated.',
             'Review is read-only and Apply publishes the complete mapping in one Undo entry. Gameplay is unverified.'])
+    if retirement:
+        report.update(schema_version='legaia.model-mesh-batch-review.v2',replace_objects=True,
+            replaced_object_indices=replaced_objects,removed_face_ids=retired_ids,retirement=retirement,
+            proposed_sha256=binding['asset_sha256'],preview=retirement['review']['preview'],topology=retirement['review']['topology'])
+        report['limitations'][3]='All original Current geometry in mapped donor objects is retired after every selected section is allocated. Newly mapped sections remain; other objects and original vector rows remain.'
     if inventory.get('source_scale',1)!=1:report['source_scale']=inventory['source_scale']
     if uv_set:report['uv_set']=uv_set
     if scene_index is not None:report['selected_scene_index']=scene_index
@@ -76,8 +95,8 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,mat
 def review(*args,**kwargs):return prepare(*args,**kwargs)[2]
 
 
-def apply(project,*args,review_key,material_colors=False,scene_index=None,uv_set=0,source_scale=1):
-    candidate,binding,report=prepare(project,*args,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale)
+def apply(project,*args,review_key,material_colors=False,scene_index=None,uv_set=0,source_scale=1,replace_objects=False):
+    candidate,binding,report=prepare(project,*args,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,replace_objects=replace_objects)
     if report['review_key']!=review_key:raise ProjectError('GLB donor mappings changed after Review')
     asset_id,_,_,_,expected_key=args
     project._publish_model_ledger(asset_id,candidate,binding,expected_key,'Mesh donor mapping')

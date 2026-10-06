@@ -1,5 +1,43 @@
 # Source-bound model GLB editing
 
+## Replace mapped objects with per-section native materials - 2026-10-06
+
+**Map GLB section donors** now offers **Replace all existing geometry in mapped
+donor objects**. Each selected section first allocates its own group using its
+chosen Current triangle donor. Once every section is allocated, the transaction
+retires exactly the original Current faces in those mapped native objects. Newly
+imported sections survive, unmapped objects remain, and Apply publishes one Undo
+entry. Multiple selected objects can be replaced together. Per-section group
+replacement conflicts are rejected and disabled in this mode. Native identities,
+original vector rows, tombstones and historical allocation budgets remain.
+
+Batch Review, Apply and scene Review accept the strict optional `replace_objects`
+boolean. True produces `legaia.model-mesh-batch-review.v2`, with exact
+`replaced_object_indices`, `removed_face_ids` and a qualified final `retirement`
+stage after all allocation steps. V1 remains supported. Review keys bind the
+mode, selected donors, source sections and complete retirement. Editor validators
+check the candidate chain, ownership, surviving native render packets and ledger
+history; changing the checkbox withdraws Review and requires another Review.
+Scene proposals compose qualified existing poses without publishing changes.
+
+Validation: 14 focused Python cases (including Node report mutation checks),
+actual browser upload/mapping/Review/Apply, mode-withdrawal checks and inspected
+Current/Proposed captures at desktop and 540-pixel widths. A private retail
+Town01 model0036 replaced object0's 7 groups / 163 faces with 2 mapped groups /
+4 faces, while the other object's 14 packets remained byte-exact. Donors retained
+distinct flags `0x15` / `0x25` and CLUTs 31424 / 31434: the lit section imported
+normals, the unlit section imported RGB, and both imported UVs. One-step Undo/Redo,
+Save/Open, source-project preservation and normal Build native readback passed.
+
+Private Build `d67317911957cd29`; package SHA-256
+`f359b62f382c0f1bdf7369926015fd9c39e33dc5fe4dbd58347854e2978c99a3`;
+model SHA-256
+`e3af801a20dd4191af9d6cf83e2b9566444b99da6d0219e3a00c94189b8748f1`.
+Local evidence: `local-output/sdk-20260909/retail-mapped-object-mesh-20261006/`.
+No game launch, mod installation or full-disc export occurred. Manual gameplay
+acceptance remains queued. This maps existing native material bindings; arbitrary
+new images, packet layouts and general animation import remain incomplete.
+
 ## Replace complete native object geometry from GLB - 2026-10-06
 
 The mesh importer now offers **Replace donor object geometry** alongside append,
