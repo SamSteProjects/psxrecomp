@@ -831,6 +831,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/audio-waveform.js": ("audio-waveform.js", "text/javascript"),
                  "/audio-waveform-contract.js": ("audio-waveform-contract.js", "text/javascript"),
                  "/audio-audition.js": ("audio-audition.js", "text/javascript"),
+                 "/audio-sample-authoring.js": ("audio-sample-authoring.js", "text/javascript"),
+                 "/audio-sample-contract.js": ("audio-sample-contract.js", "text/javascript"),
                  '/actor-animation.js': ('actor-animation.js', 'text/javascript'),
                  "/build-review.js": ("build-review.js", "text/javascript"),
                  "/build-history.js": ("build-history.js", "text/javascript"),
