@@ -33,7 +33,7 @@ import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
 import {appendCaptureSummary} from '/script-capture.js';
 import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files.js';
-import {mountAssetInspector,assetInspectorDefinition,mountTriggerBindingInspector} from '/asset-inspector.js';
+import {npcDonorModel,mountAssetInspector,assetInspectorDefinition,mountTriggerBindingInspector} from '/asset-inspector.js';
 import {mountAssetRecordDownload} from '/asset-record-export.js';
 import {renderEnvironmentInspector} from '/environment-inspector.js';
 import {bindComponentReferences} from '/component-references.js';
@@ -1764,6 +1764,7 @@ async function resolveProjectAsset(record){
 async function activateAsset(record,action=null){
   if(busy)return;
   try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
+  if(action==='inspect-npc-donor-model'){const model=npcDonorModel(record);if(!model||!state.model_references?.some(ref=>ref.source_id===record.id&&ref.target_id===model&&ref.scene_id===record.sceneId&&ref.kind==='draft_initial_model_assignment'&&ref.effective_donor_id===record.authoredRecord.donor_entity_id))throw new Error('NPC donor model assignment changed. Reopen Asset Details.');openModel(model,null,null,'imported');return;}
   if(action==='inspect-asset-region-bounds'){await inspectRegionBounds(record);return;}
   if(action==='inspect-asset-trigger-cells'){await inspectTriggerCells(record);return;}
   if(action==='inspect-asset-trigger-scripts'){await inspectTriggerScripts(record);return;}

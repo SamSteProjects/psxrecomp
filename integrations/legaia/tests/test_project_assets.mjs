@@ -98,3 +98,8 @@ const catalogNpc=structuredClone(npcReport);catalogNpc.assets.at(-1).variants[0]
 console.log('Authored NPC database memberships preserve owner/donor context and reject retail provenance substitution.');
 
 const otherAuthored=snapshot();otherAuthored.assets[0].variants.forEach(row=>row.record.layer='authored');assert.deepEqual(decodeProjectAssets(otherAuthored,context),otherAuthored,'Non-NPC authored resources keep their existing descriptor contract.');
+
+const modelNpc=structuredClone(npcReport),modelNpcRecord=modelNpc.assets.at(-1).variants[0].record;
+modelNpcRecord.model_reference={source_id:npcId,source_name:npcDraft.name,target_id:'asset://legaia/models/0',scene_id:scene('a'),kind:'draft_initial_model_assignment',imported:false,effective:true,effective_donor_id:actorId,runtime_binding:'not_asserted'};
+assert.deepEqual(decodeProjectAssets(modelNpc,context),modelNpc);
+for(const edit of [r=>r.effective_donor_id='other',r=>r.imported=true,r=>r.source_id='other',r=>r.runtime_binding='live']){const bad=structuredClone(modelNpc);edit(bad.assets.at(-1).variants[0].record.model_reference);assert.throws(()=>decodeProjectAssets(bad,context));}

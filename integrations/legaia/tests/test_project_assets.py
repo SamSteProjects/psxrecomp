@@ -52,6 +52,10 @@ class ProjectAssetsTests(unittest.TestCase):
         record=variant['record'];self.assertEqual(record['layer'],'authored');self.assertTrue(record['draft'])
         self.assertEqual(record['authored'],draft);self.assertEqual(record['donor_entity_id'],donor)
         self.assertNotIn('source_record',record)
+        ref=record['model_reference'];self.assertEqual(ref['source_id'],identifier);self.assertEqual(ref['target_id'],self.model)
+        self.assertEqual(ref['effective_donor_id'],donor);self.assertFalse(ref['imported']);self.assertEqual(ref['runtime_binding'],'not_asserted')
+        authored=next(row for row in self.project.authored_assets() if row['id']==identifier)
+        self.assertEqual(authored['model_reference'],ref)
         self.assertEqual(report['coverage']['asset_count'],9);self.assertEqual(report['coverage']['membership_count'],11)
         self.assertEqual(self.project._document(),before);self.assertEqual((self.project.undo_stack,self.project.redo_stack),history)
         record['authored']['position']['x']=512;self.assertEqual(self.project.actor_drafts[identifier],draft)
@@ -59,6 +63,22 @@ class ProjectAssetsTests(unittest.TestCase):
         with self.assertRaisesRegex(ProjectError,'validated authored'):assemble(self.project,catalogs)
         self.project.actor_drafts[identifier]['scene_id']='scene://absent'
         with self.assertRaises(ProjectError):assemble(self.project,self.catalogs)
+
+    def test_draft_model_reference_uses_retail_donor_and_keeps_unknown_explicit(self):
+        p=self.project;scene=p.active_scene;donor=p.imports[scene]['actors'][0]
+        identifier='authored-actor://12345678-1234-1234-1234-123456789abc'
+        p.actor_drafts[identifier]=dict(scene_id=scene,donor_entity_id=donor['semantic_id'],name='NPC',position=dict(x=128,z=256))
+        other=deepcopy(donor);other['semantic_id']=scene+'/actors/man-p1/0002'
+        other['model_reference']['asset_semantic_id']='asset://legaia/other-model/0000'
+        p.imports[scene]['actors'].append(other)
+        sources={actor['semantic_id']:actor for document in p.imports.values() for actor in document['actors']}
+        with patch.object(p,'appearance_source_actor',side_effect=lambda actor:other if actor==donor['semantic_id'] else sources[actor]):
+            authored=next(row for row in p.authored_assets() if row['id']==identifier)
+        self.assertEqual(authored['model_reference']['target_id'],self.model)
+        donor['model_reference']['asset_semantic_id']=None
+        self.assertIsNone(next(row for row in p.authored_assets() if row['id']==identifier)['model_reference'])
+        result=assemble(p,self.catalogs)
+        self.assertIsNone(next(row for row in result['assets'] if row['id']==identifier)['variants'][0]['record']['model_reference'])
 
     def test_navigation_independent_key_stales_for_source_and_authored_inputs(self):
         project = self.project; key = source_key(project)

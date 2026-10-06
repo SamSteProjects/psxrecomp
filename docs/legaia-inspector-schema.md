@@ -1,5 +1,30 @@
 # SDK inspector property contract
 
+## NPC recorded donor-model inspection — 2026-10-05
+
+Authored NPC records and central project inventory entries now expose the SDK's
+existing `draft_initial_model_assignment` reference. It retains source draft/name,
+owning scene, model asset ID, retail donor ID and `runtime_binding=not_asserted`.
+Unresolved donor model references remain null. The draft assignment uses the retail
+donor independently of that donor's authored appearance.
+
+NPC Asset Details shows **Recorded donor model** as a read-only SDK reference and
+provides **Inspect recorded donor model** when model preview capability and a
+coherent assignment are present. The adapter qualifies source/name/scene/donor,
+assignment kind and layer before registering navigation; the editor checks the
+current SDK reference again before opening the imported model view. The project
+inventory adapter also rejects inconsistent model bindings. There is no runtime
+residency/pose claim or property-writing action.
+
+Validation: 22 focused Python Inspector/inventory cases pass, including retail
+donor separation and explicit unknowns. Asset Inspector and project inventory Node
+checks pass binding, malformed-reference, capability and unresolved-action checks.
+Actual private browser matches SDK fields in active/project scopes and opens the
+exact recorded model response; 540px layout passes, with no page errors. Document,
+Undo/Redo and all project file bytes remain unchanged. Evidence:
+`local-output/sdk-20260909/npc-donor-model-navigation-20261005/proof.json`.
+No Build, game launch, install or disc export was performed. Gameplay stays deferred.
+
 ## Authored NPC Asset Details — 2026-10-05
 
 NPC draft cards in active-scene and project scopes now use the SDK-owned

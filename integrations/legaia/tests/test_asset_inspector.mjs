@@ -33,3 +33,14 @@ assert.equal(assetInspectorDefinition(npcSchema,npc),'AssetNpcDraft');assert.dee
 for(const edit of [r=>r.id='scene://retail/actor',r=>r.sceneId='scene://other',r=>r.authoredRecord.draft='true',r=>r.authoredRecord.authored.name='Other',r=>r.authoredRecord.authored.donor_entity_id='other',r=>r.authoredRecord.authored.position.x=32]){const bad=structuredClone(npc);edit(bad);assert.throws(()=>assetInspectorDefinition(npcSchema,bad));}
 assert.throws(()=>assetInspectorDefinition(schema,npc));
 console.log('NPC authored asset classification, source/placement coherence and selection-only action registry passed.');
+
+const donorModel='asset://legaia/models/0011',linkedNpc=structuredClone(npc);
+linkedNpc.authoredRecord.model_reference={source_id:npcId,source_name:'Resident',target_id:donorModel,scene_id:npc.sceneId,kind:'draft_initial_model_assignment',imported:false,effective:true,effective_donor_id:npc.authoredRecord.donor_entity_id,runtime_binding:'not_asserted'};
+assert.equal(assetInspectorDefinition(npcSchema,linkedNpc),'AssetNpcDraft');
+assert(Object.hasOwn(assetInspectorRegistry(linkedNpc,()=>{}),'inspect-npc-donor-model'));
+for(const edit of [r=>r.target_id='guest://pointer',r=>r.effective_donor_id='other',r=>r.imported=true,r=>r.runtime_binding='observed',r=>r.source_id='other',r=>r.source_name='other']){const bad=structuredClone(linkedNpc);edit(bad.authoredRecord.model_reference);assert.throws(()=>assetInspectorDefinition(npcSchema,bad));}
+console.log('NPC donor-model navigation requires a coherent recorded SDK assignment; unresolved assignments expose no model action.');
+
+const linkedSchema={...npcSchema,components:{...npcSchema.components,AssetNpcDraft:{layout:'read-only-properties',properties:[],actions:[{id:'select-asset-actor',capability:'project_navigation'},{id:'inspect-npc-donor-model',capability:'model_preview',when:['authoredRecord','model_reference','target_id']}]}}},linkedRegistry=assetInspectorRegistry(linkedNpc,()=>{});
+assert.deepEqual(registeredActions(linkedSchema,'AssetNpcDraft',linkedNpc,{project_navigation:true,model_preview:false},linkedRegistry,false).map(a=>a.id),['select-asset-actor']);
+assert.equal(registeredActions(linkedSchema,'AssetNpcDraft',linkedNpc,{project_navigation:true,model_preview:true},linkedRegistry,false).length,2);

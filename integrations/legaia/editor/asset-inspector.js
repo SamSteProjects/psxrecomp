@@ -3,20 +3,26 @@ import {decodeAssetReferences} from './asset-references.js';
 import {renderComponentProperties,renderComponentActions,bindComponentActions} from './component-inspector.js';
 
 const TYPES={actor:'AssetActor',scene:'AssetScene',template:'AssetTemplate',worldmap:'AssetWorldmap',model:'AssetModel',texture:'AssetTexture',animation:'AssetAnimation',script:'AssetScript',dialogue:'AssetDialogue',flag:'AssetFlag',transition:'AssetTransition',collision:'AssetCollision',trigger:'AssetTrigger',region:'AssetRegion'};
-const ACTION_TYPES={'select-asset-actor':['actor'],'open-asset-scene':['scene'],'open-asset-template':['template'],'open-asset-worldmap':['worldmap'],'inspect-landmark-destination':['worldmap'],'inspect-asset-model':['model'],'inspect-asset-texture':['texture'],'inspect-asset-animation':['animation'],'inspect-asset-script':['script','dialogue'],'inspect-asset-flag':['flag'],'inspect-asset-transition':['transition'],'inspect-asset-field':['collision','trigger','region'],'inspect-asset-region-bounds':['region'],'inspect-asset-trigger-cells':['trigger'],'inspect-asset-trigger-scripts':['trigger'],'inspect-asset-trigger-group':['trigger']};
+const ACTION_TYPES={'select-asset-actor':['actor'],'inspect-npc-donor-model':['actor'],'open-asset-scene':['scene'],'open-asset-template':['template'],'open-asset-worldmap':['worldmap'],'inspect-landmark-destination':['worldmap'],'inspect-asset-model':['model'],'inspect-asset-texture':['texture'],'inspect-asset-animation':['animation'],'inspect-asset-script':['script','dialogue'],'inspect-asset-flag':['flag'],'inspect-asset-transition':['transition'],'inspect-asset-field':['collision','trigger','region'],'inspect-asset-region-bounds':['region'],'inspect-asset-trigger-cells':['trigger'],'inspect-asset-trigger-scripts':['trigger'],'inspect-asset-trigger-group':['trigger']};
 export function assetInspectorDefinition(schema,record){
   if(record?.type==='actor'&&Object.hasOwn(record.authoredRecord??{},'draft')){
     const authored=record.authoredRecord,value=authored.authored;
     if(authored.draft!==true||authored.kind!=='actor'||authored.id!==record.id||!/^authored-actor:\/\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(record.id)||authored.scene_id!==record.sceneId||value?.scene_id!==authored.scene_id||value?.donor_entity_id!==authored.donor_entity_id||value?.name!==authored.name||['x','z'].some(axis=>!Number.isSafeInteger(value?.position?.[axis])||value.position[axis]%64||value.position[axis]<64||value.position[axis]>16384))throw new Error('NPC draft asset differs from its authored SDK record');
     if(schema?.authored_asset_inspectors?.npc_draft!=='AssetNpcDraft')throw new Error('Unsupported NPC draft asset inspector descriptor');
-    return 'AssetNpcDraft';
+    npcDonorModel(record);return 'AssetNpcDraft';
   }
   const expected=TYPES[record?.type];if(!expected)return null;
   if(schema?.asset_inspectors?.[record.type]!==expected)throw new Error('Unsupported asset inspector descriptor');
   return expected;
 }
+export function npcDonorModel(record){
+  const authored=record?.authoredRecord,ref=authored?.model_reference;
+  if(authored?.draft!==true||!ref)return null;
+  if(ref.source_id!==record.id||ref.source_name!==authored.name||ref.scene_id!==record.sceneId||ref.kind!=='draft_initial_model_assignment'||ref.imported!==false||ref.effective!==true||ref.effective_donor_id!==authored.donor_entity_id||ref.runtime_binding!=='not_asserted'||typeof ref.target_id!=='string'||!ref.target_id.startsWith('asset://'))throw new Error('NPC recorded donor model differs from its SDK assignment.');
+  return ref.target_id;
+}
 export function assetInspectorRegistry(record,activate){
-  return Object.fromEntries(Object.entries(ACTION_TYPES).filter(([id,types])=>types.includes(record.type)&&(id!=='inspect-asset-trigger-group'||record.data?.table_source==='primary'&&[0,1].includes(record.data?.table_kind))&&(id!=='inspect-asset-trigger-scripts'||triggerScriptEditable(record))).map(([id])=>[id,{run:()=>activate(record,id)}]));
+  return Object.fromEntries(Object.entries(ACTION_TYPES).filter(([id,types])=>types.includes(record.type)&&(id!=='inspect-npc-donor-model'||npcDonorModel(record)!==null)&&(id!=='inspect-asset-trigger-group'||record.data?.table_source==='primary'&&[0,1].includes(record.data?.table_kind))&&(id!=='inspect-asset-trigger-scripts'||triggerScriptEditable(record))).map(([id])=>[id,{run:()=>activate(record,id)}]));
 }
 export function mountAssetInspector(host,{schema,record,capabilities,current,busy,activate,onError}){
   const id=assetInspectorDefinition(schema,record);if(!id)return false;

@@ -171,12 +171,14 @@ def assemble(project, catalogs, coverage=None) -> dict:
     _metadata(dict(catalogs=catalogs, coverage=supplied))
     _budget(dict(imports=imports, catalogs=catalogs, coverage=supplied))
     key = source_key(project)
+    draft_models={row['source_id']:row for row in project.model_references() if row['kind']=='draft_initial_model_assignment'}
     drafts = {}
     for identifier, draft in sorted(project.actor_drafts.items()):
         project._validate_actor_draft(identifier, draft)
         drafts.setdefault(draft['scene_id'], []).append(dict(
             id=identifier, kind='actor', layer='authored', draft=True, name=draft['name'],
-            scene_id=draft['scene_id'], donor_entity_id=draft['donor_entity_id'], authored=deepcopy(draft)))
+            scene_id=draft['scene_id'], donor_entity_id=draft['donor_entity_id'], authored=deepcopy(draft),
+            model_reference=deepcopy(draft_models.get(identifier))))
     indexed, scenes, membership_count = {}, [], 0
     for scene, document in sorted(imports.items()):
         import_hash = digest(document)
