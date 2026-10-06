@@ -3,6 +3,29 @@
 
 
 
+
+## NPC draft layout/normal-package checkpoint — 2026-10-05
+
+Ten focused Python group/repetition cases and expanded Node contracts pass selected
+anchor, exact layout fields, command type binding, preserved other axis, nearest
+64-unit distribution/endpoints, insufficient span, changed-count/no-op handling,
+atomic history and persistence. Existing offset/detached scene guards remain.
+Module syntax passes. Actual private HTTP/browser passes three-member distribution,
+Proposed/Current scene qualification, operation-change withdrawal, Undo/Redo, Z
+alignment, Save/reload and independent disk reopen. Both layouts use separate batch
+history entries; imported/donor metadata and unselected drafts remain unchanged.
+The540px layout is inspected and no page errors occur.
+
+Private ordinary Build review includes six drafts and reports ready. Format7 normal
+package uses compressed NPC capacity-growth relocation; saved-package verification
+matches current inputs. Full decoded final MAN equals the prepared candidate byte
+for byte and all appended positions match authored state. Build leaves project
+metadata/history and preexisting files unchanged. No gameplay, installation or disc
+export. Proof: `local-output/sdk-20260909/npc-draft-layout-20261005/{proof,normal-build-proof}.json`.
+Campaign follow-up: Z distribution, X alignment, all tie orders, endpoint span/count
+edges, late/closed/stale anchor responses, mixed donors/scenes and runtime spawning,
+scheduling, visibility, collision and total actor-pool headroom acceptance.
+
 ## NPC draft group movement checkpoint — 2026-10-05
 
 Eight focused Python group/repetition cases pass detached full-group review,

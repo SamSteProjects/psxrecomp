@@ -2042,7 +2042,7 @@ class ProjectService:
             self.undo_stack.append({'entity_id': identifier, 'before': before, 'after': after or None})
             self.redo_stack.clear()
             return
-        if command.get('type') == 'offset_actor_drafts':
+        if command.get('type') in ('offset_actor_drafts','layout_actor_drafts'):
             from .draft_group import apply as apply_draft_group
             apply_draft_group(self,command)
             return

@@ -2,6 +2,38 @@
 
 
 
+
+## NPC draft group alignment/distribution and normal package — 2026-10-05
+
+**Move NPC draft group → Placement operation** now aligns X/Z to a selected
+anchor or distributes along either axis. Alignment preserves the other axis.
+Distribution orders by Current coordinate then stable ID, retains endpoints and
+rounds intermediate positions to the nearest64-unit placement, with half steps
+rounding upward. Groups need at least one native interval per gap; insufficient
+span rejects. Already-correct layouts are inspectable no-ops with Apply disabled.
+
+SDK review and `layout_actor_drafts` use the existing atomic batch Undo/persistence
+workflow and a distinct `draft-group-layout.v1` algorithm. Offset request keys and
+behavior remain. Selection, operation and anchor changes withdraw accepted review.
+The editor independently recomputes every native proposal and changed count;
+detached scene qualification retains the group tool's donor/model/source guards.
+No spawn, collision or script semantics are introduced.
+
+Validation: 10 focused Python group/repetition cases, expanded Node offset/layout
+contracts and module syntax pass. Actual private HTTP/browser verifies rounded
+spacing/endpoints, selected-anchor alignment, unchanged other axes, operation-change
+withdrawal, detached scene, atomic distribution Undo/Redo, both applied layouts,
+Save/reload and independent disk reopen. The540px layout is inspected; no page
+errors. Private normal Build review accepts all six drafts, saved package verification
+matches current inputs, and decoded final MAN equals preparation byte-for-byte.
+All six appended coordinates match authored state. Normal package uses the existing
+format7 compressed NPC growth relocation route; project document/history and
+preexisting files stay unchanged during Build. Package SHA256:
+`d6dc02e375d60518fd862fa22bdf32ff017ae5e9c4e92d58f31193290dcd3ad9`.
+Evidence: `local-output/sdk-20260909/npc-draft-layout-20261005/{proof,normal-build-proof}.json`.
+No game, install or full-disc export; gameplay acceptance remains deferred.
+See [group layouts](legaia-npc-draft-groups.md#alignment-and-distribution).
+
 ## Reviewed NPC draft group movement — 2026-10-05
 
 Selected authored NPC drafts now expose **Move NPC draft group...**. Search by

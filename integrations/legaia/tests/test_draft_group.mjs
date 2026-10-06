@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {decodeDraftGroupReview,decodeDraftGroupScene} from '../editor/draft-group.js';
+import {decodeDraftGroupReview,decodeDraftGroupScene,draftGroupPositions} from '../editor/draft-group.js';
 const state={scene:{id:'scene'},scene_preview_source_key:'b'.repeat(64),actor_drafts:{a:{scene_id:'scene',donor_entity_id:'donor',name:'A',position:{x:128,z:512}},b:{scene_id:'scene',donor_entity_id:'donor',name:'B',position:{x:192,z:512}}}},request={entity_ids:['a','b'],delta:{x:64,z:-128}},report={schema_version:'legaia.draft-group-review.v1',scene_id:'scene',scene_preview_source_key:state.scene_preview_source_key,project_source_key:'c'.repeat(64),review_key:'d'.repeat(64),request,targets:['a','b'].map(id=>({entity_id:id,draft:state.actor_drafts[id],proposed:{x:state.actor_drafts[id].position.x+64,z:384}})),changed_count:2,gameplay_verified:false,limitations:['Scope']};
 const accepted=decodeDraftGroupReview(report,request,state);accepted.targets[0].draft.name='Detached';assert.equal(state.actor_drafts.a.name,'A');
 const reordered={...report,request:{delta:request.delta,entity_ids:request.entity_ids}};assert.deepEqual(decodeDraftGroupReview(reordered,request,state).request,reordered.request);
@@ -9,3 +9,12 @@ const base={source_key:state.scene_preview_source_key,scene_id:'scene',assets:[]
 const decoded=decodeDraftGroupScene(response,report,base);decoded.entities[0].position.x=0;assert.equal(response.scene.entities[0].position.x,192);
 for(const edit of [v=>v.review_key='stale',v=>v.scene.entities[2].position.x=0,v=>v.scene.entities[0].donor_entity_id='other',v=>v.scene.entities[0].model_to_scene[3]=0,v=>v.scene.entities[0].display_position.z=0,v=>v.scene.entities.pop(),v=>v.scene.assets.push({})]){const bad=structuredClone(response);edit(bad);assert.throws(()=>decodeDraftGroupScene(bad,report,base));}
 console.log('NPC draft group source, exact targets, detached report/scene, unchanged content and model/display transforms passed.');
+
+const layoutDrafts={a:{position:{x:128,z:512}},b:{position:{x:192,z:640}},c:{position:{x:320,z:768}}};
+assert.deepEqual([...draftGroupPositions({entity_ids:['a','b','c'],layout:{kind:'align',axis:'x',anchor_entity_id:'b'}},layoutDrafts).values()],[{x:192,z:512},{x:192,z:640},{x:192,z:768}]);
+assert.deepEqual([...draftGroupPositions({entity_ids:['a','b','c'],layout:{kind:'distribute',axis:'x'}},layoutDrafts).values()],[{x:128,z:512},{x:256,z:640},{x:320,z:768}]);
+for(const layout of [{kind:'align',axis:'x',anchor_entity_id:'missing'},{kind:'distribute',axis:'x',extra:1},{kind:'distribute',axis:'y'}])assert.throws(()=>draftGroupPositions({entity_ids:['a','b','c'],layout},layoutDrafts));
+assert.throws(()=>draftGroupPositions({entity_ids:['a','b','c'],layout:{kind:'distribute',axis:'x'}},{a:{position:{x:128,z:512}},b:{position:{x:128,z:512}},c:{position:{x:192,z:512}}}));
+const alignRequest={entity_ids:['a','b'],layout:{kind:'align',axis:'x',anchor_entity_id:'a'}},aligned={...structuredClone(report),request:alignRequest,changed_count:1,targets:report.targets.map(row=>({...structuredClone(row),proposed:{x:128,z:512}}))};
+assert.equal(decodeDraftGroupReview(aligned,alignRequest,state).changed_count,1);assert.throws(()=>decodeDraftGroupReview({...aligned,changed_count:2},alignRequest,state));
+console.log('NPC alignment anchor, rounded native-grid spacing/endpoints, axis preservation and changed-count qualification passed.');

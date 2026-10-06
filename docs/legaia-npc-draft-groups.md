@@ -32,6 +32,39 @@ cannot modify the dialog's current selection. Scene inspection qualifies exact
 selected positions and model/display transforms, donor metadata, asset geometry,
 and unchanged unselected scene content before presenting the proposal.
 
+
+## Alignment and distribution
+
+Choose **Placement operation** after selecting the group:
+
+- **Align X/Z to anchor** uses the selected anchor's Current coordinate. The
+  other axis remains unchanged; the anchor must belong to the group.
+- **Distribute along X/Z** retains the smallest/largest Current coordinates and
+  places intermediate drafts as evenly as the64-unit retail grid permits.
+  Current coordinate, then stable ID, determines order for tied positions.
+
+Intermediate half-grid values round upward. For three positions128,192,320,
+X distribution yields128,256,320: the ideal middle224 rounds to256. The endpoints
+and every Z value stay unchanged. At least one64-unit interval per gap is required;
+a group with insufficient span rejects. Coincident alignment remains an author
+choice, without collision or runtime behavior guarantees.
+
+Changing operation or alignment anchor clears the accepted report. Preview shows
+both unchanged and changed members. Already-correct layouts leave Apply disabled;
+Apply changes the complete reviewed group in one Undo entry. Layout review uses
+`draft-group-layout.v1`; existing offset keys remain `draft-group-offset.v1`.
+
+Offline2026-10-05: 10 focused Python cases and expanded Node contracts pass. Actual
+private editor review/scene/distribution Undo/Redo, alignment Apply, Save/reload and
+disk reopen pass; the540px layout is inspected with no page errors. Normal Build
+accepts six drafts through compressed capacity-growth relocation. Saved package
+verification matches current inputs and the package's decoded MAN matches the
+prepared candidate byte for byte, with every appended position correct. Project
+metadata/history and preexisting files stay unchanged during Build.
+Package SHA256: `d6dc02e375d60518fd862fa22bdf32ff017ae5e9c4e92d58f31193290dcd3ad9`.
+Evidence: `local-output/sdk-20260909/npc-draft-layout-20261005/{proof,normal-build-proof}.json`.
+No game, installation or full-disc export; runtime acceptance remains deferred.
+
 ## Build and runtime scope
 
 Normal Build consumes these ordinary authored draft positions through the existing

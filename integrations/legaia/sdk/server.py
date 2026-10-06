@@ -2690,7 +2690,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     return
                 if route in ('/api/draft-group','/api/draft-group-scene'):
                     from .draft_group import review as draft_group_review, proposal_view
-                    fields={'entity_ids','delta'}
+                    fields={'entity_ids','layout' if 'layout' in body else 'delta'}
                     if set(body)!=(fields|{'review_key'} if route.endswith('-scene') else fields):
                         raise ProjectError('NPC draft group request has unsupported fields')
                     project=self.server.project
