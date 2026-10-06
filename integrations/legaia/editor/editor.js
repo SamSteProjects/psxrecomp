@@ -1,3 +1,4 @@
+import {mountNpcPresets,NPC_PRESET_SCOPE} from '/npc-presets.js';
 import {qualifyTransitionGraphEntry} from '/transition-graph-entry.js';
 import {mountPlacementGizmo} from '/worldmap-placement-gizmo.js';
 import {highlightSceneFaceDocument,highlightSceneFaceProposal} from '/model-face-scene-selection.js';
@@ -528,6 +529,7 @@ No saved input snapshot in this older export.`);
     }
   }catch(error){status.textContent=`Could not load exports: ${error.message}`;}
 };
+let npcPresetControls=null;
 const templateDialog=document.createElement('dialog');templateDialog.id='template-dialog';document.body.append(templateDialog);
 const templateButton=document.createElement('button');templateButton.className='template-library-button';templateButton.textContent='Authored actor templates…';$('assets').before(templateButton);
 templateButton.onclick=()=>showTemplates();
@@ -692,7 +694,7 @@ function setBusy(value) {
   if($('project-settings-button'))$('project-settings-button').disabled=value||!state.capabilities?.project_settings;
   if($('project-copy-button'))$('project-copy-button').disabled=value||!state.capabilities?.project_copy;
   document.querySelectorAll('#script-report [data-script-family]').forEach(button=>button.disabled=value);
-  busy=value;triggerScriptsDialog?.refresh?.();triggerGroupDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
+  busy=value;npcPresetControls?.update();triggerScriptsDialog?.refresh?.();triggerGroupDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);
@@ -707,7 +709,7 @@ function setBusy(value) {
   draftOutputReview.updateState();
   worldmapGeometryControls?.updateState();
   worldPlacementControls?.updateState();
-  document.querySelectorAll('#draft-inspector-form input,#draft-inspector-form button,#draft-name-form input,#draft-name-form button,#draft-donor-form select,#draft-donor-form button,#duplicate-npc-draft,#repeat-npc-draft,#delete-npc-draft').forEach(control=>control.disabled=value||!canEdit());
+  document.querySelectorAll('#draft-inspector-form input,#draft-inspector-form button,#draft-name-form input,#draft-name-form button,#draft-donor-form select,#draft-donor-form button,#duplicate-npc-draft,#repeat-npc-draft,#delete-npc-draft,#npc-presets-button').forEach(control=>control.disabled=value||!canEdit());
   for(const id of ['import-button','save-button','project-button','empty-import']) $(id).disabled=value;
   $('undo-button').disabled=value || worldmapDraftPending || !state.history?.can_undo;
   $('redo-button').disabled=value || worldmapDraftPending || !state.history?.can_redo;
@@ -2805,13 +2807,21 @@ function appendResourceTable(parent,headings,rows,empty){
 function property(label,value){return `<dl class="property"><dt>${escapeHTML(label)}</dt><dd>${escapeHTML(value ?? 'Unknown')}</dd></dl>`;}
 function showTemplates(){renderTemplates();templateDialog.showModal();}
 function renderTemplates(){
-  const entity=selected(),position=entity?.components?.Transform?.authored?.position ?? {},templates=state.actor_templates ?? [];
+  const entity=selected(),position=entity?.components?.Transform?.authored?.position ?? {},templates=(state.actor_templates ?? []).filter(t=>t.scope!==NPC_PRESET_SCOPE);
   const appearance=entity?.components?.ActorAppearance?.authored?.donor_entity_id?entity.components.ActorAppearance.authored:null;
   const animation=entity?.components?.ActorAnimation?.authored?.animation_asset_id?entity.components.ActorAnimation.authored:null;
   const axes=Object.entries(position).map(([axis,value])=>`${axis.toUpperCase()} ${format(value)}`).join(' · ');
-  templateDialog.innerHTML=`<div class="dialog-heading"><h2>Authored actor templates</h2><button type="button" id="close-templates" aria-label="Close">×</button></div><p>Capture authored position, appearance and initial animation, then review the preset for an existing imported actor.</p><p class="field-note">Appearance and clips are reverified against the final proposed model. Initial MAN header only; scripts and gameplay remain unverified. Animation channel edits stay with their imported shared clip. Height stays project-only; Build requires representable X/Z values.</p><form id="create-template-form"><label>Template name<input id="template-name" required maxlength="80" placeholder="For example, courtyard actor" ${canEdit() && (axes||appearance||animation)?'':'disabled'}></label><p class="field-note">${entity?`Selected: ${escapeHTML(entity.name)} · ${axes?escapeHTML(axes):appearance?`Appearance donor: ${escapeHTML(appearance.donor_entity_id)}`:animation?`Initial clip: ${escapeHTML(animation.animation_asset_id)}`:'Author a position, appearance or initial animation override to capture a template.'}`:'Select an imported actor to capture or apply a template.'}</p><button type="submit" ${canEdit() && axes?'':'disabled'}>Capture authored position</button><button type="button" id="capture-appearance-template" ${canEditAppearance() && appearance?'':'disabled'}>Capture authored appearance</button><button type="button" id="capture-combined-template" ${canEditAppearance() && appearance && axes?'':'disabled'}>Capture position and appearance</button><button type="button" id="capture-animation-template" ${canEdit() && animation?'':'disabled'}>Capture authored initial animation</button><button type="button" id="capture-animated-template" ${canEdit() && animation?'':'disabled'}>Capture animation with authored position and appearance</button></form><div id="template-list" class="template-list"></div><p class="field-note">Template changes use Undo / Redo. Save the project to keep the library.</p>`;
+  templateDialog.innerHTML=`<div class="dialog-heading"><h2>Actor and NPC preset library</h2><button type="button" id="close-templates" aria-label="Close">×</button></div><p>Capture authored position, appearance and initial animation, then review the preset for an existing imported actor.</p><p class="field-note">Appearance and clips are reverified against the final proposed model. Initial MAN header only; scripts and gameplay remain unverified. Animation channel edits stay with their imported shared clip. Height stays project-only; Build requires representable X/Z values.</p><form id="create-template-form"><label>Template name<input id="template-name" required maxlength="80" placeholder="For example, courtyard actor" ${canEdit() && (axes||appearance||animation)?'':'disabled'}></label><p class="field-note">${entity?`Selected: ${escapeHTML(entity.name)} · ${axes?escapeHTML(axes):appearance?`Appearance donor: ${escapeHTML(appearance.donor_entity_id)}`:animation?`Initial clip: ${escapeHTML(animation.animation_asset_id)}`:'Author a position, appearance or initial animation override to capture a template.'}`:'Select an imported actor to capture or apply a template.'}</p><button type="submit" ${canEdit() && axes?'':'disabled'}>Capture authored position</button><button type="button" id="capture-appearance-template" ${canEditAppearance() && appearance?'':'disabled'}>Capture authored appearance</button><button type="button" id="capture-combined-template" ${canEditAppearance() && appearance && axes?'':'disabled'}>Capture position and appearance</button><button type="button" id="capture-animation-template" ${canEdit() && animation?'':'disabled'}>Capture authored initial animation</button><button type="button" id="capture-animated-template" ${canEdit() && animation?'':'disabled'}>Capture animation with authored position and appearance</button></form><div id="template-list" class="template-list"></div><p class="field-note">Template changes use Undo / Redo. Save the project to keep the library.</p>`;
   $('close-templates').onclick=()=>templateDialog.close();
   appendPresetImport({container:templateDialog,getState:()=>state,canEdit,isBusy:()=>busy,setBusy,api});
+  npcPresetControls=mountNpcPresets({container:templateDialog,getState:()=>state,getSelection:()=>npcDraftSelection,canEdit,isBusy:()=>busy,setBusy,api,
+    canInspectScene:()=>sceneModelsReady()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection,getScenePreview:()=>scenePreview,
+    inspectScene:(proposed,report,returnToReview,isCurrent)=>{
+      cancelViewportGesture();const failures=sceneRenderer.load(structuredClone(proposed));if(failures.length){sceneRenderer.load(structuredClone(scenePreview));throw new Error(failures.join('; '));}
+      scenePose={key:sceneKey,name:'Proposed NPC preset instance - not applied',returnToFile:returnToReview,isCurrent};scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent='Proposed NPC preset instance - not applied';configureSceneInspectionComparison(proposed);
+      for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('[aria-label="Scene preview rate"]').parentElement])control.hidden=true;
+      const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to NPC preset';frameShapeProposal({instance_scope:'all_model_instances',proposal_instances:[{entity_id:report.entity_id,proposed:report.draft.position}]},null);draw();
+    }});
   const errorMessage=document.createElement('p');errorMessage.className='dialog-error';errorMessage.setAttribute('role','alert');templateDialog.append(errorMessage);
   const command=async body=>{const result=await api('/api/command',body);if(!result)errorMessage.textContent=$('status').textContent;return result;};
   $('create-template-form').onsubmit=async event=>{event.preventDefault();await command({type:'create_actor_template',entity_id:entity.id,name:$('template-name').value});};
@@ -2914,6 +2924,7 @@ function renderInspector(){
     const nameLabel=document.createElement('label');nameLabel.textContent='Name ';const nameInput=document.createElement('input');nameInput.name='name';nameInput.required=true;nameInput.maxLength=120;nameInput.value=npc.name;nameLabel.append(nameInput);
     const rename=document.createElement('button');rename.type='submit';rename.textContent='Rename';nameForm.append(nameLabel,rename);$('draft-inspector-form').before(nameForm);
     nameForm.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'rename_actor_draft',entity_id:id,name:nameInput.value});};
+    const presets=document.createElement('button');presets.id='npc-presets-button';presets.textContent='NPC presets...';presets.disabled=busy||!canEdit();presets.onclick=showTemplates;$('delete-npc-draft').before(presets);
     const duplicate=document.createElement('button');duplicate.id='duplicate-npc-draft';duplicate.textContent='Duplicate draft';duplicate.title='Creates an independent draft at the same position, then selects it to move';$('delete-npc-draft').before(duplicate);
     duplicate.onclick=async()=>{const previous=new Set(Object.keys(state.actor_drafts??{}));if(await api('/api/command',{type:'duplicate_actor_draft',entity_id:id,name:npc.name.slice(0,115)+' copy'})){const created=Object.keys(state.actor_drafts??{}).find(key=>!previous.has(key));if(created){selectNpcDraft(created);frameNpcDraft();notify('Draft duplicated at the same position. Move it with X/Z or the viewport handles.');}}};
     const repeat=document.createElement('button');repeat.id='repeat-npc-draft';repeat.textContent='Repeat draft...';duplicate.after(repeat);repeat.onclick=()=>openDraftRepeat({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,setBusy,api,

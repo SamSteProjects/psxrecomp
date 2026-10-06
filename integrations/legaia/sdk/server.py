@@ -780,6 +780,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
                  "/draft-group.js": ("draft-group.js", "text/javascript"),
                  "/npc-draft-inspector.js": ("npc-draft-inspector.js", "text/javascript"),
+                 "/npc-presets.js": ("npc-presets.js", "text/javascript"),
                  "/draft-review.js": ("draft-review.js", "text/javascript"),
                  "/script-operand-bundle.js": ("script-operand-bundle.js", "text/javascript"),
                  "/script-capture.js": ("script-capture.js", "text/javascript"),
@@ -2689,6 +2690,22 @@ class EditorHandler(BaseHTTPRequestHandler):
                         return
                     self._json(200, self.server.model_preview(asset, clip_id))
                     return
+                if route in ('/api/npc-preset-review','/api/npc-preset-scene'):
+                    from .npc_presets import review,proposal_view
+                    fields={'template_id','name','position','expected_source_key'}
+                    if set(body)!=(fields|{'review_key'} if route.endswith('-scene') else fields):raise ProjectError('NPC preset request has unsupported fields')
+                    report=review(self.server.project,{k:body[k] for k in fields})
+                    if route.endswith('-review'):
+                        self._json(200,report);return
+                    if body['review_key']!=report['review_key']:raise ProjectError('NPC preset changed since review')
+                    from .project_copy import source_key
+                    from importer.scene_animation import load_scene_actor_animation_catalog
+                    from importer.environment import load_environment_preview_catalog
+                    from .terrain_preview import terrain_preview
+                    view=proposal_view(self.server.project,report)
+                    proposed=self.server.scene_previews.preview(view,lambda asset,*args,**kwargs:self.server.model_preview(asset,*args,effective_shape=True,project_view=view,**kwargs),load_scene_actor_animation_catalog,load_environment_preview_catalog,terrain_preview)
+                    if source_key(self.server.project)!=report['project_source_key']:raise ProjectError('Project changed during NPC preset scene inspection')
+                    self._json(200,dict(schema_version='legaia.npc-preset-scene.v1',review=report,scene=dict(proposed,representation='authored')));return
                 if route in ('/api/draft-group','/api/draft-group-scene'):
                     from .draft_group import review as draft_group_review, proposal_view
                     fields={'entity_ids','remove' if 'remove' in body else 'layout' if 'layout' in body else 'delta'}

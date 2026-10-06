@@ -1,5 +1,33 @@
 # Legaia SDK validation plan
 
+## Reusable NPC draft presets — 2026-10-05
+
+The preset library now supports a separate `npc-draft-preset-v1` scope. Select an
+NPC draft and choose **NPC presets…** to capture its retail donor, authored name
+and native X/Z defaults with owning scene, import hash and original draft provenance.
+Review a new named instance at a chosen 64-unit-grid placement, compare the detached
+scene with Current, then Apply. Capture and placement each have their own Undo step;
+rename, delete, Save and reopen use the existing project template library. A preset
+survives deletion of its original draft. Imported-actor template Apply rejects this
+scope; cross-scene, stale, Live-mode and invalid placement requests fail closed.
+
+Focused Python/Node checks and an actual private browser pass capture, changed-input
+review withdrawal, exactly one scene addition, preservation of existing entities,
+Apply, atomic Undo/Redo, Save/reload and disk reopen. Narrow review actions wrap
+within the 540px viewport. A private normal format-7 Build contains all seven authored
+NPC rows; the preset instance reads back from native MAN at X 3008 / Z 5632. Complete
+native MAN bytes match preparation and saved receipt verification matches current
+inputs. Package SHA-256:
+`18ea1110520c28bdb321499dc8f466f868512be03b982736eddc8429c1e43adc`.
+Evidence: `local-output/sdk-20260909/npc-presets-20261005/proof.json`,
+`normal-build-proof.json` and `preset-review-540.png`.
+
+This is project-local donor/placement reuse, not prefab inheritance or an authored
+script/appearance snapshot. Shared asset edits remain project-wide. Preset file
+interchange and cross-scene remapping are not implemented. Runtime spawning,
+scheduling, collision and visibility remain deferred to manual gameplay; no game,
+install or full-disc export was performed. See [NPC presets](NPC_PRESETS.md).
+
 ## NPC animation frames at authored scene placement — 2026-10-05
 
 **Inspect animation in scene** now targets the selected NPC draft when entered

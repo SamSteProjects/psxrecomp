@@ -2518,6 +2518,10 @@ class ProjectService:
             from .template_files import apply
             apply(self,command)
             return
+        if command.get('type') in ('create_npc_preset','instantiate_npc_preset'):
+            from .npc_presets import capture,apply
+            (capture if command['type']=='create_npc_preset' else apply)(self,command)
+            return
         if command.get("type") in ("create_actor_template", "apply_actor_template", "delete_actor_template", "rename_actor_template"):
             self._template_command(command)
             return
@@ -2574,11 +2578,15 @@ class ProjectService:
             raise ProjectError("Invalid authored template identity") from exc
         if not isinstance(template, dict) or set(template) != {"id", "name", "scope", "source", "components"}:
             raise ProjectError("Invalid authored transform template")
-        if template["id"] != identifier or template["scope"] not in ("authored-position-v1", "authored-appearance-v1", "authored-actor-preset-v1", "authored-actor-preset-v2"):
+        if template["id"] != identifier or template["scope"] not in ("authored-position-v1", "authored-appearance-v1", "authored-actor-preset-v1", "authored-actor-preset-v2", "npc-draft-preset-v1"):
             raise ProjectError("Unsupported authored template scope")
         name = template["name"]
         if not isinstance(name, str) or name != name.strip() or not 1 <= len(name) <= 80:
             raise ProjectError("Template name must contain 1 to 80 characters")
+        if template['scope']=='npc-draft-preset-v1':
+            from .npc_presets import validate
+            validate(self,identifier,template)
+            return
         source = template["source"]
         if not isinstance(source, dict) or set(source) != {"disc_identity", "scene_id", "entity_id"} or any(not isinstance(value, str) or not value for value in source.values()):
             raise ProjectError("Template requires source disc, scene and actor provenance")
@@ -2608,6 +2616,8 @@ class ProjectService:
 
     def template_application(self, template: dict, entity_id: str | None) -> dict:
         """Cheap selected-actor eligibility; Apply still verifies the retail source."""
+        if template.get('scope')=='npc-draft-preset-v1':
+            return {'available':False,'verification':'project_structure_only','reason':'NPC preset creates a new authored draft in its owning scene; it is not an imported actor override.'}
         result = {"available": False, "verification": "project_structure_only"}
         if self.mode != "edit":
             return {**result, "reason": "Switch to Edit mode to apply a preset"}
@@ -2693,6 +2703,8 @@ class ProjectService:
             self.redo_stack.clear()
             return
         if kind == "apply_actor_template":
+            if template['scope'] == 'npc-draft-preset-v1':
+                raise ProjectError('NPC presets require reviewed instantiation, not imported actor Apply')
             if template["scope"] in ('authored-actor-preset-v1','authored-actor-preset-v2'):
                 from .actor_presets import apply as apply_actor_preset
                 apply_actor_preset(self,command)
@@ -3346,7 +3358,7 @@ class ProjectService:
             scene_id = template["source"]["scene_id"]
             records.append({"id": identifier, "kind": "template", "name": template["name"],
                             "scene_id": scene_id, "source_scene": self.imports.get(scene_id, {}).get("scene", {}).get("name", scene_id),
-                            "changes": ["Animation preset" if template['scope']=='authored-actor-preset-v2' else
+                            "changes": ["NPC draft preset" if template['scope']=='npc-draft-preset-v1' else "Animation preset" if template['scope']=='authored-actor-preset-v2' else
                                         "Appearance template" if template["scope"] == "authored-appearance-v1" else
                                         "Position and appearance preset" if template['scope']=='authored-actor-preset-v1' else
                                         "Position template"], "authored": deepcopy(template)})
