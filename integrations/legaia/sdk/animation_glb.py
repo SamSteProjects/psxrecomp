@@ -159,6 +159,7 @@ def _prepare(project, entity_id: str, content: bytes, binding: dict, *, animatio
                                       if owner != channel_owner and contribution['animation_id'] == binding['animation_id'])),
         limitations=['Existing rigid-object channels and frame count only; mesh edits are ignored.',
                      'Constant unit-scale tracks are accepted; native scale animation is unsupported.',
+                     'Rigid parent transforms are baked to scene-space native poses; skinning remains unsupported.',
                      'The selected interchange rate does not establish retail playback timing.',
                      'Translation is rounded to source integers; Euler rotations use the existing eight-bit angle lattice.',
                      'Normal Build retains source capacities; runtime playback remains unverified.'])

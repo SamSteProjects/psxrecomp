@@ -206,20 +206,23 @@ class AnimationGlbTests(unittest.TestCase):
         self.assertNotEqual(changed,source)
         self.assertLessEqual(report['maximum_angular_error_degrees'],2.2)
 
-    def test_identity_ancestors_are_allowed_but_transformed_or_mapped_parents_reject(self):
+    def test_identity_ancestors_and_hierarchy_structure_validation(self):
         frames=[[([0,0,0],[0,0,0]),([0,0,0],[0,0,0])]]
         source=record(frames);doc,payload=document(frames)
         doc['nodes'].append({'name':'collection','children':[0,1],'matrix':[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]})
         doc['scenes'][0]['nodes']=[2]
         self.assertEqual(import_animation_glb(source,encode(doc,payload),fps=15)[0],source)
         invalid=[]
-        changed=deepcopy(doc);del changed['nodes'][2]['matrix'];changed['nodes'][2]['translation']=[1,0,0];invalid.append(changed)
-        changed=deepcopy(doc);changed['nodes'][2]['children']=[0];changed['nodes'][0]['children']=[1];invalid.append(changed)
+        changed=deepcopy(doc);del changed['nodes'][2]['matrix'];changed['nodes'][2]['translation']=[1,0,0]
+        self.assertEqual(import_animation_glb(source,encode(changed,payload),fps=15)[1]['changed_axes'],2)
+        changed=deepcopy(doc);changed['nodes'][2]['children']=[0];changed['nodes'][0]['children']=[1]
+        self.assertEqual(import_animation_glb(source,encode(changed,payload),fps=15)[0],source)
         changed=deepcopy(doc);changed['nodes'][1]['children']=[2];invalid.append(changed)
         changed=deepcopy(doc);changed['nodes'][0]['children']=[1];invalid.append(changed)
-        # Earlier-visited identity intermediates cannot conceal a mapped ancestor.
+        # Mapped parents through identity intermediates are baked without recursion.
         changed=deepcopy(doc);changed['nodes'][2].pop('matrix');changed['nodes'][2]['children']=[1]
-        changed['nodes'][0]['children']=[2];changed['scenes'][0]['nodes']=[0];invalid.append(changed)
+        changed['nodes'][0]['children']=[2];changed['scenes'][0]['nodes']=[0]
+        self.assertEqual(import_animation_glb(source,encode(changed,payload),fps=15)[0],source)
         changed=deepcopy(doc);changed['nodes'][0]['extras']['source_object']['object_index']=1;invalid.append(changed)
         changed=deepcopy(doc);changed['nodes'][1]['name']='object-0';invalid.append(changed)
         for changed in invalid:

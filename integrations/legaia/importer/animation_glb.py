@@ -7,8 +7,8 @@ d6e64c68ede25813d35db20980da82a1a025549b in
 crates/asset/src/player_anm.rs and crates/tmd/src/mesh/vram_posed.rs:
 https://github.com/AndrewAltimit/legend-of-legaia-re/tree/d6e64c68ede25813d35db20980da82a1a025549b
 
-This imports independent object-local translation and rotation channels only.
-It does not import meshes, skinning, hierarchy, timing evidence or new records.
+Rigid node hierarchies are sampled into independent scene-space native poses.
+This does not import meshes, skinning, timing evidence or new records.
 The caller must qualify the record and sidecar against its current project.
 """
 from __future__ import annotations
@@ -30,6 +30,7 @@ MAX_KEYS = 65536
 # Room for all 64 rigid TRS triplets plus bounded neutral ancestor tracks.
 MAX_ANIMATION_TRACKS = 256
 MAX_ANIMATION_COMPONENTS = 1_000_000
+MAX_HIERARCHY_SAMPLES = 65536
 ANGLE_EQUIVALENCE_RADIANS = 1e-5
 MAX_ANGULAR_ERROR_DEGREES = 2.2
 _TICK = math.tau / 256
@@ -234,8 +235,6 @@ def _nodes(doc, object_count):
             matrix = _vector(node["matrix"], 16, "node matrix")
             if identity is not None or matrix != _IDENTITY_MATRIX or any(k in node for k in ("translation", "rotation", "scale")):
                 raise ImportError("Rigid animation does not import node matrices")
-        if identity is None and (translation != [0, 0, 0] or abs(rotation[3]) != 1):
-            raise ImportError("Unmapped nodes and ancestors must have identity transforms")
         transforms[index] = (translation, rotation)
         children = _array(node.get("children", []), "node children", 4096)
         for child in children:
@@ -261,7 +260,6 @@ def _nodes(doc, object_count):
         raise ImportError("Source object nodes are not reachable in the selected GLB scene")
     # Check even detached nodes for cycles; no ambiguous parent interpretation.
     finished = set()
-    mapped_nodes = set(mapping.values())
     for index in range(len(nodes)):
         path, current = set(), index
         while current not in finished:
@@ -273,16 +271,28 @@ def _nodes(doc, object_count):
                 break
             current = parent
         finished.update(path)
-    for index in mapped_nodes:
-        current = parents.get(index)
-        while current is not None:
-            if current in mapped_nodes:
-                raise ImportError("Source object nodes require independent rigid channels")
+    return mapping, transforms, parents
+
+
+def _hierarchy_order(mapping, parents, frame_count):
+    """Only source objects and their ancestors, parent first without recursion."""
+    order, included = [], set()
+    for node in mapping.values():
+        path = []
+        current = node
+        while current is not None and current not in included:
+            path.append(current)
             current = parents.get(current)
-    return mapping, transforms
+        for current in reversed(path):
+            included.add(current)
+            order.append(current)
+    if len(order) * frame_count > MAX_HIERARCHY_SAMPLES:
+        raise ImportError("GLB hierarchy exceeds the 65536 sampled-node bound")
+    return order
 
 
-def _tracks(doc, accessors, mapping, duration, animation_index=None):
+
+def _tracks(doc, accessors, mapping, duration, animation_index=None, *, hierarchy_nodes=None):
     animations = _array(doc.get("animations", []), "animations", 64)
     if animation_index is None:
         if len(animations) > 1:
@@ -295,7 +305,7 @@ def _tracks(doc, accessors, mapping, duration, animation_index=None):
     animation = _object(animations[selected], "animation")
     samplers = _array(animation.get("samplers"), "animation samplers", MAX_ANIMATION_TRACKS)
     channels = _array(animation.get("channels"), "animation channels", MAX_ANIMATION_TRACKS)
-    tracks, allowed, time_cache = {}, set(mapping.values()), {}
+    tracks, allowed, time_cache = {}, set(mapping.values()) if hierarchy_nodes is None else set(hierarchy_nodes), {}
     for channel in channels:
         channel = _object(channel, "animation channel")
         target = _object(channel.get("target"), "animation target")
@@ -303,7 +313,7 @@ def _tracks(doc, accessors, mapping, duration, animation_index=None):
         if (type(node) is not int or not 0 <= node < len(doc['nodes']) or
                 path not in ("translation", "rotation", "scale") or
                 (path != "scale" and node not in allowed)):
-            raise ImportError("Animation targets require mapped translation/rotation or exact identity scale")
+            raise ImportError("Animation targets require source-object/ancestor translation/rotation or exact identity scale")
         if "matrix" in doc['nodes'][node]:
             raise ImportError("Animated GLB nodes cannot contain matrices")
         if (node, path) in tracks:
@@ -401,6 +411,52 @@ def _sample(track, time, rotation=False):
     return [(1 - ratio) * a + ratio * b for a, b in zip(values[index], values[index + 1])]
 
 
+
+def _multiply_quaternions(a, b):
+    x, y, z, w = a; bx, by, bz, bw = b
+    q = [w*bx + x*bw + y*bz - z*by,
+         w*by - x*bz + y*bw + z*bx,
+         w*bz + x*by - y*bx + z*bw,
+         w*bw - x*bx - y*by - z*bz]
+    norm = math.hypot(*q)
+    if not math.isfinite(norm) or norm == 0:
+        raise ImportError("GLB hierarchy produced an invalid orientation")
+    return [v / norm for v in q]
+
+
+def _rotate_vector(q, v):
+    # Unit quaternion rotation: v + 2w(q.xyz cross v) +
+    # 2(q.xyz cross (q.xyz cross v)). Parent scale is proven unit.
+    x, y, z, w = q; vx, vy, vz = v
+    cx, cy, cz = y*vz-z*vy, z*vx-x*vz, x*vy-y*vx
+    result = [vx+2*(w*cx+y*cz-z*cy),
+              vy+2*(w*cy+z*cx-x*cz),
+              vz+2*(w*cz+x*cy-y*cx)]
+    if any(not _finite_number(v) for v in result):
+        raise ImportError("GLB hierarchy produced a nonfinite translation")
+    return result
+
+
+def _sample_hierarchy(order, parents, static, tracks, time):
+    poses = {}
+    for node in order:
+        translation, quaternion = static[node]
+        if (node, "translation") in tracks:
+            translation = _sample(tracks[(node, "translation")], time)
+        if (node, "rotation") in tracks:
+            quaternion = _sample(tracks[(node, "rotation")], time, True)
+        parent = parents.get(node)
+        if parent is not None:
+            parent_t, parent_q = poses[parent]
+            rotated = _rotate_vector(parent_q, translation)
+            translation = [a+b for a,b in zip(parent_t, rotated)]
+            if any(not _finite_number(v) for v in translation):
+                raise ImportError("GLB hierarchy produced a nonfinite translation")
+            quaternion = _multiply_quaternions(parent_q, quaternion)
+        poses[node] = (translation, quaternion)
+    return poses
+
+
 def _source_quaternion(angles):
     x, y, z = [value * _TICK / 2 for value in angles]
     sx, cx, sy, cy, sz, cz = math.sin(x), math.cos(x), math.sin(y), math.cos(y), math.sin(z), math.cos(z)
@@ -484,19 +540,17 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
     if total > MAX_CHANNEL_EDITS:
         raise ImportError("Animation GLB source exceeds the 4096-channel bound")
     doc, payload = _read_glb(content)
-    mapping, static = _nodes(doc, source["bone_count"])
-    tracks = _tracks(doc, _Accessors(doc, payload), mapping, source["frame_count"] / fps, animation_index)
+    mapping, static, parents = _nodes(doc, source["bone_count"])
+    order = _hierarchy_order(mapping, parents, source["frame_count"])
+    tracks = _tracks(doc, _Accessors(doc, payload), mapping, source["frame_count"] / fps, animation_index, hierarchy_nodes=order)
     edits, maximum_translation, maximum_angle, preserved = [], 0.0, 0.0, 0
     for frame in source["frames"]:
         time = struct.unpack("<f", struct.pack("<f", frame["frame_index"] / fps))[0]
+        poses = _sample_hierarchy(order, parents, static, tracks, time)
         for channel in frame["object_transforms"]:
             obj, before_t, before_r = channel["object_index"], channel["translation"], channel["rotation_psx"]
             node = mapping[obj]
-            translation, quaternion = static[node]
-            if (node, "translation") in tracks:
-                translation = _sample(tracks[(node, "translation")], time)
-            if (node, "rotation") in tracks:
-                quaternion = _sample(tracks[(node, "rotation")], time, True)
+            translation, quaternion = poses[node]
             actual = [translation[0], -translation[1], translation[2]]
             if any(not -2048 <= value <= 2047 for value in actual):
                 raise ImportError("GLB translation exceeds signed twelve-bit range before quantization")

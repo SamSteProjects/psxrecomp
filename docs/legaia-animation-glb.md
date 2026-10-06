@@ -16,7 +16,7 @@ existing frame/object counts and selected interchange rate.
    in Blender or another GLB editor. Keep the exported `source_object.object_index`
    custom properties; display names may change. If those properties are omitted,
    preserve the `object-N` names. Keep unit scale, the existing timeline and
-   independent rigid-object arrangement.
+   rigid-object arrangement; parent TRS transforms are baked into native poses.
 4. Export a self-contained GLB. Select that GLB and the original binding JSON
    in the SDK, then **Review selected files**. Inspect the exact source-axis changes,
    quantization error and shared ownership, and inspect the proposed animation.
@@ -71,7 +71,7 @@ Input is bounded to a 32 MiB GLB, 128 KiB binding JSON, 4096 source channels,
 The importer validates self-contained GLB 2 chunks, tightly packed FLOAT
 animation accessors, explicit object mapping, finite TR values and strictly
 increasing nonnegative timestamps. STEP, LINEAR and CUBICSPLINE channels and mapped static
-node TR values are supported. Unsupported interpolation, transformed hierarchy,
+node TR values are supported. Unsupported interpolation, non-rigid hierarchy,
 nonunit scale/animated matrices, ambiguous objects, external/sparse data and unsupported
 extensions reject. Mesh-only `KHR_materials_unlit` declarations are ignored.
 These interoperability rules follow the primary
@@ -119,7 +119,7 @@ and incoming tangents must be zero. The first incoming and last outgoing tangent
 are unused and may contain finite values. The importer checks every segment,
 not only native sample times. Scale changes, nonfinite/malformed keys, duplicate
 targets and animated matrices reject. Identity ancestors may have neutral scale
-tracks but animated ancestor translation/rotation remains unsupported. Static
+tracks; ancestor translation/rotation is now sampled and baked. Static
 node scales must also remain unit. These rules follow the primary
 [Khronos glTF 2.0 TRS and animation specification](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html),
 including the Hermite interpolation formula in Appendix C.5.
@@ -173,7 +173,7 @@ when the GLB scene/channel references change with it. A canonical `object-N`
 name still rejects if it contradicts the preserved index. Every native object
 must appear exactly once, within the selected scene; malformed, duplicate or
 out-of-range source indices reject. Renaming does not authorize a different
-object count, skinning or parented source-object transforms.
+object count, skinning or unqualified skeleton retargeting.
 
 The original binding remains qualified against the current source clip and
 project. Whole-file hashing and native candidate Review bind the edited file;
@@ -188,3 +188,23 @@ contribution. Two clips can quantize to identical native poses; their reviewed
 keys still differ. A key reviewed for one index cannot authorize Apply for the
 other. Implicit single-clip requests retain the prior digest format. Retained
 UUID Review already binds the index through its full analysis report.
+
+## Baking rigid parent transforms
+
+The selected animation is sampled through each source object's ancestor chain.
+Static and animated ancestor translation/rotation, including mapped-object
+parents, are composed in glTF parent-times-local order. The resulting scene-
+space pose is reflected to the native coordinates and quantized once per object.
+This follows the [glTF node transformation rules](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#transformations).
+Parent translations rotate child translations; parent and child rotations are
+composed in order. Earlier restrictions on transformed/mapped parents are
+superseded by this workflow. Source identity properties or canonical names must
+still identify every native object exactly once.
+
+Only the source objects and their ancestors are sampled. A parent-first iterative
+traversal avoids recursive depth failures and reuses shared ancestor poses.
+Total sampled nodes times native frames may not exceed 65536. Existing file,
+node, channel, accessor and native-coordinate bounds still apply. Unrelated
+translation/rotation targets, non-unit scale, skinning, nonidentity matrices,
+cycles and multiple parents reject. Native output retains independent rigid
+channels and its original opaque data; no native skeleton is invented.

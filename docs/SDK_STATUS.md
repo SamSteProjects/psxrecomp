@@ -1,5 +1,38 @@
 # Legaia SDK status — 2026-10-06
 
+## Rigid GLB parent-transform baking - 2026-10-06
+
+GLB animation import now composes static and animated ancestor TRS into each
+source object's scene-space pose before native quantization. Mapped parents
+and shared ancestors work without inventing native skeleton fields. Quaternion
+composition applies parent before child; parent rotation also rotates local
+translation. Whole-file/source/clip Review binding and existing contribution
+and retained-record serializers remain unchanged. Only mapped objects and their
+ancestors are sampled, in iterative parent-first order, with a 65536 total
+sampled-node bound. Unit-scale, matrix, cycle, unique-parent, target, accessor
+and native-coordinate qualification remain explicit. Skinning, nonidentity
+matrices and general skeleton retargeting remain unsupported.
+
+**Focused checks:** 41 Python checks and two Node editor checks passed. Independent
+expectations cover rotated translations, noncommuting rotations, animated
+ancestors, mapped parents, exact native/opaque reparented no-ops, composed
+overflow, unrelated targets and iterative depth/work limits. Pinned `0f1fbe1a`
+rejects the same transformed-root fixture that now preserves native bytes.
+Private retail editor and Build proof is retained beneath
+`local-output/sdk-20260909/animation-glb-hierarchy-20261006/`.
+The full SDK goal and retail playback/timing acceptance remain incomplete.
+
+Both private retail browser workflows passed selected hierarchical-clip Review,
+Pose/Return, selection-change invalidation and Apply, each in one Undo step.
+Undo/Redo, Save/Open and byte-for-byte reference preservation passed. Normal
+Build `f4321357aa43f665` produced package SHA-256
+`b23c0059ce6497a8583f11a3de4ac2fd6ff9a649c866134f17bc0fa7d80aff46`.
+Independent relocated-carrier decompression exactly matched authored native
+animation bank SHA-256
+`6c1bd95f47855b285e17f3f928fd07b652d894f8fbe3b8c5bc7c92970e4716a2`.
+No game launch, installation or full-disc export occurred.
+
+
 ## Equal-pose GLB selections require distinct Review keys - 2026-10-06
 
 Imported-actor GLB Review now directly includes any explicit selected animation

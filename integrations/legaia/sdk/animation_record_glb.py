@@ -80,6 +80,7 @@ def prepare_import(project,scene_id,record_id,source_frame_indices,expected_sour
         project_change=native['project_change'],project_changed=False,gameplay_verified=False,
         limitations=['Only rigid animation channels are imported; mesh edits are ignored.',
                      'Constant unit-scale tracks are accepted; native scale animation is unsupported.',
+                     'Rigid parent transforms are baked to scene-space native poses; skinning remains unsupported.',
             'The explicit captured-donor mapping determines output frame count and opaque channel data.',
             'The interchange rate does not establish Retail playback timing.',
             'All referring initial assignments receive the new content hash in one Undo entry.'])
