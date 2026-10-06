@@ -1,6 +1,30 @@
 import unittest
 from sdk.inspector_schema import inspector_schema
 class InspectorSchema(unittest.TestCase):
+    def test_environment_snapshots_keep_retail_preview_and_source_paths_separate(self):
+        schema=inspector_schema();components=schema['components']
+        identifiers=('EnvironmentPlacement','EnvironmentRetailTransform','EnvironmentPreviewTransform','EnvironmentMetadata')
+        for identifier in identifiers:
+            definition=components[identifier]
+            self.assertEqual(definition['layout'],'read-only-properties')
+            self.assertTrue(all('authoring' not in prop for prop in definition['properties']))
+            self.assertNotIn('actions',definition)
+        retail=components['EnvironmentRetailTransform']['properties']
+        current=components['EnvironmentPreviewTransform']['properties']
+        self.assertEqual(len(retail),6);self.assertEqual(len(current),6)
+        for prop in retail:
+            self.assertEqual(prop['path'][:2],['source_record','imported_transform'])
+            self.assertEqual(prop['state'],'read-only-retail')
+        for prop in current:
+            self.assertEqual(prop['path'][:1],['effective_transform'])
+            self.assertEqual(prop['state'],'effective')
+            self.assertNotIn('fallback_paths',prop)
+        self.assertEqual(components['EnvironmentMetadata']['details'],[
+            {'label':'Placement source record','path':['source_record']},
+            {'label':'Decoder evidence','path':['evidence']}])
+        current[0]['path'].clear()
+        self.assertEqual(inspector_schema()['components']['EnvironmentPreviewTransform']['properties'][0]['path'],['effective_transform','position','x'])
+
     def test_authoring_build_unknown_and_detached_contracts(self):
         schema=inspector_schema();props={p['id']:p for p in schema['components']['Transform']['properties']}
         self.assertEqual(props['x']['authoring']['minimum'],-32767)

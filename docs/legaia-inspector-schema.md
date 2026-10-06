@@ -228,3 +228,26 @@ The first screenshots exposed axis-column label wrapping; full-width state rows 
 it. Private proof/screenshots:
 `local-output/sdk-20260909/inspector-property-states-20261005/`.
 This presentation milestone does not complete specialized-editor migration or live parity.
+
+## Scenery snapshot components
+
+Selected SDK environment instances use four read-only descriptors:
+`EnvironmentPlacement`, `EnvironmentRetailTransform`,
+`EnvironmentPreviewTransform` and `EnvironmentMetadata`. The browser passes the
+SDK preview instance directly to the shared property/details renderer. It does
+not decode retail bytes or synthesize transform values for this panel.
+
+Retail coordinate/angle paths point into `source_record.imported_transform`;
+Current paths point into `effective_transform`. Both have separate X/Y/Z position
+and rotation rows; 4096 PSX angle units equal a turn. Current means the displayed
+Retail/Authored preview snapshot. If refresh is pending, the panel explicitly
+labels the previous snapshot. Missing values use a dash and never inherit a retail
+value into a missing Current field. These are native source/preview coordinates;
+they do not establish runtime placement or visibility.
+
+Source metadata retains the imported MAP hash, placement record index, grid byte
+offset and complete decoder source/evidence in expandable sections. Coordinate
+spaces remain those of the source decoder. Frame object and the specialized
+shared/individual transform forms remain available with their existing validation,
+commands, Undo/Redo, Save/Open and Build constraints. These descriptors contain
+no authoring or action commands; the snapshot renderer rejects authoring metadata.

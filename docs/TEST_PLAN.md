@@ -1,5 +1,25 @@
 # Legaia SDK validation plan
 
+## SDK scenery Inspector checkpoint — 2026-10-05
+
+12 focused Python inspector-schema/environment-project cases, scenery adapter
+Node checks and module syntax pass. Cover detached read-only metadata definitions,
+separate Retail/Current paths, missing Current values without invented inheritance,
+escaping, no authoring controls and explicit pending-preview status. Actual private
+Town01 browser checks all properties of the four SDK sections, authored placement
+versus imported placement, matching GPU translation, Frame and existing shared/
+individual source-qualified controls, root Inspector pending-warning withdrawal,
+Retail/Authored reload with reselection and the 540px Inspector-tab layout.
+Project document, history and files remain unchanged; no page errors or
+Command/Save/Build/Run requests. Evidence:
+`local-output/sdk-20260909/environment-inspector-schema-20261005/proof.json`.
+Earlier browser harness failures remain recorded; final fresh fixture passes.
+Campaign follow-up: ground/unrenderable instances, missing source fields, shared
+record compensation, individual rotation, source withdrawal during authoring,
+maximum evidence size and future schema upgrades. Existing Build/native-byte
+placement checks remain separate; no native serialization path changed here.
+Runtime transforms, visibility and collision still need deferred gameplay checks.
+
 ## Selected asset evidence download checkpoint — 2026-10-05
 
 Focused export and asset-inspector Node checks, nine Python inspector-schema

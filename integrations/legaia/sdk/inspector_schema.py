@@ -211,6 +211,34 @@ def inspector_schema():
     ]
     worldmap['notes']=['X/Y have a reference menu-pixel interpretation; executing draw and travel consumers remain unverified. Name/discovery consumers are independently qualified. Current values and activation are unobserved.']
     worldmap['actions'].append({'id':'inspect-landmark-destination','label':'Inspect destination source','capability':'worldmap_source_navigation','when':['data','destination_source_label']})
+    schema['components']['EnvironmentPlacement']={
+        'label':'Environment placement','layout':'read-only-properties',
+        'properties':[
+            {'id':'identity','label':'Identity','path':['entity_id'],'type':'entity-reference','state':'read-only-retail'},
+            {'id':'model','label':'Model','path':['asset_id'],'type':'asset-reference','state':'read-only-retail'},
+            {'id':'renderable','label':'Renderable','path':['renderable'],'type':'boolean','state':'derived'},
+            {'id':'pose','label':'Preview pose','path':['pose_kind'],'fallback_paths':[['reason']],'type':'string','state':'derived'},
+            {'id':'authored','label':'Authored transform in preview','path':['authored_transform'],'type':'boolean','state':'effective'},
+        ],'notes':['Source placement identities and preview poses do not establish runtime visibility or script-driven transforms.']}
+    for identifier,label,path,state in (
+            ('EnvironmentRetailTransform','Retail transform',['source_record','imported_transform'],'read-only-retail'),
+            ('EnvironmentPreviewTransform','Current preview transform',['effective_transform'],'effective')):
+        schema['components'][identifier]={
+            'label':label,'units':'Scene coordinates / PSX angle units','layout':'read-only-properties',
+            'properties':[
+                {'id':field+'_'+axis,'label':('Position ' if field=='position' else 'Rotation ')+axis.upper(),
+                 'path':path+[field,axis],'type':'number','nullable':True,'state':state}
+                for field in ('position','rotation_psx') for axis in ('x','y','z')],
+            'notes':['4096 PSX angle units equal one turn. These are SDK source/preview coordinates, not sampled runtime transforms.',
+                     'Missing values remain unknown. A pending preview refresh leaves the last preview snapshot visible; no current-source acceptance is inferred.']}
+    schema['components']['EnvironmentMetadata']={
+        'label':'Source and bindings','layout':'read-only-properties',
+        'properties':[
+            {'id':'map_hash','label':'Imported MAP SHA256','path':['source_record','source_record','map_sha256'],'type':'string','state':'read-only-retail'},
+            {'id':'record','label':'Placement record index','path':['source_record','object_record_index'],'type':'integer','state':'read-only-retail'},
+            {'id':'grid_byte','label':'MAP grid byte offset','path':['source_record','source_record','grid_byte_offset'],'type':'integer','state':'read-only-retail'},
+        ],'details':[{'label':'Placement source record','path':['source_record']},{'label':'Decoder evidence','path':['evidence']}],
+        'notes':['Source indices and offsets retain their decoder coordinate spaces. Shared and individual edits remain in the source-qualified transform tools; collision is separate.']}
     schema['components']['ProjectSettings']={
         'label':'Project settings','layout':'read-only-properties',
         'properties':[

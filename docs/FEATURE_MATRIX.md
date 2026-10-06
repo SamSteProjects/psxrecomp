@@ -1,5 +1,34 @@
 # Legaia SDK feature matrix
 
+## SDK-driven scenery Inspector — 2026-10-05
+
+The scenery Inspector now renders **Environment placement**, **Retail transform**,
+**Current preview transform** and **Source and bindings** from SDK component
+metadata. Identity/model/pose, six retail and six preview coordinate/angle values,
+MAP hash and source indices retain their SDK paths and property-state labels.
+Source records and decoder evidence remain separately expandable. Missing values
+stay unknown; stale preview snapshots show an explicit refresh-pending warning.
+
+This replaces the hard-coded scenery identity/transform/source display and makes
+Retail versus Current placement visible per axis. Frame and the existing shared/
+individual source-qualified transform adapters remain. The new descriptors are
+strictly read only and grant no commands or runtime writes. Preview values follow
+the displayed Retail/Authored representation; they are not sampled gameplay state.
+
+Validation: 12 focused Python inspector-schema/environment-project cases, the
+scenery adapter Node check and module syntax pass. Private Town01 browser checks
+all four real SDK sections, every displayed property, separate Retail/Current
+values, Current GPU translation, retained source controls and Frame, the full
+panel's pending-refresh warning and Retail/Authored reload with reselection.
+The 540px Inspector-tab screenshot is inspected. Project document, Undo/Redo and
+all project files stay unchanged; no page errors or authoring/Save/Build/Run
+requests. Earlier harness attempts are retained (heading whitespace, narrow-tab
+visibility, quoting and representation-selection assumptions); the final fresh
+fixture passes. Evidence:
+`local-output/sdk-20260909/environment-inspector-schema-20261005/proof.json`.
+No gameplay, installation or full-disc export ran. The SDK goal remains active;
+manual runtime placement/collision acceptance stays deferred and work remains solo.
+
 ## Save selected Asset Database evidence — 2026-10-05
 
 **Asset Details → Save asset evidence…** downloads the complete selected catalog

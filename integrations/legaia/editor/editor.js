@@ -34,6 +34,7 @@ import {appendCaptureSummary} from '/script-capture.js';
 import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files.js';
 import {mountAssetInspector,assetInspectorDefinition,mountTriggerBindingInspector} from '/asset-inspector.js';
 import {mountAssetRecordDownload} from '/asset-record-export.js';
+import {renderEnvironmentInspector} from '/environment-inspector.js';
 import {bindComponentReferences} from '/component-references.js';
 import {decodeFlagResource,openFlagResource} from '/flag-resource.js';
 import {decodeTransitionResource,openTransitionResource} from '/transition-resource.js';
@@ -2939,7 +2940,7 @@ function renderInspector(){
   if(environment){
     $('selection-summary').textContent=environmentGroupSelection.length>1?`${environmentGroupSelection.length} scenery instances · focused ${environment.name}`:environment.name;
     const source=environment.source_record,transform=source.imported_transform;
-    $('inspector').innerHTML=`<section class="component"><h3>Environment <small>Source and overrides</small></h3>${property('Identity',environment.entity_id)}${property('Model',environment.asset_id ?? 'Unresolved')}${property('Geometry',environment.renderable?environment.pose_kind:environment.reason ?? 'Unavailable')}<button id="frame-environment">Frame object</button></section><section class="component"><h3>Retail transform</h3>${property('Position',JSON.stringify(transform.position))}${property('Rotation · PSX units',JSON.stringify(transform.rotation_psx))}<p class="field-note">4096 angle units equal one turn. Source placement and initial pose; scripts and runtime visibility are not evaluated.</p></section><section class="component"><h3>Source and bindings</h3><pre>${escapeHTML(JSON.stringify({source,evidence:environment.evidence},null,2))}</pre></section>`;
+    $('inspector').innerHTML=renderEnvironmentInspector(state.inspector_schema,environment,scenePreviewCurrent());
     $('frame-environment').onclick=frameEnvironment;
     if(source.record_offset&&source.source_record?.map_sha256){
       if(!environment.entity_id.includes('/decorations/')){
