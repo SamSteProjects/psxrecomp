@@ -28,14 +28,15 @@ def links(project,asset_id,content,binding,expected_source_key):
     return dict(result,schema_version='legaia.model-glb-material-links.v1',graph=graph)
 
 
-def _face_rows(current,content,material_index):
+def _face_rows(current,content,material_index,object_node_indices=None):
     doc,binary=_read_glb(content);reader=_Accessors(doc,binary);inspection=inspect_model_primitives(current)
     owners={};triangles={}
-    for node in doc['nodes']:
+    explicit={node:obj for obj,node in enumerate(object_node_indices)} if object_node_indices is not None else None
+    for node_index,node in enumerate(doc['nodes']):
         if 'mesh' not in node:continue
         # Source identities, mesh ownership, accessor aliases and topology have already
         # passed the existing complete native GLB importer in _qualified.
-        object_index=source_object_identity(node,len(inspection['objects']))
+        object_index=explicit[node_index] if explicit is not None else source_object_identity(node,len(inspection['objects']))
         for primitive in doc['meshes'][node['mesh']]['primitives']:
             corners=reader.read(primitive['attributes'].get(CORNER_ID),1,'source corner IDs')
             indices=[r[0] for r in reader.read(primitive['indices'],1,'indices',True)] if 'indices' in primitive else list(range(len(corners)))
@@ -67,7 +68,7 @@ def faces(project,asset_id,content,binding,expected_source_key,material_index,ro
     link=next((l for l in material['links'] if l['role']==role),None)
     if link is None or graph['texture_links'][link['texture_index']]['image_index']!=image_index or not any(i['image_index']==image_index for i in graph['catalog']['images']):
         raise ProjectError('Material channel does not reference this qualified embedded PNG')
-    rows=_face_rows(current,content,material_index)
+    rows=_face_rows(current,content,material_index,binding.get('external_object_nodes'))
     conflicts=sum(r['material_indices']!=[material_index] for r in rows);untextured=sum(not r['textured'] for r in rows)
     result.update(schema_version='legaia.model-glb-material-faces.v1',material_index=material_index,role=role,image_index=image_index,
         texture_index=link['texture_index'],texcoord=link['texcoord'],faces=rows,face_count=len(rows),

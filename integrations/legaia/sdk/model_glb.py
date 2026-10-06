@@ -26,7 +26,7 @@ QUANTIZATION_KEYS = {'vertex_max_error', 'uv_max_error', 'color_max_error', 'nor
                      'quantized_component_count'}
 LIMITATIONS = [
     'Static rigid node transforms and parent groups bake positions and stored normals into the existing native objects. Positive axis scales bake positions; inverse-transpose normals preserve stored magnitude. Local shear, reflection and animated nodes reject.',
-    'Preserved source-object tags identify renamed or reordered nodes; canonical object-N names are the legacy fallback. Conflicting or duplicate identities reject.',
+    'Preserved source-object tags identify renamed or reordered nodes; canonical object-N names are the legacy fallback. An explicit ordered node mapping may recover untagged external objects, but must agree with preserved identities. Conflicting or duplicate identities reject.',
     'Existing object, vertex and primitive layout only; no insertion or allocation.',
     'Existing packet corner references may select existing vertices in the same object; counts and capacities remain unchanged.',
     'Source vertex and stored normal coordinates, UVs and qualified raw RGB attributes are rounded to their existing integer domains.',
@@ -234,6 +234,8 @@ def _report(snapshot: dict, content: bytes, candidate: bytes, analysis: dict) ->
     if binding['schema_version'] == 'legaia.model-glb-binding.v3':
         report.update(schema_version='legaia.model-glb-review.v3', comparison='current_addition_topology',
                       topology_sha256=binding['topology_sha256'], authored_face_count=binding['authored_face_count'])
+    if 'external_object_nodes' in binding:
+        report['external_object_nodes'] = deepcopy(binding['external_object_nodes'])
     report['review_key'] = digest(dict(binding=binding, glb_sha256=report['glb_sha256'],
                                      proposed_sha256=report['proposed_sha256'],
                                      changes=changes, pending_changes=pending,
@@ -259,14 +261,22 @@ def _prepare(project, asset_id: str, content: bytes, binding: dict) -> tuple[byt
     _content(content)
     extra = {'removed_faces'} if isinstance(binding, dict) and binding.get('schema_version') == 'legaia.model-glb-binding.v2' else \
             {'topology_sha256', 'authored_face_count'} if isinstance(binding, dict) and binding.get('schema_version') == 'legaia.model-glb-binding.v3' else set()
+    if isinstance(binding, dict) and 'external_object_nodes' in binding:
+        extra.add('external_object_nodes')
     if (not isinstance(binding, dict) or set(binding) != BINDING_KEYS | extra or
             binding.get('schema_version') not in ('legaia.model-glb-binding.v1', 'legaia.model-glb-binding.v2', 'legaia.model-glb-binding.v3')):
         raise ProjectError('Choose the SDK model export binding JSON sidecar')
+    # Null cannot silently opt out of an explicitly supplied mapping choice.
+    if 'external_object_nodes' in binding and binding['external_object_nodes'] is None:
+        raise ProjectError('Explicit model object mapping requires a node list')
     _json_size(binding, MAX_PROFILE_BYTES, 'Model GLB binding')
     snapshot = _snapshot(project, asset_id)
-    if digest(binding) != digest(snapshot['binding']):
+    source_binding = {k:v for k,v in binding.items() if k != 'external_object_nodes'}
+    if digest(source_binding) != digest(snapshot['binding']):
         raise ProjectError('Model export binding differs from the current source or effective model; export again')
-    candidate, analysis = import_model_glb(snapshot['effective'], content, snapshot['binding']['profile'])
+    snapshot['binding'] = deepcopy(binding)
+    candidate, analysis = import_model_glb(snapshot['effective'], content, snapshot['binding']['profile'],
+                                          object_node_indices=binding.get('external_object_nodes'))
     report = _report(snapshot, content, candidate, analysis)
     _current(project, snapshot['binding'])
     return candidate, report

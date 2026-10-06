@@ -1,5 +1,47 @@
 # Legaia SDK feature matrix
 
+## 2026-10-06 checkpoint: explicit external model object mapping
+
+Model GLB authoring now accepts an optional ordered `external_object_nodes`
+binding choice. This recovers renamed/reordered external nodes after source
+extras are removed, while preserving complete native object ownership. One
+distinct GLB node is required per native object (including empty objects), within
+0..1023. Existing source tags/canonical names must agree; detached, unowned,
+duplicate and conflicting nodes reject. Source corner attributes, topology,
+normal/vertex aliases, material masks and integer/transform bounds remain active.
+This does not import arbitrary meshes without source attributes or allocate new
+objects, packets, skeletal channels or images.
+
+The dialog exposes mapping text and bounded node index/name inventory. Mapping
+changes withdraw Review; pending operations lock the control. The Review digest
+seals the choice even if different mappings produce identical native bytes.
+Proposed-model inspection/Return retains it. Material-face selection uses the
+same qualified mapping after exact native no-op verification. Default source
+binding and Review shapes remain unchanged when the choice is omitted.
+
+Validation: 57 focused Python checks and three Node checks passed. A private
+retail town01 model 0009 fixture used untagged, renamed, reversed object nodes,
+explicit mapping [4,3,2,1], nonuniform parent scale and a rotated child. Actual
+resource-browser Review, mapping-change invalidation, proposed-model inspection,
+Return, Apply, Undo/Redo, Save/Open and normal Build passed. Independent native
+positions and inverse-transpose normals matched complete TMD readback; 21 normal
+slots changed and neighboring decoded bytes/retail inputs remained unchanged.
+A separate Current no-op mapped material selection qualified 103 native faces
+without changing project files or history. Invalid/missing mapping, zero scale,
+wrong Review and stale binding requests rejected before mutation.
+
+Evidence: `local-output/sdk-20260909/model-glb-object-mapping-20261006/proof.json`
+and `material-proof.json` in the same directory; mapping controls screenshot inspected.
+Build: `467769b5cc21a856`.
+Package SHA-256: `edd3eaa96ae7f83b5dba686320e91e179725a1c81bd3eb9085c4f4162c4509f3`.
+Native TMD SHA-256: `ebc9882475655eda330d4aa9f49b7e5277b522c4b3e3862890652a8e42fa129e`.
+The first browser attempt found a missing module route before Apply; it was fixed.
+Subsequent proof waits were corrected to scope Apply to the model dialog; saved
+project state was checked unchanged before resuming. No native edit was repeated.
+No game was launched or mod installed. Gameplay remains deferred; solo work and
+the full SDK goal stay active and incomplete.
+
+
 ## 2026-10-06 checkpoint: measured composed model scale bounds
 
 Model GLB hierarchy qualification now measures the actual composed singular

@@ -100,7 +100,7 @@ class ModelPose:
         return [v * (magnitude / length) for v in transformed]
 
 
-def static_model_hierarchy(doc, object_count):
+def static_model_hierarchy(doc, object_count, object_node_indices=None):
     # Copy only nodes that are normalized here; source metadata remains immutable.
     normalized = dict(doc)
     normalized['nodes'] = [dict(node) for node in doc['nodes']]
@@ -120,7 +120,7 @@ def static_model_hierarchy(doc, object_count):
             scale = [_scale(value) for value in vector]
             if 'scale' in node: node['scale'] = [1, 1, 1]
         scales[index] = scale
-    mapping, static, parents = _nodes(normalized, object_count)
+    mapping, static, parents = _nodes(normalized, object_count, object_node_indices)
     poses = {}
     for index in _hierarchy_order(mapping, parents, 1):
         translation, rotation = static[index]

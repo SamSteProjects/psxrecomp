@@ -796,3 +796,30 @@ editing reject nonuniform transforms; unlit legacy geometry remains supported.
 Use fresh binding, Review/Pose/Return/Apply, Undo/Redo, Save/Open and normal Build.
 These edits change native model geometry, not scene-instance placement or native
 animation formats. Gameplay appearance and lighting verification remain deferred.
+
+
+## Explicit external model object mapping
+
+When an external tool removes source-object extras and renames object nodes,
+enter GLB node indices in native object order in the model GLB dialog. For two
+native objects whose nodes are 3 and 1, enter `3, 1`. The node inventory lists
+indices, display names and mesh/group status. Blank uses preserved tags or
+canonical `object-N` names, or an existing binding mapping.
+
+The optional binding field `external_object_nodes` is an ordered list with one
+distinct integer node index per existing native object, within 0..1023. Include
+empty native objects as well as mesh objects. Mapped nodes must be reachable in
+the selected scene, and every mesh node must be owned. Preserved source tags and
+canonical names must agree with the chosen mapping; the mapping cannot override
+conflicting provenance. Source corner/vertex attributes, topology, aliases,
+materials, capacities and transform bounds still qualify the entire native TMD.
+This supports external organization of the existing layout, not arbitrary meshes
+without source attributes, allocation, skeletal retargeting or skinning.
+
+Review seals the complete mapping choice alongside GLB content, regenerated
+source profile and proposed native bytes. Changing only the mapping invalidates
+Review even when candidate bytes are identical. The dialog withdraws Review when
+mapping text or files change, retains the chosen mapping through proposed-model
+inspection and Return, and requires explicit Apply. Material-face selection uses
+the same mapping after an exact native no-op qualification. Use normal Undo/Redo,
+Save/Open and Build; gameplay rendering and lighting remain deferred.

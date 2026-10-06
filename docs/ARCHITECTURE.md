@@ -806,3 +806,22 @@ absolute roundoff follows that scale, including on small rotated axes. Accepted
 boundary noise is clamped in pose diagnostics only; geometry and normals use the
 original composed matrix. No source metadata is mutated; no new dependency,
 binding, command or Build format is introduced.
+
+
+### Explicit model object mapping (2026-10-06)
+
+Model binding v1/v2/v3 may carry an optional `external_object_nodes` authoring
+choice. `_prepare` removes only this optional choice when comparing the fresh
+regenerated source binding, then includes it in the Review digest and report.
+Omitted mappings retain the previous binding/review shape. Explicit null rejects.
+The importer passes the choice into the shared rigid node ownership validator,
+while retaining model-specific 1024-node, complete reachability, mesh ownership,
+local/composed scale, packet layout and native field checks. Model material-face
+selection receives the same qualified object-to-node mapping.
+
+The model GLB dialog owns a separate mapping control and bounded node inventory.
+Its file revision captures the mapping text; event changes and silent text changes
+both withdraw accepted Review. Choice equality is checked in Review and proposed
+model responses. Mapping controls lock during pending operations, while the
+existing command, persistence and Build paths consume the verified native model
+without introducing a new native format or runtime identity assumption.

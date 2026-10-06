@@ -915,6 +915,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-record-edit.js": ("animation-record-edit.js", "text/javascript"),
                  "/animation-record-glb.js": ("animation-record-glb.js", "text/javascript"),
                  "/model-glb.js": ("model-glb.js", "text/javascript"),
+                 "/model-glb-mapping.js": ("model-glb-mapping.js", "text/javascript"),
                  "/texture-png.js": ("texture-png.js", "text/javascript"),
                  "/texture-comparison.js": ("texture-comparison.js", "text/javascript"),
                  "/texture-resize.js": ("texture-resize.js", "text/javascript"),

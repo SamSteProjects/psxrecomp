@@ -361,7 +361,7 @@ def source_object_identity(node, object_count):
     return _integer(identity, 0, object_count - 1, 'source object identity')
 
 
-def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tuple[bytes, dict]:
+def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict, *, object_node_indices=None) -> tuple[bytes, dict]:
     """Recover qualified source mesh/material fields; reject topology and alias conflicts."""
     inspection, vectors, geometry, triangles = _source(effective_tmd)
     crops, color_enabled, references_enabled, normals_enabled, normal_references_enabled, materials_enabled = _profile(profile, effective_tmd, inspection, geometry, triangles)
@@ -386,9 +386,12 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
         name = node.get('name', '')
         tagged = isinstance(extras, dict) and 'source_object' in extras
         canonical = isinstance(name, str) and re.fullmatch(r'object-(0|[1-9][0-9]*)', name)
-        if tagged or canonical or 'mesh' in node:
+        if tagged or canonical or ('mesh' in node and object_node_indices is None):
             source_object_identity(node, len(inspection['objects']))
-    mapping, poses = static_model_hierarchy(doc, len(inspection['objects']))
+    mapping, poses = static_model_hierarchy(doc, len(inspection['objects']), object_node_indices)
+    owned_nodes = set(mapping.values())
+    if any('mesh' in node and index not in owned_nodes for index,node in enumerate(nodes)):
+        raise ImportError('Model GLB mesh node is absent from the source object mapping')
     reachable, stack = set(), list(scenes[0]['nodes'])
     while stack:
         index = stack.pop()
