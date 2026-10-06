@@ -1984,6 +1984,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .resources import audio_bank_preview
                     self._json(200, audio_bank_preview(self.server.project, **body))
                     return
+                if route == '/api/audio-sample-preview':
+                    from .audio_sample_authoring import preview
+                    fields={'asset_id','expected_entry_sha256','sample_index','expected_authoring_key','layer','expected_sample_sha256'}
+                    if body.get('layer')=='proposed':
+                        fields.update(('operation','review_key'))
+                        if body.get('operation')=='apply':fields.add('receipt_key')
+                    if set(body)!=fields:raise ProjectError('Sample preview requires exact layer and freshness fields')
+                    self._json(200,preview(self.server.project,**body));return
                 if route in ('/api/audio-sample-authoring','/api/audio-sample-review'):
                     from .audio_sample_authoring import options,review
                     fields={'asset_id','expected_entry_sha256','sample_index','expected_authoring_key'}

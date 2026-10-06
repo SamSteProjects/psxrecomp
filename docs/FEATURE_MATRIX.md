@@ -2,6 +2,12 @@
 
 ## Persistent native WAV samples and shared audio delivery (2026-10-06)
 
+## Fresh sample preview layers (2026-10-06)
+
+`POST /api/audio-sample-preview` exposes bounded mono PCM and waveform metadata for Retail, Current and reviewed Proposed sample layers. Every request binds the full Current authoring identity, original entry and selected sample hash. Proposed additionally requires the operation, freshly recomputed review key and retained receipt for Apply. Clear previews Retail bytes. Exact HTTP fields reject proposed bindings on Retail/Current reads. The response carries PCM/sample hashes and leaves sample rate unspecified; preview clients must choose their own rate.
+
+The retail-enabled HTTP workflow passed Retail/Proposed readback without mutation, Current matching after Apply, proposed Clear matching Retail, stale proposal rejection, wrong sample/review hash rejection and extraneous-field rejection. PCM hashes match reviewed native decoding. This provides the preview backend; the sample import/waveform editor and playback controls still need integration. No game actions were performed.
+
 Reviewed retained WAVs now have source-qualified native sample bindings, Retail/Current metadata, fresh Apply/Clear reviews, atomic commands, history, dirty tracking, Save/Open, project copies and Build snapshots. Bindings reconstruct candidates from verified WAV bytes and fresh native source data; historical candidate receipts are not replay authority. Active bindings prevent source-receipt removal. Native sample Undo/Redo validates the proposed bindings and files before changing history.
 
 Bank parameters, sequence operands and multiple samples compose into one overlay per physical PROT entry. Clearing one family or sample preserves the others. Build independently decodes the encoded sample prefix, verifies PCM/error audits, and checks exact allocation, flags, opaque tail and all remaining entry bytes. Authored audio appears once with all family summaries. Empty sample collections preserve legacy identity. Existing bank/sequence editors accept sample-authored Current hashes and preserve samples during reviews and retail parameter restoration.

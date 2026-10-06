@@ -14,7 +14,7 @@ from sdk.project import ProjectService,ProjectError
 from sdk.audio_bank_authoring import _source,options as bank_options,review as bank_review
 from sdk.audio_authoring import source_key,options as seq_options,review as seq_review
 from sdk.audio_sample_sources import review as source_review,read_source,source_path,review_removal
-from sdk.audio_sample_authoring import options,review,read,prepare_overlays
+from sdk.audio_sample_authoring import options,review,read,prepare_overlays,preview
 from sdk.audio_composition import read_entry,prepare_overlays as composed_overlays
 from sdk.scene_preview import source_key as resource_key
 from sdk.project_copy import review as copy_review,create_copy
@@ -120,12 +120,33 @@ class SampleWorkflow(unittest.TestCase):
             thread.start()
             try:
                 args=self.args(receipt=receipt);proposal=post('/api/audio-sample-review',args)
+                document=deepcopy(self.project._document())
+                base={k:v for k,v in args.items() if k not in ('operation','receipt_key')}
+                retail_query=dict(**base,layer='retail',expected_sample_sha256=receipt['source_sample_sha256'])
+                retail=post('/api/audio-sample-preview',retail_query)
+                proposed_query=dict(**args,layer='proposed',review_key=proposal['review_key'],expected_sample_sha256=proposal['proposed_sample_sha256'])
+                proposed=post('/api/audio-sample-preview',proposed_query)
+                self.assertEqual(self.project._document(),document)
+                self.assertEqual(retail['waveform']['sample_rate'],None)
+                self.assertEqual(proposed['waveform']['decoded_frames'],retail['waveform']['decoded_frames'])
+                self.assertEqual(sha256(base64.b64decode(proposed['pcm_base64'])).hexdigest(),proposed['pcm_sha256'])
+                self.assertEqual(proposed['pcm_sha256'],proposal['native_audit']['sample']['decoded_pcm_sha256'])
+                self.assertNotEqual(retail['pcm_sha256'],proposed['pcm_sha256'])
+                with self.assertRaises(HTTPError):post('/api/audio-sample-preview',{**retail_query,'receipt_key':receipt['receipt_key']})
+                with self.assertRaises(HTTPError):post('/api/audio-sample-preview',{**proposed_query,'review_key':'f'*64})
+                with self.assertRaises(HTTPError):post('/api/audio-sample-preview',{**proposed_query,'expected_sample_sha256':'f'*64})
                 with self.assertRaises(HTTPError):post('/api/audio-sample-review',{**args,'extra':1})
                 command={k:v for k,v in args.items() if k!='operation'}
                 post('/api/command',dict(type='set_audio_sample_wav',review_key=proposal['review_key'],**command))
                 query={k:v for k,v in self.args(receipt=receipt).items() if k not in ('operation','receipt_key')}
                 self.assertIsNotNone(post('/api/audio-sample-authoring',query)['authored_sample'])
+                current_query=dict(**query,layer='current',expected_sample_sha256=proposal['proposed_sample_sha256'])
+                current=post('/api/audio-sample-preview',current_query)
+                self.assertEqual(current['pcm_sha256'],proposed['pcm_sha256'])
+                with self.assertRaises(HTTPError):post('/api/audio-sample-preview',proposed_query)
                 clear=self.args(operation='clear');report=post('/api/audio-sample-review',clear)
+                clear_preview=post('/api/audio-sample-preview',dict(**clear,layer='proposed',review_key=report['review_key'],expected_sample_sha256=report['proposed_sample_sha256']))
+                self.assertEqual(clear_preview['pcm_sha256'],retail['pcm_sha256'])
                 post('/api/command',dict(type='clear_audio_sample_wav',review_key=report['review_key'],**{k:v for k,v in clear.items() if k!='operation'}))
                 self.assertEqual(self.project.audio_sample_overrides,{})
             finally:server.shutdown();server.server_close();thread.join(timeout=10)

@@ -1,7 +1,7 @@
 """Persistent source-qualified WAV sample edits and shared native delivery."""
 from copy import copy,deepcopy
 from hashlib import sha256
-import struct
+import base64,struct
 from .project import ProjectError,digest
 from .audio_authoring import source_key
 from .audio_bank_authoring import _source
@@ -128,6 +128,40 @@ def command(project,value):
     if after:project.audio_sample_overrides[identifier]=deepcopy(after)
     else:project.audio_sample_overrides.pop(identifier,None)
     project.undo_stack.append(dict(target='audio_sample_overrides',asset_id=identifier,before=before,after=deepcopy(after)));project.redo_stack.clear()
+
+def preview(project,asset_id,expected_entry_sha256,sample_index,expected_authoring_key,
+            layer,expected_sample_sha256,operation=None,receipt_key=None,review_key=None):
+    """Read one freshly qualified layer; no playback rate or project mutation."""
+    if layer not in ('retail','current','proposed'):
+        raise ProjectError('Choose an explicit Retail, Current or reviewed Proposed sample layer')
+    if expected_authoring_key!=source_key(project):
+        raise ProjectError('Sample preview inputs changed; inspect again')
+    body,current,bank,record,row,position,raw,_=_current(project,asset_id,expected_entry_sha256,sample_index)
+    if layer=='proposed':
+        report=review(project,asset_id,expected_entry_sha256,sample_index,expected_authoring_key,operation,receipt_key)
+        if review_key!=report['review_key']:
+            raise ProjectError('Sample preview differs from its reviewed proposal')
+        if operation=='apply':
+            candidate,_,_=_candidate(project,asset_id,sample_index,receipt_key,body,bank,record,current)
+            selected=candidate[position:position+row['size_bytes']]
+        else:selected=raw
+    else:
+        if any(value is not None for value in (operation,receipt_key,review_key)):
+            raise ProjectError('Retail and Current preview do not accept proposed input bindings')
+        selected=raw if layer=='retail' else current[position:position+row['size_bytes']]
+    if expected_sample_sha256!=_hash(selected):
+        raise ProjectError('Sample preview layer hash changed')
+    from importer.audio_waveform import _decode_waveform
+    waveform,pcm=_decode_waveform(selected)
+    if not waveform['decoded_frames']:
+        raise ProjectError('This sample layer has no decoded frames to preview')
+    if expected_authoring_key!=source_key(project):
+        raise ProjectError('Sample preview inputs changed during decoding')
+    return dict(schema_version='legaia.audio-sample-preview.v1',asset_id=asset_id,sample_index=sample_index,
+        authoring_key=expected_authoring_key,layer=layer,review_key=review_key,source_record=record,
+        sample_sha256=_hash(selected),waveform=waveform,format='s16le-mono',
+        pcm_sha256=_hash(pcm),pcm_base64=base64.b64encode(pcm).decode('ascii'),
+        project_changed=False,runtime_state='not_observed')
 
 def _independent_pcm(raw,blocks):
     coefficients=((0,0),(60,0),(115,-52),(98,-55),(122,-60));last=prior=0;values=[]
