@@ -1,5 +1,11 @@
 # Current Legaia SDK status — 2026-10-06
 
+## PCM WAV/native sample codec groundwork (2026-10-06)
+
+A source-qualified mono signed16 WAV-to-SPU-ADPCM codec now replaces a complete bounded sample prefix without changing allocation, loop/end flags, trailing bytes, VAB tables, other samples or SEQ chunks. Predictor/shift trials use closed-loop native integer history and report decoded PCM hash and lossy encoding errors. Input WAV rate is metadata only; runtime rate/pitch and instrument assignment remain unknown. Persistent sample bindings, shared bank/SEQ/sample Build composition and editor import/preview controls are still open.
+
+All nine focused sample/waveform Python checks passed with no skips. A full sample inventory across 202 qualified banks found 1694 encoded ends, one empty sample and one over the decode budget. The first eligible sample in each of all 202 banks passed encoding, independent integer PCM/error readback and exact flags/tail/non-sample byte preservation. This covers 202 replacements, not every eligible sample; unavailable banks/empty/budget-limited samples remain unsupported. See [sample authoring groundwork](legaia-audio-sample-authoring.md); private evidence is `local-output/sdk-20260909/audio-sample-codec-20261006/`. No game launch, runtime attachment, installation, SDK Build or full-disc export. Development remains solo and the broader goal remains active.
+
 ## Bank parameter editor (2026-10-06)
 
 The Audio Asset Database's source bank inspector now opens a separate Retail/Current/reviewed-Proposed parameter editor. Master fields, explicit program slots and packed tone page/record identities expose all 27 qualified native scalar fields. Encoded u8/u16/signed16 bounds, Review/Apply/Discard, retail staging, Clear and refresh use the verified command layer. Source-row actions select the correct slot or packed record. Drafts/proposals lock navigation; stale state withdraws layers, and closing the source inspector disposes its child. Source bank tables, waveform inspection and sample audition remain Retail views.
