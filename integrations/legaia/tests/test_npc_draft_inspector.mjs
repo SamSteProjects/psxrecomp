@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {renderNpcDraftInspector} from '../editor/npc-draft-inspector.js';
+import {npcDonorAnimationBinding,renderNpcDraftInspector} from '../editor/npc-draft-inspector.js';
 const property=(id,path,state)=>({id,label:id,path,type:'string',state}),schema={schema_version:'legaia.inspector-schema.v1',live_writes:false,property_states:{'read-only-project':{label:'Project',note:'Metadata'},'authored-through-command':{label:'Authored',note:'Command'},derived:{label:'Derived',note:'Source sample'},unresolved:{label:'Unresolved',note:'Unknown'}},components:{
  NpcDraftIdentity:{label:'NPC draft identity',layout:'read-only-properties',properties:[property('identity',['entity_id'],'read-only-project')],details:[{label:'Donor',path:['donor']}]},
  NpcDraftTransform:{label:'Authored placement',layout:'read-only-properties',properties:[property('X',['draft','position','x'],'authored-through-command')]},
@@ -10,3 +10,13 @@ assert(renderNpcDraftInspector(schema,snapshot,'pending').includes('refresh pend
 const missing=renderNpcDraftInspector(schema,{...snapshot,preview:undefined},'unavailable');assert(missing.includes('No NPC draft preview snapshot'));assert.equal((missing.match(/<code>128<\/code>/g)??[]).length,1);assert(!missing.includes('<code>192</code>'));assert(!missing.includes('<code>12</code>'));
 assert.throws(()=>renderNpcDraftInspector(schema,snapshot,'proposal'));assert.throws(()=>renderNpcDraftInspector({...schema,components:{...schema.components,NpcDraftTransform:{...schema.components.NpcDraftTransform,properties:[{id:'X',authoring:{}}]}}},snapshot,'current'));
 console.log('SDK NPC draft sections, authored/source preview separation, unknowns, safe details and pending/proposal labels passed.');
+
+const id='authored-actor://00000000-0000-4000-8000-000000000001',donorId='scene://town01/actors/man-p1/0001',modelId='asset://town01/models/0';
+const animationState={scene:{id:'scene://town01'},actor_drafts:{[id]:{scene_id:'scene://town01',donor_entity_id:donorId,name:'NPC'}},authored_assets:[{id,kind:'actor',draft:true,scene_id:'scene://town01',donor_entity_id:donorId,name:'NPC',model_reference:{source_id:id,source_name:'NPC',target_id:modelId,scene_id:'scene://town01',kind:'draft_initial_model_assignment',imported:false,effective:true,effective_donor_id:donorId,runtime_binding:'not_asserted'}}],entities:[{id:donorId,components:{ModelRenderer:{asset_id:'asset://authored-appearance/other'}}}]};
+const animationPreview={entity_id:id,kind:'actor_draft',donor_entity_id:donorId,asset_id:modelId,pose_kind:'imported_scene_animation_frame0'};
+assert.deepEqual(npcDonorAnimationBinding(animationState,id,animationPreview),{assetId:modelId,entityId:donorId,clipId:'scene-header',representation:'imported'});
+assert.equal(npcDonorAnimationBinding(animationState,id,{...animationPreview,pose_kind:'authored_scene_animation_frame0'}).clipId,'authored-channels');
+assert.equal(npcDonorAnimationBinding(animationState,id,{...animationPreview,pose_kind:'reference_party_idle'}),null);
+assert.throws(()=>npcDonorAnimationBinding(animationState,id,{...animationPreview,asset_id:'asset://authored-appearance/other'}));
+assert.throws(()=>npcDonorAnimationBinding(animationState,id,{...animationPreview,donor_entity_id:'other'}));
+console.log('NPC animation binding follows retail donor model, preserves shared authored channel representation and rejects mismatched snapshots.');

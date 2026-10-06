@@ -1,5 +1,31 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## NPC animation Inspector matches shared authored preview — 2026-10-05
+
+The NPC animation button previously opened the imported donor clip even when the
+Authored viewport showed shared authored animation channels. It now uses a
+qualified SDK draft model reference and the current NPC pose kind: imported pose
+opens the retail donor clip; authored pose opens shared authored channels. Labels
+identify the representation. Unsupported/missing poses have no fallback action;
+pending refresh, busy state and detached scene proposals cannot arm navigation.
+The click rechecks source context and binding before opening the model dialog.
+
+The retail donor model and clip owner remain explicit. The donor's authored
+appearance is separate. `ModelRenderer.asset_id` already retained the retail
+model; inspection corrected the initial suspected wrong-model diagnosis. This
+change fixes the animation representation mismatch and strengthens binding checks,
+without claiming an NPC runtime animation identity or an established idle stance.
+
+Focused NPC Inspector and Asset Inspector Node checks pass source/pose coherence,
+imported/authored channel choice, unknowns and mismatched donor/model rejection.
+Actual private browser uses a verified donor appearance override (0105 to 0092)
+and a native shared channel edit in `animation://town01/scene-anm/0012`. It opens
+model 0105 with the correct donor owner and authored representation; its first
+frame differs from the retail response. The 540px dialog passes with no page errors.
+Project document, history and all file bytes remain unchanged during inspection.
+Evidence: `local-output/sdk-20260909/npc-donor-animation-binding-20261005/proof.json`.
+No Build, game launch, install or disc export occurred. Gameplay stays deferred.
+
 ## NPC recorded donor-model inspection — 2026-10-05
 
 Authored NPC records and central project inventory entries now expose the SDK's

@@ -80,7 +80,7 @@ import {openScriptComponentReset} from '/script-component-reset.js';
 import {mountScriptOwnerInspector} from '/script-owner-inspector.js';
 import {openDraftRepeat} from '/draft-repeat.js';
 import {openDraftGroup} from '/draft-group.js';
-import {renderNpcDraftInspector} from '/npc-draft-inspector.js';
+import {npcDonorAnimationBinding,renderNpcDraftInspector} from '/npc-draft-inspector.js';
 import {mountActorSelectionSets,decodeSavedActorSelection} from '/actor-selection-sets.js';
 import {mountGroupAppearance} from '/group-appearance.js';
 import {textureSceneUsage} from '/texture-usage.js';
@@ -2904,8 +2904,11 @@ function renderInspector(){
     $('inspector').innerHTML=renderNpcDraftInspector(state.inspector_schema,{entity_id:id,draft:npc,donor,preview},draftPreviewState)+`<section class="component"><h3>NPC draft authoring</h3><form id="draft-inspector-form"><label>X <input name="x" type="number" min="64" max="16384" step="64" required></label><label>Z <input name="z" type="number" min="64" max="16384" step="64" required></label><button type="submit">Apply draft position</button></form><button id="frame-npc-draft">Frame draft</button><button id="delete-npc-draft">Delete draft</button></section>`;
     const poseLabel={imported_scene_animation_frame0:'Imported animation · frame 0',authored_scene_animation_frame0:'Authored shared animation · frame 0',reference_party_idle:'Reference party idle · frame 0',reference_global_loop:'Reference shared clip · frame 0',single_object_static:'Static single-object model'}[preview?.pose_kind]??'Pose unavailable in this view';
     const poseNote=document.createElement('p');poseNote.className='field-note';poseNote.id='draft-pose-note';poseNote.textContent=`Preview pose: ${poseLabel}. A sampled frame does not establish an idle stance or runtime playback.`;$('draft-inspector-form').before(poseNote);
-    if(donor?.components?.ModelRenderer?.asset_id&&['imported_scene_animation_frame0','authored_scene_animation_frame0'].includes(preview?.pose_kind)){
-      const inspectPose=document.createElement('button');inspectPose.id='inspect-draft-donor-animation';inspectPose.textContent='Inspect donor animation';inspectPose.onclick=()=>openModel(donor.components.ModelRenderer.asset_id,'scene-header',donor.id);poseNote.after(inspectPose);
+    const donorAnimation=scenePreviewCurrent()?npcDonorAnimationBinding(state,id,preview):null;
+    if(donorAnimation){
+      const inspectPose=document.createElement('button');inspectPose.id='inspect-draft-donor-animation';inspectPose.textContent=donorAnimation.representation==='authored'?'Inspect shared authored donor animation':'Inspect retail donor animation';
+      const context=resourceStateKey();inspectPose.disabled=busy||!scenePreviewCurrent()||Boolean(scenePose);
+      inspectPose.onclick=()=>{if(busy||context!==resourceStateKey()||!scenePreviewCurrent()||scenePose)return;try{const current=npcDonorAnimationBinding(state,id,activeScenePreview()?.entities.find(row=>row.entity_id===id));if(JSON.stringify(current)!==JSON.stringify(donorAnimation))throw new Error('NPC donor animation changed. Reselect the draft.');openModel(current.assetId,current.clipId,current.entityId,'imported');}catch(error){notify(error.message,true);}};poseNote.after(inspectPose);
     }
     const nameForm=document.createElement('form');nameForm.id='draft-name-form';
     const nameLabel=document.createElement('label');nameLabel.textContent='Name ';const nameInput=document.createElement('input');nameInput.name='name';nameInput.required=true;nameInput.maxLength=120;nameInput.value=npc.name;nameLabel.append(nameInput);
