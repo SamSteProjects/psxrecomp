@@ -184,3 +184,50 @@ class AnimationSources(unittest.TestCase):
             with self.assertRaises(ProjectError):library(p,str(p.root))
             with self.assertRaises(ProjectError):p.command(command)
             self.assertEqual(p.animation_sources,records);self.assertEqual(p.undo_stack,[])
+
+
+class AnimationSourceComparison(unittest.TestCase):
+    fixture=AnimationSources.fixture
+    def test_imported_shared_clip_comparison_does_not_follow_actor_assignment(self):
+        from contextlib import nullcontext
+        from hashlib import sha256
+        from test_animation_glb import record
+        from test_animation_allocation import bank
+        from sdk.animation_sources import library,compare_native
+        source=record([[([0,0,0],[0,0,0])]]*2);source_hash=sha256(source).hexdigest();raw,args=self.fixture()
+        args['binding'].update(animation_id='animation://town01/scene-anm/0000',asset_id='asset://town01/models/scene-tmd/0000',source_record_sha256=source_hash);args['candidate_sha256']=source_hash
+        with tempfile.TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));p.disc_path=Path('private-retail.bin');p.imports={'scene://town01':{'actors':[{'semantic_id':args['target_id']}]}}
+            p.animation_sources,row=retain(p,{},raw,**args);p.overrides={args['target_id']:{'ActorAllocatedAnimation':{'different_assignment':True}}}
+            request=dict(receipt_key=row['receipt_key'],expected_project_path=str(p.root),expected_library_key=library(p,str(p.root))['library_key'])
+            catalog=SimpleNamespace(referenced_animation_metadata=lambda:dict(bindings=[dict(semantic_id=args['binding']['animation_id'],asset_semantic_id=args['binding']['asset_id'],source_record={'record_sha256':source_hash})]))
+            before=deepcopy((p.overrides,p.animation_sources,p.undo_stack,p.redo_stack))
+            with patch('importer.pipeline._disc_context',side_effect=lambda _:nullcontext()),patch('sdk.animation_record_ledger.verified_source',return_value=(bank([source]),catalog)),patch('sdk.animation_record_ledger.compose',return_value=(bank([source]),None)):
+                result=compare_native(p,**request);self.assertTrue(result['matches_current']);self.assertEqual(result['comparison_scope'],'imported_shared_clip');self.assertTrue(result['active_in_native_bank'])
+                self.assertEqual((p.overrides,p.animation_sources,p.undo_stack,p.redo_stack),before)
+                with patch('importer.animation.decode_animation_record',return_value={'frame_count':2,'bone_count':65}):
+                    with self.assertRaisesRegex(ProjectError,'rigid clip profile'):compare_native(p,**request)
+                def changed(*args):p.disc_path=Path('changed.bin');return bank([source]),None
+                with patch('sdk.animation_record_ledger.compose',side_effect=changed):
+                    with self.assertRaisesRegex(ProjectError,'context changed'):compare_native(p,**request)
+            with self.assertRaises(ProjectError):compare_native(p,**dict(request,expected_library_key='0'*64))
+
+    def test_retired_retained_capture_is_reconstructed_without_native_publication(self):
+        from contextlib import nullcontext
+        from hashlib import sha256
+        from test_animation_glb import record
+        from test_animation_allocation import bank
+        from importer.animation_allocation import allocate_animation_record
+        from sdk.animation_sources import library,compare_native
+        source=record([[([0,0,0],[0,0,0])]]*2);source_hash=sha256(source).hexdigest();raw,args=self.fixture();uuid='12345678-1234-4123-8123-123456789abc'
+        captured,_=allocate_animation_record(source,source_hash,[1,0],[])
+        args.update(kind='retained',target_id=uuid,binding=dict(schema_version='legaia.animation-record-glb-binding.v1',scene_id='scene://town01',record_id=uuid),source_frame_indices=[1,0],candidate_sha256=sha256(captured).hexdigest())
+        entry=dict(record_id=uuid,donor_animation_id='animation://town01/scene-anm/0000',donor_frame_count=2,object_count=1,donor_record_sha256=source_hash,effective_donor_record_sha256=source_hash,donor_edits=[],source_frame_indices=[1,0],edits=[],record_sha256=sha256(captured).hexdigest())
+        ledger=dict(source_bank_sha256=sha256(bank([source])).hexdigest(),records=[entry],removed_record_ids=[uuid])
+        with tempfile.TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));p.disc_path=Path('private-retail.bin');p.animation_sources,row=retain(p,{},raw,**args);p.overrides={'scene://town01':{'AnimationRecords':deepcopy(ledger)}}
+            request=dict(receipt_key=row['receipt_key'],expected_project_path=str(p.root),expected_library_key=library(p,str(p.root))['library_key'])
+            before=deepcopy(p.overrides)
+            with patch('importer.pipeline._disc_context',side_effect=lambda _:nullcontext()),patch('sdk.animation_record_ledger.verified_source',return_value=(bank([source]),None)),patch('sdk.animation_record_ledger.validate',return_value=ledger),patch('sdk.animation_record_ledger.verify_witnesses'):
+                result=compare_native(p,**request);self.assertTrue(result['matches_current']);self.assertFalse(result['active_in_native_bank']);self.assertEqual(result['comparison_scope'],'retained_capture')
+            self.assertEqual(p.overrides,before);self.assertFalse(p.undo_stack)

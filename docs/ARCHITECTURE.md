@@ -931,3 +931,22 @@ The library modal releases its read operation before handing off navigation; clo
 or context changes during verification prevent the handoff. Native authoring and
 command history are unaffected; current inspector controls own any later explicit
 export, Review or Apply.
+
+
+### Historical animation input native comparison
+
+`animation_sources.compare_native` verifies a qualified project-library receipt
+inside one checked disc context. Imported inputs resolve the exact recorded
+scene-ANM clip and model witness from Retail metadata, verify its record preimage,
+then extract the same index from the normally composed authored bank. Source actor
+initial assignments remain separate from this shared-clip identity.
+
+Retained inputs validate their current native ledger and Retail donor witnesses,
+then reconstruct only the selected UUID from frozen donor bytes and current edits.
+The reconstruction view includes a retired capture for readback without changing
+its actual removal mask. The response explicitly distinguishes captured bytes
+from membership in the emitted native bank. Record hashes/counts, immutable byte
+and rigid-object budgets, library key, selected import evidence and disc path are
+qualified before returning. SDK and browser preserve project/receipt/scene identity
+and reject stale or forged requests. This read-only route never creates an Undo
+step, navigates scenes, publishes native bytes or authorizes historical replay.

@@ -281,3 +281,56 @@ def library_remove_command(project,command):
     project.undo_stack.append(dict(target='animation_sources',before=before,after=deepcopy(after)))
     project.redo_stack.clear()
     return report
+
+
+def compare_native(project,receipt_key,expected_project_path,expected_library_key):
+    """Compare exact shared clip or retained UUID; do not substitute actor assignment."""
+    from importer.pipeline import _disc_context
+    from importer.animation import animation_record_ranges,decode_animation_record
+    from .animation_record_ledger import verified_source,compose,validate,verify_witnesses,reconstruct
+    import re
+    value,row=_library_receipt(project,receipt_key,expected_project_path,expected_library_key)
+    scene=row['scene_id'];evidence=digest(project.imports.get(scene));disc=project.disc_path
+    if not disc:raise ProjectError('Native animation comparison requires the matching retail disc')
+    with _disc_context(disc):
+        source,catalog=verified_source(project,scene)
+        if row['kind']=='imported':
+            binding=row['binding'];clip=binding.get('animation_id');prefix='animation://'+scene.split('://',1)[1]+'/scene-anm/'
+            if not isinstance(clip,str) or not clip.startswith(prefix) or not re.fullmatch(r'[0-9]{4}',clip[len(prefix):]):
+                raise ProjectError('Historical input does not identify a supported shared native clip')
+            if not any(a['semantic_id']==row['target_id'] for a in project.imports[scene]['actors']):
+                raise ProjectError('Historical animation source actor is absent from its scene')
+            witnesses=catalog.referenced_animation_metadata()['bindings']
+            if not any(w['semantic_id']==clip and w['asset_semantic_id']==binding.get('asset_id') and w['source_record']['record_sha256']==binding.get('source_record_sha256') for w in witnesses):
+                raise ProjectError('Historical shared clip differs from Retail source evidence')
+            index=int(clip[len(prefix):]);base_ranges=animation_record_ranges(source)
+            if not 0<=index<len(base_ranges):raise ProjectError('Historical shared clip is outside Retail bank')
+            start,end=base_ranges[index]
+            if sha256(source[start:end]).hexdigest()!=binding.get('source_record_sha256'):raise ProjectError('Historical shared clip preimage differs from Retail')
+            effective,_=compose(project,scene);start,end=animation_record_ranges(effective)[index];current=effective[start:end]
+            scope='imported_shared_clip';active=True
+        else:
+            ledger=validate(project,scene,project.overrides.get(scene,{}).get('AnimationRecords'),verify_disc=True)
+            verify_witnesses(ledger,catalog)
+            entry=next((r for r in ledger['records'] if r['record_id']==row['target_id']),None)
+            if entry is None:raise ProjectError('Historical retained clip is absent from Current')
+            capture=deepcopy(ledger);capture['records']=[deepcopy(entry)];capture['removed_record_ids']=[]
+            payload=reconstruct(source,capture)
+            if len(payload)!=1 or payload[0]['record_id']!=row['target_id']:raise ProjectError('Retained comparison identity changed')
+            current=payload[0]['record'];clip='animation://'+scene.split('://',1)[1]+'/authored-record/'+row['target_id']
+            scope='retained_capture';active=row['target_id'] not in ledger['removed_record_ids']
+        if not isinstance(current,bytes) or not 1<=len(current)<=4*1024*1024:raise ProjectError('Native animation comparison exceeds its byte budget')
+        decoded=decode_animation_record(current)
+        if not 1<=decoded['frame_count']<=65535 or not 1<=decoded['bone_count']<=64:
+            raise ProjectError('Native animation comparison exceeds its rigid clip profile')
+        current_hash=sha256(current).hexdigest()
+        if project.disc_path!=disc or value['library_key']!=_library_key(project) or evidence!=digest(project.imports.get(scene)):
+            raise ProjectError('Native animation comparison context changed')
+        report=dict(schema_version='legaia.animation-source-native-comparison.v1',project_path=value['project_path'],
+            library_key=value['library_key'],receipt_key=receipt_key,scene_id=scene,target_id=row['target_id'],kind=row['kind'],
+            clip_id=clip,comparison_scope=scope,historical_candidate_sha256=row['candidate_sha256'],current_sha256=current_hash,
+            current_byte_length=len(current),frame_count=decoded['frame_count'],object_count=decoded['bone_count'],
+            active_in_native_bank=active,matches_current=current_hash==row['candidate_sha256'],project_changed=False,native_content_changed=False)
+    if project.disc_path!=disc or value['library_key']!=_library_key(project) or evidence!=digest(project.imports.get(scene)):
+        raise ProjectError('Native animation comparison context changed')
+    return report

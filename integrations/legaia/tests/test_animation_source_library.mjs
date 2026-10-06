@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {decodeAnimationSourceLibrary,filterAnimationSourceLibrary,decodeLibraryRemoval,navigateAnimationSource} from '../editor/animation-source-library.js';
+import {decodeAnimationSourceLibrary,filterAnimationSourceLibrary,decodeLibraryRemoval,navigateAnimationSource,decodeAnimationSourceComparison} from '../editor/animation-source-library.js';
 const path='C:/private/project',scene='scene://town01',target=scene+'/actors/man-p1/0011';
 const row={schema_version:'legaia.animation-source.v1',kind:'imported',scene_id:scene,target_id:target,receipt_key:'a'.repeat(64),glb_sha256:'b'.repeat(64),candidate_sha256:'c'.repeat(64),review_key:'d'.repeat(64),byte_length:28,animation_index:null,source_frame_indices:null,binding:{scene_id:scene,entity_id:target}};
 const value={schema_version:'legaia.animation-source-library.v1',project_path:path,library_key:'e'.repeat(64),mode:'edit',imports:[row],receipt_count:1,distinct_glb_count:1,registered_byte_length:28,project_changed:false,historical_inputs:true};
@@ -24,3 +24,10 @@ assert.equal(await navigateAnimationSource(saved),true);assert.equal(refreshed,1
 for(const getAssets of [()=>[],()=>[asset,asset],()=>[{...asset,type:'model'}],()=>[{...asset,sceneId:'scene://other'}],()=>[{...asset,data:{...asset.data,retained_record:{...clipRow,record_sha256:'bad'}}}]])await assert.rejects(()=>navigateAnimationSource({...saved,getAssets}));
 let count=0;await assert.rejects(()=>navigateAnimationSource({...saved,readLibrary:async()=>{count++;return count<3?structuredClone(catalog):{...catalog,library_key:'f'.repeat(64)};}}));assert.equal(opened.length,2);
 console.log('Saved animation input navigation preserves actor versus retained UUID identity and rejects stale/missing/ambiguous targets.');
+
+const comparedRow={...row,binding:{...row.binding,animation_id:'animation://town01/scene-anm/0012'}};
+const comparison={schema_version:'legaia.animation-source-native-comparison.v1',project_path:path,library_key:value.library_key,receipt_key:row.receipt_key,scene_id:scene,target_id:target,kind:'imported',clip_id:comparedRow.binding.animation_id,comparison_scope:'imported_shared_clip',historical_candidate_sha256:row.candidate_sha256,current_sha256:row.candidate_sha256,current_byte_length:200,frame_count:2,object_count:1,active_in_native_bank:true,matches_current:true,project_changed:false,native_content_changed:false};
+assert.equal(decodeAnimationSourceComparison(comparison,value,comparedRow).matches_current,true);
+for(const mutate of [v=>v.clip_id='other',v=>v.active_in_native_bank=false,v=>v.matches_current=false,v=>v.kind='retained',v=>v.frame_count=0,v=>v.object_count=65,v=>v.library_key='bad',v=>v.native_content_changed=true]){const bad=structuredClone(comparison);mutate(bad);assert.throws(()=>decodeAnimationSourceComparison(bad,value,comparedRow));}
+const retired={...comparison,receipt_key:retained.receipt_key,target_id:uuid,kind:'retained',clip_id:clipId,comparison_scope:'retained_capture',active_in_native_bank:false};assert.equal(decodeAnimationSourceComparison(retired,catalog,retained).active_in_native_bank,false);
+console.log('Animation comparison binds exact shared or retained identity and distinguishes retired captures from emitted native clips.');

@@ -338,3 +338,19 @@ controls. A retained clip's captured actor is provenance, not an instruction to
 assign the clip to that actor. Obtain a fresh GLB binding before editing again.
 Navigation changes editor scene/selection only; explicit exports create files
 under Exports, while Apply remains a separate reviewed authoring action.
+
+
+### Compare saved input results with current native clip content
+
+Choose Compare current native clip in Project animation inputs. For an imported
+input, this compares the shared native clip identified by its original binding;
+it does not follow the source actor's later initial assignment. For a retained
+input, it reconstructs the exact saved UUID against its frozen donor and current
+content edits. The result shows whether the historical result matches, plus the
+clip identity, frame/object counts and current hash. Retired retained captures
+remain comparable but are explicitly labeled absent from the authored native bank.
+
+Comparison verifies the matching Retail disc and source scene without navigating
+away from the active scene. It changes no project state, files or history. A byte
+match does not establish timing, live playback or permission to replay an old
+binding. Use a fresh export and Review before applying a new edit.

@@ -1,5 +1,34 @@
 # Legaia SDK status — 2026-10-06
 
+## 2026-10-06 checkpoint: saved animation input native content comparison
+
+Project animation inputs now offers Compare current native clip. Imported inputs
+compare the exact shared scene-ANM clip recorded by the receipt, independently of
+the source actor's later initial assignment. Retained inputs reconstruct the exact
+UUID from verified frozen donor data and current edits. The panel separates byte
+matches from active/retired membership in the authored native bank; retired captures
+remain readable without restoring or emitting them. It shows current clip identity,
+hash and frame/object counts. Matching bytes do not authorize stale binding replay
+or establish runtime playback/timing.
+
+The read-only route verifies receipt/library/root context, Retail record/model
+witnesses, native ledger content, rigid-profile/byte bounds, selected scene evidence
+and disc path. Comparison does not navigate the active scene or modify project,
+source inputs, native content, history or files. Recovery remains separate from
+this disc-dependent qualification.
+
+Verification: 19 focused Python tests and five Node checks passed. A strengthened
+profile rejection also passed in the twelve-test source module rerun. Actual editor
+checks, while town0c remained active, identified both matching and older town01
+shared inputs and compared the retained UUID as active and then retired. A normal
+private retirement followed by Undo restored emitted-bank membership; comparison
+operations themselves preserved every project file and authoring/history collection.
+Fresh SDK HTTP readback confirmed the final profile bounds. No Build, mod install,
+runtime attach or game launch was performed for this read-only feature.
+Evidence: `local-output/sdk-20260909/animation-source-comparison-20261006/proof.json`.
+The full SDK goal and manual gameplay acceptance remain open.
+
+
 ## 2026-10-06 checkpoint: saved animation input source navigation
 
 Project animation inputs now exposes Open source actor for imported inputs and

@@ -2275,6 +2275,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                         report = apply_import(self.server.project, body['asset_id'], payload, body['binding'], body['review_key'])
                         self._json(200, dict(self.server.state(), model_glb_report=report))
                     return
+                if route=='/api/animation-library-native-comparison':
+                    if set(body)!={'receipt_key','expected_project_path','expected_library_key'}:raise ProjectError('Native animation comparison requires exact fields')
+                    from .animation_sources import compare_native
+                    self._json(200,compare_native(self.server.project,**body));return
                 if route in ('/api/animation-source-library','/api/animation-library-download','/api/animation-library-removal-review','/api/animation-library-remove'):
                     expected={'expected_project_path'}
                     if route!='/api/animation-source-library':expected.update({'receipt_key','expected_library_key'})
