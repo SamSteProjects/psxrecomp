@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {npcDonorAnimationBinding,renderNpcDraftInspector} from '../editor/npc-draft-inspector.js';
+import {npcAnimationSceneTarget,npcDonorAnimationBinding,renderNpcDraftInspector} from '../editor/npc-draft-inspector.js';
 const property=(id,path,state)=>({id,label:id,path,type:'string',state}),schema={schema_version:'legaia.inspector-schema.v1',live_writes:false,property_states:{'read-only-project':{label:'Project',note:'Metadata'},'authored-through-command':{label:'Authored',note:'Command'},derived:{label:'Derived',note:'Source sample'},unresolved:{label:'Unresolved',note:'Unknown'}},components:{
  NpcDraftIdentity:{label:'NPC draft identity',layout:'read-only-properties',properties:[property('identity',['entity_id'],'read-only-project')],details:[{label:'Donor',path:['donor']}]},
  NpcDraftTransform:{label:'Authored placement',layout:'read-only-properties',properties:[property('X',['draft','position','x'],'authored-through-command')]},
@@ -20,3 +20,12 @@ assert.equal(npcDonorAnimationBinding(animationState,id,{...animationPreview,pos
 assert.throws(()=>npcDonorAnimationBinding(animationState,id,{...animationPreview,asset_id:'asset://authored-appearance/other'}));
 assert.throws(()=>npcDonorAnimationBinding(animationState,id,{...animationPreview,donor_entity_id:'other'}));
 console.log('NPC animation binding follows retail donor model, preserves shared authored channel representation and rejects mismatched snapshots.');
+
+animationState.actor_drafts[id].position={x:128,z:256};animationState.scene_preview_source_key='a'.repeat(64);
+const targetScene={scene_id:'scene://town01',source_key:animationState.scene_preview_source_key,entities:[{...animationPreview,authored_position:{x:128,z:256}}]},posePreview={semantic_id:modelId};
+assert.equal(npcAnimationSceneTarget(animationState,targetScene,posePreview,donorId,id),id);
+assert.equal(npcAnimationSceneTarget(animationState,targetScene,posePreview,null,id),id);
+for(const edit of [v=>v.source_key='stale',v=>v.entities[0].asset_id='other',v=>v.entities[0].donor_entity_id='other',v=>v.entities[0].authored_position.x=64,v=>v.entities.push(structuredClone(v.entities[0]))]){const bad=structuredClone(targetScene);edit(bad);assert.throws(()=>npcAnimationSceneTarget(animationState,bad,posePreview,donorId,id));}
+assert.throws(()=>npcAnimationSceneTarget(animationState,targetScene,{semantic_id:'other'},donorId,id));
+assert.throws(()=>npcAnimationSceneTarget(animationState,targetScene,posePreview,'other',id));
+console.log('NPC animation scene targeting retains authored placement and qualifies source, model, donor and unique entity binding.');

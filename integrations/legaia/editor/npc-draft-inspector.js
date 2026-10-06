@@ -23,3 +23,13 @@ export function npcDonorAnimationBinding(state,entityId,preview){
   if(preview.entity_id!==entityId||preview.kind!=='actor_draft'||preview.donor_entity_id!==draft.donor_entity_id||preview.asset_id!==assetId||authored.donor_entity_id!==draft.donor_entity_id||authored.name!==draft.name)throw new Error('NPC animation snapshot differs from its retail donor assignment.');
   return {assetId,entityId:draft.donor_entity_id,clipId:preview.pose_kind==='authored_scene_animation_frame0'?'authored-channels':'scene-header',representation:preview.pose_kind==='authored_scene_animation_frame0'?'authored':'imported'};
 }
+
+export function npcAnimationSceneTarget(state,scene,preview,sourceEntityId,entityId){
+  const draft=state.actor_drafts?.[entityId],authored=state.authored_assets?.find(row=>row.id===entityId);
+  if(!draft||draft.scene_id!==state.scene?.id||scene?.scene_id!==state.scene.id||scene.source_key!==state.scene_preview_source_key||!authored)throw new Error('NPC animation scene source changed. Refresh the scene.');
+  const assetId=npcDonorModel({id:entityId,type:'actor',sceneId:state.scene.id,authoredRecord:authored}),targets=scene.entities?.filter(row=>row.entity_id===entityId);
+  if(!assetId||preview?.semantic_id!==assetId||sourceEntityId!==null&&sourceEntityId!==draft.donor_entity_id||targets?.length!==1)throw new Error('NPC animation scene target differs from its recorded donor model.');
+  const target=targets[0];
+  if(target.kind!=='actor_draft'||target.donor_entity_id!==draft.donor_entity_id||target.asset_id!==assetId||['x','z'].some(axis=>target.authored_position?.[axis]!==draft.position?.[axis]))throw new Error('NPC animation scene target differs from authored placement.');
+  return entityId;
+}

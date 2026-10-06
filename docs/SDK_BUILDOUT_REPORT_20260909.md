@@ -1,5 +1,31 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## NPC animation frames at authored scene placement — 2026-10-05
+
+**Inspect animation in scene** now targets the selected NPC draft when entered
+through its donor animation Inspector. The donor remains the verified animation
+source; the NPC becomes the explicit display target. Existing imported-actor
+inspection retains its prior target selection. A dedicated adapter qualifies the
+current scene source, unique authored entity, recorded donor/model and authored
+X/Z placement before accepting an NPC target. Wrong source, model, donor, duplicate
+entity or changed placement rejects the inspection.
+
+The existing isolated geometry workflow changes only the target's display geometry
+key. Authored/source position, sampled elevation, display position and model-to-scene
+transform remain intact. NPC selection and framing synchronize with the inspection;
+the scene bar uses its authored name. Frame changes retain the same NPC geometry
+instance. Restore returns the qualified Current scene. This is display-only pose
+inspection, not animation assignment, runtime playback or gameplay acceptance.
+
+Focused NPC Inspector Node checks pass source/target/placement rejection. Actual
+private browser with shared authored channels and a different authored donor
+appearance verifies exact frame vertices, unchanged donor/all other entities,
+retained authored transform, NPC selection, frame advancement and restoration.
+The 540px viewport is visually inspected with no page errors. Project document,
+history and every project file byte remain unchanged. Evidence:
+`local-output/sdk-20260909/npc-animation-scene-target-20261005/proof.json` and
+`npc-scene-540.png`. No Build, game launch, install or disc export occurred.
+
 ## NPC animation Inspector matches shared authored preview — 2026-10-05
 
 The NPC animation button previously opened the imported donor clip even when the
