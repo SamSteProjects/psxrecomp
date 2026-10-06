@@ -28,3 +28,10 @@ for(const edit of [v=>v.scene.entities.push(structuredClone(base.entities[0])),v
 console.log('Reviewed NPC removal qualifies exact absent targets and unchanged imported/unselected scene content.');
 
 assert.throws(()=>decodeDraftGroupReview({...removalReport,request:{...removalRequest,remove:false}},removalRequest,state));
+
+const nativeIds=[1,2,3].map(n=>'authored-actor://00000000-0000-4000-8000-'+String(n).padStart(12,'0')),nativeDrafts=Object.fromEntries(nativeIds.map((id,i)=>[id,{position:[{x:512,z:512},{x:576,z:640},{x:704,z:768}][i]}]));
+for(const [operation,expected] of [[{kind:'rotate',quarter_turns:1},[{x:512,z:512},{x:384,z:576},{x:256,z:704}]],[{kind:'scale',percent:50},[{x:512,z:512},{x:576,z:576},{x:640,z:640}]],[{kind:'mirror',axis:'x'},[{x:512,z:512},{x:448,z:640},{x:320,z:768}]]])assert.deepEqual([...draftGroupPositions({entity_ids:nativeIds,layout:{...operation,anchor_entity_id:nativeIds[0]}},nativeDrafts).values()],expected);
+for(const layout of [{kind:'rotate',quarter_turns:0},{kind:'scale',percent:0},{kind:'mirror',axis:'y'},{kind:'scale',percent:1001},{kind:'rotate',quarter_turns:true}])assert.throws(()=>draftGroupPositions({entity_ids:nativeIds,layout:{...layout,anchor_entity_id:nativeIds[0]}},nativeDrafts));
+const nativeState={...state,actor_drafts:Object.fromEntries(nativeIds.map(id=>[id,{...nativeDrafts[id],scene_id:'scene',name:id,donor_entity_id:'donor'}]))},nativeRequest={entity_ids:nativeIds,layout:{kind:'rotate',quarter_turns:1,anchor_entity_id:nativeIds[0]}},nativePositions=draftGroupPositions(nativeRequest,nativeDrafts),nativeReport={...structuredClone(report),request:nativeRequest,changed_count:2,targets:nativeIds.map(id=>({entity_id:id,draft:nativeState.actor_drafts[id],proposed:nativePositions.get(id)}))};
+assert.equal(decodeDraftGroupReview(nativeReport,nativeRequest,nativeState).changed_count,2);const forged=structuredClone(nativeReport);forged.targets[1].proposed.x+=64;assert.throws(()=>decodeDraftGroupReview(forged,nativeRequest,nativeState));
+console.log('NPC native rotation, half-step scale rounding, mirror, fixed anchor, typed fields and forged proposals passed.');

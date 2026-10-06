@@ -22,11 +22,18 @@ def review(project, request):
             any(type(v) is not int or v % 64 or abs(v) > 16320 for v in delta.values())):
         raise ProjectError('NPC group offsets require X/Z integer multiples of64 within -16320..16320')
     if 'layout' in request:
-        if not isinstance(layout, dict) or layout.get('kind') not in ('align','distribute') or layout.get('axis') not in ('x','z'):
-            raise ProjectError('NPC group layout requires align/distribute along X or Z')
-        fields={'kind','axis','anchor_entity_id'} if layout['kind']=='align' else {'kind','axis'}
-        if set(layout)!=fields or (layout['kind']=='align' and layout['anchor_entity_id'] not in ids):
-            raise ProjectError('NPC group layout requires exact fields and a selected alignment anchor')
+        if not isinstance(layout, dict) or layout.get('kind') not in ('align','distribute','rotate','scale','mirror'):
+            raise ProjectError('Choose a supported NPC group layout')
+        kind=layout['kind']
+        fields={'kind','axis'} if kind=='distribute' else {'kind','anchor_entity_id','quarter_turns'} if kind=='rotate' else {'kind','anchor_entity_id','percent'} if kind=='scale' else {'kind','axis','anchor_entity_id'}
+        if set(layout)!=fields or (kind!='distribute' and layout['anchor_entity_id'] not in ids):
+            raise ProjectError('NPC group layout requires exact fields and a selected anchor')
+        if kind in ('align','distribute','mirror') and layout['axis'] not in ('x','z'):
+            raise ProjectError('NPC group layout requires X or Z')
+        if kind=='rotate' and (type(layout['quarter_turns']) is not int or layout['quarter_turns'] not in (-1,1,2)):
+            raise ProjectError('NPC group rotation requires -1, 1 or 2 quarter turns')
+        if kind=='scale' and (type(layout['percent']) is not int or not 1<=layout['percent']<=1000):
+            raise ProjectError('NPC group spacing scale requires 1..1000 integer percent')
     before = source_key(project)
     targets = []
     for identifier in sorted(ids):
@@ -37,10 +44,25 @@ def review(project, request):
         proposed = {axis: draft['position'][axis] + (delta[axis] if delta is not None else 0) for axis in ('x', 'z')}
         targets.append(dict(entity_id=identifier, draft=deepcopy(draft), proposed=None if removing else proposed))
     if layout is not None:
-        axis=layout['axis']
+        axis=layout.get('axis')
         if layout['kind']=='align':
             anchor=next(row for row in targets if row['entity_id']==layout['anchor_entity_id'])
             for row in targets:row['proposed'][axis]=anchor['draft']['position'][axis]
+        elif layout['kind'] in ('rotate','scale','mirror'):
+            anchor=next(row['draft']['position'] for row in targets if row['entity_id']==layout['anchor_entity_id'])
+            for row in targets:
+                current=row['draft']['position']
+                if layout['kind']=='rotate':
+                    dx,dz=current['x']-anchor['x'],current['z']-anchor['z'];turns=layout['quarter_turns']
+                    x,z=(-dz,dx) if turns==1 else (dz,-dx) if turns==-1 else (-dx,-dz)
+                    row['proposed']=dict(x=anchor['x']+x,z=anchor['z']+z)
+                elif layout['kind']=='mirror':
+                    row['proposed'][axis]=2*anchor[axis]-current[axis]
+                else:
+                    for a in ('x','z'):
+                        n=anchor[a]*100+(current[a]-anchor[a])*layout['percent']
+                        units=(abs(n)+3200)//6400
+                        row['proposed'][a]=(-units if n<0 else units)*64
         else:
             ordered=sorted(targets,key=lambda row:(row['draft']['position'][axis],row['entity_id']))
             low,high=ordered[0]['draft']['position'][axis]//64,ordered[-1]['draft']['position'][axis]//64
@@ -61,7 +83,7 @@ def review(project, request):
     return dict(schema_version='legaia.draft-group-review.v1', scene_id=project.active_scene,
                 project_source_key=before, scene_preview_source_key=scene_key,
                 request=normalized, targets=targets, changed_count=sum(row['draft']['position']!=row['proposed'] for row in targets),
-                review_key=digest(dict(source=before, request=normalized, algorithm='draft-group-remove.v1' if removing else 'draft-group-layout.v1' if layout is not None else 'draft-group-offset.v1')),
+                review_key=digest(dict(source=before, request=normalized, algorithm='draft-group-remove.v1' if removing else 'draft-group-native-layout.v1' if layout is not None and layout['kind'] in ('rotate','scale','mirror') else 'draft-group-layout.v1' if layout is not None else 'draft-group-offset.v1')),
                 gameplay_verified=False, limitations=[
                     'Removes selected authored NPC drafts only; one Undo restores their identities and all metadata.' if removing else 'Moves existing authored NPC drafts only; imported actors, donors and unselected drafts remain unchanged.',
                     'X/Z use retail placement precision. Preview elevation is sampled source scenery, not authored height.',

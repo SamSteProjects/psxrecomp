@@ -67,6 +67,33 @@ class DraftGroupTests(unittest.TestCase):
         with self.assertRaises(ProjectError):p.command(dict(type='layout_actor_drafts',**self.request,review_key=review(p,self.request)['review_key']))
         self.assertEqual((p.actor_drafts,p.undo_stack),before)
 
+    def test_native_rotation_scale_mirror_atomic_preview_history_and_persistence(self):
+        p=self.p;ids=list(p.actor_drafts)
+        for i,position in zip(ids,({'x':512,'z':512},{'x':576,'z':640},{'x':704,'z':768})):
+            p.command(dict(type='set_actor_draft_position',entity_id=i,position=position))
+        before=deepcopy(p.actor_drafts);imports=deepcopy(p.imports);anchor=ids[0]
+        cases=[({'kind':'rotate','quarter_turns':1},[{'x':512,'z':512},{'x':384,'z':576},{'x':256,'z':704}]),
+               ({'kind':'scale','percent':50},[{'x':512,'z':512},{'x':576,'z':576},{'x':640,'z':640}]),
+               ({'kind':'mirror','axis':'x'},[{'x':512,'z':512},{'x':448,'z':640},{'x':320,'z':768}])]
+        for operation,expected in cases:
+            request=dict(entity_ids=sorted(ids),layout={**operation,'anchor_entity_id':anchor});report=review(p,request)
+            positions={row['entity_id']:row['proposed'] for row in report['targets']};self.assertEqual([positions[i] for i in ids],expected)
+            candidate=proposal_view(p,report);self.assertEqual(p.actor_drafts,before);self.assertEqual([candidate.actor_drafts[i]['position'] for i in ids],expected)
+            depth=len(p.undo_stack);p.command(dict(type='layout_actor_drafts',**request,review_key=report['review_key']));self.assertEqual(len(p.undo_stack),depth+1)
+            self.assertEqual(p.imports,imports);self.assertEqual(ProjectService.open(p.save()).actor_drafts,p.actor_drafts)
+            p.undo();self.assertEqual(p.actor_drafts,before);p.redo();self.assertEqual([p.actor_drafts[i]['position'] for i in ids],expected);p.undo()
+        snapshot=deepcopy((p._document(),p.undo_stack,p.redo_stack));request=dict(entity_ids=sorted(ids),layout=dict(kind='scale',percent=100,anchor_entity_id=anchor));report=review(p,request)
+        p.command(dict(type='layout_actor_drafts',**request,review_key=report['review_key']));self.assertEqual((p._document(),p.undo_stack,p.redo_stack),snapshot)
+
+    def test_native_layout_invalid_and_out_of_bounds_publish_nothing(self):
+        p=self.p;ids=sorted(p.actor_drafts);base=dict(entity_ids=ids);anchor=ids[0];before=deepcopy((p._document(),p.undo_stack,p.redo_stack))
+        for operation in ({'kind':'rotate','quarter_turns':True},{'kind':'rotate','quarter_turns':0},{'kind':'scale','percent':True},{'kind':'scale','percent':0},{'kind':'scale','percent':1001},{'kind':'mirror','axis':'y'},{'kind':'mirror','axis':'x','extra':1}):
+            with self.assertRaises(ProjectError):review(p,{**base,'layout':{**operation,'anchor_entity_id':anchor}})
+        # A large spacing scale about the rightmost member would cross the legal lower X bound.
+        anchor=min(ids,key=lambda i:p.actor_drafts[i]['position']['x'])
+        with self.assertRaises((ProjectError,ValueError)):review(p,{**base,'layout':dict(kind='scale',percent=1000,anchor_entity_id=max(ids,key=lambda i:p.actor_drafts[i]['position']['x']))})
+        self.assertEqual((p._document(),p.undo_stack,p.redo_stack),before)
+
     def test_stale_invalid_last_target_tampered_scene_and_live_reject(self):
         p=self.p;before=deepcopy((p.actor_drafts,p.undo_stack,p.redo_stack));old=self.command()
         for change in ({'entity_ids':self.ids[:1]},{'entity_ids':self.ids*2},{'entity_ids':[self.ids[0],'missing']},

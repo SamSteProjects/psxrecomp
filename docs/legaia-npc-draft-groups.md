@@ -1,5 +1,36 @@
 # Move a group of NPC drafts
 
+## Native-grid NPC group rotation, scale and reflection - 2026-10-05
+
+The NPC group Inspector tool now adds position rotation (-90/+90/180 degrees),
+spacing scale (1-1000 integer percent), and X/Z coordinate reflection about a
+selected NPC anchor. It operates on 2-128 existing NPC drafts in the active Edit
+scene. Rotation uses exact X/Z quarter-turn permutations; scale rounds final
+coordinates to the native 64-unit grid with half steps away from zero. Reflection
+changes one coordinate. The selected anchor stays fixed. These layouts change
+positions, preserving model geometry, facing, donor bindings and other metadata.
+Rounded placements can coincide; inspect Current/Proposed before Apply.
+
+Exact typed layout requests, a distinct native-layout review-key binding, complete
+source snapshots and full bounds validation qualify the whole group. Invalid,
+stale or out-of-bounds proposals publish nothing. The existing detached scene
+preview and atomic Apply/Undo/Redo work unchanged; no-ops retain redo history.
+Offset, alignment, distribution and removal remain compatible.
+
+Validation: 16 focused Python cases and group/repetition/mixed-NPC Node checks passed.
+Actual private Town01 browser checks covered all three rotations, scale and both
+reflection axes, fixed anchor, input withdrawal, Current/Proposed/Return, exact
+renderer matrices, unchanged geometry/unselected entities and preview without
+mutation. One reflection passed atomic Apply/Undo/Redo, Save/reload and disk reopen;
+the 540px dialog was inspected, with no page errors. Normal format 7 Build readback
+matched the complete prepared MAN and all seven appended NPC positions, model 105
+and animation 13. Saved package verification matched current inputs; Build preserved
+project/history/preexisting files. Package SHA256:
+`b3185a16a71aea60a3ffba163d1f0131f021daeab4168751fb07f0ac72eab560`.
+Evidence: `local-output/sdk-20260909/npc-native-layout-20261005/proof.json` and
+`normal-build-proof.json`. No game launch, installation or full-disc export ran.
+Gameplay remains deferred; the full SDK goal stays active and work stays solo.
+
 ## Reviewed NPC draft group removal — 2026-10-05
 
 The NPC group tool now offers **Remove selected NPC drafts** alongside offset,
@@ -26,7 +57,8 @@ no game launch, install or disc export was performed.
 
 Select an authored NPC draft, then choose **Move NPC draft group...** in its
 Inspector. The action is available when this scene contains at least two drafts.
-Imported actors and static scenery use their existing separate placement tools.
+Use mixed scene placements when editing NPC drafts together with imported actors
+or static scenery.
 
 Search by authored name or stable ID. **Select visible drafts** adds every matching
 draft to the selection; clearing the search does not clear selection. **Clear
