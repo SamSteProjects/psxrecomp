@@ -1,5 +1,30 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Independent NPC appearance native adapter - 2026-10-05
+
+Added a source-qualified native adapter that keeps an NPC's script donor separate
+from its initial model/animation witness. Requests identify an allocated draft and
+a retail witness record; native numbers and bytes are not supplied by clients.
+The existing MAN assignment validator checks local bank membership, compatible
+object/channel counts and donor ownership. Only the selected clone's two initial
+header bytes can change. Final record identities resolve offsets after all appends;
+intermediate allocation offsets are not reused. Retail records, aliases, ambiguous
+allocations, unsupported pairs and changed header preimages reject.
+
+Focused synthetic checks cover two clones, later table growth, exact byte scope,
+repeat/preimage rejection, malformed ownership, aliases and incompatible channels.
+A retail town01 candidate changed model105/animation13 to qualified model92/
+animation9 from donor0040 while retaining script donor0012 and authored dialogue.
+Exactly two header bytes changed; all other bytes and the second clone remained
+unchanged. Project state/history/files were preserved. Evidence is under
+`local-output/sdk-20260909/npc-appearance-native-20261005/`.
+
+This is native foundation work, not yet an editor feature or normal Build input.
+Next: integrate an independent appearance binding into project commands, scene
+preview/asset/animation references, persistence, presets and normal Build, then
+verify the complete editor workflow. Runtime compatibility and gameplay remain
+unverified; no game was launched. The full SDK goal remains active.
+
 ## Retain NPC dialogue in reusable presets - 2026-10-05
 
 Capturing an NPC preset now freezes its supported own dialogue with the retail
