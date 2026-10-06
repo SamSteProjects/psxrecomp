@@ -1,5 +1,33 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Reviewed NPC group retail donor assignment - 2026-10-05
+
+The NPC Inspector now offers **Assign NPC group donor...** for 2 through 128
+same-scene drafts. Current or recalled scene selections seed the dialog; mixed
+selections retain only NPC members with an exclusion note. Choose an imported
+retail donor, review the exact membership, then inspect the detached proposed
+scene with Current/Proposed comparison and Return before Apply. Identity, name
+and X/Z stay fixed; imported actors and unselected scene content stay unchanged.
+
+This changes inherited native model, initial animation, scripts and related actor
+data. It is donor reuse, not arbitrary model/animation assignment. Source changes,
+input changes and malformed proposals reject or withdraw Apply. One Apply creates
+one Undo step; Redo and Save/Open preserve the reviewed donor bindings.
+
+Offline evidence: eight focused Python cases and the Node proposal guards pass.
+The actual private browser passed Review without mutation, detached scene model
+bindings, Current/Proposed/Return, input withdrawal, Apply, Undo/Redo and reload.
+The final read-only check passed the tightened guards and an inspected 540px
+layout. Normal Build independently decoded the complete format-7 compressed MAN:
+selected records 53/54 retained X/Z 2944/5568 and 3136/5568 while changing donor
+model/animation from 105/13 to 111/56. All five unselected appended records retained
+105/13 and their positions. Saved receipt freshness and project preservation pass.
+Evidence: `local-output/sdk-20260909/npc-donor-group-20261005/` (`proof.json`,
+`normal-build-proof.json`, `ui-final.log`, `donor-group-540.png`). Package SHA-256:
+`e936966c4e152a74f4fe35c1ffd722b499c888d79e3316e3ef9eac486117a58c`.
+Gameplay visibility, spawning, scheduling and inherited script behavior remain
+unverified. No game launch, install or disc export occurred.
+
 ## Repair saved selections after NPC deletion - 2026-10-05
 
 Saved selections containing deleted NPCs now support **Replace with current

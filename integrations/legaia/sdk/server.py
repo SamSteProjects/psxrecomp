@@ -779,6 +779,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/preset-batch.js": ("preset-batch.js", "text/javascript"),
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
                  "/draft-group.js": ("draft-group.js", "text/javascript"),
+                 "/draft-donor-group.js": ("draft-donor-group.js", "text/javascript"),
                  "/npc-draft-inspector.js": ("npc-draft-inspector.js", "text/javascript"),
                  "/npc-presets.js": ("npc-presets.js", "text/javascript"),
                  "/npc-preset-metadata.js": ("npc-preset-metadata.js", "text/javascript"),
@@ -2707,6 +2708,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                     proposed=self.server.scene_previews.preview(view,lambda asset,*args,**kwargs:self.server.model_preview(asset,*args,effective_shape=True,project_view=view,**kwargs),load_scene_actor_animation_catalog,load_environment_preview_catalog,terrain_preview)
                     if source_key(self.server.project)!=report['project_source_key']:raise ProjectError('Project changed during NPC preset scene inspection')
                     self._json(200,dict(schema_version='legaia.npc-preset-scene.v1',review=report,scene=dict(proposed,representation='authored')));return
+                if route=='/api/draft-donor-group':
+                    from .draft_donor_group import review as donor_review,proposal_view
+                    from .project_copy import source_key as project_source_key
+                    from importer.scene_animation import load_scene_actor_animation_catalog
+                    from importer.environment import load_environment_preview_catalog
+                    from .terrain_preview import terrain_preview
+                    project=self.server.project;report=donor_review(project,body);view=proposal_view(project,report)
+                    proposed=self.server.scene_previews.preview(view,lambda asset,*args,**kwargs:self.server.model_preview(asset,*args,effective_shape=True,project_view=view,**kwargs),load_scene_actor_animation_catalog,load_environment_preview_catalog,terrain_preview)
+                    if project_source_key(project)!=report['project_source_key']:raise ProjectError('Project changed during NPC donor proposal')
+                    self._json(200,dict(schema_version='legaia.draft-donor-group-proposal.v1',review=report,scene=dict(proposed,representation='authored')));return
                 if route in ('/api/draft-group','/api/draft-group-scene'):
                     from .draft_group import review as draft_group_review, proposal_view
                     fields={'entity_ids','remove' if 'remove' in body else 'layout' if 'layout' in body else 'delta'}

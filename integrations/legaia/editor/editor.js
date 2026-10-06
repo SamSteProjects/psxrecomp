@@ -81,6 +81,7 @@ import {openScriptComponentReset} from '/script-component-reset.js';
 import {mountScriptOwnerInspector} from '/script-owner-inspector.js';
 import {openDraftRepeat} from '/draft-repeat.js';
 import {openDraftGroup} from '/draft-group.js';
+import {openDonorGroup} from '/draft-donor-group.js';
 import {npcAnimationSceneTarget,npcDonorAnimationBinding,renderNpcDraftInspector} from '/npc-draft-inspector.js';
 import {mountActorSelectionSets,decodeSavedActorSelection} from '/actor-selection-sets.js';
 import {mountGroupAppearance} from '/group-appearance.js';
@@ -2949,6 +2950,16 @@ function renderInspector(){
         scenePose={key:sceneKey,name:report.request.remove?'Proposed NPC draft removal - not applied':'Proposed NPC draft movement - not applied',returnToFile:returnToReview,isCurrent};scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`${report.targets.length} proposed NPC draft ${report.request.remove?'removals':'movements'} - not applied`;
         configureSceneInspectionComparison(proposed);for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('[aria-label="Scene preview rate"]').parentElement])control.hidden=true;
         const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to NPC draft group';if(!report.request.remove)frameShapeProposal({instance_scope:'all_model_instances',proposal_instances:report.targets},null);draw();
+      }
+    });
+    const donorGroup=document.createElement('button');donorGroup.id='draft-donor-group-button';donorGroup.textContent='Assign NPC group donor...';draftGroup.after(donorGroup);
+    donorGroup.disabled=busy||!canEdit()||!sceneModelsReady()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||!!scenePose||!!shapeDraft||!!actorGroupInspection||Object.values(state.actor_drafts??{}).filter(d=>d.scene_id===state.scene.id).length<2;
+    donorGroup.onclick=()=>openDonorGroup({entityId:id,entityIds:currentPlacementSelection(),getState:()=>state,isBusy:()=>busy,canEdit,api,getScenePreview:()=>scenePreview,onError:error=>notify(error.message,true),
+      inspectScene:(proposed,report,returnToReview,isCurrent)=>{
+        cancelViewportGesture();const failures=sceneRenderer.load(structuredClone(proposed));if(failures.length){sceneRenderer.load(structuredClone(scenePreview));throw new Error(failures.join('; '));}
+        scenePose={key:sceneKey,name:'Proposed NPC donor group - not applied',returnToFile:returnToReview,isCurrent};scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`${report.targets.length} proposed NPC donors - not applied`;
+        configureSceneInspectionComparison(proposed);for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('[aria-label="Scene preview rate"]').parentElement])control.hidden=true;
+        const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to NPC donor group';frameShapeProposal({instance_scope:'all_model_instances',proposal_instances:report.targets.map(row=>({...row,proposed:row.proposed.position}))},null);draw();
       }
     });
     for(const control of [nameInput,rename,duplicate,repeat])control.disabled=busy||!canEdit();

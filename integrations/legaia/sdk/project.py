@@ -2042,6 +2042,9 @@ class ProjectService:
             self.undo_stack.append({'entity_id': identifier, 'before': before, 'after': after or None})
             self.redo_stack.clear()
             return
+        if command.get('type')=='assign_actor_draft_donors':
+            from .draft_donor_group import apply as assign_draft_donors
+            assign_draft_donors(self,command);return
         if command.get('type') in ('offset_actor_drafts','layout_actor_drafts','delete_actor_drafts'):
             from .draft_group import apply as apply_draft_group
             apply_draft_group(self,command)
