@@ -136,6 +136,8 @@ def package_change_kinds(edits) -> list[str]:
         'TMD-existing-layout-material-content': 'model material bindings and shared primitive group transparency',
         'source-MAP-trigger-P2-binding-only': 'trigger script bindings',
         'source-MAP-wall-bit-only': 'source collision walls',
+        'source-MAP-floor-selector-only': 'source floor selectors',
+        'MAN-floor-height-table-only': 'source floor heights',
         'source-MAP-region-bounds-only': 'source region bounds',
         'source-MAP-trigger-cell-only': 'source trigger cells',
         'shared-scene-animation-record': 'animation channels',
@@ -491,6 +493,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     environment_edits = {}
     collision_edits = {}
     floor_edits = {}
+    height_edits = {}
     region_edits = {}
     trigger_edits = {}
     trigger_script_edits = {}
@@ -542,6 +545,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             components = {k:v for k,v in components.items() if k != 'TriggerCells'}
             if not components:
                 continue
+        if isinstance(components,dict) and 'FloorHeights' in components:
+            project._validate_floor_heights(identifier,components['FloorHeights']);height_edits[identifier]=components['FloorHeights']
+            scene_edits.setdefault(identifier,{key:{} for key in ('positions','assignments','dialogues','transitions','movements','facings','flags','waits','model_selectors','branches')})
+            components={k:v for k,v in components.items() if k!='FloorHeights'}
+            if not components:continue
         if isinstance(components,dict) and 'FloorTiers' in components:
             project._validate_floor_tiers(identifier,components['FloorTiers']);floor_edits[identifier]=components['FloorTiers']
             components={k:v for k,v in components.items() if k!='FloorTiers'}
@@ -896,7 +904,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             if allocated:
                 baseline=carrier.payload
                 changed,changes=baseline,[]
-            if raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["waits"] or edits["model_selectors"] or edits["branches"]:
+            if scene_id in height_edits or raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["waits"] or edits["model_selectors"] or edits["branches"]:
                 baseline = carrier.payload
                 changed, changes = baseline, []
             if edits["assignments"]:
@@ -927,7 +935,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 from .allocated_animation_build import patch_assignments
                 changed,allocated_changes=patch_assignments(project,scene_id,allocated,baseline,changed)
                 changes.extend(allocated_changes)
-            if allocated or raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["waits"] or edits["model_selectors"] or edits["branches"]:
+            if allocated or scene_id in height_edits or raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["waits"] or edits["model_selectors"] or edits["branches"]:
                 changed, position_changes = patch_man_positions(changed, scene, edits["positions"])
                 changes.extend(position_changes)
                 if edits["dialogues"]:
@@ -1072,6 +1080,9 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                     for change in branch_changes:
                         change.update(semantic_id=change["owner_id"], record_index=int(change["owner_id"].rsplit("/", 1)[1]))
                     changes.extend(branch_changes)
+                if scene_id in height_edits:
+                    from .floor_heights import compose
+                    changed,height_changes=compose(project,scene_id,baseline,changed);changes.extend(height_changes)
                 if raw_man:
                     replacement = changed
                     sizes = {'original_encoded_size':len(original_span),'new_encoded_size':len(changed),
@@ -1293,7 +1304,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         description = 'Private source-bound model shapes and optional authored scene data.'
         feature_description = 'Apply verified model coordinate edits and other packaged overrides; model topology and materials remain source-owned.'
     change_kinds = package_change_kinds(audit_edits)
-    if len(change_kinds) > 1 or any(kind in change_kinds for kind in ('animation channels', 'source collision walls', 'source region bounds', 'other audited scene data')):
+    if len(change_kinds) > 1 or any(kind in change_kinds for kind in ('animation channels', 'source collision walls', 'source floor selectors', 'source floor heights', 'source region bounds', 'other audited scene data')):
         package_suffix = ' authored scene data'
         feature_name = 'Authored scene data'
     if change_kinds:

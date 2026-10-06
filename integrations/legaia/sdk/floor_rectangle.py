@@ -32,6 +32,8 @@ def review(project,scene,rectangle,cell_edits=None):
     before=source_key(project);original=project._environment_source(scene);source_hash=sha256(original).hexdigest()
     environment=load_environment_placements(project.disc_path,project.imports[scene]['scene']['name']);lut=environment['floor_height_lut']
     record=environment['source_record']
+    from .floor_heights import effective_lut
+    lut=effective_lut(project,scene,lut,record.get('man_sha256'))
     if record.get('map_sha256')!=source_hash or 'sha256:'+record.get('disc_sha256','')!=project.imports[scene]['source']['disc_identity']:raise ProjectError('Floor MAP/MAN source differs from imported disc evidence')
     if not isinstance(lut,list) or len(lut)!=16 or any(type(v) is not int or not -32768<=v<=32767 for v in lut):raise ProjectError('Floor Review requires sixteen qualified MAN height values')
     authored=deepcopy(project.overrides.get(scene,{}).get('FloorTiers'))

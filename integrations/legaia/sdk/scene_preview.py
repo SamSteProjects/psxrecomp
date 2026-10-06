@@ -93,6 +93,7 @@ def source_key(project, *, geometry_only=False) -> str | None:
                    "animation_channels": {a["semantic_id"]: deepcopy(project.overrides[a["semantic_id"]]["AnimationChannels"])
                                           for a in document["actors"] if "AnimationChannels" in project.overrides.get(a["semantic_id"], {})},
                    "environment": None if geometry_only else deepcopy(project.overrides.get(project.active_scene, {}).get("Environment")),
+                   'floor_heights':deepcopy(project.overrides.get(project.active_scene,{}).get('FloorHeights')),
                    "floor_tiers": deepcopy(project.overrides.get(project.active_scene, {}).get("FloorTiers")),
                    "collision": None if geometry_only else deepcopy(project.overrides.get(project.active_scene, {}).get("Collision")),
                    "disc_stamp": _disc_stamp(path), "schema": "legaia.scene-preview.v1"})
@@ -102,7 +103,12 @@ def environment_effective_transforms(project, metadata: dict) -> dict:
     """Project shared and cell-local edits without changing imported identities."""
     value = project.overrides.get(project.active_scene, {}).get("Environment")
     floors=project.overrides.get(project.active_scene,{}).get('FloorTiers')
-    if not value and not floors:
+    heights=project.overrides.get(project.active_scene,{}).get('FloorHeights')
+    lut=metadata.get('floor_height_lut')
+    if heights:
+        from .floor_heights import effective_lut
+        lut=effective_lut(project,project.active_scene,lut,metadata['source_record'].get('man_sha256'))
+    if not value and not floors and not heights:
         return {}
     from importer.environment_authoring import patch_environment_overrides
     changes=[]
@@ -126,7 +132,7 @@ def environment_effective_transforms(project, metadata: dict) -> dict:
         grid_offset = placement.get('source_record', {}).get('grid_byte_offset', -1)
         cell = (grid_offset - 0x8000) // 2
         rows = by_record.get(placement["object_record_index"], []) + by_cell.get(cell, [])
-        floor_tier=floor_edits.get((placement['tile']['z'],placement['tile']['x'])) if floors else None
+        floor_tier=floor_edits.get((placement['tile']['z'],placement['tile']['x']),placement['floor']['tier'] if heights else None) if floors or heights else None
         if not rows and floor_tier is None:
             continue
         transform = deepcopy(placement["imported_transform"])
@@ -137,7 +143,7 @@ def environment_effective_transforms(project, metadata: dict) -> dict:
             else:
                 transform["rotation_psx"][axis] = row["after_value"]
         if floor_tier is not None:
-            transform['position']['y']+=placement['floor']['lut_value']-metadata['floor_height_lut'][floor_tier]
+            transform['position']['y']+=placement['floor']['lut_value']-lut[floor_tier]
         result[placement["semantic_id"]] = transform
     return result
 

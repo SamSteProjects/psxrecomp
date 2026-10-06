@@ -169,6 +169,9 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     document=deepcopy(project.imports[draft['scene_id']])
     scene=document['scene']['name']
     map_components=overrides.pop(draft['scene_id'],None)
+    if map_components and 'FloorHeights' in map_components:
+        project._validate_floor_heights(draft['scene_id'],map_components['FloorHeights'])
+        map_components={k:v for k,v in map_components.items() if k!='FloorHeights'} or None
     if map_components and 'AnimationRecords' in map_components and animation_growth_managed:
         map_components={key:value for key,value in map_components.items() if key!='AnimationRecords'} or None
     if digest(import_scene(project.disc_path,scene))!=digest(document):
@@ -430,6 +433,8 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
             branch_context=load_branch_authoring_context(project.disc_path,scene)
             branch_context.patch(branches,original=source)
             candidate,branch_audit=branch_context.patch_appended(candidate,branches)
+        from .floor_heights import compose as compose_floor_heights
+        candidate,floor_height_audit=compose_floor_heights(project,draft['scene_id'],source,candidate)
         # Check the final MAN before reading/repacking the archive. Existing-only
         # edits retain their prior executable compatibility; appended actors need
         # the same qualified native lower bound as ordinary NPC packages.
@@ -467,7 +472,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         authored_state_key=input_key,
         imported_document_sha256=digest(document),source_disc_sha256=disc_hash,
         source_prot_sha256=prot_hash,result_prot_sha256=sha256(rebuilt).hexdigest(),
-        actor=actor_audit,actor_pool_evidence=pool_evidence,existing_actor_placement_changes=placement_audit,
+        actor=actor_audit,actor_pool_evidence=pool_evidence,floor_height_changes=floor_height_audit, existing_actor_placement_changes=placement_audit,
         existing_actor_appearance_changes=appearance_audit,
         existing_actor_allocated_animation_changes=allocated_audit,
         existing_actor_dialogue_changes=dialogue_audit,

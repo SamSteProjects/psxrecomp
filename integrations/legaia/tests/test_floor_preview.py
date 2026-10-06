@@ -23,3 +23,14 @@ class FloorPreview(unittest.TestCase):
     with patch.object(ProjectService,'_validate_environment'),patch('importer.environment_authoring.patch_environment_overrides',return_value=(source,[change])):
      projected=environment_effective_transforms(p,metadata);self.assertEqual(projected[metadata['placements'][0]['semantic_id']]['position']['y'],-52)
    self.assertEqual(metadata['placements'][0]['imported_transform']['position']['y'],4)
+
+ def test_height_lut_and_selector_composition_preserves_source_layers(self):
+  from test_man_actor_structure import fixture
+  with tempfile.TemporaryDirectory() as d:
+   p=ProjectService(Path(d));p.import_metadata(floor_fixture());data=bytearray(0x12000);data[0x8000:0x8002]=(0x1000).to_bytes(2,'little');source=bytes(data);h=sha256(source).hexdigest();man=fixture();mh=sha256(man).hexdigest();lut=[0,64]+[0]*14
+   metadata=dict(source_record=dict(map_sha256=h,man_sha256=mh),floor_height_lut=lut,placements=[dict(semantic_id='environment://fixture/field-map/cells/00000',object_record_index=0,tile=dict(x=0,z=0),floor=dict(tier=0,lut_value=0,record_y_offset=4),source_record=dict(grid_byte_offset=0x8000),imported_transform=dict(position=dict(x=64,y=4,z=64),rotation_psx=dict(x=0,y=0,z=0)))])
+   ground=decode_terrain(source,lut);ground['source_record']=deepcopy(metadata['source_record']);p.overrides[p.active_scene]={'FloorHeights':dict(source_sha256=mh,edits=[dict(tier=0,height=-32)])}
+   with patch('sdk.floor_heights.context',return_value=(man,{})),patch.object(ProjectService,'_environment_source',return_value=source),patch('importer.environment.load_environment_placements',return_value=metadata):
+    actual=terrain_preview(p,prepared=ground,catalog={});self.assertTrue(all(v[1]==32 for v in actual['vertices']));self.assertEqual(actual['triangles'],ground['triangles']);projected=environment_effective_transforms(p,metadata);self.assertEqual(projected[metadata['placements'][0]['semantic_id']]['position']['y'],36)
+    p.overrides[p.active_scene]['FloorTiers']=dict(source_sha256=h,edits=[dict(row=0,column=0,tier=1)]);actual=terrain_preview(p,prepared=ground,catalog={});self.assertEqual(actual['vertices'][0][1],-64);self.assertEqual(actual['vertices'][1][1],32);projected=environment_effective_transforms(p,metadata);self.assertEqual(projected[metadata['placements'][0]['semantic_id']]['position']['y'],-60)
+   self.assertEqual(metadata['placements'][0]['imported_transform']['position']['y'],4);self.assertEqual(ground['vertices'][0][1],0)

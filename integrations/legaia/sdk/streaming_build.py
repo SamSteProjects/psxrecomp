@@ -37,6 +37,9 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
             if 'AnimationRecords' in components:
                 if not animation_growth_managed:raise ProjectError('Streaming animation allocation requires managed bank delivery')
                 components={key:value for key,value in components.items() if key!='AnimationRecords'}
+            if 'FloorHeights' in components:
+                project._validate_floor_heights(scene_id,components['FloorHeights'])
+                components={k:v for k,v in components.items() if k!='FloorHeights'}
             map_components = components or None
             continue
         p2 = isinstance(identifier, str) and re.fullmatch(re.escape(scene_id) + r'/scripts/man-p2/[0-9]{4}', identifier) is not None
@@ -218,6 +221,8 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
             context = load_branch_authoring_context(project.disc_path, scene)
             context.patch(branch_edits, original=carrier.payload)
             candidate, branch_changes = context.patch_appended(candidate, branch_edits)
+        from .floor_heights import compose as compose_floor_heights
+        candidate,floor_height_changes=compose_floor_heights(project,scene_id,carrier.payload,candidate)
         from .actor_capacity import actor_pool_assessment
         pool_evidence = actor_pool_assessment(archive, candidate) if requests else None
         # The raw loader advances by words. Pad only after all MAN edits so
@@ -251,7 +256,7 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
     return prot, dict(schema_version='legaia.streaming-scene-preparation.v1', scene_id=scene_id,
         source_disc_sha256=disc_hash, source_prot_sha256=sha256(prot).hexdigest(),
         authored_state_key=key, imported_document_sha256=digest(document),
-        existing_actor_placement_changes=placements, existing_actor_dialogue_changes=dialogue_changes, map_changes=map_audit,
+        floor_height_changes=floor_height_changes, existing_actor_placement_changes=placements, existing_actor_dialogue_changes=dialogue_changes, map_changes=map_audit,
         model_changes=model_audit, texture_changes=texture_audit, animation_changes=animation_audit, branch_changes=branch_changes, transition_changes=transition_changes, movement_changes=movement_changes, flag_changes=flag_changes, wait_changes=wait_changes, model_selector_changes=model_selector_changes, facing_changes=facing_changes, existing_actor_appearance_changes=appearance_changes,
         actor_changes=actor_audit, actor_pool_evidence=pool_evidence, man_padding_bytes=padding,
         existing_actor_allocated_animation_changes=allocated_changes,npc_dialogue_changes=npc_dialogue_audit,npc_appearance_changes=npc_appearance_audit,npc_wait_changes=npc_wait_audit,npc_movement_changes=npc_movement_audit,npc_facing_changes=npc_facing_audit,npc_flags_changes=npc_flags_audit,npc_branches_changes=npc_branches_audit,npc_model_selectors_changes=npc_model_selectors_audit,

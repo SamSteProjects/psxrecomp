@@ -34,6 +34,8 @@ def decode_field_decorations(data: bytes, floor_lut: list[int], scene: str) -> d
             "object_record_index": record, "flags": flags,
             "pack_index": None if record in (1, 2, 3) else struct.unpack_from("<H", data, offset + 16)[0],
             "tile": {"x": col, "z": row},
+            "floor": {"tier": tier, "lut_value": floor_lut[tier], "record_y_offset": y,
+                      "sample": "placement_cell_not_footprint_anchor"},
             "imported_transform": {
                 "position": {"x": col * 128 + x + 64, "y": -floor_lut[tier] + y,
                              "z": row * 128 - z + 64},

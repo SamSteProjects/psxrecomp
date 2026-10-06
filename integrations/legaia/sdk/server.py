@@ -1758,6 +1758,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     proposed=self.server.scene_previews.preview(view,lambda asset,*args,**kwargs:self.server.model_preview(asset,*args,effective_shape=True,project_view=view,**kwargs),load_scene_actor_animation_catalog,load_environment_preview_catalog,terrain_preview)
                     if source_key(project)!=report['project_source_key'] or preview_source_key(project)!=scene_key:raise ProjectError('Project changed during floor scene inspection')
                     self._json(200,dict(schema_version='legaia.floor-rectangle-scene.v1',review=report,scene_preview_source_key=scene_key,scene=dict(proposed,representation='authored')));return
+                if route == '/api/floor-height-review':
+                    if set(body)!={'entity_id','heights'}:raise ProjectError('Floor height Review requires scene and height list only')
+                    from .floor_heights import review
+                    self._json(200,review(self.server.project,body['entity_id'],body['heights']));return
                 if route == '/api/floor-rectangle-review':
                     if set(body) not in ({'entity_id','rectangle'},{'entity_id','rectangle','cell_edits'}):raise ProjectError('Floor Review requires scene, rectangle and optional selectors only')
                     if 'cell_edits' in body and not isinstance(body['cell_edits'],list):raise ProjectError('Floor paint requires a selector list')
