@@ -25,3 +25,7 @@ const appearanceTemplate=structuredClone(ownedTemplate);appearanceTemplate.compo
 const appearanceState={...state,actor_templates:[appearanceTemplate]},appearanceReport={...ownedReport,template:appearanceTemplate,draft:{...ownedReport.draft,appearance:appearanceTemplate.components.NpcDraft.appearance}};
 assert.deepEqual(decodeNpcPresetReview(appearanceReport,request,appearanceState),appearanceReport);assert.throws(()=>decodeNpcPresetReview({...appearanceReport,draft:ownedReport.draft},request,appearanceState));
 console.log('NPC instance review retains independent appearance witness as well as script/text binding.');
+
+const waitingTemplate=structuredClone(appearanceTemplate);waitingTemplate.components.NpcDraft.waits={donor_entity_id:donor,entries:{'script://fixture/actors/001/wait/0065':{duration_ticks:11}}};const waitingState={...state,actor_templates:[waitingTemplate]},waitingReport={...appearanceReport,template:waitingTemplate,draft:{...appearanceReport.draft,waits:waitingTemplate.components.NpcDraft.waits}};
+assert.deepEqual(decodeNpcPresetReview(waitingReport,request,waitingState),waitingReport);const omitted=structuredClone(waitingReport);delete omitted.draft.waits;assert.throws(()=>decodeNpcPresetReview(omitted,request,waitingState));
+console.log('NPC instance review retains exact frozen wait binding with independent appearance and dialogue.');

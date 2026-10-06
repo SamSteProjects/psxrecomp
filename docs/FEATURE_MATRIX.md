@@ -1,5 +1,33 @@
 # Legaia SDK feature matrix
 
+## Preserve NPC-owned waits in reusable presets - 2026-10-05
+
+NPC preset capture now freezes supported own wait targets together with own
+dialogue and independent initial appearance. Capturing, portable transfer and
+reviewed placement freshly qualify the wait operands against the recorded script
+donor. Changing the source draft later does not change the captured definition.
+Library import creates an independent preset identity; placement remains a separate
+reviewed command. Inspector library/import summaries show the owned wait count.
+The preceding temporary rejection of wait-bearing capture is superseded.
+
+Wait-bearing presets use portable format **legaia.npc-preset-file.v4**, bounded
+at 512 KiB. V1 donor-only, v2 text and v3 appearance formats retain their formats and
+bounds. Exact donor-owned wait IDs and duration_ticks integers 0..32767 are required;
+older formats cannot carry wait bindings. Presets contain metadata, not retail
+script/model payloads or live state. Undo/Redo and Save/Open retain all bindings.
+
+Validation: 19 focused Python checks and two Node suites pass, including frozen
+capture, v4 transfer/placement, wrong types/owners and older-format rejection.
+Actual browser capture/download/upload, reviewed library import with input
+withdrawal, Undo/Redo, Save/reload and scene-reviewed placement passed across two
+private projects. The 540px review was visually checked. Normal recipient Build
+`a61cd16b02574b72` independently read back own wait 11 ticks, model105/animation13
+and complete own dialogue. Package SHA256:
+`006d1deec3bfce5982734a2844e2ef647975c15ce50befe3af72bff4adf26889`.
+Evidence: `local-output/sdk-20260909/npc-waits-presets-20261005/proof.json`.
+No game was launched; runtime timing, residency and script compatibility remain
+deferred. The full SDK goal stays active/incomplete.
+
 ## Independently author NPC wait targets - 2026-10-05
 
 NPC Inspector and registered Asset Details now offer **Edit NPC wait targets**.

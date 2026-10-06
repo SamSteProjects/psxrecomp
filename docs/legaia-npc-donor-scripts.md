@@ -170,4 +170,4 @@ from 0 through 32767, Review, then Apply. Uncheck and apply to restore the retai
 operand. Undo restores the prior binding; Save persists it and normal Build emits
 it. Script donor, own dialogue and appearance stay separate. Clear retained waits
 before changing script donor. Targets do not establish seconds, cadence or runtime
-execution. Preset capture currently rejects own waits rather than dropping them.
+execution. Preset capture retains supported own waits with dialogue and appearance. Wait-bearing portable presets use v4 and requalify operands during transfer and placement.

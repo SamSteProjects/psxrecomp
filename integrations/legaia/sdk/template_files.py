@@ -10,9 +10,11 @@ ANIMATED_SCHEMA='legaia.actor-preset-file.v2'
 NPC_SCHEMA='legaia.npc-preset-file.v1'
 NPC_DIALOGUE_SCHEMA='legaia.npc-preset-file.v2'
 NPC_APPEARANCE_SCHEMA='legaia.npc-preset-file.v3'
+NPC_WAITS_SCHEMA='legaia.npc-preset-file.v4'
 MAX_NPC_DIALOGUE_BYTES=512*1024
 
 def _file_schema(scope,components=None):
+    if scope=='npc-draft-preset-v1' and isinstance(components,dict) and isinstance(components.get('NpcDraft'),dict) and 'waits' in components['NpcDraft']:return NPC_WAITS_SCHEMA
     if scope=='npc-draft-preset-v1' and isinstance(components,dict) and isinstance(components.get('NpcDraft'),dict) and 'appearance' in components['NpcDraft']:return NPC_APPEARANCE_SCHEMA
     if scope=='npc-draft-preset-v1':return NPC_DIALOGUE_SCHEMA if isinstance(components,dict) and isinstance(components.get('NpcDraft'),dict) and 'dialogue' in components['NpcDraft'] else NPC_SCHEMA
     if scope=='authored-actor-preset-v2':return ANIMATED_SCHEMA
@@ -37,9 +39,9 @@ def parse(content):
     try:
         value=json.loads(content,object_pairs_hook=_pairs,parse_constant=_constant)
     except (ValueError,RecursionError) as exc:raise ProjectError('Invalid preset JSON') from exc
-    if not isinstance(value,dict) or set(value)!={'schema_version','source_import_sha256','template'} or value['schema_version'] not in (SCHEMA,ANIMATED_SCHEMA,NPC_SCHEMA,NPC_DIALOGUE_SCHEMA,NPC_APPEARANCE_SCHEMA):
+    if not isinstance(value,dict) or set(value)!={'schema_version','source_import_sha256','template'} or value['schema_version'] not in (SCHEMA,ANIMATED_SCHEMA,NPC_SCHEMA,NPC_DIALOGUE_SCHEMA,NPC_APPEARANCE_SCHEMA,NPC_WAITS_SCHEMA):
         raise ProjectError('Unsupported preset file fields or schema')
-    if size>(MAX_NPC_DIALOGUE_BYTES if value['schema_version'] in (NPC_DIALOGUE_SCHEMA,NPC_APPEARANCE_SCHEMA) else MAX_FILE_BYTES):raise ProjectError('Preset file exceeds its schema size bound')
+    if size>(MAX_NPC_DIALOGUE_BYTES if value['schema_version'] in (NPC_DIALOGUE_SCHEMA,NPC_APPEARANCE_SCHEMA,NPC_WAITS_SCHEMA) else MAX_FILE_BYTES):raise ProjectError('Preset file exceeds its schema size bound')
     source_hash=value['source_import_sha256']
     if not isinstance(source_hash,str) or len(source_hash)!=64 or any(c not in '0123456789abcdef' for c in source_hash):
         raise ProjectError('Preset requires a source import SHA256')
@@ -70,6 +72,7 @@ def _verify_source(project,template):
     dialogue=template['components'].get('NpcDraft',{}).get('dialogue')
     if dialogue is not None:project._dialogue_context(dialogue['donor_entity_id']).patch(dialogue['runs'])
     npc=template['components'].get('NpcDraft',{})
+    if 'waits' in npc:project._wait_context(npc['donor_entity_id']).patch(npc['waits']['entries'])
     if 'appearance' in npc and not any(o['donor_entity_id']==npc['appearance']['donor_entity_id'] for o in project.appearance_options(npc['donor_entity_id'])['options']):raise ProjectError('NPC preset appearance witness is not source-qualified')
     return digest(document)
 
@@ -97,7 +100,7 @@ def review(project,content,name):
     project._validate_template(template['id'],template)
     if key!=digest({'root':str(project.root),'disc':project.disc_path,'imports':project.imports,'templates':project.actor_templates,'file':value,'name':name}):raise ProjectError('Project changed during preset review')
     npc=template['scope']=='npc-draft-preset-v1'
-    limitations=(['Import adds an independent NPC preset; no NPC instances or imported actors change.','Frozen retail donor, native-grid name/XZ defaults and owning import remain bound. Placement requires a separate reviewed new instance.','Original capture identity is provenance only. Supported NPC-owned equal-span dialogue edits transfer with the preset. No prefab inheritance, other script/appearance snapshot or runtime identity is transferred; gameplay remains unverified.'] if npc else ['Import adds one independent preset to the library; it changes no actor components.','Source scene/import and donor compatibility remain bound; Apply revalidates its target.','Coordinates are absolute; height may be project-only and gameplay remains unverified.'])
+    limitations=(['Import adds an independent NPC preset; no NPC instances or imported actors change.','Frozen retail donor, native-grid name/XZ defaults and owning import remain bound. Placement requires a separate reviewed new instance.','Original capture identity is provenance only. Supported NPC-owned dialogue, initial appearance and wait targets transfer with the preset. No prefab inheritance, other script edits or runtime identity is transferred; gameplay remains unverified.'] if npc else ['Import adds one independent preset to the library; it changes no actor components.','Source scene/import and donor compatibility remain bound; Apply revalidates its target.','Coordinates are absolute; height may be project-only and gameplay remains unverified.'])
     return {'schema_version':'legaia.actor-preset-import-review.v1','review_key':key,'template':template,
             'source_import_sha256':source_hash,'limitations':limitations}
 

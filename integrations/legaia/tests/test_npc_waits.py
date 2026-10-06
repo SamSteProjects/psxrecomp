@@ -84,7 +84,8 @@ class NpcWaitTests(TestCase):
                 p.command(dict(type='set_actor_draft_waits',**request,review_key=proposal['review_key']));after=deepcopy(p.actor_drafts)
                 self.assertEqual(source(p,identifier)['options']['targets'][0]['effective_values'],dict(duration_ticks=512));self.assertEqual(len(p.undo_stack),history+1)
                 p.undo();self.assertEqual(p.actor_drafts,before);p.redo();self.assertEqual(p.actor_drafts,after);self.assertEqual(ProjectService.open(p.save()).actor_drafts,after)
-                with self.assertRaises(ProjectError):p.command(dict(type='create_npc_preset',entity_id=identifier,name='Cannot omit waits'))
+                p.command(dict(type='create_npc_preset',entity_id=identifier,name='Retain own waits'))
+                preset=next(iter(p.actor_templates.values()));self.assertEqual(preset['components']['NpcDraft']['waits'],after[identifier]['waits'])
                 wrong=deepcopy(after[identifier]);wrong['waits']['donor_entity_id']='wrong'
                 with self.assertRaises(ProjectError):p._validate_actor_draft(identifier,wrong)
                 reset=dict(entity_id=identifier,entries={});proposal=review(p,reset);p.command(dict(type='set_actor_draft_waits',**reset,review_key=proposal['review_key']));self.assertEqual(p.actor_drafts,before);p.undo();self.assertEqual(p.actor_drafts,after)

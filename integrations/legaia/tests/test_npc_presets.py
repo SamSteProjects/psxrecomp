@@ -111,4 +111,20 @@ class NpcPresetTests(unittest.TestCase):
         with patch('importer.pipeline._disc_context',side_effect=lambda _:nullcontext()), patch('importer.pipeline.import_scene',return_value={}):
             with self.assertRaisesRegex(ProjectError,'freshly'):export_file(p,self.preset)
 
+    def test_owned_waits_v4_transfer_capture_frozen_and_independent_placement(self):
+        from importer.wait_authoring import WaitAuthoringContext
+        from test_importer_dialogue_authoring import fixture
+        from test_wait_authoring import END
+        from sdk.npc_waits import review as wait_review
+        context=WaitAuthoringContext(fixture(b'\x4a\1\1'+END)[0]);wait=context.options(self.donor)['targets'][0]['semantic_id'];p=self.p;disc=p.root/'fixture.bin';disc.write_bytes(b'synthetic');p.disc_path=str(disc)
+        with patch.object(ProjectService,'_wait_context',return_value=context),patch('importer.pipeline._disc_context',side_effect=lambda _:nullcontext()),patch('importer.pipeline.import_scene',return_value=self.doc):
+            request=dict(entity_id=self.original,entries={wait:dict(duration_ticks=512)});result=wait_review(p,request);p.command(dict(type='set_actor_draft_waits',**request,review_key=result['review_key']));p.command(dict(type='create_npc_preset',entity_id=self.original,name='Waiting guard'));template=next(t for t in p.actor_templates.values() if t['name']=='Waiting guard');frozen=deepcopy(template)
+            reset=dict(entity_id=self.original,entries={});result=wait_review(p,reset);p.command(dict(type='set_actor_draft_waits',**reset,review_key=result['review_key']));self.assertEqual(p.actor_templates[template['id']],frozen)
+            value=export_file(p,template['id']);self.assertEqual(value['schema_version'],'legaia.npc-preset-file.v4');content=json.dumps(value);self.assertEqual(parse(content),value)
+            with self.assertRaises(ProjectError):parse(json.dumps(dict(value,schema_version='legaia.npc-preset-file.v3')))
+            target=ProjectService(p.root/'waiting-recipient');target.import_metadata(self.doc);target.disc_path=p.disc_path;before=deepcopy(target._document());report=transfer_review(target,content,'Transferred wait');self.assertEqual(target._document(),before);target.command(dict(type='import_actor_template',content=content,name='Transferred wait',review_key=report['review_key']));identifier=report['template']['id'];self.assertFalse(target.actor_drafts)
+            request=dict(template_id=identifier,name='Wait instance',position=dict(x=192,z=576),expected_source_key=source_key(target));instance=review(target,request);self.assertEqual(instance['draft']['waits'],frozen['components']['NpcDraft']['waits']);target.command(dict(type='instantiate_npc_preset',**request,review_key=instance['review_key']));self.assertEqual(ProjectService.open(target.save()).actor_drafts,target.actor_drafts);target.undo();self.assertFalse(target.actor_drafts);target.redo();self.assertEqual(target.actor_drafts[instance['entity_id']],instance['draft'])
+            malformed=deepcopy(value);malformed['template']['components']['NpcDraft']['waits']['entries'][wait]['duration_ticks']=True
+            with self.assertRaises(ProjectError):transfer_review(target,json.dumps(malformed),'Forged wait')
+
 if __name__=='__main__':unittest.main()

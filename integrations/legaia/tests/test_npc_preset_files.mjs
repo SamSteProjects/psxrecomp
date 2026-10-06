@@ -24,3 +24,9 @@ const customFile={schema_version:'legaia.npc-preset-file.v3',source_import_sha25
 assert.deepEqual(decodePresetFileExport(customFile,custom),customFile);assert.deepEqual(decodePresetImportReview(customReport,JSON.stringify(customFile),'Transferred guard'),customReport);assert.throws(()=>decodePresetFileExport({...customFile,schema_version:'legaia.npc-preset-file.v2'},custom));
 const forged=structuredClone(custom);forged.components.NpcDraft.appearance.script_donor_entity_id='wrong';assert.throws(()=>validateNpcPresetMetadata(forged));
 console.log('NPC preset v3 retains independent appearance and own dialogue; wrong script witness and older format reject.');
+
+const waiting=structuredClone(custom),wait='script://town01/actors/man-p1/0012/wait/0065';waiting.components.NpcDraft.waits={donor_entity_id:waiting.source.entity_id,entries:{[wait]:{duration_ticks:11}}};
+const waitFile={schema_version:'legaia.npc-preset-file.v4',source_import_sha256:hash,template:waiting},waitReport={...report,template:{...waiting,id:report.template.id,name:report.template.name}};
+assert.deepEqual(decodePresetFileExport(waitFile,waiting),waitFile);assert.deepEqual(decodePresetImportReview(waitReport,JSON.stringify(waitFile),'Transferred guard'),waitReport);assert.throws(()=>decodePresetFileExport({...waitFile,schema_version:'legaia.npc-preset-file.v3'},waiting));
+for(const mutate of [v=>v.components.NpcDraft.waits.donor_entity_id='wrong',v=>v.components.NpcDraft.waits.entries[wait].duration_ticks=true,v=>v.components.NpcDraft.waits.entries[wait].duration_ticks=32768,v=>v.components.NpcDraft.waits.entries[wait].seconds=1,v=>v.components.NpcDraft.waits.entries={'script://town01/actors/man-p1/0040/wait/0065':{duration_ticks:1}}]){const v=structuredClone(waiting);mutate(v);assert.throws(()=>validateNpcPresetMetadata(v));}
+console.log('NPC preset v4 retains own wait targets with dialogue/appearance and rejects forged ownership/types/older format.');
