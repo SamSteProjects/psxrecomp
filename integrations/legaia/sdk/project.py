@@ -2042,6 +2042,9 @@ class ProjectService:
             self.undo_stack.append({'entity_id': identifier, 'before': before, 'after': after or None})
             self.redo_stack.clear()
             return
+        if command.get('type')=='set_actor_draft_appearance':
+            from .npc_appearance import apply
+            apply(self,command);return
         if command.get('type')=='set_actor_draft_dialogue':
             from .npc_dialogue import apply
             apply(self,command);return
@@ -2741,7 +2744,7 @@ class ProjectService:
                 raise ValueError()
         except ValueError:
             raise ProjectError('Invalid authored actor UUID') from None
-        if not isinstance(draft, dict) or set(draft)-{'scene_id','donor_entity_id','position','name','dialogue'} or not {'scene_id','donor_entity_id','position','name'}<=set(draft):
+        if not isinstance(draft, dict) or set(draft)-{'scene_id','donor_entity_id','position','name','dialogue','appearance'} or not {'scene_id','donor_entity_id','position','name'}<=set(draft):
             raise ProjectError('Invalid actor draft fields')
         if not isinstance(draft['name'],str) or not draft['name'].strip() or len(draft['name']) > 120:
             raise ProjectError('Actor draft name must contain 1 through 120 characters')
@@ -2754,6 +2757,8 @@ class ProjectService:
             encode_placement_coordinate(value, axis)
         from .npc_dialogue import validate
         validate(draft)
+        from .npc_appearance import validate as validate_appearance
+        validate_appearance(self,draft)
 
     def _apply_history(self, source: list, target: list, field: str) -> None:
         if self.mode != "edit":
@@ -3368,7 +3373,7 @@ class ProjectService:
             scene_id = draft['scene_id']
             records.append({'id': identifier, 'kind': 'actor', 'name': draft['name'],
                             'scene_id': scene_id, 'source_scene': self.imports[scene_id]['scene']['name'],
-                            'changes': ['NPC draft', 'Position: X, Z'], 'authored': deepcopy(draft),
+                            'changes': ['NPC draft', 'Position: X, Z']+(['Initial appearance'] if 'appearance' in draft else [])+(['Own dialogue'] if 'dialogue' in draft else []), 'authored': deepcopy(draft),
                             'draft': True, 'donor_entity_id': draft['donor_entity_id'],
                             'model_reference': deepcopy(draft_models.get(identifier))})
         for identifier, template in sorted(self.actor_templates.items()):
@@ -3411,7 +3416,7 @@ class ProjectService:
                 if draft['scene_id'] != scene_id:
                     continue
                 # Appended actors clone the retail donor, not its authored appearance.
-                donor = actors[draft['donor_entity_id']]
+                donor = actors[draft.get('appearance',{}).get('donor_entity_id',draft['donor_entity_id'])]
                 model_id = donor['model_reference'].get('asset_semantic_id')
                 if model_id is not None:
                     references.append({'source_id': identifier, 'source_name': draft['name'],

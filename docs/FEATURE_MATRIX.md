@@ -1,5 +1,39 @@
 # Legaia SDK feature matrix
 
+## Independently author an NPC initial appearance - 2026-10-05
+
+NPC Inspector and registered Asset Details now offer **Choose NPC initial
+appearance**. The reviewed picker uses freshly source-qualified retail witnesses
+for existing local model/animation pairs. Apply changes one authored binding,
+retaining the script donor, own dialogue, name and placement. Changing the picker
+withdraws Apply. Clear restores the script donor's initial pair. Undo/Redo and
+Save/Open preserve the independent binding; changing script donor while bindings
+are retained requires clearing them first.
+
+Scene preview, asset/model references, model navigation and animation inspection
+follow the appearance witness; retail script inspection continues to follow the
+script donor. Frame inspection still targets the authored NPC placement. Normal
+compressed/streaming MAN composition uses the native adapter from the preceding
+checkpoint to patch final allocated header offsets only. Saved Build inspection
+now qualifies the emitted pair against its recorded appearance witness.
+
+NPC presets capture both supported own appearance and dialogue. Portable format
+v3 binds the appearance witness to the script donor and owning import, retaining
+the 512 KiB authored metadata bound. V1 donor-only and v2 text-only files retain
+their existing formats/bounds. Transfer and placement reverify compatible pairs;
+no retail script/model payload or runtime state is copied into the preset.
+
+Offline evidence: 42 focused Python checks and five Node contracts pass. Actual
+Inspector/Asset Details review, withdrawal, Apply, Undo/Redo, Save/reload, scene
+and model reference checks passed; the 540px layout was inspected. Normal Build
+`47edfdee85c4fdb2` contains exact model92/animation9 and the complete authored glyph
+span, preserving script donor0012 and other drafts/imports. Retail witness0040
+animation inspection and frame1 scene placement passed without history changes.
+V3 capture/export and synthetic cross-project transfer/instantiation preserve both
+bindings. Evidence is under `local-output/sdk-20260909/npc-appearance-editor-20261005/`.
+No game was launched. Initial assignment does not prove script compatibility,
+residency, eventual appearance or gameplay; those checks remain deferred.
+
 ## Independent NPC appearance native adapter - 2026-10-05
 
 Added a source-qualified native adapter that keeps an NPC's script donor separate

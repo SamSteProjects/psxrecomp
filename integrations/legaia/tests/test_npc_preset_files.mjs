@@ -18,3 +18,9 @@ assert.throws(()=>decodePresetFileExport({...ownedFile,schema_version:NPC_PRESET
 for(const mutate of [v=>v.components.NpcDraft.dialogue.donor_entity_id='wrong',v=>v.components.NpcDraft.dialogue.runs[run]='|',v=>v.components.NpcDraft.dialogue.payload='native',v=>v.components.NpcDraft.dialogue.runs={'script://town01/actors/man-p1/0049/dialogue/0048/run/0049':'Wrong'}]){const v=structuredClone(owned);mutate(v);assert.throws(()=>validateNpcPresetMetadata(v));}
 const detached=validateNpcPresetMetadata(owned);detached.components.NpcDraft.dialogue.runs[run]='Independent';assert.equal(owned.components.NpcDraft.dialogue.runs[run],'SDK resident');
 console.log('NPC own dialogue metadata, v2 transfer, retained v1 bounds and forged donor/control rejection pass.');
+
+const custom=structuredClone(owned);custom.components.NpcDraft.appearance={script_donor_entity_id:custom.source.entity_id,donor_entity_id:'scene://town01/actors/man-p1/0040'};
+const customFile={schema_version:'legaia.npc-preset-file.v3',source_import_sha256:hash,template:custom},customReport={...report,template:{...custom,id:report.template.id,name:report.template.name}};
+assert.deepEqual(decodePresetFileExport(customFile,custom),customFile);assert.deepEqual(decodePresetImportReview(customReport,JSON.stringify(customFile),'Transferred guard'),customReport);assert.throws(()=>decodePresetFileExport({...customFile,schema_version:'legaia.npc-preset-file.v2'},custom));
+const forged=structuredClone(custom);forged.components.NpcDraft.appearance.script_donor_entity_id='wrong';assert.throws(()=>validateNpcPresetMetadata(forged));
+console.log('NPC preset v3 retains independent appearance and own dialogue; wrong script witness and older format reject.');

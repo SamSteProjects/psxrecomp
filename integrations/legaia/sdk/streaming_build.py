@@ -116,6 +116,12 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
             context = load_dialogue_authoring_context(project.disc_path, scene)
             context.patch(dialogue_edits, original=carrier.payload)
             candidate, dialogue_changes = context.patch_appended(candidate, dialogue_edits)
+        npc_appearance_audit=None
+        if any('appearance' in item for item in project.actor_drafts.values()):
+            from .npc_appearance import patch_project
+            from importer.man_assignments import load_man_assignment_context
+            npc_context=load_man_assignment_context(project.disc_path,scene)
+            candidate,npc_appearance_audit=patch_project(project,scene_id,npc_context,candidate,actor_audit)
         appearance_changes = []
         if assignments:
             from importer.man_assignments import load_man_assignment_context
@@ -212,7 +218,7 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
         existing_actor_placement_changes=placements, existing_actor_dialogue_changes=dialogue_changes, map_changes=map_audit,
         model_changes=model_audit, texture_changes=texture_audit, animation_changes=animation_audit, branch_changes=branch_changes, transition_changes=transition_changes, movement_changes=movement_changes, flag_changes=flag_changes, wait_changes=wait_changes, model_selector_changes=model_selector_changes, facing_changes=facing_changes, existing_actor_appearance_changes=appearance_changes,
         actor_changes=actor_audit, actor_pool_evidence=pool_evidence, man_padding_bytes=padding,
-        existing_actor_allocated_animation_changes=allocated_changes,npc_dialogue_changes=npc_dialogue_audit,
+        existing_actor_allocated_animation_changes=allocated_changes,npc_dialogue_changes=npc_dialogue_audit,npc_appearance_changes=npc_appearance_audit,
         final_man_sha256=sha256(candidate).hexdigest(), gameplay_verified=False,
         _asset_patches=patches,
         _rebuild_request=dict(entry_index=carrier.entry_index, chunk_header_offset=carrier.chunk_header_offset,

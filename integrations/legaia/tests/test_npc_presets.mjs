@@ -20,3 +20,8 @@ const ownedState={...state,actor_templates:[{...ownedTemplate,application:{avail
 assert.deepEqual(decodeNpcPresetReview(ownedReport,request,ownedState),ownedReport);
 for(const mutate of [v=>delete v.draft.dialogue,v=>v.draft.dialogue.runs['script://fixture/actors/001/dialogue/0005/run/0006']='Wrong',v=>v.draft.dialogue.donor_entity_id='wrong']){const v=structuredClone(ownedReport);mutate(v);assert.throws(()=>decodeNpcPresetReview(v,request,ownedState));}
 console.log('NPC instance review retains exact frozen own-dialogue metadata and rejects loss or substitution.');
+
+const appearanceTemplate=structuredClone(ownedTemplate);appearanceTemplate.components.NpcDraft.appearance={script_donor_entity_id:donor,donor_entity_id:scene+'/actors/002'};
+const appearanceState={...state,actor_templates:[appearanceTemplate]},appearanceReport={...ownedReport,template:appearanceTemplate,draft:{...ownedReport.draft,appearance:appearanceTemplate.components.NpcDraft.appearance}};
+assert.deepEqual(decodeNpcPresetReview(appearanceReport,request,appearanceState),appearanceReport);assert.throws(()=>decodeNpcPresetReview({...appearanceReport,draft:ownedReport.draft},request,appearanceState));
+console.log('NPC instance review retains independent appearance witness as well as script/text binding.');

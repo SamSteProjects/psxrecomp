@@ -81,6 +81,7 @@ import {openScriptComponentReset} from '/script-component-reset.js';
 import {mountScriptOwnerInspector} from '/script-owner-inspector.js';
 import {openNpcBuildScript} from './npc-build-script.js';
 import {openNpcDialogue} from './npc-dialogue.js';
+import {openNpcAppearance} from './npc-appearance.js';
 import {openNpcDonorScript} from './npc-donor-script.js';
 import {openDraftRepeat} from '/draft-repeat.js';
 import {openDraftGroup} from '/draft-group.js';
@@ -1771,10 +1772,11 @@ async function resolveProjectAsset(record){
 async function activateAsset(record,action=null){
   if(busy)return;
   try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
+  if(action==='edit-npc-appearance'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC appearance target changed. Reopen Asset Details.');openNpcAppearance({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api});return;}
   if(action==='edit-npc-dialogue'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC dialogue target changed. Reopen Asset Details.');openNpcDialogue({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api});return;}
   if(action==='inspect-npc-build-script'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC Build target changed. Reopen Asset Details.');openNpcBuildScript({entityId:record.id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});return;}
   if(action==='inspect-npc-donor-script'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC retail donor changed. Reopen Asset Details.');openNpcDonorScript({entityId:record.id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});return;}
-  if(action==='inspect-npc-donor-model'){const model=npcDonorModel(record);if(!model||!state.model_references?.some(ref=>ref.source_id===record.id&&ref.target_id===model&&ref.scene_id===record.sceneId&&ref.kind==='draft_initial_model_assignment'&&ref.effective_donor_id===record.authoredRecord.donor_entity_id))throw new Error('NPC donor model assignment changed. Reopen Asset Details.');openModel(model,null,null,'imported');return;}
+  if(action==='inspect-npc-donor-model'){const model=npcDonorModel(record);if(!model||!state.model_references?.some(ref=>ref.source_id===record.id&&ref.target_id===model&&ref.scene_id===record.sceneId&&ref.kind==='draft_initial_model_assignment'&&ref.effective_donor_id===(record.authoredRecord.authored?.appearance?.donor_entity_id??record.authoredRecord.donor_entity_id)))throw new Error('NPC donor model assignment changed. Reopen Asset Details.');openModel(model,null,null,'imported');return;}
   if(action==='inspect-asset-region-bounds'){await inspectRegionBounds(record);return;}
   if(action==='inspect-asset-trigger-cells'){await inspectTriggerCells(record);return;}
   if(action==='inspect-asset-trigger-scripts'){await inspectTriggerScripts(record);return;}
@@ -2933,6 +2935,7 @@ function renderInspector(){
     const rename=document.createElement('button');rename.type='submit';rename.textContent='Rename';nameForm.append(nameLabel,rename);$('draft-inspector-form').before(nameForm);
     nameForm.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'rename_actor_draft',entity_id:id,name:nameInput.value});};
     const presets=document.createElement('button');presets.id='npc-presets-button';presets.textContent='NPC presets...';presets.disabled=busy||!canEdit();presets.onclick=showTemplates;$('delete-npc-draft').before(presets);
+    const npcAppearance=document.createElement('button');npcAppearance.id='npc-appearance-button';npcAppearance.textContent='Choose NPC initial appearance...';npcAppearance.disabled=busy||!canEdit();npcAppearance.onclick=()=>openNpcAppearance({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,api});$('delete-npc-draft').before(npcAppearance);
     const npcDialogue=document.createElement('button');npcDialogue.id='npc-dialogue-button';npcDialogue.textContent='Edit NPC dialogue...';npcDialogue.disabled=busy||!canEdit();npcDialogue.onclick=()=>openNpcDialogue({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,api});$('delete-npc-draft').before(npcDialogue);
     const buildScript=document.createElement('button');buildScript.id='npc-build-script-button';buildScript.textContent='Inspect saved Build script...';buildScript.disabled=busy||!state.capabilities?.actor_script_preview;buildScript.onclick=()=>openNpcBuildScript({entityId:id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});$('delete-npc-draft').before(buildScript);
     const donorScript=document.createElement('button');donorScript.id='npc-donor-script-button';donorScript.textContent='Inspect retail donor script...';donorScript.disabled=busy||!state.capabilities?.actor_script_preview;donorScript.onclick=()=>openNpcDonorScript({entityId:id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});$('delete-npc-draft').before(donorScript);
@@ -2973,9 +2976,9 @@ function renderInspector(){
     });
     for(const control of [nameInput,rename,duplicate,repeat])control.disabled=busy||!canEdit();
     const donorForm=document.createElement('form');donorForm.id='draft-donor-form';
-    const donorLabel=document.createElement('label');donorLabel.textContent='Retail donor ';const donorSelect=document.createElement('select');donorSelect.name='donor';donorSelect.setAttribute('aria-label','Draft retail donor');
+    const donorLabel=document.createElement('label');donorLabel.textContent='Script donor ';const donorSelect=document.createElement('select');donorSelect.name='donor';donorSelect.setAttribute('aria-label','Draft retail donor');
     for(const actor of entities()){const option=document.createElement('option');option.value=actor.id;option.textContent=actor.name??actor.id;donorSelect.append(option);}donorSelect.value=npc.donor_entity_id;donorLabel.append(donorSelect);
-    const donorApply=document.createElement('button');donorApply.type='submit';donorApply.textContent='Change donor';const donorNote=document.createElement('p');donorNote.className='field-note';donorNote.textContent='Changes the retail appearance and cloned script used at export. Name, identity and position stay unchanged. Gameplay behavior needs verification.';
+    const donorApply=document.createElement('button');donorApply.type='submit';donorApply.textContent='Change donor';const donorNote=document.createElement('p');donorNote.className='field-note';donorNote.textContent='Script donor controls cloned behavior and the default initial pair. Clear own appearance and dialogue before changing it. Name, identity and position stay unchanged.';
     donorForm.append(donorLabel,donorApply,donorNote);nameForm.after(donorForm);donorSelect.disabled=donorApply.disabled=busy||!canEdit();
     donorForm.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'set_actor_draft_donor',entity_id:id,donor_entity_id:donorSelect.value});};
     const form=$('draft-inspector-form');form.elements.x.value=npc.position.x;form.elements.z.value=npc.position.z;

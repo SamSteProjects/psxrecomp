@@ -264,11 +264,12 @@ class ScenePreviewService:
             if draft['scene_id'] != project.active_scene:
                 continue
             project._validate_actor_draft(identifier,draft)
-            donor = by_id.get(draft['donor_entity_id'])
+            appearance_id=draft.get('appearance',{}).get('donor_entity_id',draft['donor_entity_id'])
+            donor = by_id.get(appearance_id)
             if donor is None:
                 raise ProjectError('Draft preview donor is unavailable')
             instance = deepcopy(donor)
-            retail_binding = self._bindings.get(draft['donor_entity_id'] + '/retail-draft-source')
+            retail_binding = self._bindings.get(appearance_id + '/retail-draft-source')
             if retail_binding is not None:
                 instance.update(deepcopy(retail_binding))
             position = {**draft['position'], 'y':None}
@@ -284,7 +285,7 @@ class ScenePreviewService:
                             retail_position=None,authored_position=deepcopy(draft['position']),
                             preview_height_status='source_surface' if sample else 'unresolved_no_source_surface',
                             evidence={'position':'authored NPC draft',
-                                      'appearance':'retail donor assignment; shared authored asset edits may affect preview',
+                                      'appearance':('independent authored retail appearance witness; ' if 'appearance' in draft else 'retail script donor assignment; ')+'shared authored asset edits may affect preview',
                                       'runtime':'not spawned or gameplay verified'})
             instances.append(instance)
         environment = deepcopy(self._environment)

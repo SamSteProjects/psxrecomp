@@ -135,3 +135,26 @@ Both transfer and placement revalidate the supported donor spans.
 The private two-project browser workflow and complete padded text readback are
 recorded in `local-output/sdk-20260909/npc-dialogue-presets-20261005/proof.json`.
 Gameplay acceptance remains deferred.
+
+## Choose an appearance without replacing the script donor
+
+Select the NPC and choose **Choose NPC initial appearance...**, or open the same
+action in Asset Details. Choose a source-qualified retail appearance witness,
+Review, then Apply. This sets the initial local model/animation pair. The script
+donor, own text and placement remain separate. Choosing the clear option restores
+the script donor pair. Undo/Redo and Save/Open retain the binding.
+
+The scene, model reference and animation Inspector follow the appearance witness;
+script inspection follows the script donor. **Inspect animation in scene** retains
+the NPC's placement. Normal Build writes only its audited initial header bytes,
+composing with supported own dialogue. Scripts can change the pair later, so this
+is not proof of eventual runtime appearance or compatibility.
+
+Capturing an NPC preset freezes own appearance and text. Appearance-bearing
+exports use NPC JSON v3; text-only v2 and donor-only v1 remain supported. V3 files
+are bounded at 512 KiB and carry authored bindings, without retail/native payloads.
+The witness remains bound to its imported scene and script donor. Clear appearance
+and own text before changing script donor.
+
+Actual editor, native package and witness-animation evidence is under
+`local-output/sdk-20260909/npc-appearance-editor-20261005/`. Gameplay remains deferred.

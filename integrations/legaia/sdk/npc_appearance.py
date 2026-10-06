@@ -1,12 +1,65 @@
 """Qualified initial appearance edits for allocated NPC clones.
 
-This native adapter is not yet an editor command. It separates the retail
-script donor from the model/animation witness without rewriting script bytes.
+Reviewed project commands retain the retail script donor separately from the
+initial model/animation witness. Native serialization rewrites no script bytes.
 """
 from hashlib import sha256
 from importer.core import parse_man
 from importer.man_layout import read_man_layout
-from .project import ProjectError
+from .project import ProjectError, digest
+from .project_copy import source_key
+from copy import deepcopy
+
+def appearance_donor(draft):
+    return draft.get('appearance',{}).get('donor_entity_id',draft['donor_entity_id'])
+
+def validate(project,draft):
+    if 'appearance' not in draft:return
+    value=draft['appearance']
+    if not isinstance(value,dict) or set(value)!={'script_donor_entity_id','donor_entity_id'} or value['script_donor_entity_id']!=draft['donor_entity_id']:
+        raise ProjectError('NPC appearance belongs to its script donor; clear appearance before changing script donor')
+    if not any(a['semantic_id']==value['donor_entity_id'] for a in project.imports[draft['scene_id']]['actors']):
+        raise ProjectError('NPC appearance witness must belong to the imported scene')
+
+def source(project,identifier):
+    draft=project.actor_drafts.get(identifier) if isinstance(identifier,str) else None
+    if project.mode!='edit' or not isinstance(draft,dict) or draft['scene_id']!=project.active_scene:
+        raise ProjectError('NPC appearance requires an active-scene draft in Edit mode')
+    project._validate_actor_draft(identifier,draft);key=source_key(project)
+    options=project.appearance_options(draft['donor_entity_id'])
+    if 'appearance' in draft and not any(o['donor_entity_id']==appearance_donor(draft) for o in options['options']):
+        raise ProjectError('Current NPC appearance witness is not source-qualified')
+    if source_key(project)!=key:raise ProjectError('Project changed during NPC appearance inspection')
+    return dict(schema_version='legaia.npc-appearance-source.v1',entity_id=identifier,scene_id=draft['scene_id'],project_source_key=key,draft=deepcopy(draft),options=options,gameplay_verified=False,runtime_binding='not_asserted')
+
+def review(project,request):
+    if not isinstance(request,dict) or set(request)!={'entity_id','donor_entity_id'}:raise ProjectError('NPC appearance review requires identity and witness only')
+    report=source(project,request['entity_id']);draft=report['draft'];donor=request['donor_entity_id'];proposed=deepcopy(draft)
+    if donor is None:proposed.pop('appearance',None)
+    else:
+        if not isinstance(donor,str) or not any(o['donor_entity_id']==donor for o in report['options']['options']):raise ProjectError('NPC appearance witness is not a qualified initial pair')
+        proposed['appearance']=dict(script_donor_entity_id=draft['donor_entity_id'],donor_entity_id=donor)
+    project._validate_actor_draft(request['entity_id'],proposed)
+    return dict(schema_version='legaia.npc-appearance-review.v1',entity_id=request['entity_id'],project_source_key=report['project_source_key'],request=deepcopy(request),current=draft,proposed=proposed,review_key=digest(dict(source=report['project_source_key'],request=request,algorithm='npc-initial-appearance.v1')),gameplay_verified=False,runtime_binding='not_asserted')
+
+def apply(project,command):
+    if set(command)!={'type','entity_id','donor_entity_id','review_key'}:raise ProjectError('NPC appearance Apply requires exact reviewed fields')
+    report=review(project,{k:command[k] for k in ('entity_id','donor_entity_id')})
+    if command['review_key']!=report['review_key']:raise ProjectError('NPC appearance changed; review again')
+    if report['current']==report['proposed']:return
+    project.actor_drafts[command['entity_id']]=deepcopy(report['proposed'])
+    project.undo_stack.append(dict(target='actor_drafts',entity_id=command['entity_id'],before=report['current'],after=deepcopy(report['proposed'])))
+    project.redo_stack.clear()
+
+def patch_project(project,scene_id,context,candidate,allocations):
+    actors={a['semantic_id']:a for a in project.imports[scene_id]['actors']}
+    requests=[]
+    for row in allocations['drafts']:
+        draft=project.actor_drafts[row['draft_id']]
+        if 'appearance' not in draft:continue
+        validate(project,draft)
+        requests.append(dict(draft_id=row['draft_id'],appearance_donor_record_index=actors[appearance_donor(draft)]['source_record']['record_index']))
+    return patch_allocated_appearance(context,candidate,allocations,requests) if requests else (candidate,None)
 
 def patch_allocated_appearance(context, candidate, allocations, requests):
     """Apply source-qualified donor pairs to exact appended record identities.

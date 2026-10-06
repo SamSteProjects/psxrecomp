@@ -259,10 +259,13 @@ def inspector_schema():
             {'id':'name','label':'Name','path':['authoredRecord','name'],'type':'string','state':'authored-through-command'},
             {'id':'scene','label':'Project scene','path':['authoredRecord','scene_id'],'type':'asset-reference','state':'read-only-project'},
             {'id':'donor','label':'Retail donor binding','path':['authoredRecord','donor_entity_id'],'type':'entity-reference','state':'authored-through-command'},
+            {'id':'appearance-witness','label':'Independent initial appearance','path':['authoredRecord','authored','appearance','donor_entity_id'],'type':'entity-reference','state':'authored-through-command','empty_label':'Script donor initial appearance'},
             {'id':'model','label':'Recorded donor model','path':['authoredRecord','model_reference','target_id'],'type':'asset-reference','state':'read-only-reference','empty_label':'Unresolved donor model'},
             *[{'id':axis,'label':'Authored '+axis.upper(),'path':['authoredRecord','authored','position',axis],
                'type':'number','state':'authored-through-command'} for axis in ('x','z')]],
         'actions':[{'id':'select-asset-actor','label':'Select NPC draft','capability':'project_navigation'},
+                   {'id':'edit-npc-appearance','label':'Choose NPC initial appearance','capability':'actor_appearance',
+                    'when':['authoredRecord','donor_entity_id']},
                    {'id':'edit-npc-dialogue','label':'Edit NPC dialogue','capability':'actor_dialogue_authoring',
                     'when':['authoredRecord','donor_entity_id']},
                    {'id':'inspect-npc-build-script','label':'Inspect saved Build script','capability':'actor_script_preview',
@@ -273,7 +276,7 @@ def inspector_schema():
                     'when':['authoredRecord','model_reference','target_id']}],
         'notes':['This is authored project metadata, not an imported retail actor placement or a confirmed runtime identity.',
                  'The scene and donor references preserve their SDK identities. Preview/model/script behavior comes from separate qualified tools.',
-                 'The recorded initial model assignment comes from the retail donor, independent of its authored appearance. It does not prove runtime residency or pose.',
+                 'The recorded initial model assignment uses the script donor or a separately qualified retail appearance witness; imported actor overrides remain separate. It does not prove runtime residency or pose.',
                  'Use Review Build for the complete project candidate. A browsable draft does not establish runtime spawning, visibility or gameplay.']}
     schema['components']['NpcDraftIdentity']={
         'label':'NPC draft identity','layout':'read-only-properties',

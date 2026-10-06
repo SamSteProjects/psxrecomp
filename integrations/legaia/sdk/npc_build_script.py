@@ -63,6 +63,11 @@ def inspect(project,entity_id,build_id):
         actors=[actor for actor in carrier.parsed.actors if actor.record_index==index]
         if len(actors)!=1:raise ProjectError('Saved NPC record is absent or ambiguous in emitted MAN')
         actor=actors[0];donor=allocation['donor']
+        if 'appearance' in draft:
+            witness=next(a for a in project.imports[draft['scene_id']]['actors'] if a['semantic_id']==draft['appearance']['donor_entity_id'])
+            original=read_man_source(source_archive,*_bounded_scene_range(source_archive,mapping,scene),scene)
+            donor_actor=next(a for a in original.parsed.actors if a.record_index==witness['source_record']['record_index'])
+            donor=dict(model_index=donor_actor.model_index,animation_id=donor_actor.animation_id)
         if (actor.world_x,actor.world_z)!=(draft['position']['x'],draft['position']['z']) or actor.model_index!=donor['model_index'] or actor.animation_id!=donor['animation_id']:raise ProjectError('Saved NPC placement or initial donor binding differs from allocation evidence')
         if not 0<actor.byte_length<=MAX_RECORD_BYTES:raise ProjectError('Saved NPC script exceeds record bounds')
         data=carrier.payload[actor.byte_offset:actor.byte_offset+actor.byte_length];entry=1+data[0]*2+4
