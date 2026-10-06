@@ -5,28 +5,34 @@ export function decodeSavedSceneView(value,state){
   const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).sort().join('|')===keys.sort().join('|');
   if(value?.scene_id!==state.scene?.id||value.import_sha256!==state.scene_view_source_key||!display||!['camera','representation','layers'].every(key=>Object.hasOwn(display,key))||Object.keys(display).some(key=>!['camera','representation','layers','grid','visibility'].includes(key))||!exact(c,['projection','yaw','pitch','distance','target'])||!['perspective','orthographic'].includes(c.projection)||!number(c.yaw,-1e12,1e12)||!number(c.pitch,c.projection==='orthographic'?0:.12,Math.PI/2)||!number(c.distance,20,1e8)||!exact(t,['x','y','z'])||Object.values(t).some(v=>!number(v,-1e12,1e12))||!['authored','retail'].includes(display.representation)||!exact(l,['actors','scenery','ground'])||Object.values(l).some(v=>typeof v!=='boolean'))throw new Error('Saved view differs from the current imported scene or supported camera');
   if(Object.hasOwn(display,'grid')&&typeof display.grid!=='boolean')throw new Error('Saved grid must be a display boolean.');
-  if(Object.hasOwn(display,'visibility'))decodeSceneViewVisibility(display.visibility,state);
+  if(Object.hasOwn(display,'visibility')){decodeSceneViewVisibility(display.visibility,state);if(display.representation!=='authored'&&[...display.visibility.hidden_entity_ids,...sceneViewIsolationIds(display.visibility)].some(id=>id.startsWith('authored-actor://')))throw new Error('Saved NPC visibility requires the Authored scene representation.');}
   return structuredClone(display);
 }
 
 export function sceneViewIsolationIds(value){
   return Object.hasOwn(value,'isolated_entity_ids')?value.isolated_entity_ids.slice():value.isolated_entity_id===null?[]:[value.isolated_entity_id];
 }
+export function unavailableSceneViewNpcs(value,state){
+  const visibility=value?.display?.visibility;if(!visibility)return [];
+  return [...new Set([...(visibility.hidden_entity_ids??[]),...sceneViewIsolationIds(visibility)])].filter(id=>typeof id==='string'&&id.startsWith('authored-actor://')&&state.actor_drafts?.[id]?.scene_id!==value.scene_id).sort();
+}
+const sceneViewActors=state=>new Set([...(state.scene?.entities??[]).map(row=>row.id),...Object.entries(state.actor_drafts??{}).filter(([,draft])=>draft.scene_id===state.scene?.id).map(([id])=>id)]);
 export function decodeSceneViewVisibility(value,state){
   const keys=value&&typeof value==='object'&&!Array.isArray(value)?Object.keys(value).sort().join('|'):'';
   const group=keys==='hidden_entity_ids|isolated_entity_ids|map_sha256',legacy=keys==='hidden_entity_ids|isolated_entity_id|map_sha256';
   if(!group&&!legacy)throw new Error('Saved visibility differs from the current scene instances.');
   const hidden=value.hidden_entity_ids,isolated=group?value.isolated_entity_ids:value.isolated_entity_id===null?[]:[value.isolated_entity_id];
-  const allowed=new Set(state.scene_view_entity_ids??[]),renderable=new Set(state.scene_view_renderable_ids??[]),actors=new Set(state.scene?.entities?.map(row=>row.id)??[]);
+  const allowed=new Set(state.scene_view_entity_ids??[]),renderable=new Set(state.scene_view_renderable_ids??[]),actors=sceneViewActors(state);
   const validIds=(ids,maximum,minimum=0)=>Array.isArray(ids)&&ids.length>=minimum&&ids.length<=maximum&&Array.from(ids).every(id=>typeof id==='string'&&id.length>0&&id.length<=1024&&allowed.has(id))&&new Set(ids).size===ids.length&&JSON.stringify(ids)===JSON.stringify([...ids].sort());
   if(!validIds(hidden,32768)||!validIds(isolated,128,group?1:0)||isolated.some(id=>!renderable.has(id)||hidden.includes(id)))throw new Error('Saved visibility differs from the current scene instances.');
+  if([...hidden,...isolated].some(id=>id.startsWith('authored-actor://')&&state.actor_drafts?.[id]?.scene_id!==state.scene?.id))throw new Error('Saved NPC visibility is unavailable in the current scene.');
   const environment=[...hidden,...isolated].some(id=>!actors.has(id));
   if(environment?typeof value.map_sha256!=='string'||!/^[0-9a-f]{64}$/.test(value.map_sha256)||value.map_sha256!==state.scene_view_map_sha256:value.map_sha256!==null)throw new Error('Saved visibility MAP source changed.');
   return structuredClone(value);
 }
 export function captureSceneViewVisibility(hidden,isolated,state){
   const hidden_entity_ids=[...hidden].sort(),ids=Array.isArray(isolated)?isolated.slice().sort():isolated==null?[]:[isolated];
-  const actors=new Set(state.scene?.entities?.map(row=>row.id)??[]),environment=[...hidden_entity_ids,...ids].some(id=>!actors.has(id));
+  const actors=sceneViewActors(state),environment=[...hidden_entity_ids,...ids].some(id=>!actors.has(id));
   const binding=ids.length>1?{isolated_entity_ids:ids}:{isolated_entity_id:ids[0]??null};
   return decodeSceneViewVisibility({hidden_entity_ids,...binding,map_sha256:environment?state.scene_view_map_sha256:null},state);
 }
@@ -42,11 +48,12 @@ export function mountSceneViews({after,getState,getDisplay,isBusy,canEdit,canRec
     const ok=canEdit()&&state.project.path===context;
     dialog.querySelectorAll('input,select,button').forEach(control=>{if(!control.matches('[data-close]'))control.disabled=busy||!ok;});
     dialog.querySelector('[data-create]').disabled=busy||!ok||!dialog.querySelector('[data-new-name]').value.trim();
-    dialog.querySelector('[data-recall]').disabled=busy||!canRecall()||!value;
+    const missing=value?unavailableSceneViewNpcs(value,state):[];
+    dialog.querySelector('[data-recall]').disabled=busy||!canRecall()||!value||missing.length>0;
     dialog.querySelector('[data-rename]').disabled=busy||!ok||!value||!dialog.querySelector('[data-name]').value.trim();
     dialog.querySelector('[data-update]').disabled=busy||!ok||!value||value.scene_id!==state.scene.id;
     dialog.querySelector('[data-delete]').disabled=busy||!ok||!value;
-    dialog.querySelector('[data-current-group]').textContent='Stores camera, representation, scene layers, grid and source-bound hidden/isolation instances. Visibility supports imported actors, static decorations and ground. Model filters and new NPC draft visibility are unsupported.';
+    dialog.querySelector('[data-current-group]').textContent='Stores camera, representation, scene layers, grid and source-bound hidden/isolation instances. Visibility supports imported actors, NPC drafts in Authored scene, static decorations and ground. Model filters are unsupported.'+(missing.length?` Recall unavailable: ${missing.length} saved NPC draft(s) are missing from this scene. Restore them with Undo when available, or replace/delete the view.`:'');
   }
   function list(preferred=null){
     if(!dialog.open)return;const state=getState(),select=dialog.querySelector('[data-saved-views]'),old=preferred??select.value;select.replaceChildren();

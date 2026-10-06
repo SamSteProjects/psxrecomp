@@ -34,7 +34,7 @@ def display(value):
         raise ProjectError('Scene view grid must be a display boolean')
     return deepcopy(value)
 
-def _visibility(project, scene, value):
+def _visibility(project, scene, value, *, require_available=False):
     if 'visibility' not in value:
         return []
     visibility = value['visibility']
@@ -65,9 +65,15 @@ def _visibility(project, scene, value):
     for identifier in hidden + isolated:
         if identifier in actors:
             continue
+        if identifier.startswith('authored-actor://'):
+            if value['representation'] != 'authored':
+                raise ProjectError('Saved NPC visibility requires the Authored scene representation')
+            from .scene_selection_sets import _members
+            _members(project, scene, [identifier], require_available=require_available)
+            continue
         suffix = identifier.removeprefix(prefix + 'decorations/')
         if identifier != prefix + 'ground' and (not identifier.startswith(prefix + 'decorations/') or not re.fullmatch(r'[0-9]{5}', suffix) or int(suffix) >= 16384):
-            raise ProjectError('Saved visibility supports imported actors, static decorations and ground only')
+            raise ProjectError('Saved visibility supports imported actors, NPC drafts, static decorations and ground only')
         environment.append(identifier)
     binding = visibility['map_sha256']
     if (environment and (not isinstance(binding, str) or not re.fullmatch(r'[0-9a-f]{64}', binding))) or (not environment and binding is not None):
@@ -76,7 +82,7 @@ def _visibility(project, scene, value):
 
 
 def _verify_visibility(project, scene, value):
-    environment = _visibility(project, scene, value)
+    environment = _visibility(project, scene, value, require_available=True)
     if not environment:
         return
     source = project._environment_source(scene)

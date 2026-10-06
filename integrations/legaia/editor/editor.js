@@ -72,7 +72,7 @@ import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {mountHierarchyNavigation} from '/hierarchy-navigation.js';
 import {mountHierarchyGroups,revealHierarchyEntity} from '/hierarchy-groups.js';
 import {mountSceneToolDrawer} from '/scene-tool-drawer.js';
-import {mountSceneViews,decodeSavedSceneView,captureSceneViewVisibility,sceneViewIsolationIds} from '/scene-views.js';
+import {mountSceneViews,decodeSavedSceneView,captureSceneViewVisibility,sceneViewIsolationIds,unavailableSceneViewNpcs} from '/scene-views.js';
 import {sceneCameraBasis,sceneCameraPlanePoint,sceneAxisCamera} from '/scene-camera.js';
 import {appendPresetImport,presetExportButton} from '/preset-files.js';
 import {openActorPresetReview} from '/actor-preset-review.js';
@@ -1193,7 +1193,7 @@ groupPresetTool=mountPresetBatch({after:actorGroupTools,getState:()=>state,getSe
     const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to group preset';draw();
   }
 });
-function sceneViewState(){const preview=activeScenePreview();return {...state,scene_view_entity_ids:(preview?.entities??[]).filter(e=>e.kind!=='actor_draft').map(e=>e.entity_id),scene_view_renderable_ids:(preview?.entities??[]).filter(e=>e.renderable&&e.kind!=='actor_draft').map(e=>e.entity_id),scene_view_map_sha256:staticDecorations()[0]?.source_record?.source_record?.map_sha256??preview?.assets?.find(a=>a.pose_kind==='source_heightfield')?.preview?.source_record?.map_sha256??null};}
+function sceneViewState(){const preview=activeScenePreview();return {...state,scene_view_entity_ids:(preview?.entities??[]).map(e=>e.entity_id),scene_view_renderable_ids:(preview?.entities??[]).filter(e=>e.renderable).map(e=>e.entity_id),scene_view_map_sha256:staticDecorations()[0]?.source_record?.source_record?.map_sha256??preview?.assets?.find(a=>a.pose_kind==='source_heightfield')?.preview?.source_record?.map_sha256??null};}
 savedSceneViews=mountSceneViews({
   after:$('actor-box-select'),getState:sceneViewState,isBusy:()=>busy,canEdit,
   getDisplay:()=>{hiddenSceneEntities();if(!scenePreviewCurrent())throw new Error('Wait for the current scene before saving visibility.');return {camera:structuredClone(camera),representation:sceneRepresentation,layers:{...sceneLayers},grid,visibility:captureSceneViewVisibility(sceneHidden,sceneIsolated?.ids,sceneViewState())};},
@@ -1201,6 +1201,7 @@ savedSceneViews=mountSceneViews({
   recall:async(value,projectPath,current)=>{
     const check=()=>{if(!current()||state.project.path!==projectPath||!canEdit()||scenePose||actorGroupInspection||shapeDraft||environmentGroupInspection||scenePlacementInspection||wallInspection||!state.scene_views?.some(row=>row.id===value.id&&row.review_key===value.review_key))throw new Error('Saved view context changed. Review it again.');};
     if(!await api('/api/state',undefined))return false;check();
+    if(unavailableSceneViewNpcs(value,state).length)throw new Error('Saved NPC visibility is unavailable. Restore the missing drafts or replace the view.');
     if(value.scene_id!==state.scene.id&&!await api('/api/scene',{scene_id:value.scene_id}))return false;
     check();let display;
     if(value.display.visibility&&['authored','retail'].includes(value.display.representation)&&sceneRepresentation!==value.display.representation){representationSelect.value=value.display.representation;representationSelect.onchange();}

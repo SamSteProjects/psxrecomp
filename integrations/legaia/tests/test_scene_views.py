@@ -130,4 +130,31 @@ class SceneViewTests(unittest.TestCase):
             with patch.object(p,'_environment_source',return_value=source),self.assertRaises(ProjectError):p.command(self.cmd('update_scene_view',row,display=bad))
         self.assertEqual(p.scene_views[row['id']]['display'],d)
 
+    def test_npc_visibility_deleted_metadata_reopens_and_undo_restores_identity(self):
+        p=self.p;actor=p.imports[p.active_scene]['actors'][0]['semantic_id']
+        p.command(dict(type='create_actor_draft',donor_entity_id=actor,position=dict(x=64,z=64),name='Visible draft'))
+        npc=next(iter(p.actor_drafts));d=deepcopy(DISPLAY);d['representation']='authored';d['visibility']=dict(hidden_entity_ids=[actor],isolated_entity_id=npc,map_sha256=None)
+        inputs=(deepcopy(p.imports),deepcopy(p.overrides),deepcopy(p.actor_drafts),authored_state_key(p));row=self.create('NPC',d)
+        self.assertEqual((p.imports,p.overrides,p.actor_drafts,authored_state_key(p)),inputs)
+        self.assertEqual(ProjectService.open(p.save()).scene_views,p.scene_views)
+        retail=deepcopy(d);retail['representation']='retail'
+        with self.assertRaisesRegex(ProjectError,'Authored scene'):self.create('Retail NPC',retail)
+        p.command(dict(type='delete_actor_draft',entity_id=npc));saved_views=deepcopy(p.scene_views)
+        opened=ProjectService.open(p.save());self.assertEqual(opened.scene_views,saved_views);self.assertFalse(opened.actor_drafts)
+        before=deepcopy((p.scene_views,p.undo_stack,p.redo_stack))
+        with self.assertRaisesRegex(ProjectError,'unavailable'):p.command(self.cmd('update_scene_view',row,display=d))
+        with self.assertRaisesRegex(ProjectError,'unavailable'):self.create('Missing NPC',d)
+        self.assertEqual((p.scene_views,p.undo_stack,p.redo_stack),before)
+        p.undo();self.assertEqual(p.actor_drafts,inputs[2]);self.assertEqual(p.scene_views,saved_views)
+        mixed=deepcopy(d);mixed['visibility']=dict(hidden_entity_ids=[],isolated_entity_ids=sorted([actor,npc]),map_sha256=None)
+        p.command(self.cmd('update_scene_view',row,display=mixed));self.assertEqual(ProjectService.open(p.save()).scene_views,p.scene_views)
+
+    def test_npc_visibility_foreign_scene_rejects_without_metadata_mutation(self):
+        p=self.p;actor=p.imports[p.active_scene]['actors'][0]['semantic_id'];p.command(dict(type='create_actor_draft',donor_entity_id=actor,position=dict(x=64,z=64),name='Other scene'))
+        npc=next(iter(p.actor_drafts));p.actor_drafts[npc]['scene_id']='scene://other'
+        d=deepcopy(DISPLAY);d['representation']='authored';d['visibility']=dict(hidden_entity_ids=[],isolated_entity_id=npc,map_sha256=None)
+        before=deepcopy((p.scene_views,p.undo_stack))
+        with self.assertRaises(ProjectError):self.create('Foreign',d)
+        self.assertEqual((p.scene_views,p.undo_stack),before)
+
 if __name__=='__main__':unittest.main()

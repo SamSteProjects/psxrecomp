@@ -1,5 +1,14 @@
 # Saved scene views
 
+## NPC visibility and deletion — 2026-10-06
+
+NPC drafts now participate in saved isolated groups, single-instance isolation and manual hidden-instance views. Use **Authored scene**; retail-only views cannot retain authored NPC visibility. Save/Replace require a currently available draft belonging to the saved scene. Mixed static decoration views still bind their exact source MAP. These bookmarks retain editor visibility only; NPC placement, models and game behavior are unchanged.
+
+Deleting a referenced draft withdraws active isolation and disables Recall for any saved view whose hidden or isolated NPC is missing. The dialog shows the missing count and recovery note. The project still opens with the unavailable view metadata, which can be renamed or deleted. Restoring the original draft with Undo, when history is available, restores recall. Undo history is not retained by Open. To replace an unavailable view, prepare a new current display first; use **Show hidden** to clear deleted draft IDs from manual visibility if necessary, then **Replace with current view**. Recall checks missing drafts before changing scenes or display, and validates current membership/renderability before applying a view.
+
+Thirteen focused Python checks, Node guards and the final retail-source browser passed single/mixed/hidden NPC Save/Recall, deletion rejection, unchanged display during unavailable review, Undo recovery, portable Open of missing and restored snapshots, and unchanged normal Build output. Evidence: `local-output/sdk-20260909/scene-npc-visibility-20261006/final/proof.json`. This supersedes the saved-NPC exclusions in the older milestones below. No game was launched.
+
+
 ## Selection groups — 2026-10-06
 
 Select actors with Ctrl/Command in the Hierarchy, select a scenery group, or use **Select scene placements** for a mixed group. **Isolate selection (N)** shows the captured group of up to 128 visible, renderable instances. **Restore scene** removes isolation while preserving the camera, hidden instances and layer switches. A hidden or unrenderable member disables the action. Temporary groups can include NPC drafts. Selection changes do not replace an active isolation; Restore before choosing a different group. Current source/scene changes withdraw the group.
@@ -51,13 +60,13 @@ changed-source reimport rejects while a bound view or its history remains.
 
 Camera targets are editor display coordinates, including display height.
 They do not establish retail Y, collision height, facing or live actor identity.
-Visibility supports imported actors, static decorations and ground. Hidden IDs are
+Visibility supports imported actors, authored NPC drafts, static decorations and ground. Hidden IDs are
 unique and canonically sorted (up to 32768); an isolated target must not be manually
 hidden. Environment visibility retains its source MAP hash, with fresh native static
 cell verification on Save/Replace and current preview membership/renderability/hash
 checks on Recall. Portable Open validates metadata without requiring a disc. Old views
 without optional visibility/grid fields retain their former recall behavior.
-Model filters, selected actors, new NPC draft visibility, proposal previews and runtime
+Model filters, selected actors, proposal previews and runtime
 observations are not captured. Live mode and active pose/group/collision proposal
 inspections disable the tool. Closed or changed recall context withdraws camera
 application; stale view reviews reject.
