@@ -1,5 +1,35 @@
 # Legaia SDK status — 2026-10-05
 
+## NPC-owned flag authoring through editor and normal Build - 2026-10-05
+
+NPC flags now connect source-qualified inspection and review to the root Inspector
+and Asset Details, reviewed project commands, Undo/Redo, Save/Open and both normal
+Build carrier paths. Complete entries belong to the NPC's recorded donor; stale
+reviews, foreign owners, invalid bit indices and unsupported side-effect selectors
+reject. Input changes withdraw browser proposals. Repetition qualifies and retains
+flags. Preset capture currently rejects flag-bearing NPCs to prevent losing their
+entries; portable preset integration and saved-script authored-span explanations
+remain pending. See [NPC flag workflow](legaia-npc-flags.md).
+
+Validation: 22 focused Python checks pass with the private retail fixture enabled;
+two Node suites pass. A later added stale-position review regression also passes.
+The actual browser verifies Review/Apply/Clear, changed-input withdrawal,
+Undo/Redo and Save/reload; the 540px dialog was visually inspected. Private Town01
+Build `9ad4a9c1b39b7fda` independently reopens with bit0; its record differs from
+the verified prior five-family record by exactly one operand byte. Package SHA256:
+`11c66953be270113d45838106195c8a1bdacd307cc499751c59bee36294c68b1`.
+Private streaming Rayman Build `ee3148f1c5861326` independently reopens two NPCs
+with indices3/4 and exactly one changed byte per record against their verified
+baseline. Package SHA256:
+`032ff923b60c8299c500c0ea5ee9521ccfe48889781aa7166d9b81f61689d6b6`.
+Upper bits, the five existing own script families, placement, imports and other
+draft fields stay held. Evidence: `local-output/sdk-20260909/npc-flags-editor-20261005/proof.json`
+and `local-output/sdk-20260909/npc-flags-streaming-20261005/proof.json`.
+
+No game launch or full-disc export occurred. Runtime variable identity, story
+meaning and gameplay effects remain unknown; manual acceptance stays deferred.
+The full SDK goal remains active/incomplete.
+
 ## NPC-owned flag operand serialization foundation - 2026-10-05
 
 Appended NPC records now have a native serializer for source-qualified LFLAG,
@@ -17,8 +47,8 @@ sets separate flag-bit indices 3 and 4. Exactly two bytes change; the source don
 MAN layout, upper bits, all unrelated bytes, project files and history stay held.
 Evidence: `local-output/sdk-20260909/npc-flags-native-20261005/proof.json`.
 
-This is a serialization foundation, not yet an editor/project/normal Build
-feature. Presets and saved-script explanations also remain to be connected.
+At this earlier checkpoint it was a serialization foundation; the newer
+checkpoint above connects editor/project/normal Build. Presets and saved-script explanations also remain to be connected.
 Runtime variable identity, story meaning and gameplay effects are not asserted.
 No game launch or full-disc export occurred. Manual gameplay acceptance remains
 deferred and the full SDK goal remains active/incomplete.

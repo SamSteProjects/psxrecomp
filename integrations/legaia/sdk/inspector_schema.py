@@ -266,6 +266,8 @@ def inspector_schema():
         'actions':[{'id':'select-asset-actor','label':'Select NPC draft','capability':'project_navigation'},
                    {'id':'edit-npc-appearance','label':'Choose NPC initial appearance','capability':'actor_appearance',
                     'when':['authoredRecord','donor_entity_id']},
+                   {'id':'edit-npc-flags','label':'Edit NPC script flags','capability':'actor_flag_authoring',
+                    'when':['authoredRecord','donor_entity_id']},
                    {'id':'edit-npc-facing','label':'Edit NPC script facing','capability':'actor_facing_authoring',
                     'when':['authoredRecord','donor_entity_id']},
                    {'id':'edit-npc-movement','label':'Edit NPC script movement','capability':'actor_movement_authoring',

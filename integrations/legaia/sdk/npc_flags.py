@@ -8,7 +8,89 @@ from hashlib import sha256
 from importer.flag_authoring import patch_flag_bit
 from importer.man_layout import read_man_layout
 from .npc_script_allocation import allocated_scripts
-from .project import ProjectError
+from .project import ProjectError, digest
+from .project_copy import source_key
+
+
+def validate(project, draft):
+    if 'flags' not in draft:
+        return
+    value = draft['flags']
+    if not isinstance(value, dict) or set(value) != {'donor_entity_id', 'entries'} or value['donor_entity_id'] != draft['donor_entity_id']:
+        raise ProjectError('NPC flags belong to their script donor; clear flags before changing donor')
+    project._validate_flags(draft['donor_entity_id'], {'entries': value['entries']})
+
+
+def source(project, identifier):
+    draft = project.actor_drafts.get(identifier) if isinstance(identifier, str) else None
+    if project.mode != 'edit' or not isinstance(draft, dict) or draft['scene_id'] != project.active_scene:
+        raise ProjectError('NPC flags require an active-scene draft in Edit mode')
+    project._validate_actor_draft(identifier, draft);key = source_key(project)
+    context = project._flag_context(draft['donor_entity_id'])
+    options = context.options(draft['donor_entity_id'])
+    entries = draft.get('flags', {}).get('entries', {})
+    if set(entries) - {r['semantic_id'] for r in options['targets']}:
+        raise ProjectError('Current NPC flags are not source-qualified')
+    context.patch(entries)
+    offset,record,_=context._source.verified_record(draft['donor_entity_id'])
+    for row in options['targets']:
+        row['before_raw']=record[row['decoded_byte_offset']-offset]
+        row['preservation_mask']=224
+        row['authored_values'] = deepcopy(entries.get(row['semantic_id']))
+        row['effective_values'] = deepcopy(entries.get(row['semantic_id'], row['values']))
+    if source_key(project) != key:
+        raise ProjectError('Project changed during NPC flag inspection')
+    return dict(schema_version='legaia.npc-flags-source.v1', entity_id=identifier,
+                scene_id=draft['scene_id'], project_source_key=key, draft=deepcopy(draft),
+                options=options, gameplay_verified=False, runtime_variable_identity='not_asserted', story_meaning='not_asserted')
+
+
+def review(project, request):
+    if not isinstance(request, dict) or set(request) != {'entity_id', 'entries'} or not isinstance(request['entries'], dict):
+        raise ProjectError('NPC flag review requires identity and complete typed entries')
+    report = source(project, request['entity_id']);draft = report['draft'];proposed = deepcopy(draft)
+    if request['entries']:
+        proposed['flags'] = dict(donor_entity_id=draft['donor_entity_id'], entries=deepcopy(request['entries']))
+    else:
+        proposed.pop('flags', None)
+    project._validate_actor_draft(request['entity_id'], proposed)
+    if set(request['entries']) - {r['semantic_id'] for r in report['options']['targets']}:
+        raise ProjectError('NPC flag entry is not qualified by its script donor')
+    _, changes = project._flag_context(draft['donor_entity_id']).patch(request['entries'])
+    if source_key(project) != report['project_source_key']:
+        raise ProjectError('Project changed during NPC flag review')
+    return dict(schema_version='legaia.npc-flags-review.v1', entity_id=request['entity_id'],
+                project_source_key=report['project_source_key'], request=deepcopy(request),
+                current=draft, proposed=proposed, changes=changes,
+                review_key=digest(dict(source=report['project_source_key'], request=request, algorithm='npc-flag-targets.v1')),
+                gameplay_verified=False, runtime_variable_identity='not_asserted', story_meaning='not_asserted')
+
+
+def apply(project, command):
+    if set(command) != {'type', 'entity_id', 'entries', 'review_key'}:
+        raise ProjectError('NPC flag Apply requires exact reviewed fields')
+    report = review(project, {k: command[k] for k in ('entity_id', 'entries')})
+    if command['review_key'] != report['review_key']:
+        raise ProjectError('NPC flags changed; review again')
+    if report['current'] == report['proposed']:
+        return
+    project.actor_drafts[command['entity_id']] = deepcopy(report['proposed'])
+    project.undo_stack.append(dict(target='actor_drafts', entity_id=command['entity_id'], before=report['current'], after=deepcopy(report['proposed'])))
+    project.redo_stack.clear()
+
+
+def patch_project(project, scene_id, context, candidate, allocations):
+    requests = []
+    for row in allocations['drafts']:
+        draft = project.actor_drafts[row['draft_id']]
+        if draft['scene_id'] != scene_id:
+            raise ProjectError('NPC flag allocation belongs to another scene')
+        if 'flags' not in draft:
+            continue
+        validate(project, draft)
+        requests.append(dict(draft_id=row['draft_id'], **deepcopy(draft['flags'])))
+    return patch_allocated_flags(context, candidate, allocations, requests) if requests else (candidate, None)
+
 
 
 def patch_allocated_flags(context,candidate,allocations,requests):
