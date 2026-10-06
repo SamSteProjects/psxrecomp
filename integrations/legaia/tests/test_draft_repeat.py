@@ -66,4 +66,37 @@ class DraftRepeatTests(unittest.TestCase):
         changed=deepcopy(self.doc);changed['actors'][0]['imported_transform']['position']['x']=192
         with self.assertRaisesRegex(ProjectError,'command history'):p.import_metadata(changed)
 
+    def test_owned_families_repeat_source_qualification_and_complete_project_freshness(self):
+        from unittest.mock import patch
+        from test_importer_dialogue_authoring import fixture
+        from test_wait_authoring import END
+        from importer.wait_authoring import WaitAuthoringContext
+        from importer.movement_authoring import MovementAuthoringContext
+        from sdk.draft_repeat_group import preview as group_preview
+        context,_=fixture(b'\x4c\x51\0\x80\xab\x09\x4a\x0a\0\x1fHi\0'+END);p=self.p;donor=p.actor_drafts[self.original]['donor_entity_id'];waits=WaitAuthoringContext(context);movement=MovementAuthoringContext(context)
+        run=context.options(donor)['runs'][0]['semantic_id'];wait=waits.options(donor)['targets'][0]['semantic_id'];target=movement.options(donor)['targets'][0]['semantic_id']
+        owned=dict(dialogue=dict(donor_entity_id=donor,runs={run:'Yo'}),appearance=dict(script_donor_entity_id=donor,donor_entity_id=donor),waits=dict(donor_entity_id=donor,entries={wait:dict(duration_ticks=11)}),movement=dict(donor_entity_id=donor,entries={target:dict(x=128,move_id=10)}))
+        p.actor_drafts[self.original].update(deepcopy(owned))
+        with patch.object(ProjectService,'_dialogue_context',return_value=context),patch.object(ProjectService,'_wait_context',return_value=waits),patch.object(ProjectService,'_movement_context',return_value=movement),patch.object(ProjectService,'appearance_options',return_value={'options':[{'donor_entity_id':donor}]}):
+            before=deepcopy(p.actor_drafts);report=preview(p,self.request)
+            for row in report['copies']:
+                self.assertEqual({k:row['draft'][k] for k in owned},owned)
+                self.assertEqual(row['draft']['movement'],before[self.original]['movement'])
+            detached=proposal_view(p,report);detached.actor_drafts[report['copies'][0]['entity_id']]['movement']['entries'][target]['x']=256;self.assertEqual(p.actor_drafts,before)
+            p.command(dict(type='repeat_actor_draft',**self.request,review_key=report['review_key']));after=deepcopy(p.actor_drafts);p.undo();self.assertEqual(p.actor_drafts,before);p.redo();self.assertEqual(ProjectService.open(p.save()).actor_drafts,after);p.undo()
+            p.command(dict(type='create_actor_draft',donor_entity_id=donor,name='Second',position=dict(x=512,z=640)));second=next(i for i in p.actor_drafts if i!=self.original);p.actor_drafts[second].update(deepcopy(owned));group_request=dict(entity_ids=sorted(p.actor_drafts),count=1,step=dict(x=64,z=64));group=group_preview(p,group_request)
+            for row in group['copies']:self.assertEqual({k:row['draft'][k] for k in owned},owned)
+            before=deepcopy(p.actor_drafts);p.command(dict(type='repeat_actor_drafts',**group_request,review_key=group['review_key']));p.undo();self.assertEqual(p.actor_drafts,before)
+            report=preview(p,self.request);p.command(dict(type='create_npc_preset',entity_id=self.original,name='Library changed'));before=deepcopy((p._document(),p.undo_stack,p.redo_stack))
+            with self.assertRaises(ProjectError):p.command(dict(type='repeat_actor_draft',**self.request,review_key=report['review_key']))
+            self.assertEqual((p._document(),p.undo_stack,p.redo_stack),before)
+            with patch.object(ProjectService,'appearance_options',return_value={'options':[]}):
+                with self.assertRaises(ProjectError):preview(p,self.request)
+            p.actor_drafts[self.original]['movement']['entries']={target[:-4]+'ffff':dict(x=128)}
+            before=deepcopy((p._document(),p.undo_stack,p.redo_stack))
+            with self.assertRaises(ProjectError):preview(p,self.request)
+            self.assertEqual((p._document(),p.undo_stack,p.redo_stack),before)
+            p.mode='live'
+            with self.assertRaises(ProjectError):preview(p,self.request)
+
 if __name__=='__main__':unittest.main()

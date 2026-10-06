@@ -3,7 +3,8 @@
 Select an existing NPC draft in its scene and choose **Repeat draft...** in the
 Inspector. Enter a name prefix, copy count and X/Z spacing, then choose Preview.
 In **Line**, copy001 is one spacing step from the original, copy002 two steps, and so on.
-Each copy retains the original retail donor binding and receives an independent
+Each copy retains the original retail script donor and supported own appearance,
+dialogue, waits and script movement. It receives an independent
 project UUID. Names end in a three-digit sequence.
 
 Spacing uses integer multiples of64 retail units. Every resulting position must
@@ -43,7 +44,8 @@ Columns must be an integer from2 through copy count plus1. X spacing must be
 nonzero. Z spacing must be nonzero when copies reach another row; a single row
 can use zero Z spacing. Every resulting X/Z must still fit64..16384 on the retail
 grid. Pattern, columns and spacing changes clear the accepted preview.
-Grid reviews use `draft-repeat-grid.v1`; line review identities are unchanged.
+Fresh line/grid reviews use `draft-repeat.v2` / `draft-repeat-grid.v2`, binding
+the complete project source key. Existing saved NPC identities remain unchanged.
 The same detached scene inspection, atomic Undo/Redo and Save/Open workflow applies.
 
 Offline 2026-10-05 evidence: 12 focused Python cases and expanded Node checks pass.
@@ -107,3 +109,18 @@ Existing repetition identities, positions, review keys, commands and history are
 unchanged. Runtime spawning/scheduling, opaque scripts, collision and safe total
 actor-pool headroom remain deferred. The fixed-span-only descriptions in the
 2026-10-01 raw-MAN milestone are historical, not current capability limits.
+
+## Retained own script edits
+
+Copies freeze the source NPC's supported own appearance, dialogue, waits and
+movement. Review and Apply freshly requalify their retail source bindings. The
+browser accepts only the exact complete copied metadata. Spacing changes instance
+placement; it never adds spacing offsets to movement instructions. Later edits
+to a copy remain independent, while shared model/animation assets remain shared.
+
+A library or other project change invalidates the source-bound review. Preview
+and scene inspection change no authored state. All applied copies still use one
+Undo/Redo step and persist with Save/Open. Four-family editor and emitted-record
+evidence is in `local-output/sdk-20260909/npc-owned-repetition-20261005/proof.json`.
+Runtime spawning, script scheduling and selector behavior require later gameplay
+verification.

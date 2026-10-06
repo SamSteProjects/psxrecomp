@@ -30,7 +30,7 @@ def preview(project,request):
             project._validate_actor_draft(new_id,row['draft'])
             copies.append(dict(entity_id=new_id,source_entity_id=identifier,copy_index=row['copy_index'],draft=deepcopy(row['draft'])))
     if source_key(project)!=key:raise ProjectError('Project changed during NPC arrangement review')
-    return dict(schema_version='legaia.draft-repeat-group.v1',scene_id=project.active_scene,project_source_key=key,source_drafts=sources,request=normalized,review_key=review_key,copies=copies,limitations=['Independent copies retain each source NPC retail donor and relative X/Z arrangement.',*report['limitations'][1:]])
+    return dict(schema_version='legaia.draft-repeat-group.v1',scene_id=project.active_scene,project_source_key=key,source_drafts=sources,request=normalized,review_key=review_key,copies=copies,limitations=['Independent copies retain each source NPC retail script donor, appearance, own dialogue, waits, movement and relative X/Z arrangement. Script target coordinates stay fixed.',*report['limitations'][1:]])
 
 def proposal_view(project,report):
     if preview(project,report['request'])!=report:raise ProjectError('NPC arrangement changed since review')

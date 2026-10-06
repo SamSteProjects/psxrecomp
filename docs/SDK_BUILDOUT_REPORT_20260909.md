@@ -1,5 +1,33 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Preserve NPC-owned edits through repetition - 2026-10-05
+
+Line/grid and selected-arrangement repetition retain each source NPC's own
+appearance, dialogue, wait targets and script movement in independent copies.
+The single-NPC browser decoder now compares each complete proposed draft with
+its source; omitted, substituted or extra fields reject. UUID uniqueness and
+placement remain checked. Spacing changes placement only, never script targets.
+
+Repetition now freshly qualifies retained source operands/appearance witnesses
+before review and Apply. The single review binds the complete project source key,
+checks freshness after qualification, and rejects direct Live-mode review.
+Line/grid review algorithms advance to v2; saved NPC identities are unchanged.
+A library or other project change withdraws a prior review rather than replaying it.
+Arrangement copies use the same source qualification with atomic batch history.
+
+Validation: 30 focused Python checks and two Node suites pass. Actual editor review,
+detached scene comparison, input withdrawal, Apply/Undo/Redo and Save/reload passed
+for a four-family NPC. Existing scene entities, the original NPC and imports stayed
+fixed; the 540px scrollable dialog was inspected. Normal compressed MAN Build
+`0be50da61dbc2529` reopened both independently allocated records with retained
+appearance/dialogue/wait/movement edits. Positions differ at X3200 vs X3264,
+Z5760; script targets remain X3200/Z5696 with selector10 and own wait11.
+Package SHA256: `c021d76f28f93bc257c3e0b25386df826b3544b9dc17d6cbb12e4ef3e6ad1e80`.
+Evidence: `local-output/sdk-20260909/npc-owned-repetition-20261005/proof.json`.
+No game launched. This proves editor metadata and emitted bytes, not runtime
+allocation, scheduling or movement behavior. Gameplay stays deferred; the full
+SDK goal remains active/incomplete.
+
 ## Explain NPC movement edits in saved-script comparison - 2026-10-05
 
 The saved normal Build comparison now labels source-qualified NPC movement

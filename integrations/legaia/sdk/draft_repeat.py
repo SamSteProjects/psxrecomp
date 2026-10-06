@@ -2,12 +2,15 @@
 from copy import copy,deepcopy
 import uuid
 from .project import ProjectError,digest
+from .project_copy import source_key
 from importer.core import ImportError as RetailImportError
 from .npc_build import NORMAL_BUILD_SCOPE_NOTE
 
 def preview(project, request):
     if not isinstance(request,dict) or set(request) not in ({'entity_id','count','step','name'}, {'entity_id','count','step','name','columns'}):
         raise ProjectError('Draft repetition requires original draft, count, X/Z step, name prefix and optional grid columns only')
+    if project.mode!='edit':raise ProjectError('NPC repetition requires Edit mode')
+    key=source_key(project)
     identifier=request['entity_id'];count=request['count'];step=request['step'];name=request['name']
     if not isinstance(identifier,str) or identifier not in project.actor_drafts:
         raise ProjectError('Choose an existing NPC draft')
@@ -26,10 +29,20 @@ def preview(project, request):
             raise ProjectError('Grid columns must be an integer from2 through copy count plus1')
         if not step['x'] or (count>=columns and not step['z']):
             raise ProjectError('Grid spacing requires a nonzero X step and a nonzero Z step when copies reach another row')
+    if 'dialogue' in original:project._dialogue_context(original['donor_entity_id']).patch(original['dialogue']['runs'])
+    if 'appearance' in original:
+        from .npc_appearance import source as appearance_source
+        appearance_source(project,identifier)
+    if 'waits' in original:
+        from .npc_waits import source as wait_source
+        wait_source(project,identifier)
+    if 'movement' in original:
+        from .npc_movement import source as movement_source
+        movement_source(project,identifier)
     normalized={**request,'name':name.strip()}
     review=digest({'project_root':str(project.root),'scene':project.active_scene,
-                   'source':digest(project.imports[project.active_scene]),'drafts':project.actor_drafts,
-                   'request':normalized,'algorithm':'draft-repeat-grid.v1' if columns is not None else 'draft-repeat.v1'})
+                   'source':key,'drafts':project.actor_drafts,
+                   'request':normalized,'algorithm':'draft-repeat-grid.v2' if columns is not None else 'draft-repeat.v2'})
     copies=[]
     for index in range(1,count+1):
         new_id='authored-actor://'+str(uuid.uuid5(uuid.NAMESPACE_URL,review+'/'+str(index)))
@@ -41,10 +54,11 @@ def preview(project, request):
         except RetailImportError as exc:
             raise ProjectError(f'Copy {index}: {exc}') from exc
         copies.append({'entity_id':new_id,'copy_index':index,'draft':value})
-    return {'schema_version':'legaia.draft-repeat.v1','scene_id':project.active_scene,
+    if source_key(project)!=key:raise ProjectError('Project changed during NPC repetition review')
+    return {'project_source_key':key,'schema_version':'legaia.draft-repeat.v1','scene_id':project.active_scene,
             'source_entity_id':identifier,'source_draft':deepcopy(original),'request':normalized,
             'review_key':review,'copies':copies,
-            'limitations':['Project-local drafts inherit only the original retail donor binding.',
+            'limitations':['Independent copies retain the source retail script donor, initial appearance, own dialogue, waits and movement. Shared asset edits remain project-wide; script targets are not shifted with placement.',
                            'Script scheduling, collision, visibility and runtime spawning remain unverified.',
                            NORMAL_BUILD_SCOPE_NOTE,
                            'Actor-pool checks reject unavoidable initial-placement overflow; scenery, other allocations and safe total headroom remain unverified. Experimental export retains separate gates.']}
