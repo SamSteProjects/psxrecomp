@@ -861,3 +861,14 @@ otherwise the inspector shows Retail. Use Edit model through GLB and Prepare GLB
 export to obtain a fresh binding before editing again. Navigation preserves receipts
 and authoring history; explicit export creates normal files under Exports. Finish
 or discard pending model edits before navigating to another source model.
+
+
+Use Compare current native model on a saved input to check whether its historical
+native result still matches the model currently in the project. The SDK verifies
+the Retail disc and native model bytes in that receipt's source scene, even when
+another scene is open. The result labels current Retail or authored content and
+shows its hash/size. A difference means the current native model no longer matches
+that historical result. A match proves byte equality only; use a fresh export and
+Review for a new edit. Comparison does not change project state or create an Undo
+step. The matching retail disc is required for comparison, while saved input
+recovery remains available separately.

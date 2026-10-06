@@ -1,5 +1,32 @@
 # Legaia SDK feature matrix
 
+## 2026-10-06 checkpoint: historical model input versus current native content
+
+Project model inputs now offers Compare current native model. The read-only SDK
+operation verifies the selected receipt, matching retail disc, imported source
+model and current replacement bytes, then reports the Retail source hash, current
+native hash/size, Retail or authored representation and whether the historical
+candidate matches current content. It uses the receipt's source scene without
+changing active scene or selection. Recovery itself still does not require this
+comparison. A byte match does not make a historical binding valid for replay.
+
+Disc-path, imported-evidence and library changes during comparison reject. Exact
+HTTP fields, receipt identity and current result claims are qualified by the SDK
+and browser. Missing discs, missing receipts and stale keys fail without writes.
+
+Verification: 33 focused Python tests and five Node checks passed; the strengthened
+disc-path race assertion also passed in the eight-test source module. Actual editor
+checks in a private project compared a town01 receipt while town0c remained active,
+showed matching authored content, showed a difference after one qualified private
+vertex edit, and returned to matching after Undo. Each comparison preserved project
+state, receipt metadata, history and every project file. An encoding regression in
+panel punctuation was caught by visual inspection and corrected before the final
+browser pass. No Build, mod installation or game launch was performed for this
+read-only feature.
+Evidence: `local-output/sdk-20260909/model-source-comparison-20261006/proof.json`.
+The full SDK goal and manual gameplay acceptance remain open.
+
+
 ## 2026-10-06 checkpoint: saved model input to source inspector navigation
 
 Project model inputs now provides Open model in source scene. The editor verifies

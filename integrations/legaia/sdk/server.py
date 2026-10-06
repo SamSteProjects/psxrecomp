@@ -2288,6 +2288,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                         operation=library if route=='/api/animation-source-library' else library_download if route.endswith('download') else library_removal_review
                         self._json(200,operation(self.server.project,**body))
                     return
+                if route=='/api/model-library-native-comparison':
+                    if set(body)!={'receipt_key','expected_project_path','expected_library_key'}:raise ProjectError('Native model comparison requires exact fields')
+                    from .model_glb_sources import compare_native
+                    self._json(200,compare_native(self.server.project,**body));return
                 if route in ('/api/model-source-library','/api/model-library-download','/api/model-library-removal-review','/api/model-library-remove'):
                     expected={'expected_project_path'}
                     if route!='/api/model-source-library':expected.update({'receipt_key','expected_library_key'})

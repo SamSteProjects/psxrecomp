@@ -117,4 +117,37 @@ class ModelSourceLibrary(unittest.TestCase):
             source_path(p,row).write_bytes(raw[:-1])
             with self.assertRaises(ProjectError):library(p,str(p.root))
 
+class ModelSourceNativeComparison(unittest.TestCase):
+    fixture=ModelSources.fixture
+    def test_qualified_current_native_comparison_has_no_publication(self):
+        from contextlib import nullcontext
+        from sdk.model_glb_sources import library,compare_native
+        source,raw,binding=self.fixture()
+        with TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));p.disc_path=Path('private-retail.bin')
+            p.model_sources,row=retain(p,{},raw,binding,sha256(source).hexdigest(),'b'*64)
+            catalog=library(p,str(p.root));request=dict(receipt_key=row['receipt_key'],expected_project_path=str(p.root),expected_library_key=catalog['library_key'])
+            before=deepcopy((p.model_sources,p.model_overrides,p.undo_stack,p.redo_stack))
+            with patch('importer.pipeline._disc_context',side_effect=lambda _:nullcontext()),patch.object(p,'_model_source',return_value=source):
+                report=compare_native(p,**request);self.assertTrue(report['matches_current']);self.assertEqual(report['representation'],'retail')
+                self.assertEqual((p.model_sources,p.model_overrides,p.undo_stack,p.redo_stack),before)
+                p.model_overrides={binding['asset_id']:{'test_binding':True}};request['expected_library_key']=library(p,str(p.root))['library_key']
+                with patch.object(p,'read_model_replacement',return_value=source+b'changed'):
+                    report=compare_native(p,**request);self.assertFalse(report['matches_current']);self.assertEqual(report['representation'],'authored');self.assertEqual(report['source_sha256'],sha256(source).hexdigest())
+                self.assertFalse(p.undo_stack)
+                p.model_overrides={};request['expected_library_key']=library(p,str(p.root))['library_key']
+                def changed(asset,scene):p.disc_path=Path('other.bin');return source
+                with patch.object(p,'_model_source',side_effect=changed):
+                    with self.assertRaisesRegex(ProjectError,'context changed'):compare_native(p,**request)
+
+    def test_stale_receipt_missing_disc_and_context_reject(self):
+        from sdk.model_glb_sources import library,compare_native
+        source,raw,binding=self.fixture()
+        with TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));p.model_sources,row=retain(p,{},raw,binding,sha256(source).hexdigest(),'b'*64)
+            request=dict(receipt_key=row['receipt_key'],expected_project_path=str(p.root),expected_library_key=library(p,str(p.root))['library_key'])
+            for change in ({},{'receipt_key':'0'*64},{'expected_library_key':'0'*64},{'expected_project_path':'other'}):
+                with self.assertRaises(ProjectError):compare_native(p,**dict(request,**change))
+            self.assertFalse(p.undo_stack);self.assertEqual(len(p.model_sources),1)
+
 if __name__=='__main__':unittest.main()

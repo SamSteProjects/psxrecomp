@@ -195,3 +195,30 @@ def library_remove_command(project,command):
     project.undo_stack.append(dict(target='model_sources',before=before,after=deepcopy(after)))
     project.redo_stack.clear()
     return report
+
+
+def compare_native(project,receipt_key,expected_project_path,expected_library_key):
+    """Read current qualified native bytes; historical receipts never authorize writes."""
+    value,row=_library_receipt(project,receipt_key,expected_project_path,expected_library_key)
+    scene=row['scene_id'];evidence=digest(project.imports.get(scene))
+    from importer.pipeline import _disc_context
+    if not project.disc_path:raise ProjectError('Native model comparison requires the matching retail disc')
+    disc=project.disc_path
+    with _disc_context(disc):
+        original=project._model_source(row['asset_id'],scene)
+        binding=project.model_overrides.get(row['asset_id'])
+        current=project.read_model_replacement(row['asset_id'],binding) if binding is not None else original
+        if not isinstance(original,bytes) or not isinstance(current,bytes) or not 1<=len(current)<=4*1024*1024:
+            raise ProjectError('Native model comparison requires bounded immutable bytes')
+        if project.disc_path!=disc or value['library_key']!=_library_key(project) or evidence!=digest(project.imports.get(scene)):
+            raise ProjectError('Native model comparison context changed')
+        current_hash=sha256(current).hexdigest()
+        report=dict(schema_version='legaia.model-source-native-comparison.v1',
+            project_path=value['project_path'],library_key=value['library_key'],receipt_key=receipt_key,
+            scene_id=scene,asset_id=row['asset_id'],historical_candidate_sha256=row['candidate_sha256'],
+            source_sha256=sha256(original).hexdigest(),current_sha256=current_hash,current_byte_length=len(current),
+            representation='authored' if binding is not None else 'retail',
+            matches_current=current_hash==row['candidate_sha256'],project_changed=False,native_content_changed=False)
+    if project.disc_path!=disc or value['library_key']!=_library_key(project) or evidence!=digest(project.imports.get(scene)):
+        raise ProjectError('Native model comparison context changed')
+    return report

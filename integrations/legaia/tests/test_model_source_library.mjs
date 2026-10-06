@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {decodeModelSourceLibrary,filterModelSourceLibrary,decodeLibraryRemoval,navigateModelSource} from '../editor/model-source-library.js';
+import {decodeModelSourceLibrary,filterModelSourceLibrary,decodeLibraryRemoval,navigateModelSource,decodeModelSourceComparison} from '../editor/model-source-library.js';
 const path='C:/private/project',scene='scene://town01',asset='asset://town01/models/scene-tmd/0000';
 const row={schema_version:'legaia.model-source.v1',scene_id:scene,asset_id:asset,receipt_key:'a'.repeat(64),glb_sha256:'b'.repeat(64),candidate_sha256:'c'.repeat(64),review_key:'d'.repeat(64),byte_length:28,binding:{schema_version:'legaia.model-glb-binding.v1',scene_id:scene,asset_id:asset,profile:{objects:[{}]},external_object_nodes:[0]}};
 const value={schema_version:'legaia.model-source-library.v1',project_path:path,library_key:'e'.repeat(64),mode:'edit',imports:[row],receipt_count:1,distinct_glb_count:1,registered_byte_length:28,project_changed:false,historical_inputs:true};
@@ -21,3 +21,9 @@ console.log('Model input navigation requalifies receipts and scene membership; s
 
 state.scene={id:'scene://other'};let switched=false;
 await assert.rejects(()=>navigateModelSource({...options,changeScene:async id=>{switched=true;state.scene={id};state.project={path:'different',mode:'edit'};return true;}}));assert.equal(switched,true);assert.equal(opened.length,2);
+
+const comparison={schema_version:'legaia.model-source-native-comparison.v1',project_path:path,library_key:value.library_key,receipt_key:row.receipt_key,scene_id:scene,asset_id:asset,historical_candidate_sha256:row.candidate_sha256,source_sha256:'f'.repeat(64),current_sha256:row.candidate_sha256,current_byte_length:200,representation:'authored',matches_current:true,project_changed:false,native_content_changed:false};
+assert.equal(decodeModelSourceComparison(comparison,value,row).matches_current,true);
+assert.equal(decodeModelSourceComparison({...comparison,current_sha256:'f'.repeat(64),representation:'retail',matches_current:false},value,row).matches_current,false);
+for(const mutate of [v=>v.matches_current=false,v=>v.current_byte_length=0,v=>v.library_key='bad',v=>v.native_content_changed=true,v=>v.project_changed=true,v=>v.representation='retail',v=>v.historical_candidate_sha256='f'.repeat(64),v=>v.asset_id='other']){const bad=structuredClone(comparison);mutate(bad);assert.throws(()=>decodeModelSourceComparison(bad,value,row));}
+console.log('Native model comparison hashes, historical/current distinction and context guards passed.');

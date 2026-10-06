@@ -896,3 +896,20 @@ in the current SDK asset inventory. It selects the authored or imported inspecto
 layer from current project state. The parent editor supplies its normal scene API
 and model inspector; pending model edits prevent navigation. Historical bindings
 remain recovery evidence, while the normal current export creates fresh bindings.
+
+
+### Historical model input native comparison
+
+`model_glb_sources.compare_native` resolves a qualified library receipt and reads
+its Retail source through `ModelSourceService` inside one verified disc context.
+If an authored binding exists, `read_model_replacement` qualifies the actual native
+file and its source evidence. The response separates source, current and historical
+candidate hashes and labels current representation explicitly. Library key,
+selected imported-document digest and disc path are rechecked before publication.
+
+The exact-field read-only HTTP route is consumed by the project input panel.
+Browser decoding binds receipt/project/library identities, bounded native size,
+hash equality claims, representation and no-write claims. The operation never
+changes the active scene, selected entity, receipt collection or command history.
+It reports current-byte equality, not historical binding replay authority or
+validated in-game appearance.
