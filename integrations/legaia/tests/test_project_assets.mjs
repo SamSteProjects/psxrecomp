@@ -82,3 +82,19 @@ const sourceSearchRecord=projectAssetRecords(decodeProjectAssets(snapshot(),cont
 assert(assetMatchesQuery(sourceSearchRecord,parseAssetQuery('provenance:'+h('c'))));assert(assetMatchesQuery(sourceSearchRecord,parseAssetQuery('provenance:'+h('f'))));assert(assetMatchesQuery(sourceSearchRecord,parseAssetQuery('name:"Dolk2 binding"')));assert(!assetMatchesQuery(sourceSearchRecord,parseAssetQuery('-provenance:'+h('c'))));
 assert.equal(sourceSearchRecord.sceneId,scene('a'));assert.equal(sourceSearchRecord.data.binding.source_fact,'Town01 binding');assert.deepEqual(sourceSearchRecord,sourceSearchBefore);assert.equal(projectAssetVariant(sourceSearchRecord,context).record.binding.source_fact,'Town01 binding');
 console.log('Verified project variants feed provenance/name search while activation keeps the exact chosen source record.');
+
+const npcId='authored-actor://12345678-1234-1234-1234-123456789abc',npcReport=snapshot();
+const npcDraft={scene_id:scene('a'),donor_entity_id:actorId,position:{x:128,z:256},name:'Authored NPC'};
+npcReport.assets.push({id:npcId,kind:'actor',label:npcDraft.name,scene_ids:[scene('a')],variants:[{scene_id:scene('a'),source_import_sha256:h('b'),source_catalog_key:null,record:{id:npcId,semantic_id:npcId,kind:'actor',asset_kind:'actor',layer:'authored',draft:true,name:npcDraft.name,scene_id:scene('a'),donor_entity_id:actorId,authored:npcDraft}}]});
+npcReport.scenes[0].record_count++;npcReport.coverage.asset_count++;npcReport.coverage.membership_count++;
+assert.deepEqual(decodeProjectAssets(npcReport,context),npcReport);
+const npcRecord=projectAssetRecords(npcReport,scene('a')).find(row=>row.id===npcId);
+assert.equal(npcRecord.data.layer,'authored');assert.equal(projectAssetVariant(npcRecord,context).source_catalog_key,null);
+assert(!projectAssetRecords(npcReport,scene('b')).some(row=>row.id===npcId));
+for(const change of [r=>r.layer='imported',r=>r.draft=false,r=>r.source_record={},r=>r.authored.position.x=32,r=>r.authored.scene_id=scene('b'),r=>r.authored.donor_entity_id='missing',r=>r.name='different']){
+ const bad=structuredClone(npcReport);change(bad.assets.at(-1).variants[0].record);assert.throws(()=>decodeProjectAssets(bad,context));
+}
+const catalogNpc=structuredClone(npcReport);catalogNpc.assets.at(-1).variants[0].source_catalog_key=h('e');assert.throws(()=>decodeProjectAssets(catalogNpc,context));
+console.log('Authored NPC database memberships preserve owner/donor context and reject retail provenance substitution.');
+
+const otherAuthored=snapshot();otherAuthored.assets[0].variants.forEach(row=>row.record.layer='authored');assert.deepEqual(decodeProjectAssets(otherAuthored,context),otherAuthored,'Non-NPC authored resources keep their existing descriptor contract.');

@@ -1,5 +1,28 @@
 # Imported project Asset Database
 
+## NPC drafts in the central project Asset Database — 2026-10-05
+
+The SDK project inventory now registers each validated NPC draft as an explicitly
+`authored` actor entry. Its stable authored UUID, exact name, donor binding and
+X/Z placement remain project metadata. The single owning-scene membership carries
+that import's hash as context; it has no retail source record or decoded-catalog
+key. Imported/catalog records cannot supply authored NPC identities. Existing
+source freshness and asset/membership/metadata budgets cover these entries.
+
+The browser retains imported and authored distinctions, filters by owning scene,
+and opens the typed NPC Asset Details and Inspector through existing selection.
+The membership control says **Authored NPC owning scene** and explains that its
+import hash is context, not a retail origin. Project scope is labeled **Project
+resources**. This does not establish runtime residency, spawning or visibility.
+
+Focused validation: nine SDK inventory cases plus two HTTP cases pass; Node
+checks cover authored membership, donor/scene/coordinate coherence, source
+substitution rejection and scene filtering. Actual private browser checks verify
+indexed NPC membership, exact SDK fields, selection and the 540px layout, with no
+page errors or project/document/history/file changes. Evidence is under
+`local-output/sdk-20260909/npc-project-assets-20261005/`. No Build, game launch,
+install or disc export was needed. Manual gameplay verification remains deferred.
+
 The Asset Database can list source assets across every imported scene without
 changing the active scene. It combines imported scenes, actors and models with
 the existing bounded resource catalogs. Each shared stable ID retains a separate
@@ -8,7 +31,7 @@ This is a source inventory; it does not establish runtime residency, actor
 spawning, playable routes or complete game coverage.
 
 1. Import the scenes needed for the project using the user-owned retail disc.
-2. In **Asset database scope**, choose **Imported project resources**, then
+2. In **Asset database scope**, choose **Project resources**, then
    **Refresh project resources**. Discovery verifies the imported sources and
    builds catalogs on detached project views. It does not select a scene, issue
    authoring commands, change Undo/Redo history, save the project or replace the

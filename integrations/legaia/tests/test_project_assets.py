@@ -39,6 +39,27 @@ class ProjectAssetsTests(unittest.TestCase):
                      bindings=[dict(actor_semantic_id=actor, model_asset_semantic_id=self.model)], source_record={'fixture': index}),
                 dict(id='texture://' + scene[8:] + '/0', kind='texture')])
 
+    def test_authored_npc_membership_is_detached_and_distinct_from_retail(self):
+        identifier='authored-actor://12345678-1234-1234-1234-123456789abc'
+        scene='scene://other';donor=self.project.imports[scene]['actors'][0]['semantic_id']
+        draft=dict(scene_id=scene,donor_entity_id=donor,name='Project\nNPC',position=dict(x=128,z=256))
+        self.project.actor_drafts[identifier]=deepcopy(draft)
+        before=deepcopy(self.project._document());history=deepcopy((self.project.undo_stack,self.project.redo_stack));report=assemble(self.project,self.catalogs)
+        asset=next(row for row in report['assets'] if row['id']==identifier)
+        self.assertEqual(asset['scene_ids'],[scene]);variant=asset['variants'][0]
+        self.assertEqual(variant['source_import_sha256'],digest(self.project.imports[scene]))
+        self.assertIsNone(variant['source_catalog_key'])
+        record=variant['record'];self.assertEqual(record['layer'],'authored');self.assertTrue(record['draft'])
+        self.assertEqual(record['authored'],draft);self.assertEqual(record['donor_entity_id'],donor)
+        self.assertNotIn('source_record',record)
+        self.assertEqual(report['coverage']['asset_count'],9);self.assertEqual(report['coverage']['membership_count'],11)
+        self.assertEqual(self.project._document(),before);self.assertEqual((self.project.undo_stack,self.project.redo_stack),history)
+        record['authored']['position']['x']=512;self.assertEqual(self.project.actor_drafts[identifier],draft)
+        catalogs=deepcopy(self.catalogs);catalogs[scene]['records'].append(deepcopy(record))
+        with self.assertRaisesRegex(ProjectError,'validated authored'):assemble(self.project,catalogs)
+        self.project.actor_drafts[identifier]['scene_id']='scene://absent'
+        with self.assertRaises(ProjectError):assemble(self.project,self.catalogs)
+
     def test_navigation_independent_key_stales_for_source_and_authored_inputs(self):
         project = self.project; key = source_key(project)
         project.active_scene = 'scene://other'; project.selected = self.model

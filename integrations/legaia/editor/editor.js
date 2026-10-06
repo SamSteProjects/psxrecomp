@@ -1625,10 +1625,11 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
   $('asset-source-data').textContent=JSON.stringify(source,null,2);
   if(record.projectMembership){
     const membership=document.createElement('section'),label=document.createElement('label'),choice=document.createElement('select'),note=document.createElement('p');
-    membership.dataset.projectAssetMembership='';label.textContent='Imported source membership';choice.setAttribute('aria-label','Imported source membership');
+    const authoredNpc=record.data?.layer==='authored'&&record.authoredRecord?.draft===true;
+    membership.dataset.projectAssetMembership='';label.textContent=authoredNpc?'Authored NPC owning scene':'Imported source membership';choice.setAttribute('aria-label',label.textContent);
     for(const variant of record.projectMembership.variants){const option=document.createElement('option');option.value=variant.scene_id;option.textContent=(state.scenes??[]).find(scene=>scene.id===variant.scene_id)?.name??variant.scene_id;choice.append(option);}
     choice.value=record.sceneId;choice.disabled=busy||record.projectMembership.variants.length<2||projectAssetControls?.filter()!=='all';
-    note.className='field-note';note.textContent='Each source membership retains its own recorded bindings and provenance. Choose a source before opening its inspector; membership does not prove runtime use.';
+    note.className='field-note';note.textContent=authoredNpc?'This authored NPC belongs to the selected project scene. The import hash identifies scene context, not a retail origin for this draft; membership does not prove runtime spawning or visibility.':'Each source membership retains its own recorded bindings and provenance. Choose a source before opening its inspector; membership does not prove runtime use.';
     const key=record.projectMembership.sourceKey;
     choice.onchange=()=>{if(busy||key!==state.project_assets_source_key||!projectAssetControls?.chooseVariant(record.id,choice.value))return;const next=assetRecords().find(item=>item.id===record.id);if(next){assetDetails.close();showAssetDetails(next);}};
     label.append(choice);membership.append(label,note);$('asset-source-data').parentElement.before(membership);

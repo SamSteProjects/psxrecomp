@@ -1,4 +1,4 @@
-// A read-only imported-project index. Each selected record keeps one scene's source binding.
+// A read-only project index with distinct imported and authored records. Each selected record keeps one scene's source binding.
 const MAX_METADATA_BYTES=32*1024*1024;
 const kinds=new Set(['scene','actor','model','texture','animation','script','dialogue','flag','transition','collision','trigger','region','worldmap']);
 const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
@@ -31,12 +31,19 @@ export function decodeProjectAssets(value,context){
     scenes.set(row.id,row);counts.set(row.id,0);
   }
   if(scenes.size!==expected.size)fail('Project assets omit an imported scene coverage record.');
-  const identities=new Set();let memberships=0;
+  const identities=new Set(),assetsById=new Map(value.assets.map(row=>[row?.id,row]));let memberships=0;
   for(const asset of value.assets){
     if(!exact(asset,['id','kind','label','scene_ids','variants'])||!text(asset.id,1024)||identities.has(asset.id)||!kinds.has(asset.kind)||!text(asset.label,4096)||!Array.isArray(asset.scene_ids)||!integer(asset.scene_ids.length,1,64)||new Set(asset.scene_ids).size!==asset.scene_ids.length||asset.scene_ids.some(id=>!scenes.has(id))||!Array.isArray(asset.variants)||asset.variants.length!==asset.scene_ids.length)fail('Project asset identity, kind or scene memberships conflict.');
     const variantScenes=new Set();
     for(const variant of asset.variants){
       if(!exact(variant,['scene_id','source_import_sha256','source_catalog_key','record'])||!asset.scene_ids.includes(variant.scene_id)||variantScenes.has(variant.scene_id)||variant.source_import_sha256!==scenes.get(variant.scene_id)?.import_sha256||!(variant.source_catalog_key===null||hash(variant.source_catalog_key))||!object(variant.record)||variant.record.id!==asset.id||variant.record.semantic_id!==asset.id||variant.record.kind!==asset.kind||variant.record.asset_kind!==asset.kind)fail('Project asset variant differs from its scene import or source record identity.');
+      const record=variant.record;
+      if(asset.id.startsWith('authored-actor://')||asset.kind==='actor'&&(Object.hasOwn(record,'draft')||record.layer==='authored')){
+        const draft=record.authored;
+        if(asset.kind!=='actor'||asset.variants.length!==1||!/^authored-actor:\/\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(asset.id)||record.layer!=='authored'||record.draft!==true||variant.source_catalog_key!==null||Object.hasOwn(record,'source_record')||record.scene_id!==variant.scene_id||!exact(draft,['scene_id','donor_entity_id','position','name'])||draft.scene_id!==variant.scene_id||draft.donor_entity_id!==record.donor_entity_id||draft.name!==record.name||!text(draft.name,120)||!exact(draft.position,['x','z'])||['x','z'].some(axis=>!integer(draft.position[axis],64,16384)||draft.position[axis]%64))fail('Authored NPC project asset differs from its project identity, scene or native placement.');
+        const donor=assetsById.get(draft.donor_entity_id);
+        if(donor?.kind!=='actor'||!Array.isArray(donor.variants)||!donor.variants.some(row=>row.scene_id===variant.scene_id&&row.record.layer!=='authored'&&!Object.hasOwn(row.record,'draft')))fail('Authored NPC project asset donor is absent from its imported scene.');
+      }
       variantScenes.add(variant.scene_id);counts.set(variant.scene_id,counts.get(variant.scene_id)+1);memberships++;if(memberships>65536)fail('Project asset scene memberships exceed their bounded budget.');
     }
     identities.add(asset.id);
@@ -81,7 +88,7 @@ export function mountProjectAssets({host,getContext,busy,setBusy,onChange=()=>{}
   if(!host||[getContext,busy,setBusy,onChange,onError,getUnavailableReason].some(callback=>typeof callback!=='function'))fail('Project asset controls require source and lifecycle callbacks.');
   const section=element('section');section.className='asset-scope project-assets-scope';section.dataset.projectAssets='';Object.assign(section.style,{gridColumn:'1 / -1',minWidth:'0'});
   const controls=element('div');Object.assign(controls.style,{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,180px),1fr))',gap:'7px',minWidth:'0'});
-  const scopeLabel=element('label','Asset database scope'),scopeInput=element('select');scopeInput.setAttribute('aria-label','Asset database scope');for(const [value,label] of [['active','Active scene resources'],['project','Imported project resources']]){const option=element('option',label);option.value=value;scopeInput.append(option);}scopeInput.value='active';scopeLabel.append(scopeInput);
+  const scopeLabel=element('label','Asset database scope'),scopeInput=element('select');scopeInput.setAttribute('aria-label','Asset database scope');for(const [value,label] of [['active','Active scene resources'],['project','Project resources']]){const option=element('option',label);option.value=value;scopeInput.append(option);}scopeInput.value='active';scopeLabel.append(scopeInput);
   const filterLabel=element('label','Source scene'),filterInput=element('select');filterInput.setAttribute('aria-label','Imported resource scene filter');filterLabel.append(filterInput);const refresh=element('button','Refresh project resources');refresh.type='button';refresh.dataset.action='refresh-project-resources';
   for(const select of [scopeInput,filterInput])Object.assign(select.style,{width:'100%',minWidth:'0'});Object.assign(refresh.style,{whiteSpace:'normal',textAlign:'left'});controls.append(scopeLabel,filterLabel,refresh);
   const status=element('p');status.className='field-note';status.dataset.projectAssetCoverage='';status.setAttribute('role','status');const error=element('p');error.className='dialog-error';error.setAttribute('role','alert');const coverage=element('details'),summary=element('summary','Imported scene coverage and limits'),sceneRows=element('div');coverage.append(summary,sceneRows);section.append(controls,status,error,coverage);host.append(section);

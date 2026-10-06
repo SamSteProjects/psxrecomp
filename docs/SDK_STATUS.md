@@ -1,5 +1,28 @@
 # Legaia SDK status — 2026-10-05
 
+## NPC drafts in the central project Asset Database — 2026-10-05
+
+The SDK project inventory now registers each validated NPC draft as an explicitly
+`authored` actor entry. Its stable authored UUID, exact name, donor binding and
+X/Z placement remain project metadata. The single owning-scene membership carries
+that import's hash as context; it has no retail source record or decoded-catalog
+key. Imported/catalog records cannot supply authored NPC identities. Existing
+source freshness and asset/membership/metadata budgets cover these entries.
+
+The browser retains imported and authored distinctions, filters by owning scene,
+and opens the typed NPC Asset Details and Inspector through existing selection.
+The membership control says **Authored NPC owning scene** and explains that its
+import hash is context, not a retail origin. Project scope is labeled **Project
+resources**. This does not establish runtime residency, spawning or visibility.
+
+Focused validation: nine SDK inventory cases plus two HTTP cases pass; Node
+checks cover authored membership, donor/scene/coordinate coherence, source
+substitution rejection and scene filtering. Actual private browser checks verify
+indexed NPC membership, exact SDK fields, selection and the 540px layout, with no
+page errors or project/document/history/file changes. Evidence is under
+`local-output/sdk-20260909/npc-project-assets-20261005/`. No Build, game launch,
+install or disc export was needed. Manual gameplay verification remains deferred.
+
 ## Authored NPC Asset Details — 2026-10-05
 
 NPC draft cards in active-scene and project scopes now use the SDK-owned

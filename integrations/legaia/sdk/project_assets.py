@@ -21,7 +21,8 @@ STATUSES = {'available', 'partial', 'unavailable'}
 LIMITATIONS = [
     'The index covers imported source scenes and their bounded verified resource loaders; unsupported or unavailable coverage remains explicit.',
     'Shared IDs retain a separate source record for each imported scene; memberships do not establish runtime residency or gameplay reachability.',
-    'Authored state participates in freshness, but source records remain metadata and are not executable payloads or a complete format inventory.',
+    'NPC draft entries are authored project metadata: the owning import hash identifies scene context, not a retail origin for the draft. Donor references retain imported actor identities.',
+    'Authored state participates in freshness; records are metadata, not executable payloads or a complete format inventory.',
 ]
 
 
@@ -170,6 +171,12 @@ def assemble(project, catalogs, coverage=None) -> dict:
     _metadata(dict(catalogs=catalogs, coverage=supplied))
     _budget(dict(imports=imports, catalogs=catalogs, coverage=supplied))
     key = source_key(project)
+    drafts = {}
+    for identifier, draft in sorted(project.actor_drafts.items()):
+        project._validate_actor_draft(identifier, draft)
+        drafts.setdefault(draft['scene_id'], []).append(dict(
+            id=identifier, kind='actor', layer='authored', draft=True, name=draft['name'],
+            scene_id=draft['scene_id'], donor_entity_id=draft['donor_entity_id'], authored=deepcopy(draft)))
     indexed, scenes, membership_count = {}, [], 0
     for scene, document in sorted(imports.items()):
         import_hash = digest(document)
@@ -183,10 +190,16 @@ def assemble(project, catalogs, coverage=None) -> dict:
         status, limitations = _scene_coverage(scene, import_hash, catalog, supplied.get(scene, {}))
         local = {}
 
-        def add(record, catalog_key=None, base_kind=None):
+        def add(record, catalog_key=None, base_kind=None, authored=False):
             nonlocal membership_count
             normalized = _record(record, scene, base_kind)
+            if authored:
+                # Validated project names retain their exact authored value;
+                # source-record structural display fallback does not rename them.
+                normalized['name'] = record['name']
             identifier = normalized['id']
+            if not authored and (identifier.startswith('authored-actor://') or normalized['kind'] == 'actor' and 'draft' in normalized):
+                raise ProjectError('NPC draft identities require validated authored project records')
             variant = dict(scene_id=scene, source_import_sha256=import_hash,
                            source_catalog_key=catalog_key, record=normalized)
             previous = local.get(identifier)
@@ -218,6 +231,8 @@ def assemble(project, catalogs, coverage=None) -> dict:
         if catalog is not None:
             for record in catalog['records']:
                 add(record, catalog['source_key'])
+        for record in drafts.get(scene, []):
+            add(record, base_kind='actor', authored=True)
         for identifier, variant in sorted(local.items()):
             indexed[identifier]['variants'].append(variant)
             indexed[identifier]['scene_ids'].append(scene)
