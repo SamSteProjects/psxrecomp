@@ -251,3 +251,33 @@ spaces remain those of the source decoder. Frame object and the specialized
 shared/individual transform forms remain available with their existing validation,
 commands, Undo/Redo, Save/Open and Build constraints. These descriptors contain
 no authoring or action commands; the snapshot renderer rejects authoring metadata.
+
+## NPC draft snapshot contracts — 2026-10-05
+
+NPC Inspector display now uses three read-only SDK component definitions:
+
+- `NpcDraftIdentity`: project identity/name/scene, authored retail donor binding,
+  and donor retail metadata details. Donor source is separate from this draft.
+- `NpcDraftTransform`: authored X/Z, owned by supported project commands on the
+  retail64-unit placement grid. No authored Y is inferred or offered.
+- `NpcDraftPreview`: source snapshot X/Z, unresolved placement Y, derived sampled
+  elevation/status, SDK model/pose/geometry metadata and evidence details.
+
+`npc-draft-inspector.js` renders these through the shared property/details renderer.
+It rejects authoring definitions for snapshot sections; specialized adapters retain
+existing command, bounds, Undo/Redo and persistence ownership. Schema paths have
+no fallback from preview to authored/donor values. Missing fields remain unknown.
+
+The root editor supplies explicit preview context. A pending source refresh shows
+a stale warning. A detached viewport proposal retains the Inspector's source
+snapshot and labels that distinction; it does not substitute proposed coordinates.
+Retail representation contains no draft preview, so snapshot fields are unavailable;
+Authored representation restores the qualified snapshot. Neither derived elevation
+nor sampled animation pose implies runtime placement, playback, spawning or collision.
+
+Eleven focused Python schema cases and NPC/environment Node rendering checks pass.
+Actual private browser matches all schema property values, verifies height separation,
+retained authoring controls, controlled pending/proposal labels and Retail/Authored
+switches. The540px Inspector is inspected. All project/history/files remain unchanged,
+with no authoring, Save, Build or game. Evidence:
+`local-output/sdk-20260909/npc-draft-inspector-schema-20261005/proof.json`.

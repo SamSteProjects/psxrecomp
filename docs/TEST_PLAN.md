@@ -4,6 +4,24 @@
 
 
 
+
+## NPC draft Inspector schema checkpoint — 2026-10-05
+
+Eleven Python Inspector schema cases pass read-only contracts, authored X/Z paths,
+separate unresolved placement Y/derived preview elevation, no fallback paths,
+donor source metadata and detached schema instances. New NPC rendering and prior
+environment Node checks pass escaping, no input generation, authored versus preview
+values, unknowns and pending/source-during-proposal/unavailable labels. Both editor
+module syntax checks pass. Actual private browser matches every SDK property,
+retains specialized controls, verifies current snapshot and controlled stale/proposal
+context, Retail missing-preview and Authored return. The540px Inspector screenshot
+is inspected, with no page errors. All project document/history/files stay unchanged;
+only scene-preview reads occur, with no authoring/Save/Build/Run/game/install/export.
+Proof: `local-output/sdk-20260909/npc-draft-inspector-schema-20261005/proof.json`.
+Campaign follow-up: live pending-refresh/close races, changed donor while geometry
+loads, unavailable geometry and source surface, all pose kinds and broader component
+migration. Existing gameplay spawning/visibility/collision gates remain separate.
+
 ## NPC draft layout/normal-package checkpoint — 2026-10-05
 
 Ten focused Python group/repetition cases and expanded Node contracts pass selected

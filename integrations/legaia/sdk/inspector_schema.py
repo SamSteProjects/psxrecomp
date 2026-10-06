@@ -251,4 +251,33 @@ def inspector_schema():
             {'id':'mode','label':'Mode','path':['mode'],'type':'string','state':'editor-state'},
         ],'actions':[{'id':'rename-project','label':'Rename project…','capability':'project_settings','requires_edit':True}],
         'notes':['Rename changes project metadata and future package identity. Save persists it; Undo restores the previous name. Imported content and authored assets retain their identities.']}
+    schema['components']['NpcDraftIdentity']={
+        'label':'NPC draft identity','layout':'read-only-properties',
+        'properties':[
+            {'id':'identity','label':'Authored identity','path':['entity_id'],'type':'entity-reference','state':'read-only-project'},
+            {'id':'name','label':'Name','path':['draft','name'],'type':'string','state':'authored-through-command'},
+            {'id':'scene','label':'Scene','path':['draft','scene_id'],'type':'asset-reference','state':'read-only-project'},
+            {'id':'donor','label':'Retail donor binding','path':['draft','donor_entity_id'],'type':'entity-reference','state':'authored-through-command'}],
+        'details':[{'label':'Donor retail metadata','path':['donor','components','RetailMetadata']}],
+        'notes':['This project-local draft has no retail placement or established runtime identity. The donor source remains separate.',
+                 'Preview uses the retail donor assignment; shared authored assets may affect appearance. Runtime creation and gameplay remain unverified.']}
+    schema['components']['NpcDraftTransform']={
+        'label':'Authored NPC draft placement','units':'Guest scene coordinates','layout':'read-only-properties',
+        'properties':[{'id':axis,'label':'Authored '+axis.upper(),'path':['draft','position',axis],
+                       'type':'number','state':'authored-through-command'} for axis in ('x','z')],
+        'notes':['X/Z authoring uses supported project commands on the exact64-unit retail grid, from64 through16384.',
+                 'This draft does not author Y. Sampled source terrain height is preview metadata, not authored or live placement.']}
+    schema['components']['NpcDraftPreview']={
+        'label':'NPC draft preview snapshot','units':'Guest coordinates / sampled source elevation','layout':'read-only-properties',
+        'properties':[
+            *[{'id':'position_'+axis,'label':'Snapshot '+axis.upper(),'path':['preview','position',axis],
+               'type':'number','nullable':True,'state':'unresolved' if axis=='y' else 'effective'} for axis in ('x','y','z')],
+            {'id':'surface_y','label':'Preview elevation Y','path':['preview','preview_position','y'],'type':'number','nullable':True,'state':'derived'},
+            {'id':'height_status','label':'Height resolution','path':['preview','preview_height_status'],'type':'string','state':'derived'},
+            {'id':'model','label':'Preview model','path':['preview','asset_id'],'type':'asset-reference','state':'effective'},
+            {'id':'pose','label':'Preview pose kind','path':['preview','pose_kind'],'type':'string','state':'derived'},
+            {'id':'renderable','label':'Geometry available','path':['preview','renderable'],'type':'boolean','state':'evidence-status'}],
+        'details':[{'label':'Preview evidence','path':['preview','evidence']}],
+        'notes':['Missing snapshot values remain unknown; authored position and donor metadata are not substituted.',
+                 'A sampled pose does not establish an idle stance, runtime playback, spawning or collision.']}
     return schema

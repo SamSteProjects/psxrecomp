@@ -80,6 +80,7 @@ import {openScriptComponentReset} from '/script-component-reset.js';
 import {mountScriptOwnerInspector} from '/script-owner-inspector.js';
 import {openDraftRepeat} from '/draft-repeat.js';
 import {openDraftGroup} from '/draft-group.js';
+import {renderNpcDraftInspector} from '/npc-draft-inspector.js';
 import {mountActorSelectionSets,decodeSavedActorSelection} from '/actor-selection-sets.js';
 import {mountGroupAppearance} from '/group-appearance.js';
 import {textureSceneUsage} from '/texture-usage.js';
@@ -2895,13 +2896,12 @@ function renderInspector(){
   const resource=selectedSceneResource();if(resource){renderSceneResourceInspector(resource);return;}
   const npc=selectedNpcDraft();
   if(npc){
-    const id=npcDraftSelection;
+    const id=npcDraftSelection,preview=activeScenePreview()?.entities.find(item=>item.entity_id===id),donor=entities().find(entity=>entity.id===npc.donor_entity_id);
+    const draftPreviewState=!preview?'unavailable':!scenePreviewCurrent()?'pending':scenePose?'source-during-proposal':'current';
     $('selection-summary').textContent=`${npc.name} · Authored NPC draft`;
-    $('inspector').innerHTML=`<section class="component"><h3>Authored NPC draft</h3>${property('Identity',id)}${property('Retail donor',npc.donor_entity_id)}<p class="field-note">No retail placement or runtime identity exists for this draft. X/Z handles snap to the required 64-unit grid. Preview uses the retail donor assignment; shared authored assets may affect its appearance. Playable creation remains unverified.</p><form id="draft-inspector-form"><label>X <input name="x" type="number" min="64" max="16384" step="64" required></label><label>Z <input name="z" type="number" min="64" max="16384" step="64" required></label><button type="submit">Apply draft position</button></form><button id="frame-npc-draft">Frame draft</button><button id="delete-npc-draft">Delete draft</button></section>`;
-    const preview=activeScenePreview()?.entities.find(item=>item.entity_id===id);
+    $('inspector').innerHTML=renderNpcDraftInspector(state.inspector_schema,{entity_id:id,draft:npc,donor,preview},draftPreviewState)+`<section class="component"><h3>NPC draft authoring</h3><form id="draft-inspector-form"><label>X <input name="x" type="number" min="64" max="16384" step="64" required></label><label>Z <input name="z" type="number" min="64" max="16384" step="64" required></label><button type="submit">Apply draft position</button></form><button id="frame-npc-draft">Frame draft</button><button id="delete-npc-draft">Delete draft</button></section>`;
     const poseLabel={imported_scene_animation_frame0:'Imported animation · frame 0',authored_scene_animation_frame0:'Authored shared animation · frame 0',reference_party_idle:'Reference party idle · frame 0',reference_global_loop:'Reference shared clip · frame 0',single_object_static:'Static single-object model'}[preview?.pose_kind]??'Pose unavailable in this view';
     const poseNote=document.createElement('p');poseNote.className='field-note';poseNote.id='draft-pose-note';poseNote.textContent=`Preview pose: ${poseLabel}. A sampled frame does not establish an idle stance or runtime playback.`;$('draft-inspector-form').before(poseNote);
-    const donor=entities().find(entity=>entity.id===npc.donor_entity_id);
     if(donor?.components?.ModelRenderer?.asset_id&&['imported_scene_animation_frame0','authored_scene_animation_frame0'].includes(preview?.pose_kind)){
       const inspectPose=document.createElement('button');inspectPose.id='inspect-draft-donor-animation';inspectPose.textContent='Inspect donor animation';inspectPose.onclick=()=>openModel(donor.components.ModelRenderer.asset_id,'scene-header',donor.id);poseNote.after(inspectPose);
     }

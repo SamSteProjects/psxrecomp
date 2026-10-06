@@ -1,6 +1,22 @@
 import unittest
 from sdk.inspector_schema import inspector_schema
 class InspectorSchema(unittest.TestCase):
+    def test_npc_draft_identity_authored_position_and_preview_remain_separate(self):
+        schema=inspector_schema();components=schema['components']
+        for name in ('NpcDraftIdentity','NpcDraftTransform','NpcDraftPreview'):
+            self.assertEqual(components[name]['layout'],'read-only-properties')
+            self.assertTrue(all('authoring' not in p for p in components[name]['properties']))
+        authored=components['NpcDraftTransform']['properties']
+        self.assertEqual([p['path'] for p in authored],[['draft','position','x'],['draft','position','z']])
+        self.assertTrue(all(p['state']=='authored-through-command' for p in authored))
+        preview={p['id']:p for p in components['NpcDraftPreview']['properties']}
+        self.assertEqual(preview['position_y']['state'],'unresolved')
+        self.assertEqual(preview['surface_y']['state'],'derived')
+        self.assertEqual(preview['surface_y']['path'],['preview','preview_position','y'])
+        self.assertTrue(all('fallback_paths' not in p for p in preview.values()))
+        self.assertEqual(components['NpcDraftIdentity']['details'][0]['path'],['donor','components','RetailMetadata'])
+        authored[0]['path'].clear();self.assertEqual(inspector_schema()['components']['NpcDraftTransform']['properties'][0]['path'],['draft','position','x'])
+
     def test_environment_snapshots_keep_retail_preview_and_source_paths_separate(self):
         schema=inspector_schema();components=schema['components']
         identifiers=('EnvironmentPlacement','EnvironmentRetailTransform','EnvironmentPreviewTransform','EnvironmentMetadata')

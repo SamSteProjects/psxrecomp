@@ -779,6 +779,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/preset-batch.js": ("preset-batch.js", "text/javascript"),
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
                  "/draft-group.js": ("draft-group.js", "text/javascript"),
+                 "/npc-draft-inspector.js": ("npc-draft-inspector.js", "text/javascript"),
                  "/draft-review.js": ("draft-review.js", "text/javascript"),
                  "/script-operand-bundle.js": ("script-operand-bundle.js", "text/javascript"),
                  "/script-capture.js": ("script-capture.js", "text/javascript"),

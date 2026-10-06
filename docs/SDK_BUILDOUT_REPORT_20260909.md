@@ -3,6 +3,36 @@
 
 
 
+
+## SDK-owned NPC draft Inspector display — 2026-10-05
+
+NPC drafts now use SDK Inspector contracts for identity, authored X/Z placement
+and preview snapshot metadata. `NpcDraftIdentity`, `NpcDraftTransform` and
+`NpcDraftPreview` own labels, paths, units, state badges, source details and notes.
+A dedicated read-only adapter renders them through the shared component renderer;
+existing name/donor/position, frame/delete, repetition and group controls retain
+their specialized command adapters.
+
+Authored placement stays separate from source-preview X/Z, unresolved placement
+Y and derived terrain elevation. Preview model/pose/geometry metadata retain SDK
+meaning; missing fields do not fall back to authored values or donor data. Pending
+refresh is explicit. During a detached viewport proposal, the Inspector identifies
+its retained source snapshot and does not relabel source coordinates as proposed.
+Retail view has no NPC draft preview, so those values remain unavailable; returning
+to Authored restores the qualified snapshot. Donor retail metadata is source detail,
+not the new draft's retail placement or an established runtime identity.
+
+Validation: 11 Python Inspector schema cases, new NPC/previous environment Node
+render checks and both editor module syntax checks pass. Actual private browser
+matches every schema-defined property to SDK source values, verifies unresolved Y
+versus terrain sample, retained authoring controls, controlled pending/proposal
+labels, Retail missing-preview behavior and Authored return. The540px Inspector
+is inspected with no page errors. Project document, history and every saved file
+remain unchanged; no Command/Save/Build/Run, game, install or disc export occurs.
+Proof: `local-output/sdk-20260909/npc-draft-inspector-schema-20261005/proof.json`.
+This adds display contracts; authored commands, package serialization and runtime
+capabilities are unchanged. See [Inspector schema](legaia-inspector-schema.md).
+
 ## NPC draft group alignment/distribution and normal package — 2026-10-05
 
 **Move NPC draft group → Placement operation** now aligns X/Z to a selected
