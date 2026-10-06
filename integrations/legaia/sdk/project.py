@@ -1866,6 +1866,10 @@ class ProjectService:
             return
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get('type') == 'duplicate_animation_record':
+            from .animation_record_duplicate import apply
+            apply(self,command)
+            return
         if command.get('type') == 'allocate_animation_record':
             from .animation_allocation import apply_command
             apply_command(self,command)

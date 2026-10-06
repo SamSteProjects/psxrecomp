@@ -1,3 +1,4 @@
+import {validateRetainedAxes} from './animation-record-edit.js';
 import {animationGlbContext} from './animation-glb.js';
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
@@ -57,6 +58,19 @@ export function decodeAllocatedAssignmentPose(value,report,row){
   if(value?.schema_version!=='legaia.model-preview.v1'||value.semantic_id!==row.donor_asset_id||a?.representation!=='allocated_assignment_preview'||a.clip_id!=='allocated-assignment-preview'||a.entity_id!==report.entity_id||!same(a.assignment_proposal,report)||a.semantic_id!==row.animation_id||a.source_record?.record_id!==row.record_id||a.source_record?.record_sha256!==row.record_sha256||a.frame_count!==row.frame_count||a.bone_count!==row.object_count||!Array.isArray(value.frames)||value.frames.length!==row.frame_count)fail('Proposed initial pose differs from the reviewed assignment.');
   return structuredClone(value);
 }
+export function decodeAnimationRecordDuplicateReview(value,request,row,library){
+  const source=value?.source_entry,copy=value?.duplicate_entry,ledger=value?.proposed_ledger;
+  if(value?.schema_version!=='legaia.animation-record-duplicate-review.v1'||value.scene_id!==request.scene_id||value.record_id!==row.record_id||value.project_source_key!==request.expected_source_key||!hash(value.review_key)||!hash(value.effective_bank_sha256)||!hash(value.candidate_bank_sha256)||value.project_changed!==false||value.gameplay_verified!==false||value.assignments_changed!==false||value.source_active!==row.active||!object(source)||source.record_id!==row.record_id||source.record_sha256!==row.record_sha256||source.entity_id!==row.entity_id||source.channel_owner_entity_id!==row.channel_owner_entity_id||source.model_source_entity_id!==row.model_source_entity_id||source.donor_animation_id!==row.donor_animation_id||source.donor_asset_id!==row.donor_asset_id||source.object_count!==row.object_count||source.source_frame_indices?.length!==row.frame_count||!uuid(copy?.record_id)||library.records.some(r=>r.record_id===copy.record_id)||!same(copy,{...source,record_id:copy.record_id})||ledger?.schema_version!=='legaia.animation-record-ledger.v1'||ledger.source_scene_id!==request.scene_id||!hash(ledger.source_bank_sha256)||ledger.revision!==library.revision+1||ledger.records?.length!==library.records.length+1||!same(ledger.records?.at(-1),copy)||!Array.isArray(ledger.removed_record_ids)||ledger.removed_record_ids.includes(copy.record_id)||ledger.removed_record_ids.includes(row.record_id)===row.active)fail('Duplicate Review differs from this retained clip or current source.');
+  const keys=['record_id','entity_id','channel_owner_entity_id','model_source_entity_id','donor_animation_id','donor_asset_id','donor_record_sha256','effective_donor_record_sha256','donor_frame_count','object_count','donor_edits','source_frame_indices','edits','record_sha256'].sort();
+  for(const entry of ledger.records){
+    if(!object(entry)||!same(Object.keys(entry).sort(),keys)||!uuid(entry.record_id)||!actor(entry.entity_id,request.scene_id)||!actor(entry.channel_owner_entity_id,request.scene_id)||!actor(entry.model_source_entity_id,request.scene_id)||!hash(entry.donor_record_sha256)||!hash(entry.effective_donor_record_sha256)||!hash(entry.record_sha256)||!integer(entry.donor_frame_count,1,512)||!integer(entry.object_count,1,64)||!Array.isArray(entry.source_frame_indices)||!integer(entry.source_frame_indices.length,1,512)||entry.source_frame_indices.some(n=>!integer(n,0,entry.donor_frame_count-1)))fail('Duplicate Review contains an invalid frozen donor recipe.');
+    validateRetainedAxes(entry.donor_edits,entry.donor_frame_count,entry.object_count);validateRetainedAxes(entry.edits,entry.source_frame_indices.length,entry.object_count);
+  }
+  if(new Set(ledger.records.map(e=>e.record_id)).size!==ledger.records.length||ledger.records.length>64||ledger.revision>64||ledger.records.reduce((sum,e)=>sum+e.source_frame_indices.length*e.object_count,0)>4096||new Set(ledger.removed_record_ids).size!==ledger.removed_record_ids.length||ledger.removed_record_ids.some(id=>!ledger.records.some(e=>e.record_id===id)))fail('Duplicate Review exceeds retained identity or channel budgets.');
+  const projected=ledger.records.slice(0,-1);
+  for(const existing of library.records){const entry=projected.find(e=>e.record_id===existing.record_id);if(!entry||entry.record_sha256!==existing.record_sha256||entry.entity_id!==existing.entity_id||entry.donor_asset_id!==existing.donor_asset_id||entry.object_count!==existing.object_count||entry.source_frame_indices?.length!==existing.frame_count||ledger.removed_record_ids.includes(existing.record_id)===existing.active)fail('Duplication changed an existing retained clip.');}
+  return structuredClone(value);
+}
 export function qualifyRetainedLibraryRow(library,expected){
   const row=library?.records?.find(r=>r.record_id===expected?.record_id);
   if(!row||Object.keys(row).length!==Object.keys(expected).length||Object.keys(row).some(k=>row[k]!==expected[k]))fail('Retained clip differs from the inspected asset. Refresh assets.');
@@ -72,7 +86,8 @@ export async function openAnimationRecordLibrary({entityId,getContext,assignment
   const dialog=element('dialog');dialog.className='project-dialog';dialog.style.maxWidth='52rem';dialog.style.maxHeight='90vh';dialog.style.overflowY='auto';
   const select=element('select');select.setAttribute('aria-label','Saved allocated clip');
   const inspect=button('Preview saved clip','pose'),reviewButton=button('Review retirement','review'),apply=button('Apply reviewed change','apply'),close=button('Close','close');inspect.hidden=onPosePreview===null||assetAssignment;reviewButton.hidden=assetAssignment;
-  const actions=element('div');actions.append(inspect,reviewButton,apply,close);
+  const duplicate=button('Review independent duplicate','duplicate');duplicate.hidden=assetAssignment;
+  const actions=element('div');actions.append(inspect,reviewButton,duplicate,apply,close);
   const assign=button('Review initial assignment','assign'),clearAssignment=button('Review clear assignment','clear-assignment'),previewAssignment=button('Preview reviewed assignment','assignment-pose');previewAssignment.hidden=onPosePreview===null;
   if(retainedRecord!==null&&!assetAssignment){assign.hidden=clearAssignment.hidden=previewAssignment.hidden=true;}
   if(assetAssignment)clearAssignment.hidden=true;
@@ -94,6 +109,7 @@ export async function openAnimationRecordLibrary({entityId,getContext,assignment
     assign.disabled=blocked||retainedRecord!==null&&!assetAssignment||!row?.active;clearAssignment.disabled=blocked||retainedRecord!==null||!assignment;previewAssignment.disabled=blocked||retainedRecord!==null&&!assetAssignment||held?.kind!=='assignment'||!held.row||held.request.record_id===null;
     editContent.disabled=blocked||!row;
     glbContent.disabled=blocked||!row;
+    duplicate.disabled=blocked||assetAssignment||!row||!library?.activation_available||library.records.length>=64||library.records.reduce((sum,r)=>sum+r.frame_count*r.object_count,0)+(row?.frame_count??0)*(row?.object_count??0)>4096;
     if(row){details.textContent=`${row.animation_id} · ${row.frame_count} frames · ${row.object_count} objects · ${row.active?'Active':'Retired'} · ${assignment?.record_id===row.record_id?'assigned as this actor’s initial clip':'retained capture'}`;reviewButton.textContent=row.active?'Review retirement':'Review restoration';}
   }
   function dispose(){if(closed)return;closed=true;invalidate();if(dialog.open)dialog.close();dialog.remove();}
@@ -111,8 +127,14 @@ export async function openAnimationRecordLibrary({entityId,getContext,assignment
     const result=await post('/api/animation-record-activation-preview',request,signal);if(!valid()||row!==selected())return false;
     const report=decodeRecordActivationReview(result,request,row);held={kind:'activation',request,report,row};status.textContent=`Reviewed ${row.active?'retirement':'restoration'} · not applied. Identity and captured bytes are retained.`;return true;
   });};
+  duplicate.onclick=()=>{const row=selected();if(duplicate.disabled||assetAssignment||!row)return false;held=null;return run('duplicate-review',async(signal,valid)=>{
+    const request={scene_id:context.sceneId,record_id:row.record_id,expected_source_key:context.sourceKey};
+    const value=await post('/api/animation-record-duplicate-review',request,signal);if(!valid()||row!==selected())return false;
+    const report=decodeAnimationRecordDuplicateReview(value,request,row,library);held={kind:'duplicate',request,report,row};
+    status.textContent=`Reviewed independent duplicate ${report.duplicate_entry.record_id} · identical native content · not applied. Source clip and actor assignments stay intact. The new clip is active and unassigned; edit or assign it after Apply.`;return true;
+  });};
   apply.onclick=()=>{const captured=held;if(!captured||captured.row!==selected())return false;return run('apply',async(signal,valid)=>{
-    try{const next=await post(captured.kind==='assignment'?'/api/allocated-animation-assignment':'/api/animation-record-activation',{...captured.request,review_key:captured.report.review_key},signal);if(!valid()||captured!==held)return false;if(!object(next?.project)||next.project.mode!=='edit')fail('Change returned invalid project state.');held=null;await onApplied(next);dispose();return true;}
+    try{const next=await post(captured.kind==='assignment'?'/api/allocated-animation-assignment':captured.kind==='duplicate'?'/api/animation-record-duplicate':'/api/animation-record-activation',{...captured.request,review_key:captured.report.review_key},signal);if(!valid()||captured!==held)return false;if(!object(next?.project)||next.project.mode!=='edit')fail('Change returned invalid project state.');held=null;await onApplied(next);dispose();return true;}
     catch(e){if(valid()){held=null;status.textContent='Change failed. Review again.';}throw e;}
   });};
   function reviewAssignment(clear){

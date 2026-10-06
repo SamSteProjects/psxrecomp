@@ -659,3 +659,31 @@ review of reopened assigned content, and retired two-frame editing without
 restoration. Editor forms and allocated GLB import are still implementation work;
 these APIs do not claim that UI workflow or runtime/gameplay acceptance. No game
 was launched or installed.
+
+## Independent copies of retained clips - 2026-10-06
+
+In **Manage allocated clips**, select a capture and choose **Review independent
+duplicate**, then **Apply reviewed change**. The inspected retained asset
+lifecycle panel also exposes this action. Review identifies the new UUID and
+confirms identical native content. Apply creates one active, unassigned clip
+without clearing the actor's existing initial assignment. A retired capture can
+be copied while its original UUID remains retired.
+
+Reopen the library to edit the new clip with retained content or GLB tools, or
+review its initial assignment. The original frozen donor data, mapped frames,
+per-frame edits and opaque native fields are preserved in the copy. Further
+edits use the new UUID and do not change the original clip. Copies share the
+existing scene record/channel/revision budgets; the button disables when a copy
+would exceed known budgets, and the SDK checks all budgets before publication.
+
+`duplicate_animation_record` is a source-qualified reviewed command. Review and
+Apply routes reject extra fields, stale scene/source or changed review hashes.
+The browser validates the complete copied recipe and existing identities before
+allowing Apply. Standard Undo/Redo, Save/Open, asset registration, content editing
+and native Build use the existing retained record ledger.
+
+Private Town01 evidence in
+`local-output/sdk-20260909/retained-animation-duplicate-20261006/` covers real
+editor Review/Apply, identical copied records, independent subsequent editing,
+unchanged original assignment, history/reopen and exact Build relocation readback.
+Build: `3e5c84bacab35ad6`; gameplay playback/timing remains unverified.

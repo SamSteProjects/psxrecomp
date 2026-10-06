@@ -1,5 +1,40 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Independent retained animation duplication - 2026-10-06
+
+**Implemented editor workflow:** Saved allocated clips now offers **Review
+independent duplicate** followed by explicit Apply. It also works from an
+inspected retained asset lifecycle panel. The source's frozen donor recipe,
+frame mapping, edits and opaque native content are freshly reconstructed and
+copied into a new UUID; existing clips and actor assignments stay intact.
+The duplicate is active and unassigned, including when copied from a retired
+capture. Existing content/GLB editing, assignment, lifecycle and normal Build
+consume it without a new native format or serializer. Review is read-only;
+Apply uses one standard scene history command. Exact source/review guards and
+64-record/revision, 4096-channel and metadata budgets remain enforced. This
+supports independent copies of retained clips; general animation retargeting
+and arbitrary new donor structures remain incomplete.
+
+**Verification:** six focused Python duplication/ledger checks and three Node
+library/routing/component checks passed; JavaScript syntax passed. The real
+private Town01 editor reviewed and applied a duplicate with zero page errors;
+wide/narrow captures were inspected. Native records were identical on creation.
+One-step Undo/Redo and Save/Open passed. Editing only the duplicate preserved
+the source record and its actor assignment. Normal Build `3e5c84bacab35ad6`
+passed independent relocation-carrier ANM readback and native initial-selector
+readback. Package SHA-256:
+`693eff499c5469d309b1e93f80ff488e77e94322b2d73cdfb1c6e7119484c5ef`.
+Native bank SHA-256:
+`4fd3648d54e81113f910365d95531463210a495bb239688eede0f872172f8e14`.
+
+Private evidence: `local-output/sdk-20260909/retained-animation-duplicate-20261006/`
+(`verify.py`, `finish-readback.py`, browser script, captures and `proof.json`).
+The readback initially assumed a standalone animation asset; it was corrected
+to decode the completed package's declared relocation carrier, without another
+Build. No game launch, installation or full-disc export occurred. Gameplay
+playback/timing verification remains deferred, and the full SDK goal is open.
+
+
 ## Actor inspector GLB routing for retained assignments - 2026-10-06
 
 **Implemented offline workflow:** the actor inspector now exposes GLB editing

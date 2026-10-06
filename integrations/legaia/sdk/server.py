@@ -2458,6 +2458,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                     preview['animation_support']=dict(supported=True,clips=[dict(id='allocated-record',label='Retained clip source')])
                     self._json(200,preview)
                     return
+                if route in ('/api/animation-record-duplicate-review','/api/animation-record-duplicate'):
+                    expected={'scene_id','record_id','expected_source_key'}
+                    if route=='/api/animation-record-duplicate':expected.add('review_key')
+                    if set(body)!=expected:raise ProjectError('Clip duplication requires exact scene, record and current source')
+                    from .animation_record_duplicate import prepare
+                    if route.endswith('-review'):
+                        self._json(200,prepare(self.server.project,**body)[1])
+                    else:
+                        self.server.project.command(dict(type='duplicate_animation_record',**body))
+                        self._json(200,self.server.state())
+                    return
                 if route in ('/api/animation-record-library','/api/animation-record-pose'):
                     expected = {'scene_id','expected_source_key'}
                     if route == '/api/animation-record-pose':
