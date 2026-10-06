@@ -1,5 +1,21 @@
 # Raw streamed MAN in normal Build
 
+## Current scope — 2026-10-05
+
+Qualified raw streamed MAN NPC candidates now enter normal **Review Build** and
+**Build** through source-bound relocation packages. Compressed NPC candidates
+may use fixed-span overlays or qualified capacity-growth relocation. Current
+source, allocation, composition and actor-pool bounds still apply; source packaging
+support does not establish native spawning or gameplay. See the current
+[NPC candidate boundaries](legaia-npc-build-candidates.md) and
+[actor-pool evidence](legaia-npc-actor-pool.md).
+
+The initial milestone below predates NPC and MAN growth support. Its fixed-span
+restrictions and NPC rejection describe that historical implementation only.
+The recorded tests and package hashes remain historical evidence.
+
+## Initial fixed-span milestone — 2026-10-01 (historical)
+
 Normal Build now consumes the same typed MAN source handoff used by retail
 import and experimental scene preparation. Descriptor MAN is decoded, edited and
 capacity-guarded as LZS. Raw streamed MAN is edited directly and emitted as

@@ -22,8 +22,12 @@ then be renamed, moved, given another donor or deleted independently.
 
 ## Build and runtime boundaries
 
-Normal Build includes compressed MAN source candidates that fit the original consumed
-stream; streaming and oversized additions remain rejected. See [candidate boundaries](legaia-npc-build-candidates.md).
+Normal Build includes source-qualified compressed and raw streaming MAN candidates.
+Compressed candidates can use fixed-span overlays or qualified capacity-growth
+relocation; raw candidates use qualified relocation. Source identity, allocation,
+composition and actor-pool checks still apply. Use **Review Build** to assess all
+current authored inputs; a repetition preview is not Build readiness. See
+[candidate boundaries](legaia-npc-build-candidates.md).
 Experimental export uses the existing donor,
 MAN append, script-reference and archive checks. Repetition adds no new spawn or
 scheduling semantics. Copied source scripts can retain story-specific behavior;
@@ -51,3 +55,19 @@ tests with no skips, all12 Node checks and10 module syntax checks. See the
 [current SDK status](SDK_STATUS.md) for exact source/command/log evidence.
 Feature-specific browser/disk/package checks above remain separate from deferred
 runtime and gameplay acceptance.
+
+## Current SDK scope notes — 2026-10-05
+
+After **Preview draft copies**, the review displays the SDK's complete bounded
+scope notes below the copy table. Repetition and experimental archive review
+share the normal-NPC-builder's delivery scope message. These notes do not grant
+readiness or gameplay acceptance. Malformed/unbounded scope notes reject the
+repetition report and leave Apply disabled. Scope text is rendered as text.
+
+Experimental NPC output review reports `normal_build_assessment: not_assessed_here`.
+Its legacy `normal_build_ready: false` remains for compatibility and grants no
+readiness claim; **Review Build** performs the separate normal-package assessment.
+Existing repetition identities, positions, review keys, commands and history are
+unchanged. Runtime spawning/scheduling, opaque scripts, collision and safe total
+actor-pool headroom remain deferred. The fixed-span-only descriptions in the
+2026-10-01 raw-MAN milestone are historical, not current capability limits.

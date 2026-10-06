@@ -3,6 +3,7 @@ from copy import copy,deepcopy
 import uuid
 from .project import ProjectError,digest
 from importer.core import ImportError as RetailImportError
+from .npc_build import NORMAL_BUILD_SCOPE_NOTE
 
 def preview(project, request):
     if not isinstance(request,dict) or set(request)!={'entity_id','count','step','name'}:
@@ -39,7 +40,8 @@ def preview(project, request):
             'review_key':review,'copies':copies,
             'limitations':['Project-local drafts inherit only the original retail donor binding.',
                            'Script scheduling, collision, visibility and runtime spawning remain unverified.',
-                           'Normal Build accepts source-qualified compressed MAN candidates that fit their original stream and actor-pool lower bound. Scenery/script capacity and gameplay remain unverified; experimental export retains separate gates.']}
+                           NORMAL_BUILD_SCOPE_NOTE,
+                           'Actor-pool checks reject unavoidable initial-placement overflow; scenery, other allocations and safe total headroom remain unverified. Experimental export retains separate gates.']}
 
 def proposal_view(project, report):
     if preview(project,report['request'])!=report:

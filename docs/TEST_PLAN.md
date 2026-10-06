@@ -1,5 +1,22 @@
 # Legaia SDK validation plan
 
+
+## NPC Build scope presentation checkpoint — 2026-10-05
+
+Ten focused Python draft repetition/review/HTTP cases, both existing Node contracts
+and repetition module syntax pass. Current builder scope is shared by repetition
+and experimental review: qualified compressed fixed-span/capacity-growth and raw
+streaming relocation routes retain existing gates. Experimental review explicitly
+says normal Build readiness is not assessed here; its legacy false flag remains.
+Actual SDK scope notes equal visible repetition notes, malformed notes clear the
+report and disable Apply, and the 540px dialog is inspected. Close cleanup passes,
+no page errors occur, and project document/history/files remain unchanged after
+fixture setup. No Build, gameplay, install or full-disc export runs.
+Proof: `local-output/sdk-20260909/npc-build-scope-notes-20261005/proof.json`.
+This corrects author-facing scope only; it adds no serializer or runtime support.
+Campaign follow-up: candidate variants and full-project Review Build readiness,
+plus runtime spawning/scheduling and actor-pool headroom remain separate checks.
+
 ## General saved-Build freshness checkpoint — 2026-10-05
 
 Expanded general/asset Node Build-history contracts and module syntax pass.

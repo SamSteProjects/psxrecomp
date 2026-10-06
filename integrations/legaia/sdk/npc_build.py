@@ -1,4 +1,4 @@
-"""Qualified NPC candidates for fixed-span overlays or raw MAN relocation.
+"""Qualified NPC candidates for fixed-span overlays or compressed/raw MAN relocation.
 
 This establishes serialization only, without claiming guest actor allocation,
 spawn scheduling or acceptance of opaque script paths.
@@ -19,6 +19,14 @@ from .actor_capacity import actor_pool_assessment
 
 MAX_CANDIDATE_BYTES = 4 * 1024 * 1024
 MAX_PROT_BYTES = 256 * 1024 * 1024
+
+# Shared author-facing scope; this is not a readiness verdict for any project.
+NORMAL_BUILD_SCOPE_NOTE = (
+    'Normal Build supports source-qualified compressed and raw streaming MAN NPC candidates. '
+    'Compressed candidates can use fixed-span overlays or qualified capacity-growth relocation; '
+    'raw streaming candidates use qualified relocation. Source, allocation, composition and actor-pool '
+    'checks still apply. Use Review Build to assess the current complete authored project; '
+    'serialization support does not establish runtime spawning, scheduling or gameplay.')
 
 
 def _public(value):

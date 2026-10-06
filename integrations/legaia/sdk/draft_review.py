@@ -6,6 +6,7 @@ import re
 
 from .build import authored_state_key
 from .project import ProjectError
+from .npc_build import NORMAL_BUILD_SCOPE_NOTE
 
 _HASH = re.compile(r'[0-9a-f]{64}\Z')
 MAX_REPORT_BYTES = 4 * 1024 * 1024
@@ -46,12 +47,13 @@ def review(project, expected_key):
         result_prot_sha256=audit['result_prot_sha256'], archive_bytes=len(archive),
         draft_count=len(project.actor_drafts), scenes=summaries,
         allocation=deepcopy(audit['container']), experimental=True,
-        normal_build_ready=False, output_written=False, gameplay_verified=False,
+        normal_build_ready=False, normal_build_assessment='not_assessed_here', output_written=False, gameplay_verified=False,
         limitations=[
             'This is an experimental serialized NPC candidate, not gameplay or spawn acceptance.',
             'Existing source facing edits affect their original owner; appended donor copies retain retail facing.',
             'Facing operands are source script sectors, not initial or live Transform heading.',
-            'Normal Build supports qualified NPC candidates that fit their original compressed stream; archive growth requires separately verified disc relocation.',
+            NORMAL_BUILD_SCOPE_NOTE,
+            'This experimental archive review does not assess normal Build readiness. The legacy normal_build_ready=false field grants no readiness claim; use Review Build for that assessment.',
             'Appended NPCs qualify the retail actor-pool lower bound before repacking. Scenery and intervening scripts leave total demand unverified.',
             'Review writes no project, package or disc output and does not launch the game.',
         ])

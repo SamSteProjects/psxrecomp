@@ -1,5 +1,28 @@
 # Legaia SDK feature matrix
 
+## Current NPC Build scope in repetition/review — 2026-10-05
+
+NPC repetition and experimental archive review now share the normal builder's
+current scope note: qualified compressed candidates use fixed spans or capacity-
+growth relocation, and qualified raw streaming candidates use relocation. Source,
+allocation, composition and actor-pool gates remain. Repetition now displays all
+bounded SDK notes below its review table instead of silently omitting them;
+malformed/unbounded notes reject the report and keep Apply unavailable.
+
+Experimental review explicitly reports `normal_build_assessment: not_assessed_here`.
+Its legacy `normal_build_ready:false` remains and grants no readiness claim; use
+**Review Build** for normal-package readiness of the complete authored project.
+The repetition guide is corrected and the 2026-10-01 raw-MAN fixed-span restrictions
+are labeled historical, preserving their original evidence. No new serializer,
+command, review-key algorithm or gameplay capability is introduced.
+
+Validation: 10 focused Python repetition/review/HTTP cases, both existing Node
+contracts and module syntax pass. The actual SDK response matches visible browser
+scope notes; malformed notes withdraw Apply. The 540px dialog is inspected, close
+cleans up, and project document/history/files remain unchanged. No Build or game
+runs during this check. Evidence:
+`local-output/sdk-20260909/npc-build-scope-notes-20261005/proof.json`.
+
 ## General Build history fresh-input and receipt qualification — 2026-10-05
 
 General **Build history** now qualifies fresh `/api/state` after list, verification
