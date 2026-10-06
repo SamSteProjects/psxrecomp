@@ -806,6 +806,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-range.js": ("animation-range.js", "text/javascript"),
                  "/project-settings.js": ("project-settings.js", "text/javascript"),
                  "/asset-references.js": ("asset-references.js", "text/javascript"),
+                 "/audio-sequence.js": ("audio-sequence.js", "text/javascript"),
                  '/actor-animation.js': ('actor-animation.js', 'text/javascript'),
                  "/build-review.js": ("build-review.js", "text/javascript"),
                  "/build-history.js": ("build-history.js", "text/javascript"),
@@ -1922,6 +1923,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Transition discovery uses the active scene; no client source bindings are accepted")
                     from .resources import scene_transition_graph
                     self._json(200, scene_transition_graph(self.server.project))
+                    return
+                if route == '/api/audio-sequence':
+                    if set(body) != {'asset_id','expected_source_key','expected_entry_sha256'}:
+                        raise ProjectError('Sequence inspection requires exact source identity and freshness fields')
+                    from .resources import audio_sequence_preview
+                    self._json(200, audio_sequence_preview(self.server.project, **body))
                     return
                 if route == "/api/resource-catalog":
                     if body:

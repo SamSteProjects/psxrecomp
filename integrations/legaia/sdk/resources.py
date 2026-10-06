@@ -562,3 +562,18 @@ def project_transition_graph(project):
                 limitations=['Edges are decoded source instructions, not verified routes or runtime scene connections.',
                              'Only imported scenes and supported script paths are covered; partial and unavailable sources remain explicit.',
                              'Imported, authored and effective entry operands remain separate; no story-state evaluation or path finding.'])
+
+
+def audio_sequence_preview(project, asset_id, expected_source_key, expected_entry_sha256):
+    from importer.audio_catalog import read_audio_sequence
+    from importer.audio_sequence import inspect_sequence
+    document,key=_scene(project)
+    if expected_source_key!=key:raise ProjectError('Audio inspection source changed; refresh resources')
+    with _disc_context(project.disc_path):
+        _verify(project,document)
+        sequence,source=read_audio_sequence(project.disc_path,asset_id,expected_entry_sha256)
+        report=inspect_sequence(sequence)
+    if key!=source_key(project):raise ProjectError('Audio source changed during inspection')
+    return dict(schema_version='legaia.audio-sequence-inspection.v1',asset_id=asset_id,
+                scene_id=project.active_scene,source_key=key,source_record=source,
+                read_only=True,project_changed=False,runtime_state='not_observed',**report)

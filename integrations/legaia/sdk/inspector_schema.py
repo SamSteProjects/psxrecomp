@@ -187,7 +187,7 @@ def inspector_schema():
             {'id': 'assignment', 'label': 'Playback assignment', 'path': ['data','playback_assignment'], 'type': 'string', 'state': 'derived'},
         ],
         'notes': ['Header/container evidence only. Scene membership does not establish playback. Events, samples, duration and runtime use remain unverified.'],
-        'actions': [],
+        'actions': [{'id':'inspect-audio-sequence','label':'Inspect sequence events','capability':'resource_catalog','when':['data','sequence']}],
     }
     schema['components']['AssetTrigger']['actions'].append({'id': 'inspect-asset-trigger-cells', 'label': 'Edit trigger cell', 'capability': 'field_trigger_authoring'})
     schema['components']['AssetTrigger']['actions'].append({'id': 'inspect-asset-trigger-scripts', 'label': 'Edit trigger script binding', 'capability': 'field_trigger_script_authoring'})

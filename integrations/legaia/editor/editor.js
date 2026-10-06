@@ -124,6 +124,7 @@ import {mountScriptBranches} from '/script-branches.js';
 import {mountWorldmapAuthoring} from '/worldmap-authoring.js';
 import {mountWorldmapGeometry} from '/worldmap-geometry.js';
 import {mountWorldPlacements} from '/worldmap-placement-editor.js';
+import {openAudioSequence} from '/audio-sequence.js';
 import {mountProjectAssets,projectAssetVariant,qualifyProjectCatalogVariant} from '/project-assets.js';
 import {captureRuntimeReview,parseRuntimeReview,compareRuntimeReviews,historicalRuntimePositions,historicalRuntimeComparisonPositions,historicalSampleHits,MAX_REVIEW_BYTES} from '/runtime-review.js';
 import {createHistoricalActorComparisonDialog} from '/historical-actor-comparison.js';
@@ -1851,6 +1852,7 @@ async function resolveProjectAsset(record){
 async function activateAsset(record,action=null){
   if(busy)return;
   try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
+  if(action==='inspect-audio-sequence'){openAudioSequence({record,getContext:()=>({assetId:record.id,sceneId:state.scene?.id,projectPath:state.project?.path,sourceKey:state.scene_preview_source_key,entryHash:record.data?.source_record?.sha256}),busy:()=>busy,onError:error=>notify(error.message,true)});return;}
   if(action==='edit-npc-appearance'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC appearance target changed. Reopen Asset Details.');openNpcAppearanceInspector(record.id);return;}
   if(action==='edit-npc-dialogue'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC dialogue target changed. Reopen Asset Details.');openNpcDialogue({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api});return;}
   if(action==='edit-npc-facing'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC facing target changed. Reopen Asset Details.');openNpcFacing({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api});return;}

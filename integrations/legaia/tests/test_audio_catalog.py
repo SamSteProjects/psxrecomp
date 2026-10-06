@@ -56,7 +56,7 @@ class AudioCatalog(unittest.TestCase):
         db=AssetDatabase();r=db.register_resources('scene://town01','a'*64,[dict(semantic_id='audio://legaia/prot/0877',asset_kind='audio',name='Source audio')],[])
         self.assertEqual(r['records'][0]['kind'],'audio')
         schema=inspector_schema();self.assertEqual(schema['asset_inspectors']['audio'],'AssetAudio')
-        self.assertEqual(schema['components']['AssetAudio']['actions'],[])
+        self.assertEqual([a['id'] for a in schema['components']['AssetAudio']['actions']],['inspect-audio-sequence'])
         self.assertTrue(all('authoring' not in p for p in schema['components']['AssetAudio']['properties']))
 
     def test_unresolved_headers_do_not_borrow_outside_declared_chunk(self):

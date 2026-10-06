@@ -138,3 +138,29 @@ def load_audio_asset_catalog(disc, scene):
             result['limitations'].append(f'{len(unavailable)} leading-signature entries have unavailable headers; unavailable_entries retains their source indices and reasons.')
         validate_metadata_only(result)
         return result
+
+
+def read_audio_sequence(disc, asset_id, expected_entry_sha256):
+    """Re-read one physical entry and qualify its complete supported SEQ carrier."""
+    import re
+    if not isinstance(asset_id,str) or re.fullmatch(r'audio://legaia/prot/[0-9]{4}',asset_id) is None:
+        raise ImportError('Choose a structural source audio identity')
+    if not isinstance(expected_entry_sha256,str) or re.fullmatch(r'[0-9a-f]{64}',expected_entry_sha256) is None:
+        raise ImportError('Audio inspection requires its reviewed entry hash')
+    index=int(asset_id.rsplit('/',1)[1])
+    with _disc_context(disc) as (image,disc_hash,mapping,archive):
+        archive.entry(index)
+        start,end=archive.toc[index+2:index+4];offset=start*2048;size=(end-start)*2048
+        if not 0<size<=MAX_ENTRY_BYTES or offset+size>archive.node.size:
+            raise ImportError('Audio sequence carrier exceeds physical entry bounds')
+        body=image.read_user(archive.node.extent_lba,offset,size,archive.node.size)
+        if sha256(body).hexdigest()!=expected_entry_sha256:
+            raise ImportError('Audio entry differs from its reviewed source hash')
+        decoded=decode_audio_entry(body)
+        if decoded['sequence'] is None:raise ImportError('This audio resource has no supported sequence carrier')
+        if decoded['format']=='SEQ':sequence_offset=0;sequence_size=len(body)
+        else:chunk=decoded['chunks'][2];sequence_offset=chunk['payload_offset'];sequence_size=chunk['size_bytes']
+        sequence=body[sequence_offset:sequence_offset+sequence_size]
+        return sequence,dict(disc_sha256=disc_hash,iso_file='PROT.DAT',prot_entry_index=index,
+                    entry_sha256=expected_entry_sha256,entry_byte_offset=offset,entry_size_bytes=size,
+                    sequence_offset=sequence_offset,sequence_size_bytes=sequence_size,sequence_sha256=sha256(sequence).hexdigest())
