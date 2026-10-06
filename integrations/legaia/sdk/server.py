@@ -917,6 +917,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-glb.js": ("animation-glb.js", "text/javascript"),
                  "/animation-glb-clips.js": ("animation-glb-clips.js", "text/javascript"),
                  "/animation-glb-mapping.js": ("animation-glb-mapping.js", "text/javascript"),
+                 "/animation-glb-rig.js": ("animation-glb-rig.js", "text/javascript"),
                  "/animation-glb-sampling.js": ("animation-glb-sampling.js", "text/javascript"),
                  "/animation-sources.js": ("animation-sources.js", "text/javascript"),
                  "/mesh-source-library.js": ("mesh-source-library.js", "text/javascript"),

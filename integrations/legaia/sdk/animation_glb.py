@@ -117,15 +117,18 @@ def _prepare(project, entity_id: str, content: bytes, binding: dict, *, animatio
     # one canonical numeric representation without relaxing identity fields.
     normalized_binding = dict(binding, clip_fps=float(binding['clip_fps']))
     object_nodes=binding.get('external_object_nodes')
+    skin_index=binding.get('external_skin_index')
+    if 'external_skin_index' in binding and (type(skin_index) is not int or not 0<=skin_index<64 or object_nodes is None):raise ProjectError('Joint rig requires a bounded selected skin and explicit object mapping')
     sampling=binding.get('external_sampling')
     if 'external_sampling' in binding and sampling is None:raise ProjectError('External sampling cannot be null')
     if 'external_object_nodes' in binding and object_nodes is None:raise ProjectError('Explicit object mapping cannot be null')
     normalized_binding.pop('external_object_nodes',None)
+    normalized_binding.pop('external_skin_index',None)
     normalized_binding.pop('external_sampling',None)
     if digest(normalized_binding) != digest(snapshot['binding']):
         raise ProjectError('Animation export binding differs from the current source or ownership; export again')
     binding = snapshot['binding']
-    candidate, analysis = import_animation_glb(snapshot['effective'], content, fps=binding['clip_fps'], animation_index=animation_index,object_node_indices=object_nodes,external_sampling=sampling)
+    candidate, analysis = import_animation_glb(snapshot['effective'], content, fps=binding['clip_fps'], animation_index=animation_index,object_node_indices=object_nodes,external_sampling=sampling,external_skin_index=skin_index)
     retail = decode_animation_record(snapshot['retail'])
     channel_owner = snapshot['channel_owner']
     before = _axes(snapshot['owners'].get(channel_owner))
@@ -165,7 +168,7 @@ def _prepare(project, entity_id: str, content: bytes, binding: dict, *, animatio
                                       if owner != channel_owner and contribution['animation_id'] == binding['animation_id'])),
         limitations=['Existing rigid-object channels and frame count only; mesh edits are ignored.',
                      'Constant unit-scale tracks are accepted; native scale animation is unsupported.',
-                     'Rigid parent TRS and static matrices are baked to scene-space poses; skinning remains unsupported.',
+                     'Rigid parent TRS and static matrices are baked to scene-space poses; mesh skinning is not imported; explicitly selected skins can supply rigid joint motion.',
                      'The selected interchange rate does not establish retail playback timing.',
                      'Translation is rounded to source integers; Euler rotations use the existing eight-bit angle lattice.',
                      'Normal Build retains source capacities; runtime playback remains unverified.'])
@@ -180,6 +183,7 @@ def _prepare(project, entity_id: str, content: bytes, binding: dict, *, animatio
         # choice must remain part of authorization even when their bytes match.
         review_identity['file_animation_index'] = animation_index
     if object_nodes is not None:review_identity['external_object_nodes']=object_nodes
+    if skin_index is not None:review_identity['external_skin_index']=skin_index
     if sampling is not None:review_identity['external_sampling']=analysis['external_sampling']
     report['review_key'] = digest(review_identity)
     command = (dict(type='set_animation_channels', entity_id=channel_owner, value=value) if edits else

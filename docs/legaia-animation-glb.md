@@ -1,5 +1,12 @@
 # Source-bound animation GLB authoring
 
+## Import motion from an external joint rig
+
+Load the edited GLB and its current source binding. Enter one joint node index per native object in **External rigid object mapping**, in native object order, and the zero-based skin index in **External joint rig skin**. The inventory labels joint membership and mesh instances. Choose the file animation and sampling settings, then Review, preview the native pose, Return and Apply. Changing the mapping or skin requires another Review. Both imported-actor and allocated-record dialogs support this workflow; recipes preserve `external_object_nodes` and `external_skin_index`.
+
+All mapped nodes must belong to the selected skin and be reachable in the active scene. The joint graph must share an ancestor; an optional skeleton must contain every joint. Optional inverse-bind matrices are validated as bounded affine data, but are not applied. Relevant transforms must remain rigid. Unmapped selected-skin joint tracks are validated and listed as ignored. The native model's geometry remains unchanged: this does not import mesh deformation, infer anatomical correspondence or compensate for bone rest poses. Inspect the proposed native pose before applying.
+
+
 ## External timeline behavior
 
 After loading an edited GLB and its current binding, enable **Sample an external time range**, choose start/rate and select **External timeline behavior**:

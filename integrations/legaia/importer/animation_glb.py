@@ -207,7 +207,7 @@ class _Accessors:
         start = _integer(view.get("byteOffset", 0), 0, len(self.payload), "buffer view offset")
         length = _integer(view.get("byteLength"), 1, len(self.payload), "buffer view length")
         relative = _integer(row.get("byteOffset", 0), 0, length, "accessor byte offset")
-        width = {"SCALAR": 1, "VEC3": 3, "VEC4": 4}[shape]
+        width = {"SCALAR": 1, "VEC3": 3, "VEC4": 4, "MAT4": 16}[shape]
         if self.component_count + count * width > MAX_ANIMATION_COMPONENTS:
             raise ImportError("Animation accessors exceed the one-million-component decoding bound")
         if start % 4 or relative % 4 or start + length > len(self.payload) or relative + count * width * 4 > length:
@@ -258,7 +258,8 @@ def _rigid_matrix(value):
     return [m[12],m[13],m[14]], _unit_quaternion(q, "matrix rotation")
 
 
-def _nodes(doc, object_count, object_node_indices=None):
+def _nodes(doc, object_count, object_node_indices=None, *, skin_index=None, accessors=None):
+    if skin_index is not None and object_node_indices is None:raise ImportError('Joint rig extraction requires an explicit native-object node mapping')
     nodes = _array(doc.get("nodes"), "nodes", 4096)
     scenes = _array(doc.get("scenes"), "scenes", 4096)
     scene_index = _integer(doc.get("scene", 0), 0, len(scenes) - 1, "scene index")
@@ -276,7 +277,7 @@ def _nodes(doc, object_count, object_node_indices=None):
         mapping={obj:index for index,obj in explicit.items()}
     for index, raw in enumerate(nodes):
         node = _object(raw, "node")
-        if "skin" in node or "weights" in node:
+        if ("skin" in node and skin_index is None) or "weights" in node:
             raise ImportError("Rigid animation cannot import skinning or morph weights")
         name = node.get("name", "")
         if not isinstance(name, str):
@@ -302,16 +303,6 @@ def _nodes(doc, object_count, object_node_indices=None):
                 if identity in mapping:
                     raise ImportError("GLB has duplicate source object nodes")
                 mapping[identity] = index
-        translation = _vector(node.get("translation", [0, 0, 0]), 3, "node translation")
-        rotation = _unit_quaternion(node.get("rotation", [0, 0, 0, 1]), "node rotation")
-        scale = _vector(node.get("scale", [1, 1, 1]), 3, "node scale")
-        if scale != [1, 1, 1]:
-            raise ImportError("Rigid animation requires identity node scale")
-        if "matrix" in node:
-            if any(k in node for k in ("translation", "rotation", "scale")):
-                raise ImportError("GLB node matrices cannot be combined with TRS properties")
-            translation, rotation = _rigid_matrix(node["matrix"])
-        transforms[index] = (translation, rotation)
         children = _array(node.get("children", []), "node children", 4096)
         for child in children:
             _integer(child, 0, len(nodes) - 1, "child node index")
@@ -347,7 +338,31 @@ def _nodes(doc, object_count, object_node_indices=None):
                 break
             current = parent
         finished.update(path)
-    return mapping, transforms, parents
+    rig = None
+    if skin_index is not None:
+        from .animation_glb_rig import qualify_joint_rig
+        rig = qualify_joint_rig(doc,mapping,parents,seen,accessors,skin_index)
+    relevant=set()
+    for selected in mapping.values():
+        current=selected
+        while current is not None and current not in relevant:
+            relevant.add(current);current=parents.get(current)
+    for index,node in enumerate(nodes):
+        if rig is not None and index not in relevant:
+            from .model_mesh_transform import node_transform
+            node_transform(node,allow_shear=True)
+            continue
+        translation = _vector(node.get("translation", [0, 0, 0]), 3, "node translation")
+        rotation = _unit_quaternion(node.get("rotation", [0, 0, 0, 1]), "node rotation")
+        scale = _vector(node.get("scale", [1, 1, 1]), 3, "node scale")
+        if scale != [1, 1, 1]:
+            raise ImportError("Rigid animation requires identity node scale")
+        if "matrix" in node:
+            if any(k in node for k in ("translation", "rotation", "scale")):
+                raise ImportError("GLB node matrices cannot be combined with TRS properties")
+            translation, rotation = _rigid_matrix(node["matrix"])
+        transforms[index] = (translation, rotation)
+    return mapping, transforms, parents, rig
 
 
 def _hierarchy_order(mapping, parents, frame_count):
@@ -368,7 +383,7 @@ def _hierarchy_order(mapping, parents, frame_count):
 
 
 
-def _tracks(doc, accessors, mapping, duration, animation_index=None, *, hierarchy_nodes=None):
+def _tracks(doc, accessors, mapping, duration, animation_index=None, *, hierarchy_nodes=None, ignored_joint_nodes=frozenset()):
     animations = _array(doc.get("animations", []), "animations", 64)
     if animation_index is None:
         if len(animations) > 1:
@@ -388,7 +403,7 @@ def _tracks(doc, accessors, mapping, duration, animation_index=None, *, hierarch
         node, path = target.get("node"), target.get("path")
         if (type(node) is not int or not 0 <= node < len(doc['nodes']) or
                 path not in ("translation", "rotation", "scale") or
-                (path != "scale" and node not in allowed)):
+                (path != "scale" and node not in allowed and node not in ignored_joint_nodes)):
             raise ImportError("Animation targets require source-object/ancestor translation/rotation or exact identity scale")
         if "matrix" in doc['nodes'][node]:
             raise ImportError("Animated GLB nodes cannot contain matrices")
@@ -424,7 +439,7 @@ def _tracks(doc, accessors, mapping, duration, animation_index=None, *, hierarch
                     _unit_quaternion(row, "rotation key")
             else:
                 values = [_unit_quaternion(row, "rotation key") for row in values]
-        if path == "scale":
+        if path == "scale" and node not in ignored_joint_nodes:
             # Native rigid records have no scale channel. Prove a constant unit
             # curve over every interval, not just at the sampled PSX frames.
             # glTF Hermite tangents are derivatives: interior incoming and
@@ -597,7 +612,7 @@ def _quantize_rotation(glb_q, baseline_angles):
     return [v * 16 for v in ticks], degrees
 
 
-def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animation_index: int | None = None, object_node_indices: list[int] | None = None, external_sampling: dict | None = None) -> tuple[bytes, dict]:
+def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animation_index: int | None = None, object_node_indices: list[int] | None = None, external_sampling: dict | None = None, external_skin_index: int | None = None) -> tuple[bytes, dict]:
     """Sample external poses at explicit 1..120 fps with fixed native frame count.
 
     At i/fps, the float32 representation matches glTF key storage and the SDK
@@ -618,9 +633,10 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
     if total > MAX_CHANNEL_EDITS:
         raise ImportError("Animation GLB source exceeds the 4096-channel bound")
     doc, payload = _read_glb(content)
-    mapping, static, parents = _nodes(doc, source["bone_count"], object_node_indices)
+    accessors=_Accessors(doc,payload)
+    mapping, static, parents, rig = _nodes(doc, source["bone_count"], object_node_indices,skin_index=external_skin_index,accessors=accessors)
     order = _hierarchy_order(mapping, parents, source["frame_count"])
-    tracks = _tracks(doc, _Accessors(doc, payload), mapping, (3600 if sampling is not None else source["frame_count"] / fps), animation_index, hierarchy_nodes=order)
+    tracks = _tracks(doc, accessors, mapping, (3600 if sampling is not None else source["frame_count"] / fps), animation_index, hierarchy_nodes=order,ignored_joint_nodes=set(rig['joint_nodes'])-set(order) if rig else frozenset())
     mode=sampling.get('mode','clamp') if sampling is not None else 'clamp'
     interval=(dict(start_seconds=min(track[0][0] for track in tracks.values()),
                    end_seconds=max(track[0][-1] for track in tracks.values())) if tracks else None)
@@ -680,6 +696,10 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
             'shared '+mode+' time mapping; individual track endpoints hold')
         report['quantization']['timeline']+=('; '+mode+' over the selected GLB animation key extent '+str(interval)+
             '; repeat excludes the final endpoint; ping_pong includes both endpoints; zero extent/static poses hold')
+    if rig is not None:
+        rig['ignored_channels']=[dict(node_index=node,path=path) for node,path in sorted(tracks) if node not in order]
+        report['external_rig']=rig
+        report['external_skin_index']=external_skin_index
     if object_node_indices is not None:
         report['external_object_nodes'] = list(object_node_indices)
     if animation_index is not None:

@@ -43,6 +43,7 @@ def validate_record(record):
         from importer.core import ImportError as SamplingError
         try:sampling_config(binding['external_sampling'])
         except SamplingError as error:raise ProjectError(str(error)) from error
+    if 'external_skin_index' in binding and (type(binding['external_skin_index']) is not int or not 0<=binding['external_skin_index']<64 or 'external_object_nodes' not in binding):raise ProjectError('Retained joint rig requires a bounded skin and explicit object mapping')
     if 'external_object_nodes' in binding:
         nodes=binding['external_object_nodes'];count=binding.get('object_count')
         if (type(count) is not int or not 1<=count<=64 or not isinstance(nodes,list) or len(nodes)!=count

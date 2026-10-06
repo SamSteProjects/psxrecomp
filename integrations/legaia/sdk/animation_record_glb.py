@@ -52,10 +52,13 @@ def prepare_import(project,scene_id,record_id,source_frame_indices,expected_sour
     entry,captured,current=_snapshot(project,scene_id,record_id,expected_source_key,binding.get('clip_fps'))
     normalized=dict(binding,clip_fps=float(binding['clip_fps']))
     object_nodes=binding.get('external_object_nodes')
+    skin_index=binding.get('external_skin_index')
+    if 'external_skin_index' in binding and (type(skin_index) is not int or not 0<=skin_index<64 or object_nodes is None):raise ProjectError('Joint rig requires a bounded selected skin and explicit object mapping')
     sampling=binding.get('external_sampling')
     if 'external_sampling' in binding and sampling is None:raise ProjectError('External sampling cannot be null')
     if 'external_object_nodes' in binding and object_nodes is None:raise ProjectError('Explicit object mapping cannot be null')
     normalized.pop('external_object_nodes',None)
+    normalized.pop('external_skin_index',None)
     normalized.pop('external_sampling',None)
     if digest(normalized)!=digest(current):
         raise ProjectError('Retained GLB binding differs from the current saved capture or scene; export again')
@@ -63,7 +66,7 @@ def prepare_import(project,scene_id,record_id,source_frame_indices,expected_sour
     # A changed mapping inherits captured frames, never guesses new opaque data.
     baseline_edits=entry['edits'] if source_frame_indices==entry['source_frame_indices'] else []
     baseline,_=allocate_animation_record(captured,entry['effective_donor_record_sha256'],source_frame_indices,baseline_edits)
-    candidate,analysis=import_animation_glb(baseline,content,fps=current['clip_fps'],animation_index=animation_index,object_node_indices=object_nodes,external_sampling=sampling)
+    candidate,analysis=import_animation_glb(baseline,content,fps=current['clip_fps'],animation_index=animation_index,object_node_indices=object_nodes,external_sampling=sampling,external_skin_index=skin_index)
     inherited,_=allocate_animation_record(captured,entry['effective_donor_record_sha256'],source_frame_indices,[])
     desired=decode_animation_record(candidate);original=decode_animation_record(inherited);edits=[]
     for frame in desired['frames']:
@@ -81,6 +84,7 @@ def prepare_import(project,scene_id,record_id,source_frame_indices,expected_sour
     if native['candidate_record_sha256']!=sha256(candidate).hexdigest():
         raise ProjectError('Retained GLB channel replay differs from the reconstructed native record')
     if object_nodes is not None:current=dict(current,external_object_nodes=object_nodes)
+    if skin_index is not None:current=dict(current,external_skin_index=skin_index)
     if sampling is not None:current=dict(current,external_sampling=analysis['external_sampling'])
     report=dict(schema_version='legaia.animation-record-glb-review.v1',scene_id=scene_id,record_id=record_id,
         project_source_key=expected_source_key,binding=current,glb_sha256=sha256(content).hexdigest(),
@@ -88,7 +92,7 @@ def prepare_import(project,scene_id,record_id,source_frame_indices,expected_sour
         project_change=native['project_change'],project_changed=False,gameplay_verified=False,
         limitations=['Only rigid animation channels are imported; mesh edits are ignored.',
                      'Constant unit-scale tracks are accepted; native scale animation is unsupported.',
-                     'Rigid parent TRS and static matrices are baked to scene-space poses; skinning remains unsupported.',
+                     'Rigid parent TRS and static matrices are baked to scene-space poses; mesh skinning is not imported; explicitly selected skins can supply rigid joint motion.',
             'The explicit captured-donor mapping determines output frame count and opaque channel data.',
             'The interchange rate does not establish Retail playback timing.',
             'All referring initial assignments receive the new content hash in one Undo entry.'])
