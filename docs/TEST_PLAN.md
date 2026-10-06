@@ -1,5 +1,23 @@
 # Legaia SDK validation plan
 
+## Shared scenery Inspector layout checkpoint — 2026-10-05
+
+Three focused Node Inspector checks and module syntax pass. Actual private
+Town01 browser verifies seven scenery section toggles, all header arrows/Home/End,
+collapse/expand all, retained unsubmitted individual-transform input values,
+same-instance collapsed state and focused-header restoration, detached old header/
+tool callback rejection, layout retention across scenery, actor filter/layout
+regression and the actual controller's project-boundary reset. Every header fits
+at 540px and the Inspector-tab screenshot is inspected. Project document, history
+and files stay unchanged; only preview/selection requests occur, with no page
+errors or authoring/Save/Build/Run. Evidence:
+`local-output/sdk-20260909/scenery-inspector-sections-20261005/proof.json`.
+Campaign follow-up: mixed actor/scenery rerenders, unavailable scenery snapshots,
+project/source/representation changes, maximum evidence and focused form inputs.
+Collapsing retains form nodes; selection/source rerenders retain existing draft
+behavior. This is session layout, with no persistence or native byte changes.
+No manual gameplay gate is added by this display feature.
+
 ## SDK scenery Inspector checkpoint — 2026-10-05
 
 12 focused Python inspector-schema/environment-project cases, scenery adapter

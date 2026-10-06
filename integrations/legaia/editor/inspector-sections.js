@@ -19,13 +19,13 @@ export function mountInspectorSections(root,{state,project,scope,snapshot,curren
     while(heading.nextSibling)body.append(heading.nextSibling);section.append(body);
     button.setAttribute('aria-controls',body.id);
     function update(){body.hidden=state.collapsed.has(key);section.classList.toggle('inspector-section-collapsed',body.hidden);button.setAttribute('aria-expanded',String(!body.hidden));}
-    function set(expanded){if(!current())return;expanded?state.collapsed.delete(key):state.collapsed.add(key);update();}
+    function set(expanded){if(!current()||!root.contains(button))return;expanded?state.collapsed.delete(key):state.collapsed.add(key);update();}
     button.onclick=()=>set(body.hidden);update();
     return {section,button,key,set};
   }).filter(Boolean);
   const visible=()=>records.filter(row=>!row.section.hidden);
   for(const row of records)row.button.onkeydown=event=>{
-    if(!current()||event.altKey||event.ctrlKey||event.metaKey||event.shiftKey)return;
+    if(!current()||!root.contains(row.button)||event.altKey||event.ctrlKey||event.metaKey||event.shiftKey)return;
     if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();row.set(event.key==='ArrowRight');return;}
     if(!['ArrowUp','ArrowDown','Home','End'].includes(event.key))return;
     const rows=visible(),index=rows.indexOf(row);if(index<0)return;
@@ -33,10 +33,11 @@ export function mountInspectorSections(root,{state,project,scope,snapshot,curren
   };
   const tools=document.createElement('div');tools.className='inspector-section-tools';
   for(const [label,expanded] of [['Collapse visible components',false],['Expand visible components',true]]){
-    const button=document.createElement('button');button.type='button';button.textContent=label;button.onclick=()=>{if(current())for(const row of visible())row.set(expanded);};tools.append(button);
+    const button=document.createElement('button');button.type='button';button.textContent=label;button.onclick=()=>{if(current()&&root.contains(tools))for(const row of visible())row.set(expanded);};tools.append(button);
   }
   tools.title='Component headers: Left/Right collapse/expand; Up/Down, Home/End move focus. Layout is remembered for this project in this editor session.';
-  root.querySelector('.inspector-component-filter')?.after(tools);
+  const filter=root.querySelector('.inspector-component-filter');
+  if(filter)filter.after(tools);else root.prepend(tools);
   if(snapshot?.scope===scope&&snapshot.key)visible().find(row=>row.key===snapshot.key)?.button.focus({preventScroll:true});
   return {records};
 }

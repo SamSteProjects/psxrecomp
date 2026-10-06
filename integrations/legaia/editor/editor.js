@@ -2940,6 +2940,9 @@ function renderInspector(){
   if(environment){
     $('selection-summary').textContent=environmentGroupSelection.length>1?`${environmentGroupSelection.length} scenery instances · focused ${environment.name}`:environment.name;
     const source=environment.source_record,transform=source.imported_transform;
+    const sectionSnapshot=inspectorSectionSnapshot($('inspector'),inspectorSectionsScope);
+    inspectorSectionsScope=JSON.stringify([state.project.path,state.scene?.id,environment.entity_id]);
+    const layoutContext=JSON.stringify([resourceStateKey(),sceneRepresentation,sceneKey]);
     $('inspector').innerHTML=renderEnvironmentInspector(state.inspector_schema,environment,scenePreviewCurrent());
     $('frame-environment').onclick=frameEnvironment;
     if(source.record_offset&&source.source_record?.map_sha256){
@@ -2997,6 +3000,7 @@ function renderInspector(){
       }
       $('inspector').insertBefore(section,$('inspector').lastElementChild);
     }
+    mountInspectorSections($('inspector'),{state:inspectorSectionsState,project:state.project.path,scope:inspectorSectionsScope,snapshot:sectionSnapshot,current:()=>layoutContext===JSON.stringify([resourceStateKey(),sceneRepresentation,sceneKey])&&selectedEnvironment()?.entity_id===environment.entity_id});
     return;
   }
   const entity=selected();

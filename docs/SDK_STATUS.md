@@ -1,5 +1,33 @@
 # Legaia SDK status — 2026-10-05
 
+## Shared scenery Inspector section controls — 2026-10-05
+
+Scenery now uses the same session-only component collapse and keyboard navigation
+as actors. SDK placement, Retail/Current transforms and evidence, plus existing
+shared/individual transform and shared-record sections, have accessible toggle
+headers. Collapse/Expand visible components is available without an actor filter.
+Left/Right collapse/expand; Up/Down and Home/End move between visible headers.
+
+Layout choices are retained across scenery in the same project session. A
+same-instance rerender restores header focus; changing selection does not carry
+that focus. Collapsing preserves the existing form nodes, values and handlers
+and submits no command. Replacing an Inspector still follows existing form
+rerender behavior. Source/representation/selection guards and DOM ownership make
+removed section/tool callbacks inert, including same-instance rerenders. Actor
+filter placement and layout controls retain their established behavior.
+
+Validation: three focused Node Inspector checks and module syntax pass. Actual
+private Town01 browser verifies all seven scenery sections, header keyboard
+navigation, collapse/expand all, unchanged unsubmitted input values, same-instance
+layout/focus restoration, detached callback rejection, layout across scenery,
+actor filter/layout regression and controller project isolation. The 540px
+Inspector screenshot is inspected and every header fits. Project document,
+Undo/Redo and files remain unchanged; no page errors or authoring/Save/Build/Run
+requests. Evidence:
+`local-output/sdk-20260909/scenery-inspector-sections-20261005/proof.json`.
+No gameplay, installation or full-disc export ran; the full SDK goal remains active
+and deferred gameplay gates are unchanged. Work remains solo.
+
 ## SDK-driven scenery Inspector — 2026-10-05
 
 The scenery Inspector now renders **Environment placement**, **Retail transform**,

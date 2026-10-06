@@ -1,4 +1,4 @@
-# Actor Inspector component layout
+# Actor and scenery Inspector component layout
 
 Click a component header to collapse or expand it. The existing component filter
 continues to search all values, including collapsed contents. **Collapse visible
@@ -49,3 +49,24 @@ Three Node suites, syntax and actual private retail browser checks passed with u
 project/history/files and no authoring/Save/Build/Run requests. Evidence/screenshots:
 `local-output/sdk-20260909/inspector-property-category-20261005/`.
 No manual gameplay check is added for this display workflow.
+
+## Scenery sections
+
+Selected scenery uses the same collapse and header keyboard controls for SDK
+placement, Retail/Current transform and source evidence, plus the existing shared,
+individual and shared-placement-record tools. The collapse/expand toolbar appears
+at the top of the scenery Inspector; scenery does not acquire the actor component
+filter. On narrow screens, choose the **Inspector** workspace tab to use it.
+
+Choices persist across scenery in the current project session. Same-instance
+rerenders restore header focus; changing instances does not transfer it. Reloading
+the editor starts expanded and opening another project resets choices. Actor and
+SDK scenery components have separate identities; shared/individual scenery forms
+use distinct section headings. These are layout choices, not project metadata.
+
+Collapse/expand moves no authored values and issues no command. Existing form
+nodes, unsubmitted values and action handlers survive toggling. Replacing the
+Inspector on selection/source rerenders keeps the prior form behavior; this is
+not a new persistent form-draft system. Detached header/tool callbacks cannot
+alter layout after a rerender, even when the same instance remains selected.
+Existing source-qualified edits, Undo/Redo, Save and Build remain authoritative.
