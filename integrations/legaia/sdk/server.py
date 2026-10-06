@@ -908,6 +908,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-glb-mapping.js": ("animation-glb-mapping.js", "text/javascript"),
                  "/animation-glb-sampling.js": ("animation-glb-sampling.js", "text/javascript"),
                  "/animation-sources.js": ("animation-sources.js", "text/javascript"),
+                 "/mesh-source-library.js": ("mesh-source-library.js", "text/javascript"),
                  "/model-source-library.js": ("model-source-library.js", "text/javascript"),
                  "/animation-source-library.js": ("animation-source-library.js", "text/javascript"),
                  "/actor-animation-glb-target.js": ("actor-animation-glb-target.js", "text/javascript"),
@@ -2293,6 +2294,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                         operation=library if route=='/api/animation-source-library' else library_download if route.endswith('download') else library_removal_review
                         self._json(200,operation(self.server.project,**body))
                     return
+                if route in ('/api/mesh-source-library','/api/mesh-library-download'):
+                    expected={'expected_project_path'}
+                    if route.endswith('download'):expected.update({'receipt_key','expected_library_key'})
+                    if set(body)!=expected:raise ProjectError('Mesh input library requires exact fields')
+                    from .model_mesh_library import library,download
+                    self._json(200,(library if route=='/api/mesh-source-library' else download)(self.server.project,**body));return
                 if route=='/api/model-library-native-comparison':
                     if set(body)!={'receipt_key','expected_project_path','expected_library_key'}:raise ProjectError('Native model comparison requires exact fields')
                     from .model_glb_sources import compare_native
