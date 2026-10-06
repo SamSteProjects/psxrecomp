@@ -1,5 +1,35 @@
 # Legaia SDK status — 2026-10-06
 
+## Static rigid GLB matrix support - 2026-10-06
+
+Animation GLB import now accepts static rigid matrices on source objects and
+ancestors, decomposing column-major affine transforms into translation and
+normalized rotation before hierarchy baking. The basis must be orthonormal
+and determinant +1 within 1e-5 float32-noise tolerance; huge/malformed numeric
+values, scale, shear, reflection and perspective reject. Mixed matrix/TRS and
+any animated matrix node reject. Source mapping, selected-clip Review binding,
+native quantization, opaque bytes and the original output layout are retained.
+
+**Focused checks:** 45 Python checks and two Node editor checks passed. Matrix
+fixtures preserve native bytes for identity, 180-degree and arbitrary rotations
+including float32 conversion, and match independent TRS hierarchy outcomes.
+Negative cases cover all unsupported matrix classes and animated/mixed nodes.
+Pinned `2f64b0c5` rejects the same transformed static matrix that now produces
+an exact native no-op. Private retail editor and Build evidence is beneath
+`local-output/sdk-20260909/animation-glb-rigid-matrix-20261006/`.
+The full SDK goal and retail animation playback/timing remain unverified.
+
+Both real retail browser workflows passed selected matrix-parent clip Review,
+Pose/Return, selection invalidation and Apply, each in one Undo step. Undo/Redo,
+Save/Open and byte-for-byte reference preservation passed. Normal Build
+`521d41100d73ea0c` produced package SHA-256
+`33796273faff464cef510d424b1df1c77e59714200badd82ee2f0142b436807e`.
+Independent relocated-carrier decompression exactly reproduced the authored
+animation bank SHA-256
+`6c1bd95f47855b285e17f3f928fd07b652d894f8fbe3b8c5bc7c92970e4716a2`.
+No game launch, installation or full-disc export occurred.
+
+
 ## Rigid GLB parent-transform baking - 2026-10-06
 
 GLB animation import now composes static and animated ancestor TRS into each

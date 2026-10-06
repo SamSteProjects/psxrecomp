@@ -34,7 +34,7 @@ MAX_HIERARCHY_SAMPLES = 65536
 ANGLE_EQUIVALENCE_RADIANS = 1e-5
 MAX_ANGULAR_ERROR_DEGREES = 2.2
 _TICK = math.tau / 256
-_IDENTITY_MATRIX = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+RIGID_MATRIX_TOLERANCE = 1e-5
 
 
 def _hash(data):
@@ -195,6 +195,42 @@ class _Accessors:
         return result
 
 
+def _rigid_matrix(value):
+    """Decompose column-major affine rigid matrices, allowing float32 noise."""
+    m = _vector(value, 16, "node matrix")
+    if [m[i] for i in (3, 7, 11, 15)] != [0, 0, 0, 1]:
+        raise ImportError("GLB rigid matrix must have an affine final row")
+    columns = [[m[i+j] for j in range(3)] for i in (0, 4, 8)]
+    tolerance = RIGID_MATRIX_TOLERANCE
+    if any(abs(v) > 1+tolerance for column in columns for v in column):
+        raise ImportError("GLB rigid matrix cannot contain scale or shear")
+    for i, a in enumerate(columns):
+        for j, b in enumerate(columns):
+            if abs(sum(x*y for x,y in zip(a,b)) - int(i == j)) > tolerance:
+                raise ImportError("GLB rigid matrix cannot contain scale or shear")
+    a,b,c = columns
+    determinant = a[0]*(b[1]*c[2]-b[2]*c[1]) - b[0]*(a[1]*c[2]-a[2]*c[1]) + c[0]*(a[1]*b[2]-a[2]*b[1])
+    if abs(determinant-1) > tolerance:
+        raise ImportError("GLB rigid matrix cannot contain a reflection")
+    r00,r01,r02 = m[0],m[4],m[8]
+    r10,r11,r12 = m[1],m[5],m[9]
+    r20,r21,r22 = m[2],m[6],m[10]
+    trace = r00+r11+r22
+    if trace > 0:
+        s = 2*math.sqrt(trace+1)
+        q = [(r21-r12)/s,(r02-r20)/s,(r10-r01)/s,s/4]
+    elif r00 >= r11 and r00 >= r22:
+        s = 2*math.sqrt(1+r00-r11-r22)
+        q = [s/4,(r01+r10)/s,(r02+r20)/s,(r21-r12)/s]
+    elif r11 >= r22:
+        s = 2*math.sqrt(1+r11-r00-r22)
+        q = [(r01+r10)/s,s/4,(r12+r21)/s,(r02-r20)/s]
+    else:
+        s = 2*math.sqrt(1+r22-r00-r11)
+        q = [(r02+r20)/s,(r12+r21)/s,s/4,(r10-r01)/s]
+    return [m[12],m[13],m[14]], _unit_quaternion(q, "matrix rotation")
+
+
 def _nodes(doc, object_count):
     nodes = _array(doc.get("nodes"), "nodes", 4096)
     scenes = _array(doc.get("scenes"), "scenes", 4096)
@@ -232,9 +268,9 @@ def _nodes(doc, object_count):
         if scale != [1, 1, 1]:
             raise ImportError("Rigid animation requires identity node scale")
         if "matrix" in node:
-            matrix = _vector(node["matrix"], 16, "node matrix")
-            if identity is not None or matrix != _IDENTITY_MATRIX or any(k in node for k in ("translation", "rotation", "scale")):
-                raise ImportError("Rigid animation does not import node matrices")
+            if any(k in node for k in ("translation", "rotation", "scale")):
+                raise ImportError("GLB node matrices cannot be combined with TRS properties")
+            translation, rotation = _rigid_matrix(node["matrix"])
         transforms[index] = (translation, rotation)
         children = _array(node.get("children", []), "node children", 4096)
         for child in children:

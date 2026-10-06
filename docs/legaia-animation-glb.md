@@ -205,6 +205,17 @@ Only the source objects and their ancestors are sampled. A parent-first iterativ
 traversal avoids recursive depth failures and reuses shared ancestor poses.
 Total sampled nodes times native frames may not exceed 65536. Existing file,
 node, channel, accessor and native-coordinate bounds still apply. Unrelated
-translation/rotation targets, non-unit scale, skinning, nonidentity matrices,
+translation/rotation targets, non-unit scale, skinning, non-rigid matrices,
 cycles and multiple parents reject. Native output retains independent rigid
 channels and its original opaque data; no native skeleton is invented.
+
+## Static rigid matrices
+
+Mapped source nodes and their ancestors may use a static column-major glTF
+`matrix` instead of TRS. The importer requires final row `[0,0,0,1]`, an
+orthonormal 3x3 basis and determinant +1 within a 1e-5 tolerance for float32
+export noise. It extracts translation and a normalized quaternion, then uses
+the same scene-space hierarchy baking and native quantization path as TRS.
+Shear, scale, reflection, perspective and nonfinite components reject. Matrix
+plus any TRS property rejects, and every animated matrix node rejects as
+required by glTF. Matrices do not allocate native channels or infer skinning.
