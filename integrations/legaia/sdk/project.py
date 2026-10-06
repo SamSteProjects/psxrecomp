@@ -103,7 +103,7 @@ class AssetDatabase:
 class ProjectService:
     FORMAT = "legaia.project.v1"
     REVIEW_COMPONENTS = frozenset({"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions",
-                                  "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches",
+                                  "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches",
                                   "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts"})
 
     def __init__(self, root: Path, name: str = "Legaia project") -> None:
@@ -848,6 +848,41 @@ class ProjectService:
             entry["authored_values"] = deepcopy(authored.get(key, {}))
             entry["effective_values"] = dict(entry["values"], **authored.get(key, {}))
             validate_wait_values(entry["effective_values"])
+        result["unresolved_overrides"] = sorted(set(authored) - known)
+        return result
+
+    def _validate_effect_colors(self, identifier: str, value: dict) -> None:
+        import re
+        from importer.core import ImportError
+        from importer.effect_color_authoring import validate_effect_color_values
+        self._dialogue_document(identifier)
+        if (not isinstance(value, dict) or set(value) != {"entries"} or
+                not isinstance(value["entries"], dict) or not 1 <= len(value["entries"]) <= 1024):
+            raise ProjectError("ScriptEffectColors requires a bounded nonempty entry collection")
+        prefix = "script://" + identifier.removeprefix("scene://") + "/effect-color/"
+        for key, fields in value["entries"].items():
+            if not isinstance(key, str) or re.fullmatch(re.escape(prefix) + r"[0-9a-f]{4}", key) is None:
+                raise ProjectError("Effect color operand must belong to its source owner")
+            try:
+                validate_effect_color_values(fields)
+            except ImportError as error:
+                raise ProjectError(str(error)) from error
+
+    def _effect_color_context(self, identifier: str):
+        from importer.effect_color_authoring import EffectColorAuthoringContext
+        return EffectColorAuthoringContext(self._dialogue_context(identifier))
+
+    def effect_color_options(self, identifier: str) -> dict:
+        from importer.effect_color_authoring import validate_effect_color_values
+        result = self._effect_color_context(identifier).options(identifier)
+        authored = self.overrides.get(identifier, {}).get("ScriptEffectColors", {}).get("entries", {})
+        known = set()
+        for entry in result["targets"]:
+            key = entry["semantic_id"]
+            known.add(key)
+            entry["authored_values"] = deepcopy(authored.get(key, {}))
+            entry["effective_values"] = dict(entry["values"], **authored.get(key, {}))
+            validate_effect_color_values(entry["effective_values"])
         result["unresolved_overrides"] = sorted(set(authored) - known)
         return result
 
@@ -2517,6 +2552,32 @@ class ProjectService:
                 self.undo_stack.append({"entity_id": identifier, "before": before, "after": deepcopy(after)})
                 self.redo_stack.clear()
             return
+        if command.get("type") in ("set_effect_color_target", "clear_effect_color_target"):
+            identifier, key = command.get("entity_id"), command.get("effect_color_id")
+            # Clear also checks owner syntax, but remains possible offline.
+            self._validate_effect_colors(identifier, {"entries": {key: {"red": 0, "green": 0, "blue": 0, "intensity": 0}}})
+            before = deepcopy(self.overrides.get(identifier))
+            after = deepcopy(before or {})
+            entries = deepcopy(after.get("ScriptEffectColors", {}).get("entries", {}))
+            if command["type"] == "set_effect_color_target":
+                entries[key] = deepcopy(command.get("values"))
+                self._validate_effect_colors(identifier, {"entries": entries})
+                self._effect_color_context(identifier).patch(entries)
+            else:
+                entries.pop(key, None)
+            if entries:
+                after["ScriptEffectColors"] = {"entries": entries}
+            else:
+                after.pop("ScriptEffectColors", None)
+            after = after or None
+            if before != after:
+                if after is None:
+                    self.overrides.pop(identifier, None)
+                else:
+                    self.overrides[identifier] = after
+                self.undo_stack.append({"entity_id": identifier, "before": before, "after": deepcopy(after)})
+                self.redo_stack.clear()
+            return
         if command.get("type") in ("set_model_selector_target", "clear_model_selector_target"):
             identifier, key = command.get("entity_id"), command.get("model_selector_id")
             # Clear also checks owner syntax, but remains possible offline.
@@ -3028,7 +3089,7 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements"}:
                 raise ProjectError("Unsupported authored component")
             if 'WorldMapPlacements' in components:
                 from .worldmap_placements import validate
@@ -3113,6 +3174,9 @@ class ProjectService:
             if "ScriptWaits" in components:
                 result._validate_waits(identifier, components["ScriptWaits"])
                 result.overrides.setdefault(identifier, {})["ScriptWaits"] = deepcopy(components["ScriptWaits"])
+            if "ScriptEffectColors" in components:
+                result._validate_effect_colors(identifier, components["ScriptEffectColors"])
+                result.overrides.setdefault(identifier, {})["ScriptEffectColors"] = deepcopy(components["ScriptEffectColors"])
             if "ScriptModelSelectors" in components:
                 result._validate_model_selectors(identifier, components["ScriptModelSelectors"])
                 result.overrides.setdefault(identifier, {})["ScriptModelSelectors"] = deepcopy(components["ScriptModelSelectors"])
@@ -3475,6 +3539,9 @@ class ProjectService:
                 waits = edits.get("ScriptWaits", {}).get("entries", {})
                 if waits:
                     changes.append(f"Waits: {len(waits)} targets")
+                effects = edits.get("ScriptEffectColors", {}).get("entries", {})
+                if effects:
+                    changes.append(f"Effect colors: {len(effects)} instructions")
                 selectors = edits.get("ScriptModelSelectors", {}).get("entries", {})
                 if selectors:
                     changes.append(f"Model selectors: {len(selectors)} operands")
@@ -3505,6 +3572,9 @@ class ProjectService:
             waits = edits.get("ScriptWaits", {}).get("entries", {})
             if waits:
                 changes.append(f"Waits: {len(waits)} targets")
+            effects = edits.get("ScriptEffectColors", {}).get("entries", {})
+            if effects:
+                changes.append(f"Effect colors: {len(effects)} instructions")
             selectors = edits.get("ScriptModelSelectors", {}).get("entries", {})
             if selectors:
                 changes.append(f"Model selectors: {len(selectors)} operands")
@@ -3646,7 +3716,7 @@ class ProjectService:
             entity['components']['Dialogue']['authored_run_count'] = len(entity['components']['Dialogue']['authored'].get('runs', {}))
             for component in ('ScriptFacing', 'ScriptBranches'):
                 entity['components'][component]['authored_instruction_count'] = len(entity['components'][component]['entries'])
-            for component in ('ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptModelSelectors', 'Transitions'):
+            for component in ('ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptEffectColors', 'ScriptModelSelectors', 'Transitions'):
                 entries = self.overrides.get(entity['id'], {}).get(component, {}).get('entries', {})
                 if entries:
                     entity['components'][component] = {'entries': deepcopy(entries), 'authored_instruction_count': len(entries)}

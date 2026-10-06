@@ -1,6 +1,6 @@
 // Component identities select UI sections, never decode source records or infer execution.
-const sections=Object.freeze({ScriptMovement:'movement-authoring',ScriptFlags:'flag-authoring',ScriptWaits:'wait-authoring',ScriptModelSelectors:'modelSelector-authoring',ScriptFacing:'facing-authoring',ScriptBranches:'script-branch-authoring',Dialogue:'dialogue-authoring-note',Transitions:'transition-authoring'});
-const labels=Object.freeze({Dialogue:'Dialogue',Transitions:'Transitions',ScriptMovement:'Movement',ScriptFlags:'Flags',ScriptWaits:'Waits',ScriptModelSelectors:'Model selectors',ScriptFacing:'Facing',ScriptBranches:'Branches'});
+const sections=Object.freeze({ScriptMovement:'movement-authoring',ScriptFlags:'flag-authoring',ScriptWaits:'wait-authoring',ScriptEffectColors:'effectColor-authoring',ScriptModelSelectors:'modelSelector-authoring',ScriptFacing:'facing-authoring',ScriptBranches:'script-branch-authoring',Dialogue:'dialogue-authoring-note',Transitions:'transition-authoring'});
+const labels=Object.freeze({Dialogue:'Dialogue',Transitions:'Transitions',ScriptMovement:'Movement',ScriptFlags:'Flags',ScriptWaits:'Waits',ScriptEffectColors:'Effect colors',ScriptModelSelectors:'Model selectors',ScriptFacing:'Facing',ScriptBranches:'Branches'});
 export function scriptInspectorFamilies(root){
   if(typeof root?.querySelector!=='function')return [];
   return Object.entries(labels).filter(([id])=>root.querySelector('.'+sections[id])).map(([id,label])=>({id,label}));

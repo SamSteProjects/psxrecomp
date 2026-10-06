@@ -1,5 +1,5 @@
 export const operandOwnerContext=(state,owner)=>JSON.stringify((state.authored_assets??[]).find(row=>row.id===owner)?.authored??null);
-const COMPONENTS=['ScriptBranches','ScriptMovement','ScriptFacing','ScriptFlags','ScriptWaits','ScriptModelSelectors','Transitions'];
+const COMPONENTS=['ScriptBranches','ScriptMovement','ScriptFacing','ScriptFlags','ScriptWaits','ScriptEffectColors','ScriptModelSelectors','Transitions'];
 export function decodeOperandReview(value,file,owner,scene){
   const entries=value?.entries;
   if(value?.schema_version!=='legaia.script-operand-review.v1'||value.owner_id!==owner||value.scene_id!==scene||value.source_import_sha256!==file.source_import_sha256||file.owner_id!==owner||file.scene_id!==scene||file.schema_version!=='legaia.script-operand-file.v1'||!/^[0-9a-f]{64}$/.test(value.review_key)||!Array.isArray(entries)||entries.length>256||new Set(entries.map(row=>row.component+'|'+row.operand_id)).size!==entries.length||value.change_count!==entries.filter(row=>row.changed===true).length)throw new Error('Operand review differs from file or active script');
@@ -34,7 +34,7 @@ export function mountScriptOperandFiles(host,{owner,scene,current,busy,setBusy,a
 
 export function appendOperandReview(host,report){
   const summary=document.createElement('p');summary.textContent=report.change_count+' changed entries · one Undo command';
-  const families={ScriptMovement:'Movement',ScriptFacing:'Facing',ScriptFlags:'Flag',ScriptWaits:'Wait',ScriptModelSelectors:'Model selector',Transitions:'Transition'};
+  const families={ScriptMovement:'Movement',ScriptFacing:'Facing',ScriptFlags:'Flag',ScriptWaits:'Wait',ScriptEffectColors:'Effect color',ScriptModelSelectors:'Model selector',Transitions:'Transition'};
   const fields={sector:'Facing sector',x:'X',z:'Z',move_id:'Move selector',bit:'Bit',duration_ticks:'Ticks',model_selector_signed:'Signed selector',entry_x_encoded:'Entry X byte',entry_z_encoded:'Entry Z byte',direction_encoded:'Direction byte'};
   const format=values=>values===null?'Inherit retail':Object.entries(values).map(([key,value])=>(fields[key]??key)+': '+value).join(' · ');
   const table=document.createElement('table');table.className='operand-review-table';const heading=document.createElement('tr');

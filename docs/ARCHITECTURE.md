@@ -6,6 +6,8 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+`effect_color_authoring.py` qualifies five-byte RGB/signed-intensity source windows over existing decoded instruction/owner evidence. `ScriptEffectColors` is project-local authored state, owned by the command service and shared script operand/reset registries. `effect_colors.merge_patch` independently checks native composition audits. Both MAN Build gates include this family, preventing a color-only scene from silently bypassing fixed operand serialization. `script-effect-colors.js` owns the typed forms; the main editor supplies selection, source context and command lifecycle.
+
 `audio-note-timeline.js` derives bounded encoded-note relationships from the already qualified sequence DTO. FIFO same-channel/key pairing is explicit display policy, not runtime voice identity. `audio-sequence.js` owns lazy timeline lifecycle, source withdrawal and source-row navigation. The timeline introduces no endpoint, command or authored state; its only server change is static module registration.
 
 `animation_glb_rig.py` qualifies an explicitly selected skin's joint manifest and inverse-bind accessor; the existing animation decoder samples rigid joint/ancestor channels without importing mesh skinning. Both SDK workflows normalize `external_skin_index` into source-bound Review identities and retained recipes. `animation-glb-rig.js` validates those bindings and Review evidence; shared mapping controls own skin selection and invalidation.

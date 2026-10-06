@@ -79,6 +79,16 @@ def _wait_authoring_report(project, identifier):
                 "limitations": ["Read-only inspection does not establish wait-write safety."]}
 
 
+def _effect_color_authoring_report(project, identifier):
+    """Unsupported authoring must not suppress the read-only script report."""
+    try:
+        return project.effect_color_options(identifier)
+    except (RetailImportError, ProjectError) as exc:
+        return {"supported": False, "reason": str(exc), "targets": [],
+                "unresolved_overrides": sorted(project.overrides.get(identifier, {}).get("ScriptEffectColors", {}).get("entries", {})),
+                "limitations": ["Read-only inspection does not establish effect-color-write safety."]}
+
+
 def _model_selector_authoring_report(project, identifier):
     """Unsupported authoring must not suppress the read-only script report."""
     try:
@@ -200,6 +210,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_candidate_inspection"] = bool(self.project.disc_path)
         state["capabilities"]["actor_dialogue_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_wait_authoring"] = bool(self.project.disc_path)
+        state["capabilities"]["actor_effect_color_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_movement_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_facing_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_model_selector_authoring"] = bool(self.project.disc_path)
@@ -381,6 +392,7 @@ class EditorServer(ThreadingHTTPServer):
             report['facing_authoring'] = _facing_authoring_report(project, entity_id)
             report["flag_authoring"] = _flag_authoring_report(project, entity_id)
             report["wait_authoring"] = _wait_authoring_report(project, entity_id)
+            report["effect_color_authoring"] = _effect_color_authoring_report(project, entity_id)
             report["model_selector_authoring"] = _model_selector_authoring_report(project, entity_id)
             try:
                 report["dialogue_authoring"] = project.dialogue_options(entity_id)
@@ -903,6 +915,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-paths.js": ("script-paths.js", "text/javascript"),
                  "/script-flow-overview.js": ("script-flow-overview.js", "text/javascript"),
                  "/script-operands.js": ("script-operands.js", "text/javascript"),
+                 "/script-effect-colors.js": ("script-effect-colors.js", "text/javascript"),
                  "/script-branches.js": ("script-branches.js", "text/javascript"),
                  "/worldmap-authoring.js": ("worldmap-authoring.js", "text/javascript"),
                  "/worldmap-geometry.js": ("worldmap-geometry.js", "text/javascript"),
@@ -1971,6 +1984,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     report['facing_authoring'] = _facing_authoring_report(self.server.project, body["entity_id"])
                     report["flag_authoring"] = _flag_authoring_report(self.server.project, body["entity_id"])
                     report["wait_authoring"] = _wait_authoring_report(self.server.project, body["entity_id"])
+                    report["effect_color_authoring"] = _effect_color_authoring_report(self.server.project, body["entity_id"])
                     report["model_selector_authoring"] = _model_selector_authoring_report(self.server.project, body["entity_id"])
                     self._json(200, report)
                     return
@@ -1986,6 +2000,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     report['facing_authoring'] = _facing_authoring_report(self.server.project, identifier)
                     report["flag_authoring"] = _flag_authoring_report(self.server.project, identifier)
                     report["wait_authoring"] = _wait_authoring_report(self.server.project, identifier)
+                    report["effect_color_authoring"] = _effect_color_authoring_report(self.server.project, identifier)
                     report["model_selector_authoring"] = _model_selector_authoring_report(self.server.project, identifier)
                     self._json(200, report)
                     return
@@ -3223,6 +3238,13 @@ class EditorHandler(BaseHTTPRequestHandler):
             if set(body) != allowed:
                 raise ProjectError("Wait commands accept only owner/target identities and supported operand values")
             required_strings[route] = ("entity_id", "wait_id")
+        if route == "/api/command" and body.get("type") in ("set_effect_color_target", "clear_effect_color_target"):
+            allowed = {"type", "entity_id", "effect_color_id"}
+            if body["type"] == "set_effect_color_target":
+                allowed.add("values")
+            if set(body) != allowed:
+                raise ProjectError("Effect color commands accept only owner/target identities and supported operand values")
+            required_strings[route] = ("entity_id", "effect_color_id")
         if route == "/api/command" and body.get("type") in ("set_model_selector_target", "clear_model_selector_target"):
             allowed = {"type", "entity_id", "model_selector_id"}
             if body["type"] == "set_model_selector_target":

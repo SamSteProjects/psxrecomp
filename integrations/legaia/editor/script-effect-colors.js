@@ -1,0 +1,18 @@
+// Authored fixed-width source operands, not an effect renderer or runtime write.
+export function renderEffectColorAuthoring({report,host,owner,current,busy,drafts,send,onDraftChange}){
+ const authoring=report?.effect_color_authoring;if(!authoring)return;
+ const el=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;},section=el('section');section.className='effectColor-authoring';section.append(el('h3','Script effect color operands'),el('p','Edit encoded RGB bytes (0–255) and signed intensity (-32768–32767). The selector, actor context and instruction layout stay fixed. Retail, authored and effective values remain separate; host rendering, color space and runtime effect are unverified.'));host.append(section);
+ if(authoring.reason)section.append(el('p',authoring.reason));
+ for(const id of authoring.unresolved_overrides??[]){const clear=el('button','Clear unresolved effect color '+id);clear.type='button';clear.onclick=()=>{if(current())send(id,'clear_effect_color_target');};section.append(clear);}
+ for(const target of authoring.targets??[]){
+  const form=el('form');form.className='effectColor-entry';form.dataset.effectColorId=target.semantic_id;const pc='0x'+target.pc.toString(16).toUpperCase().padStart(4,'0'),describe=value=>Object.entries(value).map(([k,v])=>k+'='+v).join(', ')||'none';
+  form.append(el('h4',target.mnemonic+' at '+pc),el('p',`Retail ${describe(target.values)} · Authored ${describe(target.authored_values)} · Effective ${describe(target.effective_values)}${target.target_context!==null?' · Encoded actor context '+target.target_context+'; runtime identity unresolved':''}`));
+  const inputs={};for(const key of ['red','green','blue','intensity']){const label=el('label',key==='intensity'?'Signed intensity':key[0].toUpperCase()+key.slice(1)+' byte'),input=el('input');input.type='number';input.required=true;input.step='1';input.min=key==='intensity'?'-32768':'0';input.max=key==='intensity'?'32767':'255';input.value=drafts.get(target.semantic_id)?.[key]??target.effective_values[key];input.setAttribute('aria-label',`Effect color ${key} at ${pc}`);label.append(input);form.append(label);inputs[key]=input;}
+  const apply=el('button','Apply effect color operands'),clear=el('button','Clear effect color override'),discard=el('button','Discard effect color draft');apply.type='submit';clear.type=discard.type='button';form.append(apply,clear,discard);
+  const values=()=>Object.fromEntries(Object.entries(inputs).map(([key,input])=>[key,Number(input.value)])),valid=()=>Object.values(inputs).every(input=>input.value!==''&&input.checkValidity()&&Number.isSafeInteger(Number(input.value)));
+  form.updateState=()=>{const editable=current();for(const input of Object.values(inputs))input.disabled=!editable;apply.disabled=!editable||!valid();clear.disabled=!editable||!Object.keys(target.authored_values).length;discard.disabled=busy();discard.hidden=!drafts.has(target.semantic_id);};
+  for(const input of Object.values(inputs))input.oninput=()=>{drafts.set(target.semantic_id,Object.fromEntries(Object.entries(inputs).map(([key,input])=>[key,input.value])));onDraftChange();};
+  form.onsubmit=event=>{event.preventDefault();if(!apply.disabled&&current()&&valid())send(target.semantic_id,'set_effect_color_target',values());};clear.onclick=()=>{if(current())send(target.semantic_id,'clear_effect_color_target');};discard.onclick=()=>{if(busy())return;drafts.delete(target.semantic_id);for(const [key,input] of Object.entries(inputs))input.value=target.effective_values[key];onDraftChange();};section.append(form);form.updateState();
+ }
+ return section;
+}

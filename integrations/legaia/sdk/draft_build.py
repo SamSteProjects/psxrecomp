@@ -192,12 +192,13 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     movements={}
     flags={}
     waits={}
+    effect_colors={}
     model_selectors={}
     facing={}
     branches={}
     for identifier,components in overrides.items():
         p2=isinstance(identifier,str) and re.fullmatch(re.escape(f'scene://{scene}/scripts/man-p2/')+r'[0-9]{4}',identifier) is not None
-        allowed={'Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','ScriptFacing','ScriptBranches'} if p2 else {'Transform','ActorAppearance','ActorAnimation','ActorAllocatedAnimation','Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','ScriptFacing','ScriptBranches','AnimationChannels'}
+        allowed={'Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptEffectColors','ScriptModelSelectors','ScriptFacing','ScriptBranches'} if p2 else {'Transform','ActorAppearance','ActorAnimation','ActorAllocatedAnimation','Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptEffectColors','ScriptModelSelectors','ScriptFacing','ScriptBranches','AnimationChannels'}
         if (identifier not in actors and not p2) or not isinstance(components,dict) or not components or set(components)-allowed:
             raise ProjectError('Draft serialization requires supported same-scene actor or script components; unsupported authored families cannot be omitted')
         record=int(identifier.rsplit('/',1)[1]) if p2 else actors[identifier]['source_record']['record_index']
@@ -223,6 +224,9 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         if 'ScriptFacing' in components:
             project._validate_facing(identifier,components['ScriptFacing'])
             facing.update(components['ScriptFacing']['entries'])
+        if 'ScriptEffectColors' in components:
+            project._validate_effect_colors(identifier,components['ScriptEffectColors'])
+            effect_colors.update(components['ScriptEffectColors']['entries'])
         if 'ScriptModelSelectors' in components:
             project._validate_model_selectors(identifier,components['ScriptModelSelectors'])
             model_selectors.update(components['ScriptModelSelectors']['entries'])
@@ -263,6 +267,8 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     movement_context=load_movement_authoring_context(project.disc_path,scene) if movements else None
     from importer.flag_authoring import load_flag_authoring_context
     flag_context=load_flag_authoring_context(project.disc_path,scene) if flags else None
+    from importer.effect_color_authoring import load_effect_color_authoring_context
+    effect_context=load_effect_color_authoring_context(project.disc_path,scene) if effect_colors else None
     from importer.wait_authoring import load_wait_authoring_context
     wait_context=load_wait_authoring_context(project.disc_path,scene) if waits else None
     from importer.model_selector_authoring import load_model_selector_authoring_context
@@ -333,6 +339,8 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
             flag_context.patch(flags,original=source)
         if wait_context:
             wait_context.patch(waits,original=source)
+        if effect_context:
+            effect_context.patch(effect_colors,original=source)
         if model_selector_context:
             model_selector_context.patch(model_selectors,original=source)
         if facing_context:
@@ -421,6 +429,9 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         wait_audit=[]
         if wait_context:
             candidate,wait_audit=wait_context.patch_appended(candidate,waits)
+        effect_color_audit=[]
+        if effect_context:
+            candidate,effect_color_audit=effect_context.patch_appended(candidate,effect_colors)
         model_selector_audit=[]
         if model_selector_context:
             candidate,model_selector_audit=model_selector_context.patch_appended(candidate,model_selectors)
@@ -476,7 +487,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         existing_actor_appearance_changes=appearance_audit,
         existing_actor_allocated_animation_changes=allocated_audit,
         existing_actor_dialogue_changes=dialogue_audit,
-        branch_changes=branch_audit, transition_changes=transition_audit, movement_changes=movement_audit, flag_changes=flag_audit, wait_changes=wait_audit, model_selector_changes=model_selector_audit, facing_changes=facing_audit,
+        branch_changes=branch_audit, transition_changes=transition_audit, movement_changes=movement_audit, flag_changes=flag_audit, wait_changes=wait_audit,effect_color_changes=effect_color_audit, model_selector_changes=model_selector_audit, facing_changes=facing_audit,
         final_man_sha256=sha256(candidate).hexdigest(),
         container=container_audit,gameplay_verified=False)
 

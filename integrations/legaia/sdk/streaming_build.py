@@ -29,6 +29,7 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
     movement_edits = {}
     flag_edits = {}
     wait_edits = {}
+    effect_color_edits = {}
     model_selector_edits = {}
     facing_edits = {}
     branch_edits = {}
@@ -43,7 +44,7 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
             map_components = components or None
             continue
         p2 = isinstance(identifier, str) and re.fullmatch(re.escape(scene_id) + r'/scripts/man-p2/[0-9]{4}', identifier) is not None
-        allowed = {'Dialogue', 'Transitions', 'ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptModelSelectors', 'ScriptFacing', 'ScriptBranches'} if p2 else {'Transform', 'ActorAppearance', 'ActorAnimation','ActorAllocatedAnimation', 'Dialogue', 'Transitions', 'ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptModelSelectors', 'ScriptFacing', 'ScriptBranches', 'AnimationChannels'}
+        allowed = {'Dialogue', 'Transitions', 'ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptEffectColors', 'ScriptModelSelectors', 'ScriptFacing', 'ScriptBranches'} if p2 else {'Transform', 'ActorAppearance', 'ActorAnimation','ActorAllocatedAnimation', 'Dialogue', 'Transitions', 'ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptEffectColors', 'ScriptModelSelectors', 'ScriptFacing', 'ScriptBranches', 'AnimationChannels'}
         if (identifier not in actors and not p2) or not isinstance(components, dict) or not components or set(components) - allowed:
             raise ProjectError('Streaming export requires supported same-scene actor or script components; unsupported authored families cannot be omitted')
         if 'AnimationChannels' in components:
@@ -84,6 +85,9 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
         if 'ScriptFacing' in components:
             project._validate_facing(identifier,components['ScriptFacing'])
             facing_edits.update(components['ScriptFacing']['entries'])
+        if 'ScriptEffectColors' in components:
+            project._validate_effect_colors(identifier,components['ScriptEffectColors'])
+            effect_color_edits.update(components['ScriptEffectColors']['entries'])
         if 'ScriptModelSelectors' in components:
             project._validate_model_selectors(identifier,components['ScriptModelSelectors'])
             model_selector_edits.update(components['ScriptModelSelectors']['entries'])
@@ -203,6 +207,12 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
             context = load_wait_authoring_context(project.disc_path,scene)
             context.patch(wait_edits,original=carrier.payload)
             candidate,wait_changes=context.patch_appended(candidate,wait_edits)
+        effect_color_changes = []
+        if effect_color_edits:
+            from importer.effect_color_authoring import load_effect_color_authoring_context
+            context = load_effect_color_authoring_context(project.disc_path,scene)
+            context.patch(effect_color_edits,original=carrier.payload)
+            candidate,effect_color_changes=context.patch_appended(candidate,effect_color_edits)
         model_selector_changes = []
         if model_selector_edits:
             from importer.model_selector_authoring import load_model_selector_authoring_context
@@ -257,7 +267,7 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
         source_disc_sha256=disc_hash, source_prot_sha256=sha256(prot).hexdigest(),
         authored_state_key=key, imported_document_sha256=digest(document),
         floor_height_changes=floor_height_changes, existing_actor_placement_changes=placements, existing_actor_dialogue_changes=dialogue_changes, map_changes=map_audit,
-        model_changes=model_audit, texture_changes=texture_audit, animation_changes=animation_audit, branch_changes=branch_changes, transition_changes=transition_changes, movement_changes=movement_changes, flag_changes=flag_changes, wait_changes=wait_changes, model_selector_changes=model_selector_changes, facing_changes=facing_changes, existing_actor_appearance_changes=appearance_changes,
+        model_changes=model_audit, texture_changes=texture_audit, animation_changes=animation_audit, branch_changes=branch_changes, transition_changes=transition_changes, movement_changes=movement_changes, flag_changes=flag_changes, wait_changes=wait_changes, effect_color_changes=effect_color_changes, model_selector_changes=model_selector_changes, facing_changes=facing_changes, existing_actor_appearance_changes=appearance_changes,
         actor_changes=actor_audit, actor_pool_evidence=pool_evidence, man_padding_bytes=padding,
         existing_actor_allocated_animation_changes=allocated_changes,npc_dialogue_changes=npc_dialogue_audit,npc_appearance_changes=npc_appearance_audit,npc_wait_changes=npc_wait_audit,npc_movement_changes=npc_movement_audit,npc_facing_changes=npc_facing_audit,npc_flags_changes=npc_flags_audit,npc_branches_changes=npc_branches_audit,npc_model_selectors_changes=npc_model_selectors_audit,
         final_man_sha256=sha256(candidate).hexdigest(), gameplay_verified=False,

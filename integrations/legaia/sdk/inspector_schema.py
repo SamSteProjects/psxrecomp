@@ -80,6 +80,7 @@ def inspector_schema():
         ('ScriptMovement', 'Authored script movement', 'Inspect movement instructions', 'Encoded X/Z and move-selector overrides do not establish executed paths, height or movement behavior.'),
         ('ScriptFlags', 'Authored script flag operands', 'Inspect flag instructions', 'Encoded flag operands do not establish live variable values, story meaning or executed paths.'),
         ('ScriptWaits', 'Authored script waits', 'Inspect wait instructions', 'Encoded wait operands do not establish runtime cadence or wall-clock durations.'),
+        ('ScriptEffectColors', 'Authored effect colors', 'Inspect color instructions', 'Encoded color/intensity operands do not establish host rendering or visual color space.'),
         ('ScriptModelSelectors', 'Authored script model selectors', 'Inspect model-selector instructions', 'Encoded model selectors do not establish runtime rebinding, animation compatibility or executed paths.'),
     ):
         schema['components'][identifier] = {

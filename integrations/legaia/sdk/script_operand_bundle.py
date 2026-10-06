@@ -5,7 +5,7 @@ from .project import ProjectError,digest
 from .script_operand_files import SCHEMA as FILE_SCHEMA,KINDS,parse_json,parse as parse_file,review as review_file
 
 SCHEMA='legaia.script-operand-bundle.v1'
-CONTEXTS={'ScriptBranches':'_branch_context','ScriptMovement':'_movement_context','ScriptFacing':'_facing_context','ScriptFlags':'_flag_context','ScriptWaits':'_wait_context','ScriptModelSelectors':'_model_selector_context','Transitions':'_transition_context'}
+CONTEXTS={'ScriptBranches':'_branch_context','ScriptMovement':'_movement_context','ScriptFacing':'_facing_context','ScriptFlags':'_flag_context','ScriptWaits':'_wait_context','ScriptEffectColors':'_effect_color_context','ScriptModelSelectors':'_model_selector_context','Transitions':'_transition_context'}
 
 def owner_file(value,row):
     return dict(schema_version=FILE_SCHEMA,scene_id=value['scene_id'],source_import_sha256=value['source_import_sha256'],owner_id=row['owner_id'],components=row['components'])

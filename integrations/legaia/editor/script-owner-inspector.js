@@ -2,7 +2,7 @@ import {renderComponentProperties,renderComponentDetails,renderComponentActions,
 import {focusScriptInspectorFamily} from './script-inspector-navigation.js';
 import {openScriptComponentReset} from './script-component-reset.js';
 
-const families=['Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','ScriptFacing','ScriptBranches'];
+const families=['Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptEffectColors','ScriptModelSelectors','ScriptFacing','ScriptBranches'];
 export function scriptOwnerComponents(record,sceneId){
   if(record?.kind!=='script'||typeof record.id!=='string'||!/^scene:\/\/[A-Za-z0-9_-]{1,128}\/scripts\/man-p2\/[0-9]{4}$/.test(record.id)||record.scene_id!==sceneId||!record.id.startsWith(sceneId+'/scripts/man-p2/'))throw new Error('Choose a source script owner in the active scene');
   const components={};

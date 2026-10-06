@@ -11,6 +11,7 @@ KINDS={
     'ScriptFacing':('set_facing_target','facing_id'),
     'ScriptFlags':('set_flag_bit','flag_id'),
     'ScriptWaits':('set_wait_target','wait_id'),
+    'ScriptEffectColors':('set_effect_color_target','effect_color_id'),
     'ScriptModelSelectors':('set_model_selector_target','model_selector_id'),
     'Transitions':('set_transition_entry','transition_id'),
 }
