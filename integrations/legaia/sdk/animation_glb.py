@@ -106,7 +106,7 @@ def _axes(value: dict | None) -> dict:
     return result
 
 
-def _prepare(project, entity_id: str, content: bytes, binding: dict) -> tuple[dict, dict, dict]:
+def _prepare(project, entity_id: str, content: bytes, binding: dict, *, animation_index=None) -> tuple[dict, dict, dict]:
     from importer.animation import decode_animation_record
     from importer.animation_glb import import_animation_glb
     if not isinstance(binding, dict) or binding.get('schema_version') not in (
@@ -119,7 +119,7 @@ def _prepare(project, entity_id: str, content: bytes, binding: dict) -> tuple[di
     if digest(normalized_binding) != digest(snapshot['binding']):
         raise ProjectError('Animation export binding differs from the current source or ownership; export again')
     binding = snapshot['binding']
-    candidate, analysis = import_animation_glb(snapshot['effective'], content, fps=binding['clip_fps'])
+    candidate, analysis = import_animation_glb(snapshot['effective'], content, fps=binding['clip_fps'], animation_index=animation_index)
     retail = decode_animation_record(snapshot['retail'])
     channel_owner = snapshot['channel_owner']
     before = _axes(snapshot['owners'].get(channel_owner))
@@ -175,12 +175,12 @@ def _prepare(project, entity_id: str, content: bytes, binding: dict) -> tuple[di
     return snapshot, command, report
 
 
-def preview_import(project, entity_id: str, content: bytes, binding: dict) -> dict:
-    return _prepare(project, entity_id, content, binding)[2]
+def preview_import(project, entity_id: str, content: bytes, binding: dict, *, animation_index=None) -> dict:
+    return _prepare(project, entity_id, content, binding, animation_index=animation_index)[2]
 
 
-def pose_import(project, entity_id: str, content: bytes, binding: dict) -> tuple[dict, dict]:
-    snapshot, _, report = _prepare(project, entity_id, content, binding)
+def pose_import(project, entity_id: str, content: bytes, binding: dict, *, animation_index=None) -> tuple[dict, dict]:
+    snapshot, _, report = _prepare(project, entity_id, content, binding, animation_index=animation_index)
     animation = snapshot['catalog'].authored_bank_preview(
         snapshot['actor'], snapshot['asset'], snapshot['proposed_owners'])
     animation['entity_id'] = entity_id
@@ -190,8 +190,8 @@ def pose_import(project, entity_id: str, content: bytes, binding: dict) -> tuple
     return animation, deepcopy(snapshot['asset'])
 
 
-def apply_import(project, entity_id: str, content: bytes, binding: dict, review_key: str) -> dict:
-    _, command, report = _prepare(project, entity_id, content, binding)
+def apply_import(project, entity_id: str, content: bytes, binding: dict, review_key: str, *, animation_index=None) -> dict:
+    _, command, report = _prepare(project, entity_id, content, binding, animation_index=animation_index)
     if review_key != report['review_key']:
         raise ProjectError('GLB or project changed after review; review the animation again')
     if not report['changed_axes']:

@@ -903,6 +903,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/texture-usage.js": ("texture-usage.js", "text/javascript"),
                  "/runtime-review.js": ("runtime-review.js", "text/javascript"),
                  "/animation-glb.js": ("animation-glb.js", "text/javascript"),
+                 "/animation-glb-clips.js": ("animation-glb-clips.js", "text/javascript"),
                  "/actor-animation-glb-target.js": ("actor-animation-glb-target.js", "text/javascript"),
                  "/animation-allocation.js": ("animation-allocation.js", "text/javascript"),
                  "/animation-record-library.js": ("animation-record-library.js", "text/javascript"),
@@ -2296,10 +2297,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                                          glb_base64=base64.b64encode(payload).decode('ascii')))
                     return
                 if route in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import'):
+                    selection={'animation_index':body['animation_index']} if 'animation_index' in body else {}
                     expected = {'entity_id', 'glb_base64', 'binding'}
                     if route == '/api/animation-glb-import':
                         expected.add('review_key')
-                    if (set(body) != expected or not isinstance(body['entity_id'], str) or
+                    if (set(body)-set(selection) != expected or not isinstance(body['entity_id'], str) or
                             not isinstance(body['binding'], dict) or
                             len(json.dumps(body['binding'], allow_nan=False).encode('utf-8')) > 128 * 1024):
                         raise ProjectError('Animation GLB import requires an actor, bounded binding sidecar and GLB bytes')
@@ -2314,9 +2316,9 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Animation GLB must contain at most 32 MiB')
                     from .animation_glb import apply_import, pose_import, preview_import
                     if route == '/api/animation-glb-preview':
-                        self._json(200, preview_import(self.server.project, body['entity_id'], payload, body['binding']))
+                        self._json(200, preview_import(self.server.project, body['entity_id'], payload, body['binding'], **selection))
                     elif route == '/api/animation-glb-pose-preview':
-                        animation, asset = pose_import(self.server.project, body['entity_id'], payload, body['binding'])
+                        animation, asset = pose_import(self.server.project, body['entity_id'], payload, body['binding'], **selection)
                         preview = self.server.model_preview(asset, prepared=animation.pop('geometry'))
                         preview['frames'] = animation.pop('frames')
                         animation.update(source_clip_id=body['binding']['animation_id'], clip_id='file-preview', entity_id=body['entity_id'])
@@ -2325,7 +2327,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                         preview['animation_support'] = {'supported': True, 'clips': [{'id': 'file-preview', 'label': 'Proposed GLB animation'}], 'evidence': 'reviewed_glb_not_applied_or_runtime_verified'}
                         self._json(200, preview)
                     else:
-                        apply_import(self.server.project, body['entity_id'], payload, body['binding'], body['review_key'])
+                        apply_import(self.server.project, body['entity_id'], payload, body['binding'], body['review_key'], **selection)
                         self._json(200, self.server.state())
                     return
                 if route == '/api/animation-record-allocation-options':
@@ -2383,7 +2385,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route in ('/api/animation-record-glb-review','/api/animation-record-glb-pose','/api/animation-record-glb-import'):
                     expected={'scene_id','record_id','source_frame_indices','expected_source_key','glb_base64','binding'}
                     if route!='/api/animation-record-glb-review':expected.add('review_key')
-                    if set(body)!=expected or not isinstance(body['binding'],dict) or len(json.dumps(body['binding'],allow_nan=False).encode('utf-8'))>128*1024:
+                    if set(body)-{'animation_index'}!=expected or not isinstance(body['binding'],dict) or len(json.dumps(body['binding'],allow_nan=False).encode('utf-8'))>128*1024:
                         raise ProjectError('Retained GLB requires exact scene, clip, output mapping, source, bounded sidecar and bytes')
                     encoded=body['glb_base64']
                     if not isinstance(encoded,str) or len(encoded)>44739244:raise ProjectError('Retained GLB exceeds 32 MiB')

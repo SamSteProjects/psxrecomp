@@ -47,7 +47,7 @@ def export_binding(project,scene_id,record_id,expected_source_key,fps):
     return _snapshot(project,scene_id,record_id,expected_source_key,fps)[2]
 
 
-def prepare_import(project,scene_id,record_id,source_frame_indices,expected_source_key,content,binding):
+def prepare_import(project,scene_id,record_id,source_frame_indices,expected_source_key,content,binding,*,animation_index=None):
     if not isinstance(binding,dict):raise ProjectError('Choose the retained clip export binding JSON sidecar')
     entry,captured,current=_snapshot(project,scene_id,record_id,expected_source_key,binding.get('clip_fps'))
     normalized=dict(binding,clip_fps=float(binding['clip_fps']))
@@ -57,7 +57,7 @@ def prepare_import(project,scene_id,record_id,source_frame_indices,expected_sour
     # A changed mapping inherits captured frames, never guesses new opaque data.
     baseline_edits=entry['edits'] if source_frame_indices==entry['source_frame_indices'] else []
     baseline,_=allocate_animation_record(captured,entry['effective_donor_record_sha256'],source_frame_indices,baseline_edits)
-    candidate,analysis=import_animation_glb(baseline,content,fps=current['clip_fps'])
+    candidate,analysis=import_animation_glb(baseline,content,fps=current['clip_fps'],animation_index=animation_index)
     inherited,_=allocate_animation_record(captured,entry['effective_donor_record_sha256'],source_frame_indices,[])
     desired=decode_animation_record(candidate);original=decode_animation_record(inherited);edits=[]
     for frame in desired['frames']:
@@ -87,8 +87,8 @@ def prepare_import(project,scene_id,record_id,source_frame_indices,expected_sour
     return view,report
 
 
-def pose_import(project,scene_id,record_id,source_frame_indices,expected_source_key,content,binding,review_key):
-    view,report=prepare_import(project,scene_id,record_id,source_frame_indices,expected_source_key,content,binding)
+def pose_import(project,scene_id,record_id,source_frame_indices,expected_source_key,content,binding,review_key,*,animation_index=None):
+    view,report=prepare_import(project,scene_id,record_id,source_frame_indices,expected_source_key,content,binding,animation_index=animation_index)
     if review_key!=report['review_key']:raise ProjectError('Retained GLB or mapping changed after Review')
     animation,asset=pose_saved_record(view,scene_id,record_id,source_key(view))
     animation.update(representation='allocated_record_edit_preview',clip_id='allocated-record-edit-preview',
@@ -97,8 +97,8 @@ def pose_import(project,scene_id,record_id,source_frame_indices,expected_source_
     return animation,asset,report
 
 
-def apply_import(project,scene_id,record_id,source_frame_indices,expected_source_key,content,binding,review_key):
-    _,report=prepare_import(project,scene_id,record_id,source_frame_indices,expected_source_key,content,binding)
+def apply_import(project,scene_id,record_id,source_frame_indices,expected_source_key,content,binding,review_key,*,animation_index=None):
+    _,report=prepare_import(project,scene_id,record_id,source_frame_indices,expected_source_key,content,binding,animation_index=animation_index)
     if review_key!=report['review_key']:raise ProjectError('Retained GLB, binding or mapping changed after Review')
     project.command(dict(type='edit_animation_record',**report['content_request'],review_key=report['content_review']['review_key']))
     return report

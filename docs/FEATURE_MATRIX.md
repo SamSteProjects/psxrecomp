@@ -1,5 +1,32 @@
 # Legaia SDK feature matrix
 
+## Named GLB animation selection - 2026-10-06
+
+Both imported-actor and retained UUID GLB editors now list the uploaded file's
+clip indices and names. Multi-clip files require explicit selection; only that
+clip is sampled. The bounded catalog permits up to 64 clips within the existing
+32 MiB GLB budget. Single-clip and static-transform inputs preserve the legacy
+request and report behavior. Review binds the selected index into its digest;
+changing the dropdown invalidates Review, and mismatched Apply rejects. Native
+records, contribution ownership and retained-recipe serialization are unchanged.
+
+**Checks:** 29 focused Python cases and four Node editor checks passed. Private
+retail browser workflows exercised named second-clip Review, Pose/Return, choice
+change invalidation and explicit Apply for both editors. Both HTTP workflows
+rejected ambiguous selection and mismatched Apply without mutation; the first
+clip remained a no-op. Undo/Redo and Save/Open and package readback are recorded
+in `local-output/sdk-20260909/animation-glb-clip-selection-20261006/proof.json`.
+No game launch or installation; retail animation playback remains deferred.
+General skinned retargeting and the full SDK goal remain incomplete.
+
+**Build:** `c4544dc8c892acc0`; package SHA-256
+`baa026a800d1b5fedfcf55023292f056463b3fb675c93c95aef07e10e3b18ef8`.
+Independent relocated-carrier decompression exactly reproduced the authored
+animation bank SHA-256
+`81b02af2d194c1e81e8cd07293bf585ed6426ff8337266bbf13682c77123d9cc`.
+The private reference project remained byte-for-byte unchanged.
+
+
 ## Animation GLB numeric overflow rejection - 2026-10-06
 
 **Stability fix:** huge JSON integers in node vectors, integer quaternion

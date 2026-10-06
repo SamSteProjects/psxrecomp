@@ -275,11 +275,17 @@ def _nodes(doc, object_count):
     return mapping, transforms
 
 
-def _tracks(doc, accessors, mapping, duration):
-    animations = _array(doc.get("animations", []), "animations", 1)
-    if not animations:
-        return {}
-    animation = _object(animations[0], "animation")
+def _tracks(doc, accessors, mapping, duration, animation_index=None):
+    animations = _array(doc.get("animations", []), "animations", 64)
+    if animation_index is None:
+        if len(animations) > 1:
+            raise ImportError("Choose an explicit GLB animation index for a multi-clip file")
+        if not animations:
+            return {}
+        selected = 0
+    else:
+        selected = _integer(animation_index, 0, len(animations)-1, "selected animation index")
+    animation = _object(animations[selected], "animation")
     samplers = _array(animation.get("samplers"), "animation samplers", MAX_ANIMATION_TRACKS)
     channels = _array(animation.get("channels"), "animation channels", MAX_ANIMATION_TRACKS)
     tracks, allowed, time_cache = {}, set(mapping.values()), {}
@@ -452,7 +458,7 @@ def _quantize_rotation(glb_q, baseline_angles):
     return [v * 16 for v in ticks], degrees
 
 
-def import_animation_glb(baseline: bytes, content: bytes, *, fps: float) -> tuple[bytes, dict]:
+def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animation_index: int | None = None) -> tuple[bytes, dict]:
     """Sample an existing clip at explicit 1..120 fps without retiming/count growth.
 
     At i/fps, the float32 representation matches glTF key storage and the SDK
@@ -472,7 +478,7 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float) -> tupl
         raise ImportError("Animation GLB source exceeds the 4096-channel bound")
     doc, payload = _read_glb(content)
     mapping, static = _nodes(doc, source["bone_count"])
-    tracks = _tracks(doc, _Accessors(doc, payload), mapping, source["frame_count"] / fps)
+    tracks = _tracks(doc, _Accessors(doc, payload), mapping, source["frame_count"] / fps, animation_index)
     edits, maximum_translation, maximum_angle, preserved = [], 0.0, 0.0, 0
     for frame in source["frames"]:
         time = struct.unpack("<f", struct.pack("<f", frame["frame_index"] / fps))[0]
@@ -501,7 +507,7 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float) -> tupl
             if len(edit) > 2:
                 edits.append(edit)
     candidate, audit = patch_animation_channels(baseline, _hash(baseline), edits)
-    return candidate, {
+    report = {
         "schema_version": "legaia.animation-glb-import.v1",
         "source_record_sha256": _hash(baseline), "candidate_sha256": _hash(candidate),
         "glb_sha256": _hash(content), "frame_count": source["frame_count"],
@@ -519,3 +525,6 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float) -> tupl
                          "coordinate_conversion": "translation [x,-y,z]; quaternion [-x,y,-z,w]"},
         "scope": "existing-rigid-animation-channels-only", "gameplay_verified": False,
     }
+    if animation_index is not None:
+        report['file_animation_index'] = animation_index
+    return candidate, report

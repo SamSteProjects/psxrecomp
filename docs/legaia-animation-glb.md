@@ -146,3 +146,19 @@ The pinned previous importer reproduced three uncontrolled overflow paths;
 `local-output/sdk-20260909/animation-glb-numeric-bounds-20261006/` contains the
 comparison and live HTTP evidence. A new native Build was not needed for this
 validation-only fix. Gameplay timing/retargeting acceptance remains open.
+
+## Selecting a clip in a multi-animation GLB
+
+Both the imported actor and retained UUID GLB editors list the uploaded file's
+animation indices and names. Files with two or more clips require an explicit
+selection before Review; the SDK samples only that clip, never a merged set of
+channels. Up to 64 clips are accepted within the existing 32 MiB file budget.
+Single-clip and static-transform files retain their previous behavior.
+
+The optional HTTP `animation_index` must be an integer in the uploaded file's
+range. Review includes `file_animation_index` (inside `analysis` for retained
+clips), binding that selection into the review key. Pose and Apply use the same
+selection. Changing the dropdown clears Review, even when switching back.
+Native records and saved contribution/retained-recipe schemas are unchanged.
+This extends existing rigid-object authoring; it does not introduce general
+skinned retargeting or establish retail playback acceptance.
