@@ -6,6 +6,8 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+`importer/audio_waveform.py` owns bounded zero-history SPU-ADPCM prefix decoding and envelope/flag evidence. `/api/audio-waveform` binds scene, entry, bank and sample identities through the SDK resource service. `editor/audio-waveform.js` validates source/prefix/envelope/marker contracts, renders frame coordinates and owns stale/close withdrawal. No sample rate, playback or authored bank serialization is introduced.
+
 `importer/audio_bank.py` independently qualifies bounded contiguous/split VAB carriers and program, packed tone and sample-size tables. `sdk/resources.py` and `/api/audio-bank` enforce current scene and physical entry identities; `editor/audio-bank.js` verifies the DTO, owns the read-only filtered table view and withdraws stale sources. Metadata does not establish PCM, playback, instrument mapping or native authoring.
 
 `importer/actor_runtime_capacity.py` qualifies the complete source SCUS/load image and retail function hashes before deriving the static actor-pool bound. `sdk/npc_build.py` assesses appended MAN counts before encoding and includes source evidence in normal package audits. The lower bound rejects guaranteed overflow; it does not resolve scenery/script demand or enable native gameplay acceptance.

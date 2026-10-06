@@ -32,3 +32,11 @@ Choose **Inspect bank tables** on a qualified audio card. Switch among **Program
 Bank coverage is independent of sequence coverage: 202 of the 218 recognized retail entries have complete qualified banks, including entries without an inspectable sequence; the other 16 expose an unavailable reason. Fixed-section and sample extents must fit declared bank bytes, and split header/sample chunks must complete that exact extent. The current project scene source key and freshly checked physical entry SHA-256 bind every read. No bank payload is returned to the browser.
 
 Program slots and packed tone pages remain separate source structures. Unused-slot aliases, note selection and runtime instrument assignment are not resolved. Sample size-table entry zero is a retained source spacer; subsequent entries describe sample byte lengths in eight-byte units. Span/alignment/hash evidence does not establish valid ADPCM, sample rate, pitch, duration or waveform playback. These are read-only source inspection tools; replacement and synthesis remain incomplete.
+
+## Inspect a source sample waveform
+
+In **Source sample spans**, click **Inspect waveform N**. The view shows a decoded amplitude envelope; hover over it for the minimum/maximum amplitudes in that frame range. The horizontal axis is decoded frames, not seconds. Encoded loop-start, repeat and end flags are shown separately. **Save waveform evidence…** downloads the full source-bound report and envelope.
+
+Decoding starts with zero predictor history, consumes at most 4,096 16-byte blocks and stops after the first encoded end. Unknown predictor/flag bytes, incomplete blocks and the preview budget produce explicit termination reasons; no missing frames or termination bytes are invented. Trailing source bytes remain reported. Loops are not replayed and markers do not establish a runtime loop. The sample rate and pitch remain unknown; waveform inspection does not provide playback or replacement.
+
+The source scene, physical entry, complete bank and size-table sample span are requalified before decoding. Changes withdraw the view; closing it rejects pending replies. The existing bank tables remain evidence for structure; this separate decoder adds waveform-prefix evidence without changing authored project data or Build output.

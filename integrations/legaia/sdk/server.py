@@ -808,6 +808,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/asset-references.js": ("asset-references.js", "text/javascript"),
                  "/audio-sequence.js": ("audio-sequence.js", "text/javascript"),
                  "/audio-bank.js": ("audio-bank.js", "text/javascript"),
+                 "/audio-waveform.js": ("audio-waveform.js", "text/javascript"),
                  '/actor-animation.js': ('actor-animation.js', 'text/javascript'),
                  "/build-review.js": ("build-review.js", "text/javascript"),
                  "/build-history.js": ("build-history.js", "text/javascript"),
@@ -1924,6 +1925,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Transition discovery uses the active scene; no client source bindings are accepted")
                     from .resources import scene_transition_graph
                     self._json(200, scene_transition_graph(self.server.project))
+                    return
+                if route == '/api/audio-waveform':
+                    if set(body) != {'asset_id','expected_source_key','expected_entry_sha256','expected_bank_sha256','sample_index','expected_sample_sha256'}:
+                        raise ProjectError('Waveform inspection requires exact source, bank and sample identities')
+                    from .resources import audio_waveform_preview
+                    self._json(200, audio_waveform_preview(self.server.project, **body))
                     return
                 if route == '/api/audio-bank':
                     if set(body) != {'asset_id','expected_source_key','expected_entry_sha256'}:
