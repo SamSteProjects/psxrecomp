@@ -103,5 +103,7 @@ def apply(project,*args,review_key,material_colors=False,scene_index=None,uv_set
     candidate,binding,report=prepare(project,*args,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,replace_objects=replace_objects,source_offset=source_offset,source_rotation=source_rotation)
     if report['review_key']!=review_key:raise ProjectError('GLB donor mappings changed after Review')
     asset_id,_,_,_,expected_key=args
+    from .model_mesh_sources import attach
+    binding=attach(project,asset_id,binding,args[1],dict(kind='batch',mappings=deepcopy(args[2]),replace_objects=replace_objects,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,source_offset=list(source_offset),source_rotation=list(source_rotation)),expected_key)
     project._publish_model_ledger(asset_id,candidate,binding,expected_key,'Mesh donor mapping')
     return report

@@ -1371,6 +1371,7 @@ class ProjectService:
         removal = isinstance(binding, dict) and binding.get('format') == 'tmd-face-removal-v1'
         addition = isinstance(binding, dict) and binding.get('format') == 'tmd-face-addition-v1'
         extra = {'base_binding', 'ledger'} if addition else {'removed_faces'} if removal else set()
+        if addition and 'mesh_imports' in binding: extra.add('mesh_imports')
         if (not isinstance(binding, dict) or set(binding) != {'asset_sha256','source_sha256','byte_length','source_scene_id','format'} | extra
                 or binding['format'] not in ('tmd-shape', 'tmd-content-v1', 'tmd-content-v2', 'tmd-content-v3', 'tmd-face-removal-v1', 'tmd-face-addition-v1') or type(binding['byte_length']) is not int
                 or not 1 <= binding['byte_length'] <= 4*1024*1024
@@ -1391,6 +1392,9 @@ class ProjectService:
                 raise ProjectError('Face addition Retail source hash changed')
             base = base_content(self, asset_id, original, binding)
             qualify_face_ledger(base, binding['ledger'], content)
+            if 'mesh_imports' in binding:
+                from .model_mesh_sources import validate
+                validate(self, asset_id, binding, base)
         elif removal:
             from importer.model_face_removal import qualify_face_removal
             qualify_face_removal(original, binding['source_sha256'], content, binding['removed_faces'])
@@ -1435,10 +1439,14 @@ class ProjectService:
         candidate,binding,report=prepare(self,asset_id,content,donor_face_id,expected_sha256,expected_key,new_group=new_group,replace_group=replace_group,replace_object=replace_object,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,source_offset=source_offset,source_rotation=source_rotation)
         if review_key!=report['review_key']:
             raise ProjectError('Mesh import differs from the reviewed geometry or donor')
+        from .model_mesh_sources import attach
+        binding=attach(self,asset_id,binding,content,dict(kind='single',donor_face_id=donor_face_id,new_group=new_group,replace_group=replace_group,replace_object=replace_object,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,source_offset=list(source_offset),source_rotation=list(source_rotation)),expected_key)
         self._publish_model_ledger(asset_id,candidate,binding,expected_key,'Mesh replacement' if replace_group or replace_object else 'Mesh append')
 
     def _publish_model_ledger(self,asset_id,content,binding,expected_key,operation):
         from .scene_preview import source_key
+        from .model_mesh_sources import carry
+        binding=carry(self,asset_id,binding)
         if asset_id not in self.model_overrides and len(self.model_overrides) >= 128:
             raise ProjectError('Project supports at most 128 model replacements')
         path = self.root / 'Authored' / 'Models' / (binding['asset_sha256'] + '.tmd')
@@ -1450,6 +1458,7 @@ class ProjectService:
             self.read_model_replacement(asset_id, binding)
         else:
             atomic_write(path, content)
+            self.read_model_replacement(asset_id, binding)
         if source_key(self)!=expected_key:
             raise ProjectError('Project changed before publishing '+operation.lower())
         before = deepcopy(self.model_overrides.get(asset_id))
@@ -1487,10 +1496,13 @@ class ProjectService:
         if source_key(self) != expected_key:
             raise ProjectError('Project changed while preparing face removal')
         if binding is not None:
+            from .model_mesh_sources import carry
+            binding=carry(self,asset_id,binding)
             if path.exists():
                 self.read_model_replacement(asset_id, binding)
             else:
                 atomic_write(path, content)
+                self.read_model_replacement(asset_id, binding)
         before = deepcopy(self.model_overrides.get(asset_id))
         if binding is None:
             self.model_overrides.pop(asset_id, None)

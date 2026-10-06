@@ -105,3 +105,19 @@ bound through inventory, Review, scene Review and Apply. A full turn still needs
 its own Review key, even if bytes match zero rotation. Zero preserves earlier
 behavior. Rotation changes shared static model geometry, not actor facing,
 animation channels or retail node provenance.
+
+## Recovering original mesh inputs
+
+After a reviewed single or mapped import, reopen **Import GLB mesh** and choose
+**Retained mesh sources**. Each Current receipt offers its original GLB and an
+import-settings JSON download. The settings include scale, native XYZ rotation
+and origin, source scene/section/UV choices and donor/replacement options.
+Historical donor IDs are evidence of that import, not automatically reusable
+Current donors. Reimport requires choosing valid Current donors and Review.
+
+The project retains hash-named originals in `Authored/Models/Sources` and binds
+receipts to native ledger spans. Save/Open and later native edits preserve the
+inputs. Undo removes the Current receipt; Redo restores it using retained bytes.
+Missing/changed GLBs or recipes fail qualification and Build. Retained originals
+are project sources, not runtime package assets. Older imports have no retained
+original unless they were applied again through this workflow.

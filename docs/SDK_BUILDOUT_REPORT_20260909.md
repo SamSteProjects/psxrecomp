@@ -1,5 +1,41 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Retained GLB mesh sources and import receipts - 2026-10-06
+
+Reviewed single and mapped mesh Apply now retain original GLB bytes under
+`Authored/Models/Sources/<sha256>.glb`, plus exact import settings in the native
+model binding. Each receipt identifies its append-only native ledger span,
+input/result hashes and GLB hash. Reading a saved model checks the source bytes
+and reconstructs the original import against the preceding ledger prefix;
+missing or changed sources and inconsistent recipes reject. Legacy bindings
+without receipts remain supported; their original files cannot be recovered.
+
+**Import GLB mesh > Retained mesh sources** lists Current imports, shows settings,
+and downloads original GLBs or JSON receipts. Recovery is read-only and guarded
+by Current model context. Settings describe historical donors; a new import
+still requires fresh donor selection and Review. Native vector/content edits
+and face removal preserve receipts. Undo/Redo follows the binding in the same
+single command; retained files remain available for Redo. No implicit cleanup.
+
+Limits: 32 receipts per model, 32 MiB per original GLB, 64 MiB of distinct source
+bytes per model, alongside the existing stricter native operation/geometry
+budgets. Source GLBs stay in the project and are not distributed in Build.
+
+Validation: **26 focused regression cases** across source retention, rotation,
+single/mapped imports, scene node ownership and object/group replacement. The
+private retail Town01 model 0036 proof retained two imports, checked original
+GLB/receipt downloads in the actual editor at wide/narrow widths, held all
+project files/history during recovery, and passed Undo/Redo and Save/Open.
+Normal Build **39fb8fd720902191**, package SHA-256
+`4f94303104d773eb22fe26e8843de0932b7fe2b67703b2c57321ca44a8189b96`,
+has verified Current inputs and native package readback. Evidence:
+`local-output/sdk-20260909/model-mesh-sources-20261006/proof.json`.
+
+No game launch, installation or full-disc export. Gameplay acceptance remains
+queued; this source recovery feature needs no immediate gameplay verification.
+The full SDK goal remains incomplete.
+
+
 ## Native import orientation in GLB authoring - 2026-10-06
 
 The GLB importer now exposes **Native import rotation (degrees)** for X/Y/Z.

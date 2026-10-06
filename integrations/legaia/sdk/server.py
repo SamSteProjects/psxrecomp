@@ -837,6 +837,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-mesh-append.js": ("model-mesh-append.js", "text/javascript"),
                  "/model-mesh-batch.js": ("model-mesh-batch.js", "text/javascript"),
                  "/model-preview-frame.js": ("model-preview-frame.js", "text/javascript"),
+                 "/model-mesh-sources.js": ("model-mesh-sources.js", "text/javascript"),
                  "/model-mesh-origin.js": ("model-mesh-origin.js", "text/javascript"),
                  "/model-mesh-rotation.js": ("model-mesh-rotation.js", "text/javascript"),
                  "/model-allocation.js": ("model-allocation.js", "text/javascript"),
@@ -1957,6 +1958,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Texture preview requires a resource identity and nonnegative palette index only")
                     from .resources import texture_preview
                     self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
+                    return
+                if route in ('/api/model-mesh-sources','/api/model-mesh-source-download'):
+                    fields={'asset_id','source_key'}
+                    if route.endswith('-download'):fields.add('receipt_key')
+                    if set(body)!=fields:raise ProjectError('Mesh source recovery requires exact Current model identity and context')
+                    from .model_mesh_sources import catalog,download
+                    result=download(self.server.project,body['asset_id'],body['source_key'],body['receipt_key']) if route.endswith('-download') else catalog(self.server.project,body['asset_id'],body['source_key'])
+                    self._json(200,result)
                     return
                 if route=='/api/texture-slot-source-download':
                     if set(body)!={'asset_id','expected_sha256','source_key'}:raise ProjectError('Source download requires exact Current identity and context')
