@@ -88,7 +88,7 @@ const additionReport={...report(),schema_version:'legaia.model-glb-review.v3',co
 assert.equal(decodeModelGlbBinding(additionBinding,assetId,context).authored_face_count,1);
 assert.equal(decodeModelGlbReview(additionReport,additionBinding,assetId,context,glbHash).comparison,'current_addition_topology');
 assert.equal(decodeModelGlbReview({...additionReport,proposed_sha256:additionBinding.effective_sha256,changes:[],pending_changes:[]},additionBinding,assetId,context,glbHash).changes.length,0);
-for(const change of [{topology_sha256:'bad'},{authored_face_count:true},{authored_face_count:-1},{authored_face_count:129}])assert.throws(()=>decodeModelGlbBinding({...additionBinding,...change},assetId,context));
+for(const change of [{topology_sha256:'bad'},{authored_face_count:true},{authored_face_count:-1},{authored_face_count:513}])assert.throws(()=>decodeModelGlbBinding({...additionBinding,...change},assetId,context));
 for(const change of [{topology_sha256:h('d')},{authored_face_count:2},{comparison:'retail_source'},{changes:[]},{schema_version:'legaia.model-glb-review.v1'}])assert.throws(()=>decodeModelGlbReview({...additionReport,...change},additionBinding,assetId,context,glbHash));
 console.log('V3 GLB Current addition-topology binding, review, no-op and metadata tamper guards passed.');
 

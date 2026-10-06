@@ -50,7 +50,7 @@ class ModelFaceAdditionHttpTests(unittest.TestCase):
                    ('/api/model-face-addition-source',dict(source_body,source_key='A'*64)),
                    ('/api/model-face-addition-preview',dict(review_body,requests={})),
                    ('/api/model-face-addition-preview',dict(review_body,requests=[])),
-                   ('/api/model-face-addition-preview',dict(review_body,requests=[{}]*129)),
+                   ('/api/model-face-addition-preview',dict(review_body,requests=[{}]*513)),
                    ('/api/model-face-addition-preview',dict(review_body,expected_sha256=False)),
                    ('/api/model-face-addition',dict(review_body,proposed_sha256='stale'))]
             for route,body in cases:self.assertEqual(post(route,body)[0],400)

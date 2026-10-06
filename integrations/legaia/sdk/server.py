@@ -827,6 +827,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/vertex-retarget.js": ("vertex-retarget.js", "text/javascript"),
                  "/model-vertex-users.js": ("model-vertex-users.js", "text/javascript"),
                  "/model-face-removal.js": ("model-face-removal.js", "text/javascript"),
+                 "/model-topology-limits.js": ("model-topology-limits.js", "text/javascript"),
                  "/model-face-addition.js": ("model-face-addition.js", "text/javascript"),
                  "/model-vector-allocation.js": ("model-vector-allocation.js", "text/javascript"),
                  "/model-vertex-move.js": ("model-vertex-move.js", "text/javascript"),

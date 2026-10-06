@@ -16,7 +16,7 @@ from test_model_primitive_workflow import http_server
 
 def large():
     return fixtures.glb(lambda doc:doc['meshes'][0]['primitives'].append(deepcopy(doc['meshes'][0]['primitives'][0])),
-                        indices=[0,1,2,1,3,2]*36)
+                        indices=[0,1,2,1,3,2]*144)
 
 
 class MeshLargeInventoryTests(unittest.TestCase):
@@ -26,10 +26,10 @@ class MeshLargeInventoryTests(unittest.TestCase):
         with patch('importer.model_mesh_append._read_glb',wraps=_read_glb) as parser:
             inventory=inspect_append_mesh(content)
         self.assertEqual(parser.call_count,1)
-        self.assertEqual(inventory['triangle_count'],144)
-        self.assertEqual([row['triangle_count'] for row in inventory['primitives']],[72,72])
+        self.assertEqual(inventory['triangle_count'],576)
+        self.assertEqual([row['triangle_count'] for row in inventory['primitives']],[288,288])
         with self.assertRaises(ImportError):decode_append_mesh(content)
-        self.assertEqual(len(decode_append_mesh(content,primitive_index=1)['triangles']),72)
+        self.assertEqual(len(decode_append_mesh(content,primitive_index=1)['triangles']),288)
         def invalid(doc):
             doc['meshes'][0]['primitives'].append(deepcopy(doc['meshes'][0]['primitives'][0]))
             doc['meshes'][0]['primitives'][1]['mode']=1
@@ -42,13 +42,13 @@ class MeshLargeInventoryTests(unittest.TestCase):
         mapping=lambda i:dict(primitive_index=i,donor_face_id=donor,replace_group=False)
         before=deepcopy((p._document(),p.undo_stack,p.redo_stack))
         candidate,_,report=model_mesh_batch.prepare(p,asset,content,[mapping(1)],source['effective_sha256'],'a'*64)
-        with self.assertRaisesRegex(ProjectError,'128-triangle'):
+        with self.assertRaisesRegex(ProjectError,'512-triangle'):
             model_mesh_batch.prepare(p,asset,content,[mapping(0),mapping(1)],source['effective_sha256'],'a'*64)
         with http_server(p) as (_,post):
             body=dict(asset_id=asset,content_base64=base64.b64encode(content).decode(),mappings=[mapping(1)],
                       expected_sha256=source['effective_sha256'],source_key='a'*64)
             status,inventory=post('/api/model-mesh-file',dict(content_base64=body['content_base64']))
-            self.assertEqual(status,200,inventory);self.assertEqual(inventory['triangle_count'],144)
+            self.assertEqual(status,200,inventory);self.assertEqual(inventory['triangle_count'],576)
             status,_=post('/api/model-mesh-batch-preview',dict(body,mappings=[mapping(0),mapping(1)]))
             self.assertEqual(status,400);self.assertEqual((p._document(),p.undo_stack,p.redo_stack),before)
             status,review=post('/api/model-mesh-batch-preview',body);self.assertEqual(status,200,review)
@@ -70,6 +70,6 @@ class MeshLargeInventoryTests(unittest.TestCase):
 import {decodeMeshFile} from './integrations/legaia/editor/model-mesh-append.js';
 import assert from 'node:assert/strict';let input='';for await(const c of process.stdin)input+=c;
 const {source,report}=JSON.parse(input);decodeMeshFile(report.inventory,report.glb_sha256);decodeMeshBatchReview(report,source,report.glb_sha256,report.mappings);
-for(const mutate of [r=>r.inventory.triangle_count=16385,r=>r.inventory.triangle_count=128,r=>r.inventory.primitives[0].triangle_count=129]){const bad=structuredClone(report);mutate(bad);assert.throws(()=>decodeMeshBatchReview(bad,source,report.glb_sha256,report.mappings));}"""
+for(const mutate of [r=>r.inventory.triangle_count=65537,r=>r.inventory.triangle_count=128,r=>r.inventory.primitives[0].triangle_count=513]){const bad=structuredClone(report);mutate(bad);assert.throws(()=>decodeMeshBatchReview(bad,source,report.glb_sha256,report.mappings));}"""
         result=subprocess.run([shutil.which('node'),'--input-type=module','-e',script],input=json.dumps(dict(source=source,report=report)),text=True,capture_output=True,cwd=Path(__file__).resolve().parents[3])
         self.assertEqual(result.returncode,0,result.stderr)

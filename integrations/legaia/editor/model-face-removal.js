@@ -1,3 +1,4 @@
+import { MODEL_FACE_BUDGET } from './model-topology-limits.js';
 import {SceneRenderer} from './scene-renderer.js';
 const hash=value=>typeof value==='string'&&/^[0-9a-f]{64}$/.test(value);
 const integer=(value,max)=>Number.isSafeInteger(value)&&value>=0&&value<=max;
@@ -15,7 +16,7 @@ function stableTopology(rows,objects,deleted=[]){
     const source=row?.origin==='source',keys=['face_id','origin','object_index','group_index','current_primitive_index',source?'source_primitive_index':'donor_face_id'];
     if(!row||!['source','authored'].includes(row.origin)||Object.keys(row).length!==keys.length||keys.some(key=>!Object.hasOwn(row,key))||!stableFaceId(row.face_id)||ids.has(row.face_id)||!integer(row.object_index,objects.length-1)||!integer(row.group_index,65535)||!integer(row.current_primitive_index,objects[row.object_index].primitives.length-1)||owned[row.object_index].has(row.current_primitive_index))fail('Stable face ownership conflicts.');
     if(source){const hashPart=row.face_id.split('/')[3];if(!integer(row.source_primitive_index,65535)||row.face_id!==`face://source/${hashPart}/${row.object_index}/${row.source_primitive_index}`)fail('Source face identity contradicts its owner.');}
-    else if(++authoredCount>128||!row.face_id.startsWith('face://authored/')||!stableFaceId(row.donor_face_id))fail('Invalid authored face or retained donor identity.');
+    else if(++authoredCount>MODEL_FACE_BUDGET||!row.face_id.startsWith('face://authored/')||!stableFaceId(row.donor_face_id))fail('Invalid authored face or retained donor identity.');
     ids.add(row.face_id);owned[row.object_index].add(row.current_primitive_index);
   }
   if(owned.some((indices,i)=>indices.size!==objects[i].primitives.length))fail('Stable faces do not cover Current topology.');

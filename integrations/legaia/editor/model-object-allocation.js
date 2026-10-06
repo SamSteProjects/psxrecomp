@@ -1,3 +1,4 @@
+import { MODEL_FACE_BUDGET } from './model-topology-limits.js';
 import {SceneRenderer} from './scene-renderer.js';
 import {decodeFaceAdditionSource} from './model-face-addition.js';
 import {validateObjectOwnership} from './model-object-ownership.js';
@@ -15,7 +16,7 @@ export function decodeObjectAllocationSource(value,asset,key){
   const owners=value.object_identities.map(row=>({object_index:row.object_index,retail_index:row.origin==='source'?row.source_object_index:null,object_id:row.object_id,donor_object_id:row.donor_object_id??null}));
   validateObjectOwnership(owners,total,total-allocated);
   if(value.object_identities.some((row,i)=>row.origin!==(i<total-allocated?'source':'authored')||row.origin==='source'&&row.object_id!==`object://source/${audit.source_sha256}/${i}`)||audit.objects!==undefined&&!same(value.object_identities,audit.objects))fail('Object identities differ from complete ledger ownership.');
-  for(const [key,expected] of Object.entries({remaining_object_budget:64-allocated,remaining_group_budget:64-(audit.allocated_group_count??0),remaining_face_budget:128-audit.authored_face_count,remaining_vector_budget:4096-(audit.allocated_vector_count??0),remaining_batch_budget:8-audit.batch_count,remaining_operation_budget:64-audit.operation_count}))if(!integer(value[key],4096)||value[key]!==expected)fail('Object creation budgets differ from ledger history.');
+  for(const [key,expected] of Object.entries({remaining_object_budget:64-allocated,remaining_group_budget:64-(audit.allocated_group_count??0),remaining_face_budget:MODEL_FACE_BUDGET-audit.authored_face_count,remaining_vector_budget:4096-(audit.allocated_vector_count??0),remaining_batch_budget:8-audit.batch_count,remaining_operation_budget:64-audit.operation_count}))if(!integer(value[key],4096)||value[key]!==expected)fail('Object creation budgets differ from ledger history.');
   if(!integer(audit.proposed_byte_length,4194304)||!Array.isArray(value.native_objects)||value.native_objects.length!==total||!Array.isArray(value.normal_vectors)||value.normal_vectors.length!==total||!Array.isArray(value.limitations)||!value.limitations.length||value.limitations.some(v=>typeof v!=='string'||v.length>4096))fail('Missing native allocation scope.');
   for(const [owner,native] of value.native_objects.entries()){
     const obj=objects[owner],normals=value.normal_vectors[owner];

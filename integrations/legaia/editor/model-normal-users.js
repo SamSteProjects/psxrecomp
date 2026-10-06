@@ -1,3 +1,4 @@
+import { MODEL_FACE_BUDGET } from './model-topology-limits.js';
 import {validateObjectOwnership} from './model-object-ownership.js';
 const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
 const integer=(v,max)=>Number.isSafeInteger(v)&&v>=0&&v<=max;
@@ -11,7 +12,7 @@ export function validateReferenceFaceMapping(value){
     if(row.current_index!==null){owned.add(row.current_index);last=row.current_index;}
   }
   if(added){
-    if(!integer(value.current_face_count,65536)||!integer(value.retail_model_byte_length,4*1024*1024)||value.retail_model_byte_length<12||!Array.isArray(value.authored_faces)||value.authored_faces.length>128)throw new Error('Invalid authored reference ownership.');
+    if(!integer(value.current_face_count,65536)||!integer(value.retail_model_byte_length,4*1024*1024)||value.retail_model_byte_length<12||!Array.isArray(value.authored_faces)||value.authored_faces.length>MODEL_FACE_BUDGET)throw new Error('Invalid authored reference ownership.');
     const ids=new Set();
     for(const face of value.authored_faces){
       if(!face||Object.keys(face).sort().join('|')!=='current_index|face_id'||typeof face.face_id!=='string'||!/^face:\/\/authored\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(face.face_id)||ids.has(face.face_id)||!integer(face.current_index,value.current_face_count-1)||owned.has(face.current_index))throw new Error('Authored reference face identities conflict.');

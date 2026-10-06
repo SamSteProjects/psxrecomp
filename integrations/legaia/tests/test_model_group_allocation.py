@@ -106,7 +106,7 @@ class ModelGroupAllocationTests(unittest.TestCase):
                 allocate_model_groups(data,sha256(data).hexdigest(),requests)
         with self.assertRaises(ImportError):allocate_model_groups(data,'stale',[valid])
         with self.assertRaises(ImportError):allocate_model_groups(data,sha256(data).hexdigest(),[request(i) for i in range(65)])
-        oversized=deepcopy(valid);oversized['faces']=[request(i)['faces'][0] for i in range(129)]
+        oversized=deepcopy(valid);oversized['faces']=[request(i)['faces'][0] for i in range(513)]
         with self.assertRaises(ImportError):allocate_model_groups(data,sha256(data).hexdigest(),[oversized])
         with patch('importer.model_group_allocation.MAX_MODEL_BYTES',len(data)):
             with self.assertRaises(ImportError):allocate_model_groups(data,sha256(data).hexdigest(),[valid])

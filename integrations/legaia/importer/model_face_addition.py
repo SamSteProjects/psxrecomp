@@ -11,7 +11,7 @@ from .core import ImportError
 from .model_primitives import _qualified_model, patch_model_primitives
 from .model_face_removal import _groups
 
-MAX_NEW_FACES = 128
+MAX_NEW_FACES = 512
 
 
 def add_model_faces(data, expected_sha256, additions):

@@ -2,6 +2,7 @@
 from copy import deepcopy
 from hashlib import sha256
 from .core import ImportError
+from .model_face_addition import MAX_NEW_FACES
 from .model_object_allocation import allocate_model_objects,MAX_NEW_OBJECTS
 from .model_group_allocation import _identity,MAX_NEW_GROUPS
 from .model_primitives import _qualified_model
@@ -46,7 +47,7 @@ def apply_object_allocation(current,faces,objects,requests,reserved_faces,reserv
                     raise ImportError('Cloned object faces must match the complete Current donor order')
         native.append(dict(object_id=request['object_id'],donor_object_index=owner))
         clones.append((request,groups))
-    if sum(len(group['faces']) for request in requests for group in request['groups'])>128 or sum(len(request['groups']) for request in requests)>MAX_NEW_GROUPS:
+    if sum(len(group['faces']) for request in requests for group in request['groups'])>MAX_NEW_FACES or sum(len(request['groups']) for request in requests)>MAX_NEW_GROUPS:
         raise ImportError('Object ledger exceeds cloned face/group budgets')
     candidate,audit=allocate_model_objects(current,sha256(current).hexdigest(),native)
     updated=deepcopy(faces);new_objects=deepcopy(objects);new_groups=[]

@@ -98,8 +98,8 @@ class GroupLedgerTests(unittest.TestCase):
         original,initial,source=self.fixture()
         _,ledger,_=append_group_ledger(original,initial,[group(i,source[0]) for i in range(64)])
         with self.assertRaises(ImportError):append_group_ledger(original,ledger,[group(65,source[0])])
-        _,ledger,_=append_face_ledger(original,initial,[group(i,source[0])['faces'][0] for i in range(120)])
-        with self.assertRaises(ImportError):append_group_ledger(original,ledger,[group(i,source[0]) for i in range(120,129)])
+        _,ledger,_=append_face_ledger(original,initial,[group(i,source[0])['faces'][0] for i in range(504)])
+        with self.assertRaises(ImportError):append_group_ledger(original,ledger,[group(i,source[0]) for i in range(504,513)])
         ledger=initial
         for i in range(8):_,ledger,_=append_group_ledger(original,ledger,[group(i,source[0])])
         with self.assertRaises(ImportError):append_group_ledger(original,ledger,[group(8,source[0])])

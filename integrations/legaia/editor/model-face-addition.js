@@ -1,3 +1,4 @@
+import { MODEL_FACE_BUDGET } from './model-topology-limits.js';
 import {validateObjectOwnership} from './model-object-ownership.js';
 import {SceneRenderer} from './scene-renderer.js';
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
@@ -8,7 +9,7 @@ const fail=message=>{throw new Error(message);};
 export function decodeFaceAdditionSource(value,asset,key){
   if(value?.schema_version!=='legaia.model-face-addition-source.v1'||value.asset_id!==asset||value.project_source_key!==key||!hash(key)||!hash(value.source_sha256)||!hash(value.effective_sha256)||value.project_changed!==false||value.gameplay_verified!==false)fail('Face source differs from this model.');
   const audit=value.topology,objects=value.objects;
-  if(!audit||!hash(audit.source_sha256)||audit.proposed_sha256!==value.effective_sha256||!integer(audit.authored_face_count,128)||!integer(audit.batch_count,8)||!Array.isArray(audit.faces)||!Array.isArray(objects)||!objects.length||objects.length>1024)fail('Missing stable face ownership.');
+  if(!audit||!hash(audit.source_sha256)||audit.proposed_sha256!==value.effective_sha256||!integer(audit.authored_face_count,MODEL_FACE_BUDGET)||!integer(audit.batch_count,8)||!Array.isArray(audit.faces)||!Array.isArray(objects)||!objects.length||objects.length>1024)fail('Missing stable face ownership.');
   let objectOwners=null;
   if(audit.allocated_object_count!==undefined||audit.object_allocation_count!==undefined||audit.objects!==undefined){
     if(!integer(audit.allocated_object_count,64)||!integer(audit.object_allocation_count,audit.batch_count)||audit.object_allocation_count>audit.allocated_object_count||!audit.allocated_object_count||!audit.object_allocation_count||!Array.isArray(audit.objects))fail('Invalid allocated object history.');

@@ -1,3 +1,4 @@
+import { MODEL_FACE_BUDGET } from './model-topology-limits.js';
 import {SceneRenderer} from './scene-renderer.js';
 import {decodeFaceAdditionSource,faceAdditionRequest} from './model-face-addition.js';
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
@@ -36,9 +37,9 @@ export function qualifyRender(preview,expected,vertices){
   if(!Array.isArray(preview.objects)||preview.objects.length!==expected.objects.length||preview.objects.some((obj,i)=>Object.entries(expected.objects[i]).some(([key,value])=>obj[key]!==value)))fail('Group geometry changed native object ranges.');
 }
 export function decodeGroupAllocationSource(value,asset,key){
-  if(value?.schema_version!=='legaia.model-group-allocation-source.v1'||value.group_limit!==64||value.face_limit!==128)fail('Invalid group allocation source.');
+  if(value?.schema_version!=='legaia.model-group-allocation-source.v1'||value.group_limit!==64||value.face_limit!==MODEL_FACE_BUDGET)fail('Invalid group allocation source.');
   const source=faceSource(value),audit=source.topology;
-  if(value.asset_id!==asset||value.project_source_key!==key||!integer(value.allocated_group_count,64)||value.allocated_group_count!==(audit.allocated_group_count??0)||value.remaining_group_budget!==64-value.allocated_group_count||value.remaining_face_budget!==128-audit.authored_face_count||value.remaining_batch_budget!==8-audit.batch_count||!integer(audit.operation_count,64)||value.remaining_operation_budget!==64-audit.operation_count||!Array.isArray(value.normal_vectors)||value.normal_vectors.length!==source.objects.length||value.normal_vectors.some((rows,i)=>!Array.isArray(rows)||rows.length!==source.objects[i].normal_count||rows.some(row=>!vector(row))))fail('Group allocation budgets or stored normal ownership differ.');
+  if(value.asset_id!==asset||value.project_source_key!==key||!integer(value.allocated_group_count,64)||value.allocated_group_count!==(audit.allocated_group_count??0)||value.remaining_group_budget!==64-value.allocated_group_count||value.remaining_face_budget!==MODEL_FACE_BUDGET-audit.authored_face_count||value.remaining_batch_budget!==8-audit.batch_count||!integer(audit.operation_count,64)||value.remaining_operation_budget!==64-audit.operation_count||!Array.isArray(value.normal_vectors)||value.normal_vectors.length!==source.objects.length||value.normal_vectors.some((rows,i)=>!Array.isArray(rows)||rows.length!==source.objects[i].normal_count||rows.some(row=>!vector(row))))fail('Group allocation budgets or stored normal ownership differ.');
   if(!Array.isArray(value.packet_groups)||value.packet_groups.length!==source.objects.length)fail('Missing native packet-group allocation evidence.');
   for(const [owner,records] of value.packet_groups.entries()){
     if(!Array.isArray(records))fail('Invalid native packet-group evidence.');let first=0;

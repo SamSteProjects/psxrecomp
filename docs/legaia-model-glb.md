@@ -1,5 +1,32 @@
 # Source-bound model GLB editing
 
+## Authored model capacity expanded to 512 faces - 2026-10-06
+
+The model ledger and native face/group/object allocation paths now allow 512
+historically allocated authored faces, including retired identities. The editor
+uses one shared face-budget module for GLB bindings, mesh inventory, selected
+section Review, primitive/material ownership and topology consumers. Existing
+projects and smaller imports retain their schemas and replay behavior. Inventory
+can qualify 128 source sections of up to 512 triangles each (65,536 total); one
+selected import is still bounded to 512 triangles and the ledger's remaining
+face budget. Native vector/address, group, model-byte and carrier-capacity checks
+remain independent and unchanged.
+
+A focused exact-limit proof replaced a synthetic Retail donor group with 512
+triangles and 1,536 distinct vertices. Editor Review qualification, one-step
+Undo/Redo, Save/Open replay and byte-for-byte normal Build package readback passed;
+513 triangles rejected before changing the project. A 576-triangle file also
+qualified as inventory: selecting 288 triangles passed HTTP Apply/history/Build,
+while selecting both sections rejected. Another 47 focused Python tests and seven
+JavaScript suites passed. These are synthetic-disc/native serialization proofs,
+not a new retail gameplay or rendered 512-face acceptance claim.
+
+No game was launched or controlled, and no full-disc export was performed.
+Manual visual/performance verification remains queued. The SDK goal remains
+active, with solo offline implementation continuing; arbitrary packet layouts,
+new image allocation and general animated mesh retargeting remain incomplete.
+
+
 ## Connected triangle strips
 
 For `TRIANGLE_STRIP` sources, repeated-index connector triangles are omitted before
@@ -7,7 +34,7 @@ native allocation. Their original positions in the strip still determine alterna
 winding; indices are not compacted before triangulation. Inventory and selected-face
 budgets report drawable triangles, so long connector sequences do not allocate faces
 or vectors. Strip sources are limited to 16,384 indices and retain the existing
-128 drawable triangles per section/transaction limit.
+512 drawable triangles per section/transaction limit.
 
 Every source index is validated even when it participates only in connectors.
 A section with no drawable triangles rejects. Distinct-index triangles that become
@@ -20,16 +47,16 @@ recommends avoiding degenerate geometry; this compatibility path does not genera
 ## Import a subset from a larger source scene
 
 File inventory qualifies static sections independently from one parsed GLB.
-It may list up to 128 sections, each containing at most 128 triangles, with a
-maximum total of 16,384 triangles. Every listed section must still qualify;
+It may list up to 128 sections, each containing at most 512 triangles, with a
+maximum total of 65,536 triangles. Every listed section must still qualify;
 unsupported or malformed sections reject the file. This inventory does not imply
 that all listed geometry can be written into one native transaction.
 
-Each single or mapped mesh import retains its 128-triangle transaction limit.
+Each single or mapped mesh import retains its 512-triangle transaction limit.
 When a source scene exceeds it, choose one **Source mesh section** or open
 **Map section donors** and select a fitting subset. **Review mesh import** remains
 disabled for an oversized all-section choice while the picker and mapping dialog
-remain available. The batch dialog shows selected triangles against the 128
+remain available. The batch dialog shows selected triangles against the 512
 limit and blocks Review and Select all if the combined choice is too large.
 At most 16 sections may be selected in one donor mapping, subject to that same
 triangle limit. Existing native object/vector/group budgets also still apply.

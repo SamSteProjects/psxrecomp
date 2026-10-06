@@ -1,5 +1,32 @@
 # General model topology allocation work
 
+## Authored model capacity expanded to 512 faces - 2026-10-06
+
+The model ledger and native face/group/object allocation paths now allow 512
+historically allocated authored faces, including retired identities. The editor
+uses one shared face-budget module for GLB bindings, mesh inventory, selected
+section Review, primitive/material ownership and topology consumers. Existing
+projects and smaller imports retain their schemas and replay behavior. Inventory
+can qualify 128 source sections of up to 512 triangles each (65,536 total); one
+selected import is still bounded to 512 triangles and the ledger's remaining
+face budget. Native vector/address, group, model-byte and carrier-capacity checks
+remain independent and unchanged.
+
+A focused exact-limit proof replaced a synthetic Retail donor group with 512
+triangles and 1,536 distinct vertices. Editor Review qualification, one-step
+Undo/Redo, Save/Open replay and byte-for-byte normal Build package readback passed;
+513 triangles rejected before changing the project. A 576-triangle file also
+qualified as inventory: selecting 288 triangles passed HTTP Apply/history/Build,
+while selecting both sections rejected. Another 47 focused Python tests and seven
+JavaScript suites passed. These are synthetic-disc/native serialization proofs,
+not a new retail gameplay or rendered 512-face acceptance claim.
+
+No game was launched or controlled, and no full-disc export was performed.
+Manual visual/performance verification remains queued. The SDK goal remains
+active, with solo offline implementation continuing; arbitrary packet layouts,
+new image allocation and general animated mesh retargeting remain incomplete.
+
+
 The new allocation reader reports qualified native packet/vector extents for
 Retail and Current. In the model viewer, choose **Inspect native allocation**,
 then select **Allocation layer** and **Model object**. **Stored packet groups**

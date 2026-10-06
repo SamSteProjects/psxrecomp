@@ -1,3 +1,4 @@
+import { MODEL_FACE_BUDGET } from './model-topology-limits.js';
 import {openGlbMaterialSelection,glbMaterialFaceEdits} from './model-glb-material-selection.js';
 import {decodeTextureBindingCatalog,decodeTextureBindingSource} from './model-texture-binding.js';
 import {validateObjectOwnership} from './model-object-ownership.js';
@@ -62,7 +63,7 @@ export function decodeModelMaterialSource(value,assetId,context){
         if(!Array.isArray(value.authored_faces[i]))fail('Missing authored material faces.');
         for(const face of value.authored_faces[i]){
           if(!exact(face,['face_id','current_index'])||typeof face.face_id!=='string'||!/^face:\/\/authored\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(face.face_id)||authoredIds.has(face.face_id)||!integer(face.current_index,0,currentRows.length-1)||retained.has(face.current_index)||authored.has(face.current_index))fail('Invalid authored material face identity.');
-          authoredIds.add(face.face_id);authored.add(face.current_index);if(authoredIds.size>128)fail('Authored material face budget exceeded.');
+          authoredIds.add(face.face_id);authored.add(face.current_index);if(authoredIds.size>MODEL_FACE_BUDGET)fail('Authored material face budget exceeded.');
         }
       }
       if(retained.size+authored.size!==currentRows.length)fail('Material mapping count differs.');
