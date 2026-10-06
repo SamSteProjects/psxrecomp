@@ -1192,6 +1192,7 @@ function currentPlacementSelection(){
   if(actorGroupSelection.length)return actorGroupSelection.slice();
   if(environmentGroupSelection.length)return environmentGroupSelection.slice();
   if(environmentSelection&&scenePlacementEligible().has(environmentSelection))return [environmentSelection];
+  if(npcDraftSelection&&scenePlacementEligible().has(npcDraftSelection))return [npcDraftSelection];
   return selected()?[selected().id]:[];
 }
 function sceneSelectionState(){return {...state,scene_selection_eligible_ids:[...scenePlacementEligible()],scene_selection_map_sha256:staticDecorations()[0]?.source_record?.source_record?.map_sha256??null};}
@@ -1210,9 +1211,9 @@ savedSceneSelections=mountSceneSelectionSets({host:scenePlacementHost,getState:s
     if(report.schema_version!=='legaia.scene-selection-review.v1'||report.read_only!==true||report.project_source_key!==sourceKey||state.project_copy_source_key!==sourceKey||report.scene_id!==value.scene_id||report.id!==value.id||report.review_key!==value.review_key||report.import_sha256!==value.import_sha256||report.map_sha256!==value.map_sha256||JSON.stringify(report.entity_ids)!==JSON.stringify(value.entity_ids))throw new Error('Saved placement sources changed during recall');
     const ids=decodeSavedSceneSelection(value,sceneSelectionState());
     clearScenePlacementSelection();clearActorGroupSelection();clearEnvironmentGroupSelection();
-    const actorIds=ids.filter(id=>entities().some(entity=>entity.id===id)),decorIds=ids.filter(id=>!actorIds.includes(id));
-    if(actorIds.length){if(!await api('/api/selection',{entity_id:actorIds[0]}))return false;check();decodeSavedSceneSelection(value,sceneSelectionState());}else{environmentSelection=decorIds[0];npcDraftSelection=null;}
-    if(actorIds.length&&decorIds.length){scenePlacementSelection=ids;scenePlacementKey=resourceStateKey();scenePlacementMode=false;}
+    const actorIds=ids.filter(id=>entities().some(entity=>entity.id===id)),npcIds=ids.filter(id=>state.actor_drafts?.[id]?.scene_id===state.scene.id),decorIds=ids.filter(id=>!actorIds.includes(id)&&!npcIds.includes(id));
+    if(actorIds.length){if(!await api('/api/selection',{entity_id:actorIds[0]}))return false;check();decodeSavedSceneSelection(value,sceneSelectionState());}else if(npcIds.length){environmentSelection=null;npcDraftSelection=npcIds[0];}else{environmentSelection=decorIds[0];npcDraftSelection=null;}
+    if(npcIds.length>1||[actorIds,npcIds,decorIds].filter(group=>group.length).length>1){scenePlacementSelection=ids;scenePlacementKey=resourceStateKey();scenePlacementMode=false;}
     else if(actorIds.length>1){actorGroupSelection=ids;actorGroupSelectionKey=resourceStateKey();actorGroupRangeAnchor=ids[0];}
     else if(decorIds.length){environmentGroupSelection=ids;environmentGroupKey=resourceStateKey();environmentGroupAnchor=ids[0];}
     cancelViewportGesture();renderHierarchy();renderInspector();draw();return true;

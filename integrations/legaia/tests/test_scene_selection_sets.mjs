@@ -8,3 +8,9 @@ for(const change of [v=>v.scene_id='other',v=>v.import_sha256='stale',v=>v.map_s
 assert.deepEqual(decodeSavedSceneSelection({...value,map_sha256:'old',entity_ids:['actor-1']},state),['actor-1']);
 assert.throws(()=>decodeSavedSceneSelection(value,{...state,scene_selection_eligible_ids:[]}));
 console.log('Saved scene selection canonical detached IDs, 1–128 bounds, actor/decor/mixed membership, import binding and decoration MAP binding passed.');
+
+const npc='authored-actor://11111111-2222-4333-8444-555555555555',npcState={...state,actor_drafts:{[npc]:{scene_id:'scene'}},scene_selection_eligible_ids:[...state.scene_selection_eligible_ids,npc]};
+for(const entity_ids of [[npc],['actor-1',npc],[npc,'decor-1'].sort(),['actor-1',npc,'decor-1'].sort()])assert.deepEqual(decodeSavedSceneSelection({...value,entity_ids,map_sha256:entity_ids.includes('decor-1')?'map':null},npcState),entity_ids);
+assert.throws(()=>decodeSavedSceneSelection({...value,entity_ids:[npc],map_sha256:'map'},{...npcState,actor_drafts:{}}));
+assert.throws(()=>decodeSavedSceneSelection({...value,entity_ids:[npc],map_sha256:'map'},{...npcState,actor_drafts:{[npc]:{scene_id:'other'}}}));
+console.log('NPC-only and mixed saved selections retain owning scene and reject missing/wrong-scene NPCs.');

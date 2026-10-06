@@ -14,7 +14,7 @@ Retail placement is absent and shown as **Authored only**; Retail reset is disab
 and rejected for the entire group. Existing actor/scenery version 1 reviews remain.
 Apply validates the whole proposal before changing overrides and NPC drafts, then
 records one combined Undo step. No-op operations preserve history and redo. Saved
-selection sets and runtime placement semantics are separate work.
+selection sets now include NPC drafts; runtime placement semantics remain deferred.
 
 Validation: 31 focused Python cases, new NPC source/DTO guards, legacy mixed-placement
 Node checks and editor syntax passed. Actual private Town01 browser checks covered
@@ -137,8 +137,7 @@ imported actors and static decorations in the hierarchy or viewport to toggle
 membership. The focused object remains available in the Inspector; selected
 bounds identify the group. Select 2-128 targets spanning at least two kinds: imported
 actors, NPC drafts and static decorations. **Clear placement group** clears membership.
-Ground and placed scenery are excluded. NPC-inclusive saved selection sets remain
-separate work.
+Ground and placed scenery are excluded. NPC-inclusive saved selection sets are supported.
 [Saved scene selections](legaia-scene-selections.md) retains and recalls mixed
 membership across project sessions or scene changes.
 

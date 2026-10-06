@@ -34,6 +34,39 @@ class SceneSelectionSetTests(unittest.TestCase):
     def edit(self, kind, row, **fields):
         command(self.p, dict(type=kind, selection_set_id=row['id'], review_key=review_key(self.p, row), **fields))
 
+    def npc(self):
+        self.p.command(dict(type='create_actor_draft',donor_entity_id=ACTOR,name='Saved NPC',position=dict(x=256,z=512)))
+        return next(iter(self.p.actor_drafts))
+
+    def test_npc_mixed_library_persistence_build_identity_and_current_placement(self):
+        p=self.p;npc=self.npc();baseline=deepcopy((p.imports,p.overrides,p.actor_drafts));key=authored_state_key(p)
+        row=self.create([npc,ACTOR,IDS[0]],'NPC actor and wall');self.assertEqual(authored_state_key(p),key)
+        self.assertEqual((p.imports,p.overrides,p.actor_drafts),baseline)
+        p.undo();self.assertFalse(p.scene_selection_sets);p.redo()
+        self.assertEqual(review(p,row['id'],review_key(p,row))['entity_ids'],sorted([npc,ACTOR,IDS[0]]))
+        p.command(dict(type='set_actor_draft_position',entity_id=npc,position=dict(x=320,z=576)))
+        p.command(dict(type='rename_actor_draft',entity_id=npc,name='Moved NPC'))
+        self.assertEqual(review(p,row['id'],review_key(p,row))['entity_ids'],row['entity_ids'])
+        reopened=ProjectService.open(p.save());self.assertEqual(reopened.scene_selection_sets,p.scene_selection_sets)
+        self.assertEqual(reopened.actor_drafts,p.actor_drafts)
+        self.edit('update_scene_selection_set',row,entity_ids=[npc]);row=p.scene_selection_sets[row['id']]
+        self.assertIsNone(row['map_sha256']);self.mock.side_effect=AssertionError('NPC-only recall must not read MAP')
+        self.assertEqual(review(p,row['id'],review_key(p,row))['entity_ids'],[npc])
+
+    def test_deleted_npc_library_remains_portable_but_fresh_recall_rejects(self):
+        p=self.p;npc=self.npc();row=self.create([npc],'NPC')
+        p.command(dict(type='delete_actor_draft',entity_id=npc));before=deepcopy((p._document(),p.undo_stack))
+        with self.assertRaisesRegex(ProjectError,'unavailable'):review(p,row['id'],review_key(p,row))
+        self.assertEqual((p._document(),p.undo_stack),before)
+        reopened=ProjectService.open(p.save());self.assertEqual(reopened.scene_selection_sets,p.scene_selection_sets)
+        with self.assertRaisesRegex(ProjectError,'unavailable'):source_binding(p,SCENE,[npc])
+        self.edit('rename_scene_selection_set',row,name='Missing NPC');row=p.scene_selection_sets[row['id']]
+        self.edit('delete_scene_selection_set',row);self.assertFalse(p.scene_selection_sets)
+        p.undo();p.undo();p.undo();self.assertIn(npc,p.actor_drafts)
+        self.assertEqual(review(p,row['id'],review_key(p,p.scene_selection_sets[row['id']]))['entity_ids'],[npc])
+        p.actor_drafts[npc]['scene_id']='scene://other'
+        with self.assertRaises(ProjectError):source_binding(p,SCENE,[npc])
+
     def test_mixed_source_review_is_read_only_and_history_is_metadata_only(self):
         p = self.p; before = deepcopy(p.overrides); imports = deepcopy(p.imports)
         row = self.create([IDS[0], ACTOR], '  Wall and actor  ')

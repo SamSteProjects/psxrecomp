@@ -1,4 +1,4 @@
-"""Portable named imported-scene selections; never modify game placements."""
+"""Portable named scene selections; never modify game placements."""
 from copy import deepcopy
 import re
 import uuid
@@ -10,17 +10,30 @@ COMMANDS = {'create_scene_selection_set', 'rename_scene_selection_set',
             'update_scene_selection_set', 'delete_scene_selection_set'}
 
 
-def _members(project, scene, identifiers):
+def _members(project, scene, identifiers, *, require_available=False):
     if not isinstance(scene, str) or scene not in project.imports:
         raise ProjectError('Selection set requires an imported scene')
     if (not isinstance(identifiers, list) or not 1 <= len(identifiers) <= 128 or
             any(not isinstance(item, str) for item in identifiers) or len(set(identifiers)) != len(identifiers)):
-        raise ProjectError('Selection set requires 1..128 unique imported identities')
+        raise ProjectError('Selection set requires 1..128 unique placement identities')
     actors = {actor['semantic_id'] for actor in project.imports[scene]['actors']}
     prefix = 'environment://' + scene.removeprefix('scene://') + '/field-map/decorations/'
     decorations = []
     for identifier in identifiers:
         if identifier in actors:
+            continue
+        if identifier.startswith('authored-actor://'):
+            token=identifier.removeprefix('authored-actor://')
+            try:
+                if str(uuid.UUID(token))!=token:raise ValueError()
+            except ValueError:
+                raise ProjectError('Selection set contains an invalid NPC draft identity') from None
+            draft=project.actor_drafts.get(identifier)
+            if draft is None:
+                if require_available:raise ProjectError('Saved NPC placement is unavailable: '+identifier)
+            else:
+                project._validate_actor_draft(identifier,draft)
+                if draft['scene_id']!=scene:raise ProjectError('Selection set NPC belongs to another scene')
             continue
         suffix = identifier.removeprefix(prefix)
         if not identifier.startswith(prefix) or not re.fullmatch(r'[0-9]{5}', suffix) or int(suffix) >= 16384:
@@ -68,7 +81,7 @@ def source_binding(project, scene, identifiers):
     """Prove current static membership against verified source MAP bytes."""
     if project.mode != 'edit' or scene != project.active_scene:
         raise ProjectError('Selection set requires the active imported scene in Edit mode')
-    _, decorations = _members(project, scene, identifiers)
+    _, decorations = _members(project, scene, identifiers, require_available=True)
     before = source_key(project)
     map_hash = None
     if decorations:
