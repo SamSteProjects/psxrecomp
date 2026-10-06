@@ -10,6 +10,20 @@ def terrain_preview(project, *, prepared=None, catalog=None):
     scene = project.imports[project.active_scene]["scene"]["name"]
     from copy import deepcopy
     preview = deepcopy(prepared) if prepared is not None else load_terrain(project.disc_path, scene)
+    floors=getattr(project,'overrides',{}).get(project.active_scene,{}).get('FloorTiers')
+    if floors:
+        from importer.floor_authoring import patch_floor_tiers
+        from importer.terrain import decode_terrain
+        from importer.environment import load_environment_placements
+        source=project._environment_source(project.active_scene)
+        metadata=load_environment_placements(project.disc_path,scene)
+        if metadata['source_record']['map_sha256']!=floors['source_sha256'] or preview['source_record']!=metadata['source_record']:
+            raise ImportError('Authored floor preview source differs from Current ground')
+        changed,audit=patch_floor_tiers(source,floors['source_sha256'],floors['edits'])
+        preview=decode_terrain(changed,metadata['floor_height_lut'])
+        preview['source_record']=deepcopy(metadata['source_record'])
+        preview['floor_layer']={'kind':'authored','selector_count':len(floors['edits']),'audited_selector_count':len(audit)}
+        preview['limitations'].append('Current authored floor selectors; native ramps and live movement remain unverified.')
     if catalog is None:
         catalog = apply_texture_overrides(project, load_scene_texture_catalog(project.disc_path, scene))
     preview["textures"] = []

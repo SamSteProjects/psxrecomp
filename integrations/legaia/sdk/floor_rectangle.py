@@ -50,3 +50,14 @@ def apply(project,command):
     result=review(project,command['entity_id'],command['rectangle'])
     if result['review_key']!=command['review_key']:raise ProjectError('Floor inputs changed since Review')
     project.command(dict(type='set_floor_tiers',entity_id=command['entity_id'],value=result['value']) if result['value']['edits'] else dict(type='clear_floor_tiers',entity_id=command['entity_id']))
+
+
+def proposal_view(project,report):
+    from copy import copy
+    if report['project_source_key']!=source_key(project):raise ProjectError('Floor proposal context changed since Review')
+    view=copy(project);view.overrides=deepcopy(project.overrides)
+    components=view.overrides.setdefault(report['scene_id'],{})
+    if report['value']['edits']:components['FloorTiers']=deepcopy(report['value'])
+    else:components.pop('FloorTiers',None)
+    if not components:view.overrides.pop(report['scene_id'],None)
+    return view

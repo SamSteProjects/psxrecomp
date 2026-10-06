@@ -25,6 +25,7 @@ import {mountSceneSelectionSets,decodeSavedSceneSelection} from '/scene-selectio
 import {mountScenePlacementGroup} from '/scene-placement-group.js';
 import {mergeScenePlacementSelection} from '/scene-placement-selection.js';
 import {mountWallRectangle,wallRectangleGeometry} from '/collision-rectangle.js';
+import {mountFloorRectangle,decodeFloorRectangle} from '/floor-rectangle.js';
 import {rescaleStoredNormal} from '/model-normal-length.js';
 import {mountNormalUsers,decodeNormalUsers} from '/model-normal-users.js';
 import {validateNormalRetarget} from '/normal-retarget.js';
@@ -1914,7 +1915,7 @@ const fieldDialog=document.createElement('dialog');fieldDialog.id='field-map-dia
 const fieldToggle=document.createElement('button');fieldToggle.id='field-map-toggle';fieldToggle.textContent='Base collision';fieldToggle.hidden=true;fieldToggle.setAttribute('aria-pressed','false');$('grid-toggle').after(fieldToggle);
 const fieldNote=document.createElement('div');fieldNote.className='field-map-note';fieldNote.hidden=true;fieldNote.setAttribute('role','status');document.querySelector('.viewport-toolbar').after(fieldNote);
 const collisionLayer=document.createElement('select');collisionLayer.setAttribute('aria-label','Collision preview layer');collisionLayer.innerHTML='<option value="imported">Retail collision</option><option value="effective">Effective collision</option>';fieldToggle.after(collisionLayer);
-let fieldMap=null,fieldKey=null,fieldAbort=null,fieldPending=false,wallSelectMode=false,wallSelection=null,wallInspection=null,wallRectangleTool=null;
+let fieldMap=null,fieldKey=null,fieldAbort=null,fieldPending=false,wallSelectMode=false,wallSelection=null,wallInspection=null,wallRectangleTool=null,floorRectangleTool=null;
 let fieldSpatial=null,fieldSpatialKey=null,fieldSpatialAbort=null,fieldSpatialPending=false,fieldSpatialVisible=false,fieldSpatialPick=false;
 let regionAnnotations=[],regionInspection=null,regionBoundsDialog=null;
 let triggerAnnotations=[],triggerInspection=null,triggerCellsDialog=null;
@@ -2057,6 +2058,23 @@ function wallSourceCurrent(){return canEdit()&&scenePreviewCurrent()&&sceneRepre
 wallRectangleTool=mountWallRectangle({host:wallTools,getState:()=>state,busy:()=>busy,setBusy,api,sourceCurrent:wallSourceCurrent,hasDraft:()=>false,closeInspector:()=>{if(fieldDialog.open)fieldDialog.close();},
   onInspection:(report,layer)=>{if(report){const details=wallTools.closest('details');if(details)details.open=true;}cancelViewportGesture();wallSelectMode=false;wallSelection=null;if(fieldDialog.open)fieldDialog.close();wallInspection=report?{report,layer}:null;updateFieldToggle();draw();},
   onFrame:report=>{const g=wallSelectionGeometry(report.rectangle);camera.target={x:(g.x_min+g.x_max)/2,y:0,z:(g.z_min+g.z_max)/2};camera.distance=Math.max(200,Math.hypot(g.x_max-g.x_min,g.z_max-g.z_min)*2.5);cameraRevision++;draw();}});
+floorRectangleTool=mountFloorRectangle({host:wallTools,getState:()=>state,busy:()=>busy,setBusy,api,
+  sourceCurrent:()=>wallSourceCurrent()||!!(scenePose?.floorInspection&&canEdit()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&fieldMap&&fieldKey===resourceStateKey()),
+  onRestore:()=>{if(scenePose?.floorInspection){clearScenePose();draw();}},
+  onScene:async(request,report,{signal,isCurrent,returnToEditor})=>{
+    const loadedKey=sceneKey,loadedSource=state.scene_preview_source_key;
+    if(!isCurrent()||!scenePreviewCurrent()||sceneRepresentation!=='authored')throw Error('Refresh Current before inspecting floor selectors.');
+    const response=await fetch('/api/floor-rectangle-scene',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request),signal}),value=await response.json();
+    if(!response.ok||value.error)throw Error(value.error||'Floor scene proposal failed');
+    if(!isCurrent()||sceneKey!==loadedKey||state.scene_preview_source_key!==loadedSource||value.schema_version!=='legaia.floor-rectangle-scene.v1'||value.scene_preview_source_key!==loadedSource||value.scene?.scene_id!==state.scene.id||value.scene?.representation!=='authored'||JSON.stringify(decodeFloorRectangle(value.review,report.project_source_key,report.scene_id,report.rectangle))!==JSON.stringify(report))throw Error('Floor scene differs from the reviewed Current context.');
+    try{cancelViewportGesture();const proposed=structuredClone(value.scene),failures=sceneRenderer.load(proposed);if(failures.length)throw Error(failures.join('; '));
+      scenePose={key:sceneKey,name:'Proposed floor selectors - not applied',floorInspection:true,returnToFile:returnToEditor,afterRestore:returnToEditor,isCurrent:()=>state.scene_preview_source_key===loadedSource&&state.project_copy_source_key===report.project_source_key};
+      scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`Proposed floor selectors - not applied · ${report.effective_change_count} changes · reference terrain and placement heights; ramps/gameplay unverified`;configureSceneInspectionComparison(proposed);
+      for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('label')])control.hidden=true;
+      const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to floor review';const details=wallTools.closest('details');if(details)details.open=true;
+      camera.target={x:(report.rectangle.column_start+report.rectangle.column_end)*64,y:0,z:(report.rectangle.row_start+report.rectangle.row_end)*64};camera.distance=Math.max(400,Math.hypot(report.rectangle.column_end-report.rectangle.column_start+1,report.rectangle.row_end-report.rectangle.row_start+1)*320);cameraRevision++;draw();
+    }catch(error){clearScenePose();if(scenePreviewCurrent())sceneRenderer.load(structuredClone(scenePreview));draw();throw error;}
+  }});
 wallSelectButton.onclick=async()=>{
   if(busy||wallSelectButton.disabled)return;cancelViewportGesture();wallSelection=null;
   if(wallSelectMode){wallSelectMode=false;updateFieldToggle();draw();return;}
@@ -2073,12 +2091,12 @@ const fieldMapScope='Base blocked grid only · Y = 0 is a display placeholder, n
 function updateFieldToggle(){
   fieldToggle.hidden=!state.capabilities?.field_map_preview;fieldToggle.disabled=busy||fieldPending;
   wallSelectButton.hidden=fieldToggle.hidden;wallSelectButton.disabled=busy||fieldPending||!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||!!scenePose||!!shapeDraft||!!actorGroupInspection||!!environmentGroupInspection||!!wallInspection||scenePlacementMode||!!scenePlacementInspection;
-  if(!wallSourceCurrent()){wallSelectMode=false;wallSelection=null;}wallSelectButton.classList.toggle('active',wallSelectMode);wallSelectButton.setAttribute('aria-pressed',String(wallSelectMode));wallRectangleTool?.refresh();
+  if(!wallSourceCurrent()){wallSelectMode=false;wallSelection=null;}wallSelectButton.classList.toggle('active',wallSelectMode);wallSelectButton.setAttribute('aria-pressed',String(wallSelectMode));wallRectangleTool?.refresh();floorRectangleTool?.refresh();
   collisionLayer.hidden=fieldToggle.hidden;collisionLayer.disabled=busy||fieldPending;
   fieldToggle.classList.toggle('active',!!fieldMap);fieldToggle.setAttribute('aria-pressed',!!fieldMap);fieldToggle.textContent=fieldPending?'Loading collision…':collisionLayer.value==='effective'?'Effective collision':'Base collision';
 }
 function clearFieldMap(){
-  fieldAbort?.abort();fieldAbort=null;fieldMap=null;fieldKey=null;fieldPending=false;fieldNote.hidden=true;wallSelectMode=false;wallSelection=null;wallRectangleTool?.restore();updateFieldToggle();
+  fieldAbort?.abort();fieldAbort=null;fieldMap=null;fieldKey=null;fieldPending=false;fieldNote.hidden=true;wallSelectMode=false;wallSelection=null;wallRectangleTool?.restore();floorRectangleTool?.restore();updateFieldToggle();
 }
 function validateFieldMap(result,record,key){
   if(key!==resourceStateKey()||result.source_key!==state.scene_preview_source_key||result.scene_id!==state.scene?.id||result.semantic_id!==record.id||result.asset_kind!=='collision'||result.coordinate_system!=='psx_guest_xz')throw new Error('Field map source changed while loading. Refresh scene resources and retry.');
@@ -2179,6 +2197,7 @@ function openFieldResource(record){
       const apply=async command=>{if(busy||state.project.mode!=='edit'||resourceStateKey()!==key||state.scene.id!==scene)return;await api('/api/command',command,{dialog:fieldDialog,success:'Source wall edits updated. Save project to persist.'});};
       const applyEdits=edits=>apply(edits.length?{type:'set_collision_walls',entity_id:scene,value:{source_sha256:snapshot.asset.source_record.containing_span_sha256,edits}}:{type:'clear_collision_walls',entity_id:scene});
       const rectangleButton=document.createElement('button');rectangleButton.textContent='Edit wall rectangle…';summary.append(rectangleButton);rectangleButton.onclick=()=>{if(dirty()){notify('Apply or discard the single-cell wall change first.',true);return;}if(busy||resourceStateKey()!==key||state.scene.id!==scene)return;fieldDialog.close();wallRectangleTool.open();};
+      const floorButton=document.createElement('button');floorButton.textContent='Edit floor tiers…';summary.append(floorButton);floorButton.onclick=()=>{if(dirty()){notify('Apply or discard the single-cell wall change first.',true);return;}if(busy||resourceStateKey()!==key||state.scene.id!==scene)return;fieldDialog.close();floorRectangleTool.open();};
       restore.onclick=()=>{if(dirty()||!form.reportValidity())return;return applyEdits(wallEdits.filter(e=>!sameCell(e,cell())));};
       form.onsubmit=async event=>{event.preventDefault();if(!dirty()||!form.reportValidity())return;const c=cell(),edits=wallEdits.filter(e=>!sameCell(e,c)),change=snapshot.authored_changes?.find(e=>sameCell(e,c)),retailBlocked=change?change.before_value:appliedBlocked;if(form.elements.blocked.checked!==retailBlocked)edits.push({...c,blocked:form.elements.blocked.checked});await applyEdits(edits);};
       form.querySelector('.clear-collision').disabled=!snapshot.authored?.edits?.length;form.querySelector('.clear-collision').onclick=()=>apply({type:'clear_collision_walls',entity_id:scene});
@@ -4003,6 +4022,7 @@ function draw(){
   updateScenePlacementSelection();
   if(scenePlacementInspection&&(!scenePreviewCurrent()||scenePlacementInspection.report.project_source_key!==state.project_copy_source_key||!canEdit()||sceneRepresentation!=='authored'||scenePose||shapeDraft||actorGroupInspection||environmentGroupInspection||wallInspection))scenePlacementTool.restore();
   updateFieldToggle();updateFieldSpatialTools();
+  floorRectangleTool?.refresh();
   if(wallRectangleTool){wallRectangleTool.refresh();if(wallInspection&&(!wallSourceCurrent()||wallInspection.report.project_source_key!==state.project_copy_source_key))wallRectangleTool.restore();if(wallSelectMode&&!wallSourceCurrent()){wallSelectMode=false;wallSelection=null;}if(drag?.type==='wall-rectangle'&&!wallGestureCurrent(drag)){cancelViewportGesture();return;}}
   updateEnvironmentGroupSelection();
   if(environmentGroupInspection&&(!scenePreviewCurrent()||environmentGroupInspection.report.project_source_key!==state.project_copy_source_key||sceneRepresentation!=='authored'||scenePose||shapeDraft||actorGroupInspection)){environmentGroupTool.restore();environmentLayoutTool?.restore();environmentRotationGroupTool?.restore();}

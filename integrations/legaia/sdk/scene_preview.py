@@ -93,6 +93,7 @@ def source_key(project, *, geometry_only=False) -> str | None:
                    "animation_channels": {a["semantic_id"]: deepcopy(project.overrides[a["semantic_id"]]["AnimationChannels"])
                                           for a in document["actors"] if "AnimationChannels" in project.overrides.get(a["semantic_id"], {})},
                    "environment": None if geometry_only else deepcopy(project.overrides.get(project.active_scene, {}).get("Environment")),
+                   "floor_tiers": deepcopy(project.overrides.get(project.active_scene, {}).get("FloorTiers")),
                    "collision": None if geometry_only else deepcopy(project.overrides.get(project.active_scene, {}).get("Collision")),
                    "disc_stamp": _disc_stamp(path), "schema": "legaia.scene-preview.v1"})
 
@@ -100,13 +101,20 @@ def source_key(project, *, geometry_only=False) -> str | None:
 def environment_effective_transforms(project, metadata: dict) -> dict:
     """Project shared and cell-local edits without changing imported identities."""
     value = project.overrides.get(project.active_scene, {}).get("Environment")
-    if not value:
+    floors=project.overrides.get(project.active_scene,{}).get('FloorTiers')
+    if not value and not floors:
         return {}
     from importer.environment_authoring import patch_environment_overrides
-    project._validate_environment(project.active_scene, value)
-    if metadata["source_record"]["map_sha256"] != value["source_sha256"]:
-        raise ProjectError("Environment preview source differs from authored binding")
-    _, changes = patch_environment_overrides(project._environment_source(project.active_scene), value)
+    changes=[]
+    if value:
+        project._validate_environment(project.active_scene, value)
+        if metadata["source_record"]["map_sha256"] != value["source_sha256"]:raise ProjectError("Environment preview source differs from authored binding")
+        _, changes = patch_environment_overrides(project._environment_source(project.active_scene), value)
+    floor_edits={}
+    if floors:
+        project._validate_floor_tiers(project.active_scene,floors)
+        if metadata['source_record']['map_sha256']!=floors['source_sha256']:raise ProjectError('Placed-object floor source differs from authored binding')
+        floor_edits={(e['row'],e['column']):e['tier'] for e in floors['edits']}
     by_record, by_cell = {}, {}
     for change in changes:
         if 'allocation' in change:
@@ -118,7 +126,8 @@ def environment_effective_transforms(project, metadata: dict) -> dict:
         grid_offset = placement.get('source_record', {}).get('grid_byte_offset', -1)
         cell = (grid_offset - 0x8000) // 2
         rows = by_record.get(placement["object_record_index"], []) + by_cell.get(cell, [])
-        if not rows:
+        floor_tier=floor_edits.get((placement['tile']['z'],placement['tile']['x'])) if floors else None
+        if not rows and floor_tier is None:
             continue
         transform = deepcopy(placement["imported_transform"])
         for row in rows:
@@ -127,6 +136,8 @@ def environment_effective_transforms(project, metadata: dict) -> dict:
                 transform["position"][axis] += (row["after_value"] - row["before_value"]) * (-1 if axis == 'z' else 1)
             else:
                 transform["rotation_psx"][axis] = row["after_value"]
+        if floor_tier is not None:
+            transform['position']['y']+=placement['floor']['lut_value']-metadata['floor_height_lut'][floor_tier]
         result[placement["semantic_id"]] = transform
     return result
 

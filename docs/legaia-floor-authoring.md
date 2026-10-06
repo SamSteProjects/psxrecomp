@@ -1,5 +1,14 @@
 # Legaia floor-selector authoring
 
+## 2026-10-06: floor editor and authored height previews
+
+The collision inspector now opens `Edit floor tiers`, with bounded native floor rows/columns, sixteen source-qualified MAN selector choices, retail restoration and separate Retail/Current/Proposed rows. Review supplies the immutable signed MAN values and reference Y labels; input changes withdraw old Apply authority. Inspect proposed floor scene uses a detached SDK project view and the existing Proposed/Current scene comparison with Return to floor review. Apply is one normal floor command, followed by the usual history, Save and Build workflow. The dialog and reader reject stale context and dispose owned requests on close.
+
+Current ground geometry now decodes authored low-nibble selectors before texture association. Floor edits participate in geometry cache identity. Current placed-object transforms use the same evidenced placement-cell selector, composing its LUT height delta with existing scenery offsets/rotations. Retail source records/transforms remain immutable. Adjacent corner consumers and unknown actor preview surface sampling use the updated reference ground. These are source-derived preview heights; native ramp behavior, object visibility and live movement remain unverified.
+
+Validation: eighteen focused Python checks passed across new floor preview composition, floor Review/history/HTTP, environment/texture projection and scene caching. Node floor decoder and existing wall guards passed; editor/module syntax checks passed. Actual retail browser workflow passed typed LUT labels, input invalidation, fresh Review, Proposed scene inspection/return, private Apply, Undo/Redo and Save/Open. Independent vertex-by-vertex comparison proved exact changed ground corners, unchanged topology/materials/UVs and the expected placed-object height delta; source transforms remained identical. Normal private Build matched the full MAP independently, preserving the existing wall bit in the same byte. Native MAP SHA-256 `25bdeeb8a832129ae434a1e072beeb24bbe9e7e2909738c38042cb1120bdb5b7`; package SHA-256 `b91a7e2c9366b65f39517d1df050ab9edf608629bc939ab8006f6216c19ddd7e`. Wide/narrow dialog screenshots were inspected; no page errors occurred. Evidence: `local-output/sdk-20260909/floor-editor-20261006/attempt2/proof.json`. The first browser attempt exposed an inaccessible modal entry point; the collision inspector entry was added before the successful fresh attempt. No game launch, runtime attachment or installation occurred. The full SDK goal remains incomplete; gameplay acceptance stays deferred.
+
+
 
 ## 2026-10-06: native floor-selector authoring backend
 
@@ -14,6 +23,9 @@ Validation: four focused Python floor cases and seven existing wall rectangle/pa
 
 `POST /api/command` with `type: apply_floor_rectangle`, the same owner/rectangle and returned `review_key` obtains a fresh Review before changing authored state. A change is one normal command. Restore retail removes selected overrides while retaining outside floor selectors and separate wall/scenery components. A normal private Build emits a source-bound MAP overlay and per-selector audit; it does not edit the MAN LUT.
 
-This is currently a backend feature. The editor's floor tools and Current terrain/placement display still need implementation before presenting a complete editor workflow. No game or live movement validation is implied by serializer or private package equality.
+The editor now exposes this workflow from the collision inspector. Current and Proposed reference terrain and placement heights include authored selectors, while Retail source values stay separate. No game or live movement validation is implied by preview geometry or private package equality.
 
 Evidence remains pinned to AndrewAltimit/legend-of-legaia-re `d6e64c68ede25813d35db20980da82a1a025549b`: `crates/asset/src/field_objects.rs` documents the MAP grid/low nibble and corner heightfield interpretation; `crates/engine-core/src/scene/scene_ty.rs::field_floor_height_lut` resolves the sixteen signed MAN words at 0x02..0x22; `crates/engine-core/src/world/field_elevation.rs` distinguishes the ordinary four-corner floor branch from object-grid 0x0800/kind-2 ramp behavior. These files were inspected directly from the pinned Git object in the local read-only reference checkout. The missing referenced `ghidra/scripts/funcs/80019278.txt` is not claimed as inspected evidence. The serializer is independently implemented, with no reference runtime dependency or wholesale source copy.
+
+
+To edit floors, refresh Resources, select the scene collision resource and open Edit source wall bits. Choose Edit floor tiers in that inspector, set inclusive floor bounds and an existing tier (or Restore retail selectors), then Review. Inspect proposed floor scene to compare the proposal with Current; Return to floor review restores the dialog. Apply, Save and normal Build use the same reviewed selectors. Floor selectors use unbiased native rows/corner coordinates; do not reuse wall rectangle Z extents.
