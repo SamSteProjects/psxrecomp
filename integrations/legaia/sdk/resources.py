@@ -601,3 +601,16 @@ def audio_waveform_preview(project, asset_id, expected_source_key, expected_entr
     if key!=source_key(project):raise ProjectError('Waveform source changed during inspection')
     return dict(schema_version='legaia.audio-waveform-inspection.v1',asset_id=asset_id,scene_id=project.active_scene,
                 source_key=key,read_only=True,project_changed=False,runtime_state='not_observed',**report)
+
+
+def audio_pcm_preview(project, asset_id, expected_source_key, expected_entry_sha256, expected_bank_sha256, sample_index, expected_sample_sha256):
+    from importer.audio_waveform import read_audio_pcm
+    document,key=_scene(project)
+    if expected_source_key!=key:raise ProjectError('Audio preview source changed; refresh resources')
+    with _disc_context(project.disc_path):
+        _verify(project,document)
+        report=read_audio_pcm(project.disc_path,asset_id,expected_entry_sha256,expected_bank_sha256,sample_index,expected_sample_sha256)
+    if key!=source_key(project):raise ProjectError('Audio preview source changed during inspection')
+    waveform=dict(schema_version='legaia.audio-waveform-inspection.v1',asset_id=asset_id,scene_id=project.active_scene,
+                  source_key=key,read_only=True,project_changed=False,runtime_state='not_observed',**report.pop('waveform'))
+    return dict(schema_version='legaia.audio-pcm-preview.v1',waveform=waveform,**report)

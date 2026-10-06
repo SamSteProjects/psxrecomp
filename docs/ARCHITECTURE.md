@@ -6,6 +6,8 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+`audio_waveform.py` shares source qualification and prefix decoding between metadata inspection and private PCM preview. `/api/audio-pcm` emits a bounded source-qualified preview payload without adding bytes to project metadata. `audio-waveform-contract.js` owns the shared metadata DTO; `audio-audition.js` verifies PCM SHA/envelopes, owns explicit-rate Play/Stop/context cleanup and writes exact mono WAV locally. Playback uses the browser [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/createBuffer); preview settings never become retail/runtime pitch or authored bank data.
+
 `importer/audio_waveform.py` owns bounded zero-history SPU-ADPCM prefix decoding and envelope/flag evidence. `/api/audio-waveform` binds scene, entry, bank and sample identities through the SDK resource service. `editor/audio-waveform.js` validates source/prefix/envelope/marker contracts, renders frame coordinates and owns stale/close withdrawal. No sample rate, playback or authored bank serialization is introduced.
 
 `importer/audio_bank.py` independently qualifies bounded contiguous/split VAB carriers and program, packed tone and sample-size tables. `sdk/resources.py` and `/api/audio-bank` enforce current scene and physical entry identities; `editor/audio-bank.js` verifies the DTO, owns the read-only filtered table view and withdraws stale sources. Metadata does not establish PCM, playback, instrument mapping or native authoring.

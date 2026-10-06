@@ -1,5 +1,6 @@
 """Bounded source SPU-ADPCM waveform inspection, without pitch or playback."""
 from hashlib import sha256
+import base64, struct
 from .core import ImportError
 from .audio_bank import bank_from_entry, read_audio_bank, MAX_ENTRY_BYTES
 from .pipeline import _disc_context
@@ -9,7 +10,7 @@ MAX_BINS = 512
 COEFFICIENTS = ((0, 0), (60, 0), (115, -52), (98, -55), (122, -60))
 
 
-def inspect_waveform(body):
+def _decode_waveform(body):
     if not isinstance(body, bytes) or len(body) > MAX_ENTRY_BYTES:
         raise ImportError('Waveform requires bounded immutable sample bytes')
     pcm = []; markers = []; previous = older = 0; stopped = None; consumed = 0
@@ -38,16 +39,21 @@ def inspect_waveform(body):
     width = max(1, (len(pcm) + MAX_BINS - 1) // MAX_BINS)
     bins = [dict(frame_offset=i, frame_count=len(pcm[i:i + width]), minimum=min(pcm[i:i + width]), maximum=max(pcm[i:i + width]))
             for i in range(0, len(pcm), width)]
-    return dict(decoder='psx-spu-adpcm-integer-v1', history='zero-initialized', source_size_bytes=len(body),
+    report = dict(decoder='psx-spu-adpcm-integer-v1', history='zero-initialized', source_size_bytes=len(body),
                 source_sha256=sha256(body).hexdigest(), decoded_blocks=consumed // 16, decoded_frames=len(pcm),
                 consumed_bytes=consumed, remaining_bytes=len(body) - consumed, termination=stopped,
                 markers=markers, bins=bins, frame_limit=MAX_BLOCKS * 28, sample_rate=None,
                 limitations=['Frames use zero initial predictor history and stop at the first encoded end; loops are not replayed.',
                              'Reserved shift values 13–15 use effective shift 9, following pinned SPU decoder evidence.',
                              'No sample rate, pitch, audible duration, instrument assignment or runtime playback is inferred.'])
+    return report, struct.pack('<' + str(len(pcm)) + 'h', *pcm)
 
 
-def read_audio_waveform(disc, asset_id, expected_entry_sha256, expected_bank_sha256, sample_index, expected_sample_sha256):
+def inspect_waveform(body):
+    return _decode_waveform(body)[0]
+
+
+def _read_source_sample(disc, asset_id, expected_entry_sha256, expected_bank_sha256, sample_index, expected_sample_sha256):
     if type(sample_index) is not int or not 0 <= sample_index <= 254:
         raise ImportError('Choose a bounded source sample index')
     report = read_audio_bank(disc, asset_id, expected_entry_sha256)
@@ -67,4 +73,19 @@ def read_audio_waveform(disc, asset_id, expected_entry_sha256, expected_bank_sha
         if sha256(raw).hexdigest() != expected_sample_sha256:
             raise ImportError('Waveform sample changed during inspection')
     return dict(source_record=report['source_record'], reference_commit=report['reference_commit'],
-                bank_sha256=expected_bank_sha256, sample=sample, **inspect_waveform(raw))
+                bank_sha256=expected_bank_sha256, sample=sample), raw
+
+
+def read_audio_waveform(disc, asset_id, expected_entry_sha256, expected_bank_sha256, sample_index, expected_sample_sha256):
+    source, raw = _read_source_sample(disc, asset_id, expected_entry_sha256, expected_bank_sha256, sample_index, expected_sample_sha256)
+    return dict(**source, **inspect_waveform(raw))
+
+
+def read_audio_pcm(disc, asset_id, expected_entry_sha256, expected_bank_sha256, sample_index, expected_sample_sha256):
+    """Private preview payload; never stored in imported/project metadata."""
+    source, raw = _read_source_sample(disc, asset_id, expected_entry_sha256, expected_bank_sha256, sample_index, expected_sample_sha256)
+    report, pcm = _decode_waveform(raw)
+    if not report['decoded_frames']:
+        raise ImportError('This source sample has no decoded frames to audition')
+    return dict(waveform=dict(**source, **report), format='s16le-mono',
+                pcm_sha256=sha256(pcm).hexdigest(), pcm_base64=base64.b64encode(pcm).decode('ascii'))
