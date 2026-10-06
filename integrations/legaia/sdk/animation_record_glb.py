@@ -51,13 +51,16 @@ def prepare_import(project,scene_id,record_id,source_frame_indices,expected_sour
     if not isinstance(binding,dict):raise ProjectError('Choose the retained clip export binding JSON sidecar')
     entry,captured,current=_snapshot(project,scene_id,record_id,expected_source_key,binding.get('clip_fps'))
     normalized=dict(binding,clip_fps=float(binding['clip_fps']))
+    object_nodes=binding.get('external_object_nodes')
+    if 'external_object_nodes' in binding and object_nodes is None:raise ProjectError('Explicit object mapping cannot be null')
+    normalized.pop('external_object_nodes',None)
     if digest(normalized)!=digest(current):
         raise ProjectError('Retained GLB binding differs from the current saved capture or scene; export again')
     # Same mapping uses current content as the source-biased angular baseline.
     # A changed mapping inherits captured frames, never guesses new opaque data.
     baseline_edits=entry['edits'] if source_frame_indices==entry['source_frame_indices'] else []
     baseline,_=allocate_animation_record(captured,entry['effective_donor_record_sha256'],source_frame_indices,baseline_edits)
-    candidate,analysis=import_animation_glb(baseline,content,fps=current['clip_fps'],animation_index=animation_index)
+    candidate,analysis=import_animation_glb(baseline,content,fps=current['clip_fps'],animation_index=animation_index,object_node_indices=object_nodes)
     inherited,_=allocate_animation_record(captured,entry['effective_donor_record_sha256'],source_frame_indices,[])
     desired=decode_animation_record(candidate);original=decode_animation_record(inherited);edits=[]
     for frame in desired['frames']:
@@ -74,6 +77,7 @@ def prepare_import(project,scene_id,record_id,source_frame_indices,expected_sour
     view,native=prepare_content(project,**native_request)
     if native['candidate_record_sha256']!=sha256(candidate).hexdigest():
         raise ProjectError('Retained GLB channel replay differs from the reconstructed native record')
+    if object_nodes is not None:current=dict(current,external_object_nodes=object_nodes)
     report=dict(schema_version='legaia.animation-record-glb-review.v1',scene_id=scene_id,record_id=record_id,
         project_source_key=expected_source_key,binding=current,glb_sha256=sha256(content).hexdigest(),
         analysis=analysis,content_review=native,content_request=native_request,

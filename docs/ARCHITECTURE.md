@@ -700,3 +700,17 @@ through ProjectService commands and the existing validated Undo/Redo path.
 Source bytes are retained for Undo and only Current references enter snapshots.
 Receipts are historical external inputs, never native replay authority or live
 identity evidence; native authoring continues to require fresh qualified Review.
+
+
+### External rigid-object mapping (2026-10-06)
+
+Animation bindings optionally carry `external_object_nodes` as an authored
+interchange choice. SDK services strip only that field when qualifying the
+remaining export identity against current retail/native provenance. The GLB
+importer validates one unique reachable node per native object, rejects conflicts
+with preserved source identities, and uses the existing hierarchy/sample/native
+channel serializer. Review authorization includes the ordered mapping even when
+two choices produce identical native bytes. Receipt metadata retains and checks
+the mapping; frontend binding/report decoders verify it before pose or Apply.
+Editor node inventories are bounded display metadata and do not invent retail
+bone semantics. Skinning and automatic skeletal retargeting remain unsupported.

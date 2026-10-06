@@ -231,13 +231,22 @@ def _rigid_matrix(value):
     return [m[12],m[13],m[14]], _unit_quaternion(q, "matrix rotation")
 
 
-def _nodes(doc, object_count):
+def _nodes(doc, object_count, object_node_indices=None):
     nodes = _array(doc.get("nodes"), "nodes", 4096)
     scenes = _array(doc.get("scenes"), "scenes", 4096)
     scene_index = _integer(doc.get("scene", 0), 0, len(scenes) - 1, "scene index")
     scene = _object(scenes[scene_index], "scene")
     roots = _array(scene.get("nodes", []), "scene roots", 4096)
     mapping, transforms, parents = {}, {}, {}
+    explicit = {}
+    if object_node_indices is not None:
+        if not isinstance(object_node_indices,list) or len(object_node_indices)!=object_count:
+            raise ImportError('Explicit rigid-object mapping requires one GLB node per native object')
+        for obj,index in enumerate(object_node_indices):
+            _integer(index,0,len(nodes)-1,'explicit object node index')
+            if index in explicit:raise ImportError('Explicit rigid-object mapping contains duplicate nodes')
+            explicit[index]=obj
+        mapping={obj:index for index,obj in explicit.items()}
     for index, raw in enumerate(nodes):
         node = _object(raw, "node")
         if "skin" in node or "weights" in node:
@@ -259,9 +268,13 @@ def _nodes(doc, object_count):
             identity = source_index
         if identity is not None:
             _integer(identity, 0, object_count - 1, "source object index")
-            if identity in mapping:
-                raise ImportError("GLB has duplicate source object nodes")
-            mapping[identity] = index
+            if object_node_indices is not None:
+                if explicit.get(index)!=identity:
+                    raise ImportError('Explicit mapping conflicts with preserved source object identity')
+            else:
+                if identity in mapping:
+                    raise ImportError("GLB has duplicate source object nodes")
+                mapping[identity] = index
         translation = _vector(node.get("translation", [0, 0, 0]), 3, "node translation")
         rotation = _unit_quaternion(node.get("rotation", [0, 0, 0, 1]), "node rotation")
         scale = _vector(node.get("scale", [1, 1, 1]), 3, "node scale")
@@ -557,7 +570,7 @@ def _quantize_rotation(glb_q, baseline_angles):
     return [v * 16 for v in ticks], degrees
 
 
-def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animation_index: int | None = None) -> tuple[bytes, dict]:
+def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animation_index: int | None = None, object_node_indices: list[int] | None = None) -> tuple[bytes, dict]:
     """Sample an existing clip at explicit 1..120 fps without retiming/count growth.
 
     At i/fps, the float32 representation matches glTF key storage and the SDK
@@ -576,7 +589,7 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
     if total > MAX_CHANNEL_EDITS:
         raise ImportError("Animation GLB source exceeds the 4096-channel bound")
     doc, payload = _read_glb(content)
-    mapping, static, parents = _nodes(doc, source["bone_count"])
+    mapping, static, parents = _nodes(doc, source["bone_count"], object_node_indices)
     order = _hierarchy_order(mapping, parents, source["frame_count"])
     tracks = _tracks(doc, _Accessors(doc, payload), mapping, source["frame_count"] / fps, animation_index, hierarchy_nodes=order)
     edits, maximum_translation, maximum_angle, preserved = [], 0.0, 0.0, 0
@@ -622,6 +635,8 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
                          "coordinate_conversion": "translation [x,-y,z]; quaternion [-x,y,-z,w]"},
         "scope": "existing-rigid-animation-channels-only", "gameplay_verified": False,
     }
+    if object_node_indices is not None:
+        report['external_object_nodes'] = list(object_node_indices)
     if animation_index is not None:
         report['file_animation_index'] = animation_index
     return candidate, report

@@ -1,4 +1,5 @@
 import {openAnimationSources} from './animation-sources.js';
+import {validateObjectMapping,withObjectMapping,createObjectMappingControl,objectNodeInventory} from './animation-glb-mapping.js';
 import {glbAnimationChoices,populateGlbClipSelect,selectedGlbClipIndex} from './animation-glb-clips.js';
 // External rigid-channel interchange; preview and review never author the project.
 const MAX_GLB=32*1024*1024,MAX_BINDING=128*1024,MAX_AXES=4096*6;
@@ -15,7 +16,7 @@ const fail=message=>{throw new Error(message);};
 const actor=(value,scene)=>typeof value==='string'&&value.startsWith(scene+'/actors/man-p1/')&&/^\d{4}$/.test(value.slice((scene+'/actors/man-p1/').length));
 const bindingKeys=['schema_version','entity_id','scene_id','asset_id','animation_id','source_record_sha256','effective_record_sha256','project_source_key','frame_count','object_count','clip_fps','coordinate_conversion','node_names'];
 const reviewKeys=['schema_version','entity_id','project_source_key','review_key','candidate_sha256','glb_sha256','changed_axes','frame_count','object_count','maximum_translation_error','maximum_angular_error_degrees','changes','ownership','project_changed','limitations'];
-const reviewMetadata=['animation_id','source_record_sha256','effective_record_sha256','fps','sampled_channel_count','quantization','scope','gameplay_verified','file_animation_index'];
+const reviewMetadata=['animation_id','source_record_sha256','effective_record_sha256','fps','sampled_channel_count','quantization','scope','gameplay_verified','file_animation_index','external_object_nodes'];
 
 export function animationGlbContext(value){
   if(!exact(value,['projectPath','sceneId','mode','sourceKey'])||!text(value.projectPath,32768)||!/^scene:\/\/[A-Za-z0-9_-]{1,128}$/.test(value.sceneId)||value.mode!=='edit'||!hash(value.sourceKey))fail('Animation import requires the current editable scene and source key.');
@@ -24,7 +25,8 @@ export function animationGlbContext(value){
 
 export function decodeAnimationGlbBinding(value,entityId,context){
   context=animationGlbContext(context);
-  const assigned=value?.schema_version==='legaia.animation-glb-binding.v2',keys=assigned?[...bindingKeys,'channel_owner_entity_id','model_source_entity_id']:bindingKeys;
+  const assigned=value?.schema_version==='legaia.animation-glb-binding.v2',keys=assigned?[...bindingKeys,'channel_owner_entity_id','model_source_entity_id']:[...bindingKeys];
+  if(Object.hasOwn(value??{},'external_object_nodes')){validateObjectMapping(value.external_object_nodes,value.object_count);keys.push('external_object_nodes');}
   if(assigned&&(!actor(value.channel_owner_entity_id,context.sceneId)||!actor(value.model_source_entity_id,context.sceneId)))fail('Assigned clip binding has invalid source witnesses.');
   if(!actor(entityId,context.sceneId)||!exact(value,keys)||!['legaia.animation-glb-binding.v1','legaia.animation-glb-binding.v2'].includes(value.schema_version)||value.entity_id!==entityId||value.scene_id!==context.sceneId||!text(value.asset_id,512)||!/^asset:\/\/[A-Za-z0-9_./-]+$/.test(value.asset_id)||!text(value.animation_id,512)||!value.animation_id.startsWith('animation://'+context.sceneId.slice(8)+'/scene-anm/')||!/^\d{4}$/.test(value.animation_id.split('/').at(-1))||!hash(value.source_record_sha256)||!hash(value.effective_record_sha256)||value.project_source_key!==context.sourceKey||!integer(value.frame_count,1,4096)||!integer(value.object_count,1,64)||value.frame_count*value.object_count>4096||!finite(value.clip_fps,1,120)||value.coordinate_conversion!=='[x,-y,z]; rigid Rz*Ry*Rx'||!Array.isArray(value.node_names)||!same(value.node_names,Array.from({length:value.object_count},(_,index)=>'object-'+index)))fail('The binding does not match this actor, source, or existing rigid clip. Export a fresh binding.');
   if(JSON.stringify(value).length>MAX_BINDING)fail('Animation binding exceeds 128 KiB.');
@@ -33,6 +35,7 @@ export function decodeAnimationGlbBinding(value,entityId,context){
 
 export function decodeAnimationGlbReview(value,binding,entityId,context,glbHash,animationIndex=null){
   binding=decodeAnimationGlbBinding(binding,entityId,context);
+  if(!same(value?.external_object_nodes,binding.external_object_nodes))fail('Review differs from the explicit object mapping.');
   if(animationIndex===null?Object.hasOwn(value??{},'file_animation_index'):value?.file_animation_index!==animationIndex||!integer(animationIndex,0,63))fail('Review differs from the selected GLB animation.');
   if(!object(value)||!reviewKeys.every(key=>Object.hasOwn(value,key))||Object.keys(value).some(key=>!reviewKeys.includes(key)&&!reviewMetadata.includes(key))||value.schema_version!=='legaia.animation-glb-review.v1'||value.entity_id!==entityId||value.project_source_key!==context.sourceKey||!hash(value.review_key)||!hash(value.candidate_sha256)||!hash(value.glb_sha256)||value.glb_sha256!==glbHash||value.frame_count!==binding.frame_count||value.object_count!==binding.object_count||!integer(value.changed_axes,0,MAX_AXES)||!Array.isArray(value.changes)||value.changes.length!==value.changed_axes||!finite(value.maximum_translation_error,0,.5)||!finite(value.maximum_angular_error_degrees,0,2.2)||value.project_changed!==false||!Array.isArray(value.limitations)||value.limitations.length>64||value.limitations.some(line=>!text(line)))fail('Animation review differs from the selected files or current source. Review them again.');
   for(const [key,expected] of Object.entries({animation_id:binding.animation_id,source_record_sha256:binding.source_record_sha256,effective_record_sha256:binding.effective_record_sha256,fps:binding.clip_fps,sampled_channel_count:binding.frame_count*binding.object_count,scope:'existing-rigid-animation-channels-only',gameplay_verified:false}))if(Object.hasOwn(value,key)&&value[key]!==expected)fail('Animation review metadata differs from its source binding.');
@@ -103,6 +106,7 @@ export async function openAnimationGlbEditor({entityId,getContext,busy,setBusy,o
   const manifest=element('input');manifest.type='file';manifest.accept='.json,application/json';manifest.setAttribute('aria-label','Source binding JSON');
   for(const [label,input] of [['Edited GLB · maximum 32 MiB',glb],['Binding JSON from the export · maximum 128 KiB',manifest]]){const node=element('label',label);node.append(input);imported.append(node);}
   const recover=element('button','Recover animation sources');recover.type='button';imported.append(recover);recover.onclick=()=>openAnimationSources({getContext,targetId:entityId,kind:'imported',onError,busy,setBusy,onApplied:async next=>{await onApplied(next);dispose();}});
+  const objectMapping=createObjectMappingControl();imported.append(objectMapping.label,objectMapping.details);
   const clipSelect=element('select');clipSelect.setAttribute('aria-label','Animation in edited GLB');const clipLabel=element('label','Animation in edited GLB');clipLabel.append(clipSelect);imported.append(clipLabel);
   const actions=element('div');actions.className='dialog-actions';actions.style.flexWrap='wrap';const inspect=button('Review selected files','review'),pose=button('Preview reviewed animation','pose'),apply=button('Apply reviewed animation','apply');pose.hidden=onPosePreview===null;actions.append(inspect,pose,apply);imported.append(actions);
   const status=element('p','Choose both edited files to review.');status.setAttribute('role','status');const error=element('p');error.className='dialog-error';error.setAttribute('role','alert');const summary=element('section');summary.hidden=true;
@@ -119,7 +123,7 @@ export async function openAnimationGlbEditor({entityId,getContext,busy,setBusy,o
     const current=contextCurrent(),blocked=!current||pending!==null||busy()!==false;
     fps.disabled=prepare.disabled=blocked;glb.disabled=manifest.disabled=!current||pending==='apply'||busy()!==false&&pending===null;
     getGlb.disabled=getBinding.disabled=blocked||!exportData;
-    recover.disabled=blocked;    clipSelect.disabled=blocked||!candidate;inspect.disabled=blocked||!candidate||candidate.clipChoices.length>1&&clipSelect.value==='';pose.disabled=blocked||!acceptedCurrent(review);apply.disabled=blocked||!acceptedCurrent(review)||review?.report.changed_axes===0;close.disabled=pending==='apply';
+    recover.disabled=blocked;    clipSelect.disabled=blocked||!candidate;objectMapping.input.disabled=blocked||!candidate;inspect.disabled=blocked||!candidate?.binding||candidate.clipChoices.length>1&&clipSelect.value==='';pose.disabled=blocked||!acceptedCurrent(review);apply.disabled=blocked||!acceptedCurrent(review)||review?.report.changed_axes===0;close.disabled=pending==='apply';
   }
   function dispose(){if(closed)return;closed=true;invalidate();candidate=exportData=null;if(dialog.open)dialog.close();dialog.remove();}
   async function run(kind,work){
@@ -156,10 +160,12 @@ export async function openAnimationGlbEditor({entityId,getContext,busy,setBusy,o
       const binding=decodeAnimationGlbBinding(JSON.parse(content),entityId,context),glbHash=await byteHash(bytes);
       if(!valid()||revision!==fileRevision)return false;
       const clipChoices=glbAnimationChoices(bytes);populateGlbClipSelect(clipSelect,clipChoices);
-      candidate={glb_base64:encode(bytes),binding,glbHash,revision:fileRevision,clipChoices,animation_index:null};status.textContent=`Ready to review ${edited.name} with ${bindingFile.name}.`;return true;
+      objectMapping.input.value=binding.external_object_nodes?.join(', ')??'';objectMapping.inventory.textContent=objectNodeInventory(bytes);
+      candidate={glb_base64:encode(bytes),binding,baseBinding:binding,glbHash,revision:fileRevision,clipChoices,animation_index:null};status.textContent=`Ready to review ${edited.name} with ${bindingFile.name}.`;return true;
     });
   }
   glb.onchange=manifest.onchange=readFiles;
+  objectMapping.input.oninput=()=>{if(!contextCurrent()||pending!==null||!candidate)return;revision++;invalidate();candidate={...candidate,revision,binding:null};try{candidate.binding=withObjectMapping(candidate.baseBinding,objectMapping.input.value);error.textContent='';status.textContent='Object mapping changed. Review again.';}catch(e){showError(e);}updateState();};
   clipSelect.onchange=()=>{if(!contextCurrent()||pending!==null||!candidate)return;revision++;invalidate();candidate={...candidate,revision,animation_index:clipSelect.value===''?null:selectedGlbClipIndex(clipSelect,candidate.clipChoices)};status.textContent='Animation selection changed. Review again.';updateState();};
   fps.oninput=()=>{if(!contextCurrent()||pending!==null)return;exportData=null;error.textContent='';updateState();};
   prepare.onclick=()=>run('export',async(signal,valid)=>{

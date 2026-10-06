@@ -1,10 +1,14 @@
 // Names are UI metadata only; the SDK verifies the chosen clip and whole-file hash.
-export function glbAnimationChoices(bytes){
+export function glbAnimationDocument(bytes){
   if(!(bytes instanceof Uint8Array)||bytes.length<28||bytes.length>32*1024*1024)throw new Error('Choose a bounded GLB 2.0 file.');
   const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),size=view.getUint32(12,true);
   if(view.getUint32(0,true)!==0x46546c67||view.getUint32(4,true)!==2||view.getUint32(8,true)!==bytes.length||view.getUint32(16,true)!==0x4e4f534a||size%4||size<4||size>bytes.length-20)throw new Error('GLB animation metadata is malformed.');
   const doc=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes.subarray(20,20+size))),clips=doc?.animations??[];
   if(!doc||typeof doc!=='object'||Array.isArray(doc)||!Array.isArray(clips)||clips.length>64||clips.some(c=>!c||typeof c!=='object'||Array.isArray(c)||c.name!==undefined&&typeof c.name!=='string'))throw new Error('GLB requires at most 64 named animation entries.');
+  return doc;
+}
+export function glbAnimationChoices(bytes){
+  const clips=glbAnimationDocument(bytes).animations??[];
   return clips.map((clip,index)=>({index,label:`${index} · ${(clip.name??'Unnamed clip').replace(/[\x00-\x1f]/g,' ').slice(0,128)}`}));
 }
 

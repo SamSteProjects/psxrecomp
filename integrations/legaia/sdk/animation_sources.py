@@ -38,6 +38,11 @@ def validate_record(record):
         raise ProjectError('Animation source requires a stable target identity')
     if not isinstance(binding,dict) or len(canonical(binding))>128*1024 or binding.get('scene_id')!=scene:
         raise ProjectError('Animation source binding differs from its scene or byte budget')
+    if 'external_object_nodes' in binding:
+        nodes=binding['external_object_nodes'];count=binding.get('object_count')
+        if (type(count) is not int or not 1<=count<=64 or not isinstance(nodes,list) or len(nodes)!=count
+                or any(type(v) is not int or not 0<=v<4096 for v in nodes) or len(set(nodes))!=count):
+            raise ProjectError('Animation source explicit object mapping changed')
     index=record['animation_index']
     if index is not None and (type(index) is not int or not 0<=index<64):
         raise ProjectError('Animation source has an invalid selected clip')

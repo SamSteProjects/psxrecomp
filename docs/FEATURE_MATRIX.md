@@ -1,5 +1,35 @@
 # Legaia SDK feature matrix
 
+## Explicit external rigid-object animation mapping - 2026-10-06
+
+Both animation GLB editors now accept an optional ordered list of external GLB
+node indices, display bounded node names/indices, and invalidate Review after
+mapping changes. This permits renamed, reordered rigid rigs without exported
+source tags. Each native object maps to one distinct reachable node; wrong
+counts, duplicate/out-of-range/boolean indices and contradictory preserved
+source identities reject. Hierarchy baking, native quantization, signed12
+bounds, unchanged opaque/layout bytes and existing ownership checks remain.
+The optional binding authoring choice `external_object_nodes` is separated from
+retail binding qualification, included in Review identity (even for identical
+native outcomes), and retained in original-input receipts. Save/Open and copies
+preserve it. This is rigid-node mapping, not skeletal/skinned retargeting.
+
+**Verified:** 59 focused Python checks and seven Node editor checks passed.
+Private retail workflows for both imported actors and retained UUID clips used
+renamed/reordered untagged rigs, explicit mapping, selected-clip Review/Pose/
+Return/Apply, exact source recovery, single-step Undo/Redo, Save/Open and actual
+project-copy reopening. A fresh read-only browser check verified invalid-map
+blocking, mapping-change Review invalidation and corrected narrow-layout labels.
+Normal Build `6a151206eecda995` passed independent native-bank readback
+(SHA-256 `417cb5b4e63e551cf600333b3fc4373fe8b639cb3ab391bad85839343fd8dd02`).
+Package SHA-256 `4a7fec8d35731fc0de84aef21097bff25f35943518108760cce89e7421c4c37f`.
+Evidence: `local-output/sdk-20260909/animation-glb-object-mapping-20261006/`.
+A copied browser-label encoding error was corrected before Apply; the feature
+label encoding was then corrected and checked in a fresh browser. Reference
+inputs remained unchanged. No game was launched. Full SDK completion, skeletal
+retargeting/skinning and retail animation playback/timing remain open.
+
+
 ## Project-wide animation input browser - 2026-10-06
 
 The Asset database tools now expose **Project animation inputs**. The SDK

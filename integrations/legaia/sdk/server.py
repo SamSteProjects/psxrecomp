@@ -904,6 +904,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/runtime-review.js": ("runtime-review.js", "text/javascript"),
                  "/animation-glb.js": ("animation-glb.js", "text/javascript"),
                  "/animation-glb-clips.js": ("animation-glb-clips.js", "text/javascript"),
+                 "/animation-glb-mapping.js": ("animation-glb-mapping.js", "text/javascript"),
                  "/animation-sources.js": ("animation-sources.js", "text/javascript"),
                  "/animation-source-library.js": ("animation-source-library.js", "text/javascript"),
                  "/actor-animation-glb-target.js": ("actor-animation-glb-target.js", "text/javascript"),

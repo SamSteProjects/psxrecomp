@@ -53,3 +53,18 @@ class ClipReviewIdentity(unittest.TestCase):
                         candidate_sha256=report['candidate_sha256'], proposed_value=calls[0]['value'])
         self.assertEqual(report['review_key'], digest(identity))
         self.assertNotIn('file_animation_index', report)
+
+
+    def test_equal_static_candidates_require_different_explicit_object_mapping_keys(self):
+        project,owner,content,binding,snapshot,calls=self.fixture(duplicate=False)
+        from importer.animation_glb import _read_glb
+        doc,payload=_read_glb(content);doc['animations']=[]
+        node=dict(name='External A',translation=[4,0,0]);doc['nodes']=[node,dict(node,name='External B')];doc['scenes'][0]['nodes']=[0,1]
+        content=encode(doc,payload)
+        with patch('sdk.animation_glb._snapshot',return_value=snapshot),patch('sdk.animation_glb._current'),patch('sdk.animation_sources.apply',side_effect=lambda p,c,content,**recipe:p.command(c)):
+            first=preview_import(project,owner,content,dict(binding,external_object_nodes=[0]))
+            second=preview_import(project,owner,content,dict(binding,external_object_nodes=[1]))
+            self.assertEqual(first['candidate_sha256'],second['candidate_sha256']);self.assertNotEqual(first['review_key'],second['review_key'])
+            with self.assertRaises(ProjectError):apply_import(project,owner,content,dict(binding,external_object_nodes=[1]),first['review_key'])
+            self.assertEqual(calls,[])
+            apply_import(project,owner,content,dict(binding,external_object_nodes=[1]),second['review_key']);self.assertEqual(len(calls),1)

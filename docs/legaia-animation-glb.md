@@ -273,3 +273,29 @@ Current receipt is removed. Local source files stay intact for Undo. Changed
 project root, mode, source collection or native overrides reject stale requests;
 use **Refresh animation inputs** to obtain current receipts. Opening a project
 with no saved active scene retains its normal first-imported-scene selection.
+
+
+## Map external rigid rig nodes explicitly
+
+For an edited GLB that no longer carries SDK source-object tags, choose the GLB
+and its fresh binding, expand **GLB node indices and names**, then enter the GLB
+node indices in **External rigid object mapping**, in native object order.
+For example, `6, 5, 4, 3, 2, 1` maps native object 0 to GLB node 6, object 1 to
+node 5, and so on. The list must cover every native object exactly once, using
+distinct nodes reachable in the selected scene. A blank control uses a mapping
+already in the binding, otherwise preserved source tags/canonical object names.
+Explicit mapping cannot contradict preserved source identities or their labels.
+
+The SDK samples mapped nodes with their rigid ancestors into native scene-space
+poses. Existing scale, skinning, morph, hierarchy, numeric and channel-capacity
+guards still apply. This does not import a skinned skeleton or solve bind-pose,
+scale/unit or gameplay-timing differences; inspect the proposed native pose.
+
+The authoring binding may contain `external_object_nodes`, an ordered array of
+GLB node indices. Retail identity fields still qualify against a fresh export;
+the mapping is an authored interchange choice, never a retail fact. Review binds
+the mapping independently of native candidate bytes. Changing it invalidates
+Review. Use Review, proposed pose Preview, Return and explicit Apply. Original
+input recovery retains the GLB and the binding with the chosen mapping, alongside
+selected clip and retained captured-frame choices. Undo/Redo, Save/Open, copies
+and normal Build use the established native authoring pipeline.
