@@ -1,5 +1,12 @@
 # Legaia SDK validation plan
 
+## Selected script operand layers (2026-10-06)
+
+The source-flow workspace now inspects a selected original instruction/message boundary across Retail, composed Current and reviewed Proposed layers. It shows decoded operands, dispatch/length/successor fields and exact encoded byte differences by record PC. Pending nonbranch form drafts are excluded; unavailable inspections and boundaries not decoded on a layer remain explicit. Review invalidation/Discard, failed Apply, stale source/state and close withdraw the displayed proposal. This is read-only static inspection, with no VM or runtime observation.
+
+Actual Town01 Current RGB/intensity edits and a separately reviewed actor branch proposal passed the editor workflow, exact selected-byte comparison, wide/narrow display and unchanged project/history checks. The surrounding branch flow and new focused operand-layer Node checks pass. See [selected script layers](legaia-script-node-layers.md); private evidence is in `local-output/sdk-20260909/script-node-layers-20261006/`. Gameplay verification remains deferred.
+
+
 ## Retail versus saved Build script comparison (2026-10-06)
 
 Imported actor and standalone script editors now expose a read-only comparison with an intact saved Build matching current inputs. The SDK reads actual native MAN records from relocated PROT or qualified overlays, verifies source disc/package receipts, retains retail/generated hashes and offsets, and reports exact changed record bytes alongside paired decoded paths. Bounded display and a complete local comparison download preserve stops/opaque regions. Stale inputs, ambiguous records and layout changes reject inspection. This does not establish script execution or gameplay acceptance.

@@ -1,5 +1,6 @@
 // Encoded source flow only. Branch writers and destination qualification live in the SDK.
 import {mountScriptFlowOverview} from './script-flow-overview.js';
+import {mountScriptNodeLayers} from './script-node-layers.js';
 const hash=value=>typeof value==='string'&&/^[0-9a-f]{64}$/.test(value);
 const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const exact=(value,keys)=>object(value)&&Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
@@ -113,7 +114,8 @@ export function mountScriptBranches(host,{owner,getContext,busy,setBusy,api,sele
   const actions=element('div');actions.className='dialog-actions';actions.style.flexWrap='wrap';const inspect=button('Inspect destination','inspect-destination'),reviewButton=button('Review destination','review'),reset=button('Review reset to Retail','reset'),discard=button('Discard branch draft','discard'),apply=button('Apply reviewed destination','apply');actions.append(inspect,reviewButton,reset,discard,apply);form.append(branchLabel,layers,filter,destinationLabel,destinationStatus,actions);
   const unavailableList=element('div');unavailableList.dataset.unavailableBranchDrafts='';unavailableList.className='script-warning';unavailableList.hidden=true;
   const overviewHost=element('div'),proposedOverviewHost=element('div');
-  const assessment=element('div');assessment.dataset.branchReview='';section.append(status,error,tools,overviewHost,proposedOverviewHost,graph,graphStatus,links,unknown,form,unavailableList,assessment);host.append(section);
+  const nodeLayerHost=element('div'),nodeLayers=mountScriptNodeLayers(nodeLayerHost);
+  const assessment=element('div');assessment.dataset.branchReview='';section.append(status,error,tools,overviewHost,proposedOverviewHost,graph,graphStatus,links,nodeLayerHost,unknown,form,unavailableList,assessment);host.append(section);
   let snapshot=null,accepted=null,activeId=null,selectedPC=null,pending=null,controller=null,busyOwner=null,generation=0,disposed=false,stale=false,started=false;
   const drafts=restoredDrafts,unavailableDrafts=new Map(),graphId='script-branch-arrow-'+(++nextGraph);let resolveReady;const ready=new Promise(resolve=>resolveReady=resolve);
   const overview=mountScriptFlowOverview(overviewHost,{selectInstruction:offset=>{if(current()&&pending===null&&busy()===false)selectNode(offset);}});
@@ -125,13 +127,13 @@ export function mountScriptBranches(host,{owner,getContext,busy,setBusy,api,sele
   const reviewed=()=>current()&&accepted?.branch_id===activeId&&same(accepted.value,value());
   const notifyDrafts=()=>onDraftChange(new Map([...drafts].map(([id,value])=>[id,clone(value)])));
   const release=token=>{if(busyOwner===token){busyOwner=null;setBusy(false);}};
-  function invalidate(){generation++;controller?.abort();controller=null;if(pending!=='apply')pending=null;if(busyOwner)release(busyOwner);accepted=null;assessment.replaceChildren();}
+  function invalidate(){generation++;controller?.abort();controller=null;if(pending!=='apply')pending=null;if(busyOwner)release(busyOwner);accepted=null;assessment.replaceChildren();nodeLayers.clear('The inspected selection or review changed. Choose a current decoded boundary.');}
   function showError(value){error.textContent=value?.message??String(value);onError(value instanceof Error?value:new Error(String(value)));}
   function updateState(){
     if(!disposed&&!stale&&!current()){stale=true;invalidate();status.textContent='Project, scene, mode, or script state changed. Reopen this script.';}
     const available=current(),blocked=!available||pending!==null||busy()!==false,editable=available&&context.mode==='edit'&&snapshot?.supported&&snapshot.current_report!==null;
     const row=target(),chosen=value(),valid=chosen===null||valueValid(chosen)&&snapshot?.destinations.some(item=>item.pc===chosen.target_pc);
-    layer.disabled=!snapshot;refresh.disabled=blocked;branch.disabled=filter.disabled=destination.disabled=blocked||!editable||!row;inspect.disabled=!available||!row||!valid||chosen===null;reviewButton.disabled=blocked||!editable||!row||!valid;reset.disabled=blocked||!editable||!row||row.authored_value===null;discard.disabled=blocked||!drafts.has(activeId);apply.disabled=blocked||!editable||!reviewed()||accepted?.no_op;form.hidden=!snapshot?.targets.length;
+    layer.disabled=blocked||!snapshot;refresh.disabled=blocked;branch.disabled=filter.disabled=destination.disabled=blocked||!editable||!row;inspect.disabled=!available||!row||!valid||chosen===null;reviewButton.disabled=blocked||!editable||!row||!valid;reset.disabled=blocked||!editable||!row||row.authored_value===null;discard.disabled=blocked||!drafts.has(activeId);apply.disabled=blocked||!editable||!reviewed()||accepted?.no_op;form.hidden=!snapshot?.targets.length;
     for(const node of unavailableList.children)if(node.dataset.action==='discard-unavailable')node.disabled=blocked;
     if(!started&&available&&busy()===false){started=true;void load().then(result=>{resolveReady?.(result);resolveReady=null;});}
   }
@@ -152,7 +154,7 @@ export function mountScriptBranches(host,{owner,getContext,busy,setBusy,api,sele
     notifyDrafts();renderUnavailable();
   }
   function setBranch(id,notify=false){if(!snapshot?.targets.some(row=>row.semantic_id===id))return false;if(activeId!==id){invalidate();activeId=id;}selectedPC=target().pc;renderFields();draw();updateState();if(notify)notifySelection(selectedPC);return true;}
-  function select(offset){if(!snapshot)return false;const source=inspectReport(snapshot.source_report),present=source.has(offset)||snapshot.current_report!==null&&inspectReport(snapshot.current_report).has(offset)||accepted&&inspectReport(accepted.proposed_report).has(offset);if(!present)return false;const row=snapshot.targets.find(item=>item.pc===offset);if(row&&row.semantic_id!==activeId)setBranch(row.semantic_id);selectedPC=offset;draw();return true;}
+  function select(offset){if(!snapshot||!current())return false;const source=inspectReport(snapshot.source_report),present=source.has(offset)||snapshot.current_report!==null&&inspectReport(snapshot.current_report).has(offset)||accepted&&inspectReport(accepted.proposed_report).has(offset);if(!present)return false;const row=snapshot.targets.find(item=>item.pc===offset);if(row&&row.semantic_id!==activeId)setBranch(row.semantic_id);selectedPC=offset;draw();return true;}
   function selectNode(offset){if(select(offset))notifySelection(offset);}
   function renderFields(){
     branch.replaceChildren();for(const row of snapshot?.targets??[]){const option=element('option',`${pc(row.pc)} · ${row.mnemonic} · ${row.condition}`);option.value=row.semantic_id;branch.append(option);}branch.value=activeId??'';
@@ -165,11 +167,12 @@ export function mountScriptBranches(host,{owner,getContext,busy,setBusy,api,sele
     for(const row of rows){const option=element('option',`${pc(row.pc)} · ${row.mnemonic}`);option.value=String(row.pc);destination.append(option);}destination.value=offset===undefined?'':String(offset);destinationStatus.textContent=`${count} qualified destination(s)${count>256?' · showing 256; filter by offset or instruction':''}. Only SDK-qualified source instruction or atomic MES starts are selectable; opaque bytes remain excluded.`;
   }
   function draw(){
-    graph.replaceChildren();links.replaceChildren();unknown.replaceChildren();if(!snapshot)return;
+    graph.replaceChildren();links.replaceChildren();unknown.replaceChildren();if(!snapshot||!current()){nodeLayers.clear('The source selection is unavailable or stale. Reopen this script.');return;}
     let retail=layer.value==='retail'||snapshot.current_report===null,base=retail?snapshot.source_report:snapshot.current_report,proposal=!retail&&reviewed()?accepted.proposed_report:null,nodes=inspectReport(base),fallback=false;
     if(selectedPC!==null&&!nodes.has(selectedPC)&&!(proposal&&inspectReport(proposal).has(selectedPC))&&inspectReport(snapshot.source_report).has(selectedPC)){retail=true;fallback=true;base=snapshot.source_report;proposal=null;nodes=inspectReport(base);layer.value='retail';}
     if(selectedPC===null||!nodes.has(selectedPC)&&!(proposal&&inspectReport(proposal).has(selectedPC)))selectedPC=nodes.keys().next().value??null;
     if(retail&&selectedPC!==null&&snapshot.current_report!==null&&!inspectReport(snapshot.current_report).has(selectedPC))fallback=true;
+    nodeLayers.update(snapshot.source_report,snapshot.current_report,reviewed()?accepted.proposed_report:null,selectedPC);
     overview.update(base,{label:retail?'Retail source flow':'Current encoded flow'});
     proposedOverviewHost.hidden=!proposal;
     if(proposal)proposedOverview.update(proposal,{label:'Reviewed Proposed encoded flow'});
@@ -191,12 +194,12 @@ export function mountScriptBranches(host,{owner,getContext,busy,setBusy,api,sele
     if(!current()||context.mode!=='edit'||!snapshot?.supported||!target()||!valueValid(requested)||requested!==null&&!snapshot.destinations.some(row=>row.pc===requested.target_pc)||pending!==null||busy()!==false)return false;invalidate();const id=activeId,row=target();unavailableDrafts.delete(id);if(requested===null&&row.authored_value===null||requested!==null&&requested.target_pc===row.current_target_pc)drafts.delete(id);else drafts.set(id,clone(requested));notifyDrafts();renderUnavailable();renderDestinations();
     return run('review',async(signal,valid)=>{status.textContent='Reviewing the encoded destination…';const raw=await request('/api/script-branch-review',{entity:owner,branch_id:id,value:clone(requested)},signal);if(!valid()||activeId!==id)return false;const decoded=decodeScriptBranchReview(raw,snapshot,id,requested,context);accepted=decoded.review;assessment.replaceChildren();assessment.append(element('p',`Current ${pc(row.current_target_pc)} → Proposed ${pc(requested?.target_pc??row.target_pc)} · ${row.condition}`),element('p',`${accepted.audit.reduce((sum,item)=>sum+item.changed_byte_offsets.length,0)} changed source bytes · ${accepted.newly_unreachable_source_pcs.length} newly unvisited decoded instruction(s) · ${accepted.newly_reached_source_pcs.length} newly reached decoded instruction(s).`));for(const [key,label] of [['newly_unreachable_source_pcs','Newly unvisited'],['newly_reached_source_pcs','Newly reached']])for(const offset of accepted[key].slice(0,64)){const inspect=button(`${label}: inspect ${pc(offset)}`,'inspect-reachability');inspect.onclick=()=>selectNode(offset);assessment.append(inspect);}status.textContent=accepted.no_op?'This destination makes no authored change.':accepted.audit.length?'Review complete. Explicit Apply is required.':'Review complete. The authored layer changes without changing source bytes.';draw();return true;});
   }
-  branch.onchange=()=>{if(!current()||pending==='apply')return;setBranch(branch.value,true);};filter.oninput=()=>{renderDestinations();updateState();};layer.onchange=()=>draw();destination.onchange=()=>{if(!current()||pending==='apply'||!target())return;const offset=Number(destination.value);if(!snapshot.destinations.some(row=>row.pc===offset))return;invalidate();unavailableDrafts.delete(activeId);if(offset===target().current_target_pc)drafts.delete(activeId);else drafts.set(activeId,{target_pc:offset});notifyDrafts();renderUnavailable();draw();updateState();};
+  branch.onchange=()=>{if(!current()||pending==='apply')return;setBranch(branch.value,true);};filter.oninput=()=>{renderDestinations();updateState();};layer.onchange=()=>{if(current()&&pending===null&&busy()===false)draw();};destination.onchange=()=>{if(!current()||pending==='apply'||!target())return;const offset=Number(destination.value);if(!snapshot.destinations.some(row=>row.pc===offset))return;invalidate();unavailableDrafts.delete(activeId);if(offset===target().current_target_pc)drafts.delete(activeId);else drafts.set(activeId,{target_pc:offset});notifyDrafts();renderUnavailable();draw();updateState();};
   inspect.onclick=()=>{if(inspect.disabled)return false;notifySelection(value()?.target_pc??target().target_pc);return true;};reviewButton.onclick=()=>reviewValue(value());reset.onclick=()=>reset.disabled?false:reviewValue(null);discard.onclick=()=>{if(discard.disabled)return false;invalidate();drafts.delete(activeId);unavailableDrafts.delete(activeId);notifyDrafts();renderUnavailable();renderFields();status.textContent='Branch draft discarded. Current encoded flow is unchanged.';draw();updateState();return true;};refresh.onclick=()=>{if(refresh.disabled)return false;invalidate();return load();};
   apply.onclick=async()=>{
     if(apply.disabled||!reviewed()||accepted.no_op||pending!==null||busy()!==false)return false;const id=activeId,review=clone(accepted),focus=target().pc;pending='apply';error.textContent='';updateState();
-    try{const success=await api('/api/command',{type:'set_branch',entity:owner,branch_id:id,value:clone(review.value),review_key:review.review_key});if(success!==true){if(current()){accepted=null;assessment.replaceChildren();status.textContent='Apply failed. Review the destination again.';}return false;}if(!coreCurrent())return false;drafts.delete(id);notifyDrafts();pending=null;await reopen(focus);return true;}catch(error){if(coreCurrent()){accepted=null;showError(error);}return false;}finally{if(!disposed){pending=null;updateState();}}
+    try{const success=await api('/api/command',{type:'set_branch',entity:owner,branch_id:id,value:clone(review.value),review_key:review.review_key});if(success!==true){if(current()){accepted=null;assessment.replaceChildren();status.textContent='Apply failed. Review the destination again.';draw();}return false;}if(!coreCurrent())return false;drafts.delete(id);notifyDrafts();pending=null;await reopen(focus);return true;}catch(error){if(coreCurrent()){accepted=null;draw();showError(error);}return false;}finally{if(!disposed){pending=null;updateState();}}
   };
-  function dispose(){if(disposed)return;disposed=true;invalidate();pending=null;resolveReady?.(false);resolveReady=null;overview.dispose();proposedOverview.dispose();section.remove();}
+  function dispose(){if(disposed)return;disposed=true;invalidate();pending=null;resolveReady?.(false);resolveReady=null;overview.dispose();proposedOverview.dispose();nodeLayers.dispose();section.remove();}
   updateState();return {ready,select,updateState,dispose};
 }

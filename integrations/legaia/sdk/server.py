@@ -915,6 +915,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/asset-navigation.js": ("asset-navigation.js", "text/javascript"),
                  "/script-paths.js": ("script-paths.js", "text/javascript"),
                  "/script-flow-overview.js": ("script-flow-overview.js", "text/javascript"),
+                 "/script-node-layers.js": ("script-node-layers.js", "text/javascript"),
                  "/script-operands.js": ("script-operands.js", "text/javascript"),
                  "/script-effect-colors.js": ("script-effect-colors.js", "text/javascript"),
                  "/script-branches.js": ("script-branches.js", "text/javascript"),

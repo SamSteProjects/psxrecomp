@@ -1,5 +1,7 @@
 # Field script branch authoring
 
+The [selected instruction operand inspector](legaia-script-node-layers.md) compares Retail, composed Current and reviewed Proposed values and exact bytes at the selected original boundary. It preserves unavailable/unvisited states rather than equating static path changes with deletion or execution.
+
 The script workspace supports source-qualified edits to existing branch
 destination words. It shows separate Retail, Authored, Current and reviewed
 Proposed flow, links graph selection to source disassembly, and preserves
