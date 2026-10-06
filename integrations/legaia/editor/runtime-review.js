@@ -66,3 +66,11 @@ export function compareRuntimeReviews(beforeInput,afterInput){
     limitations:['Pairs are matching declared node keys, not confirmed actors or object lifetimes.','The saved format has no process or executable identity; matching epochs do not prove the same session.','Before/after describe file order, not capture chronology. Export time is not capture time.','File-only keys do not establish spawning or removal. Null deltas mean missing coordinates or numeric overflow.'],
     before,after,rows};
 }
+
+// File coordinates are display samples, never actor bindings or Live observations.
+export function historicalRuntimePositions(input,context){
+ const review=validateRuntimeReview(input);
+ if(context?.mode!=='edit'||typeof context.scene_id!=='string'||!context.scene_id.startsWith('scene://')||review.scene_id!==context.scene_id)throw new Error('Historical positions require the matching scene in Edit mode.');
+ const nodes=review.nodes.filter(node=>['x','y','z'].every(axis=>Number.isFinite(node.observed_position[axis])&&Math.abs(node.observed_position[axis])<=1e8));
+ return {review,nodes,skipped:review.nodes.length-nodes.length};
+}

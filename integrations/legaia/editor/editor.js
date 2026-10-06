@@ -125,7 +125,7 @@ import {mountWorldmapAuthoring} from '/worldmap-authoring.js';
 import {mountWorldmapGeometry} from '/worldmap-geometry.js';
 import {mountWorldPlacements} from '/worldmap-placement-editor.js';
 import {mountProjectAssets,projectAssetVariant,qualifyProjectCatalogVariant} from '/project-assets.js';
-import {captureRuntimeReview,parseRuntimeReview,compareRuntimeReviews,MAX_REVIEW_BYTES} from '/runtime-review.js';
+import {captureRuntimeReview,parseRuntimeReview,compareRuntimeReviews,historicalRuntimePositions,MAX_REVIEW_BYTES} from '/runtime-review.js';
 import {mountActorPlacementBatch,toggleActorGroupSelection,mergeActorGroupSelection,actorGroupRange} from '/actor-placement-batch.js';
 const $ = (id) => document.getElementById(id);
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -157,6 +157,27 @@ const pickRuntimeButton=document.createElement('button');pickRuntimeButton.textC
 const nodesButton=document.createElement('button');nodesButton.textContent='Observed nodes';$('frame-selected').after(nodesButton);
 const nodesDialog=document.createElement('dialog');nodesDialog.className='project-dialog observed-nodes-dialog';document.body.append(nodesDialog);
 let nodeReviewRevision=0;
+let historicalPositions=null;
+const historicalTools=document.createElement('div');historicalTools.className='scene-tools';historicalTools.id='historical-runtime-tools';historicalTools.hidden=true;
+const historicalStatus=document.createElement('span');historicalStatus.setAttribute('role','status');historicalTools.append(historicalStatus);
+for(const [id,label,action] of [['historical-frame','Frame historical positions',()=>{const overlay=currentHistoricalPositions();if(!overlay||busy)return;try{cancelViewportGesture();const points=overlay.nodes.map(node=>displayPosition(node.observed_position));Object.assign(camera,sceneFrameCamera(camera,{width,height},points));pendingEntityFrame=null;cameraRevision++;draw();}catch(error){notify(error.message,true);}}],['historical-review','Return to historical review',()=>{const overlay=currentHistoricalPositions();if(overlay&&!busy)renderSavedNodeReview(overlay.review);} ],['historical-clear','Clear historical positions',()=>{historicalPositions=null;draw();}]]){const button=document.createElement('button');button.id=id;button.textContent=label;button.onclick=action;historicalTools.append(button);}
+$('viewport-wrap').before(historicalTools);
+function historicalPositionKey(){return JSON.stringify([state.project?.path,state.project?.mode,state.scene?.id,state.project_copy_source_key,sceneRequestKey()]);}
+function currentHistoricalPositions(){if(historicalPositions&&(historicalPositions.key!==historicalPositionKey()||state.project?.mode!=='edit'||!scenePreviewCurrent()))historicalPositions=null;return historicalPositions;}
+function appendHistoricalPositionAction(review){
+ const key=historicalPositionKey(),button=document.createElement('button');button.id='show-historical-positions';button.textContent='Show historical positions';const note=document.createElement('p');note.className='field-note';
+ let decoded=null;try{decoded=historicalRuntimePositions(review,{scene_id:state.scene?.id,mode:state.project?.mode});if(!scenePreviewCurrent())throw new Error('Load the matching scene preview first.');if(!decoded.nodes.length)throw new Error('No complete supported XYZ samples in this file.');note.textContent=`${decoded.nodes.length} complete samples; ${decoded.skipped} incomplete or out-of-range samples skipped. File-declared coordinates only; source and actor identities are unconfirmed. Markers include occluded positions.`;}catch(error){note.textContent=error.message;}
+ button.disabled=busy||!decoded?.nodes.length||!scenePreviewCurrent();button.onclick=()=>{if(busy||key!==historicalPositionKey()||!scenePreviewCurrent())return;try{const value=historicalRuntimePositions(review,{scene_id:state.scene?.id,mode:state.project?.mode});if(!value.nodes.length)return;cancelViewportGesture();historicalPositions={...value,key};nodesDialog.close();draw();}catch(error){notify(error.message,true);}};nodesDialog.append(button,note);
+}
+function drawHistoricalPositions(){
+ const overlay=currentHistoricalPositions();historicalTools.hidden=!overlay;if(!overlay)return;
+ historicalStatus.textContent=`Historical file samples · ${overlay.nodes.length} positions · ${overlay.skipped} skipped · ${overlay.review.scene_id} · epoch ${overlay.review.epoch_id} · identity unconfirmed`;
+ for(const button of historicalTools.querySelectorAll('button'))button.disabled=busy;
+ ctx.save();ctx.strokeStyle='#f4ce83';ctx.fillStyle='#f4ce83';ctx.lineWidth=1.5;ctx.setLineDash([3,2]);ctx.font='11px "Segoe UI",sans-serif';let labels=0;
+ for(const node of overlay.nodes){const point=project(displayPosition(node.observed_position));if(!point||!Number.isFinite(point.x)||!Number.isFinite(point.y))continue;ctx.beginPath();ctx.arc(point.x,point.y,6,0,Math.PI*2);ctx.stroke();if(labels++<16){const text='Historical '+node.runtime_node_id,textWidth=Math.min(ctx.measureText(text).width,Math.max(1,width-16));ctx.fillText(text,Math.max(8,Math.min(point.x+9,width-textWidth-8)),Math.max(12,point.y-9),Math.max(1,width-16));}}
+ ctx.setLineDash([]);ctx.fillText('Historical file positions · unconfirmed · includes occluded samples',12,94);ctx.restore();
+}
+
 function downloadRuntimeReview(review,filename='runtime-nodes-historical.json'){
   const url=URL.createObjectURL(new Blob([JSON.stringify(review,null,2)+'\n'],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download=filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
@@ -172,7 +193,7 @@ function renderSavedNodeReview(review){
   const list=document.createElement('div');nodesDialog.append(list);const rows=[];
   for(const node of review.nodes){const row=document.createElement('details'),summary=document.createElement('summary'),detail=document.createElement('div');summary.textContent=`${node.runtime_node_id} · XYZ ${node.observed_position.x??'?'} / ${node.observed_position.y??'?'} / ${node.observed_position.z??'?'} · ${node.candidate_entity_ids.length} unconfirmed candidates`;const frames=document.createElement('p');frames.textContent=`Position capture frames: ${node.position_capture_frames?.before??'unknown'}–${node.position_capture_frames?.after??'unknown'} · ${node.reason??'No binding reason recorded'}`;detail.append(frames);const candidates=document.createElement('p');candidates.textContent='Unconfirmed candidate IDs: '+(node.candidate_entity_ids.join(', ')||'none');detail.append(candidates);for(const field of node.decoded_fields){const entry=document.createElement('p'),evidence=document.createElement('small'),value=field.interpreted_value;entry.textContent=`${field.property}: ${value==null?'Unknown':typeof value==='object'?JSON.stringify(value):String(value)} · raw ${field.raw_numeric_value??'unknown'} · ${field.confidence??'unknown'} · applicability ${field.applicability??'unknown'}${field.unresolved?' · unresolved':''}`;evidence.textContent=` ${field.notes??''} ${(field.evidence??[]).join(', ')}`;entry.append(evidence);detail.append(entry);}row.append(summary,detail);list.append(row);rows.push({row,text:JSON.stringify(node).toLowerCase()});}
   search.oninput=()=>{for(const item of rows)item.row.hidden=!item.text.includes(search.value.trim().toLowerCase());};
-  const download=document.createElement('button');download.textContent='Download historical metadata';download.onclick=()=>downloadRuntimeReview(review);nodesDialog.append(download);appendRuntimeComparisonPicker(review);appendSavedNodeReviewPicker();
+  const download=document.createElement('button');download.textContent='Download historical metadata';download.onclick=()=>downloadRuntimeReview(review);nodesDialog.append(download);appendRuntimeComparisonPicker(review);appendSavedNodeReviewPicker();appendHistoricalPositionAction(review);
   const back=document.createElement('button');back.textContent='Back to observed nodes';back.onclick=()=>renderObservedNodes();nodesDialog.append(back);const close=document.createElement('button');close.textContent='Close saved review';close.onclick=()=>nodesDialog.close();nodesDialog.append(close);if(!nodesDialog.open)nodesDialog.showModal();
 }
 function appendRuntimeComparisonPicker(baseline){
@@ -4140,7 +4161,7 @@ function draw(){
     for(let i=0;i<=64;i++){const a=i*Math.PI/32,q=project({x:pivot.x+Math.sin(a)*radius,y:pivot.y,z:pivot.z+Math.cos(a)*radius});if(!q){points.push(null);continue;}points.push(q);if(i===0||!points[i-1])ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y);if(i<64)handles.push({sceneryYaw:true,axis:'y',x:q.x,y:q.y,start:project(pivot)});}ctx.stroke();
     const yaw=draft?.sceneryYaw?draft.yaw:rotating.effective_transform?.rotation_psx.y??rotating.source_record.imported_transform.rotation_psx.y,a=yaw*Math.PI*2/4096,tip={x:pivot.x+Math.sin(a)*radius,y:pivot.y,z:pivot.z+Math.cos(a)*radius};line(pivot,tip,'#f4ce83',2);const q=project(tip);if(q){ctx.fillStyle='#f4ce83';ctx.font='bold 11px "Segoe UI",sans-serif';ctx.fillText(`Yaw ${yaw} · ${rotating.entity_id.includes('/decorations/')?'individual':'shared'}`,q.x+8,q.y-8);}ctx.restore();
   }
-  drawRuntimeNodeLayer();drawObservedCandidates();
+  drawRuntimeNodeLayer();drawObservedCandidates();drawHistoricalPositions();
   if(['actor-box','scene-placement-box'].includes(drag?.type)&&drag.moved){ctx.save();ctx.fillStyle='#8bd7e820';ctx.strokeStyle='#8bd7e8';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.fillRect(drag.start.x,drag.start.y,drag.last.x-drag.start.x,drag.last.y-drag.start.y);ctx.strokeRect(drag.start.x,drag.start.y,drag.last.x-drag.start.x,drag.last.y-drag.start.y);ctx.restore();}
 }
 function resize(){const rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1;width=rect.width;height=rect.height;canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);draw();}
@@ -5056,4 +5077,4 @@ projectAssetControls=mountProjectAssets({host:projectAssetHost,getContext:projec
   getUnavailableReason:()=>state.project_assets_unavailable_reason,
   onChange:()=>{assetPageSignature=null;renderAssets();},onError:error=>notify(error.message,true)});
 
-mountSceneToolDrawer({toolbar:document.querySelector('.viewport-toolbar'),viewport:$('viewport-wrap'),keep:[runRibbon,fieldNote,scenePoseBar,actorGroupTools,scriptTargetTools,transitionArrivalTools],onToggle:()=>{cancelViewportGesture();resize();}});
+mountSceneToolDrawer({toolbar:document.querySelector('.viewport-toolbar'),viewport:$('viewport-wrap'),keep:[runRibbon,fieldNote,scenePoseBar,actorGroupTools,scriptTargetTools,transitionArrivalTools,historicalTools],onToggle:()=>{cancelViewportGesture();resize();}});

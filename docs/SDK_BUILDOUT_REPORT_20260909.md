@@ -1,5 +1,12 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-06: historical runtime positions in the central viewport
+
+Saved runtime node reviews now offer **Show historical positions** for the matching current Edit-mode scene. Complete bounded XYZ file samples appear as dashed amber markers with historical/unconfirmed labels, using the existing scene display transform. Incomplete and out-of-range samples are skipped with counts; no Y or identity is inferred. Active controls stay outside the collapsed scene-tool drawer: Frame historical positions, Return to historical review and Clear. Showing samples preserves the camera; explicit framing preserves its angles/projection and scene visibility. These samples are ephemeral display data, not Live observations, actor bindings or persistent edits. Project/mode/scene/source/representation changes withdraw the overlay, and Undo does not resurrect it.
+
+Validation: focused Node review tests passed detached data, matching Edit-scene checks, bounded complete coordinates and authority rejection; existing review/comparison and camera projection tests also passed. A fresh browser with synthetic historical files over the actual retail town01 scene passed show/frame/return/clear, wide/narrow layout, foreign-scene and empty-sample rejection, real source-change withdrawal and Undo. Authored/imported state and its build-state key remained unchanged after verification; no page errors. Wide and narrow screenshots inspected. Evidence: `local-output/sdk-20260909/historical-runtime-viewport-20261006/final-pass/proof.json`. The first browser run exposed hidden controls in the tool drawer, which were fixed. Subsequent verifier corrections distinguished collapsed evidence text and read-only preview requests from authoring. No game launch, runtime attachment, installation or new gameplay validation occurred. Real captured-coordinate/identity acceptance remains deferred; the full SDK goal remains active/incomplete.
+
+
 ## 2026-10-06: frame isolated selections
 
 **Frame isolated** fits the currently visible mesh bounds of the captured isolation group in the viewport. It preserves yaw, pitch, projection, manual hidden instances and layer switches, and accounts for current instance transforms, perspective depth and viewport aspect with ten-percent edge padding. Hidden-layer members are skipped; the action is disabled when no isolated mesh is visible. Saved scene views retain and recall the fitted camera through the existing metadata workflow. Scene content and game coordinates are unchanged.

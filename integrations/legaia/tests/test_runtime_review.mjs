@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const source=fs.readFileSync(new URL('../editor/runtime-review.js',import.meta.url),'utf8');
-const {captureRuntimeReview,parseRuntimeReview,validateRuntimeReview,compareRuntimeReviews,MAX_REVIEW_BYTES}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const {captureRuntimeReview,parseRuntimeReview,validateRuntimeReview,compareRuntimeReviews,historicalRuntimePositions,MAX_REVIEW_BYTES}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const node={runtime_node_id:'runtime://sample/0x80001000',epoch_id:'epoch-1',observed_position:{x:1,y:-2,z:3},position_capture_frames:{before:10,after:11},candidate_entity_ids:['scene://town01/actors/man-p1/0001'],binding_confirmed:false,reason:null,
 decoded_fields:[{property:'heading_yaw',raw_numeric_value:1024,interpreted_value:{units:1024,degrees:90},confidence:'supported',evidence:['source'],applicability:'actor',unresolved:false,notes:'Captured sample'}],raw_prefix_base64:'DO_NOT_EXPORT',guard_token:'DO_NOT_EXPORT'};
 const input={scene_id:'scene://town01',epoch_id:'epoch-1',nodes:[node],exported_at:'2026-09-30T00:00:00.000Z'};
@@ -33,3 +33,8 @@ const hugeA=structuredClone(review),hugeB=structuredClone(review);hugeA.nodes[0]
 assert.equal(compareRuntimeReviews(hugeA,hugeB).rows[0].position_delta.x,null);
 assert.throws(()=>compareRuntimeReviews({...review,historical:false},review));
 console.log('Historical comparison: context rejection, detached evidence, unknown coordinates, field changes, file-only keys, semantic ordering and overflow passed.');
+
+const spatial=historicalRuntimePositions(review,{scene_id:'scene://town01',mode:'edit'});assert.equal(spatial.nodes.length,1);assert.equal(spatial.skipped,0);spatial.nodes[0].observed_position.x=40;assert.equal(review.nodes[0].observed_position.x,1);
+for(const context of [{scene_id:'scene://town02',mode:'edit'},{scene_id:'scene://town01',mode:'live'},{}])assert.throws(()=>historicalRuntimePositions(review,context));
+const incomplete=structuredClone(review);incomplete.nodes[0].observed_position.y=null;assert.equal(historicalRuntimePositions(incomplete,{scene_id:review.scene_id,mode:'edit'}).skipped,1);incomplete.nodes[0].observed_position.y=1e9;assert.equal(historicalRuntimePositions(incomplete,{scene_id:review.scene_id,mode:'edit'}).nodes.length,0);assert.throws(()=>historicalRuntimePositions({...review,historical:false},{scene_id:review.scene_id,mode:'edit'}));
+console.log('Historical viewport samples: detached metadata, matching Edit scene, complete bounded XYZ and authority rejection passed.');

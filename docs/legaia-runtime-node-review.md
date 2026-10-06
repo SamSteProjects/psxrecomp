@@ -1,5 +1,14 @@
 # Saved runtime node review
 
+## Historical viewport display — 2026-10-06
+
+Open a saved review while the matching scene is loaded in Edit mode, then choose **Show historical positions**. Complete XYZ samples within the supported display range appear as dashed amber markers. Unknown axes are skipped rather than placed on an invented ground plane. The count includes skipped samples. File-declared scene/epoch and unconfirmed identity remain explicit; schema validation does not authenticate the file or its coordinates. Markers include occluded samples and never select or bind imported actors.
+
+**Frame historical positions** changes only the camera target/distance, retaining camera angles, projection and visibility. **Return to historical review** reopens the detached evidence, and **Clear historical positions** removes the display. Active controls remain visible beside the viewport even with Scene tools collapsed. Display is withdrawn by project/mode/scene/source/representation changes and is not restored by Undo or retained in saved views/projects. This supersedes the original camera/framing exclusion below; all Live authority and identity exclusions remain.
+
+Focused Node guards and a fresh browser with synthetic files over a retail-imported scene passed, including wide/narrow framing, return, clear, source-change withdrawal and foreign-scene rejection. Authored state remained unchanged after the verification transform was undone. No real runtime capture or gameplay check occurred. Proof and inspected screenshots: `local-output/sdk-20260909/historical-runtime-viewport-20261006/final-pass/`.
+
+
 The editor's **Observed nodes** panel can download decoded metadata from an
 accepted actor observation. The download is a detached historical review, not
 an executable snapshot, savestate, reusable observation token or authored edit.
