@@ -1,6 +1,38 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
 
+
+## Reviewed NPC draft group movement — 2026-10-05
+
+Selected authored NPC drafts now expose **Move NPC draft group...**. Search by
+name/stable ID, select visible matches or individual members, then review a shared
+X/Z offset on the existing retail64-unit grid. At least two active-scene drafts
+are required. Every result must fit64..16384; zero delta remains inspectable but
+has no Apply or history change. Names, donor bindings, imported actors/scenery
+and unselected drafts remain unchanged.
+
+The SDK owns review/validation and atomic `offset_actor_drafts` command dispatch.
+A full project/source snapshot binds `draft-group-offset.v1`; Apply revalidates all
+members before one existing batch Undo entry. Detached Proposed/Current scene
+inspection qualifies exact selected positions, source elevation/display/model
+transforms, donor metadata/assets and unchanged unselected entities. Save/Open
+preserves the group positions. No retail structures or spawn semantics are added.
+See [NPC draft groups](legaia-npc-draft-groups.md).
+
+Validation: eight focused Python group/repetition cases, new Node report/scene
+qualification checks, existing repetition Node checks and module syntax pass.
+Private actual HTTP/browser checks pass subset movement, search/visible selection,
+read-only review/scene comparison, zero-delta and bounds rejection, Apply/Undo/
+Redo/Save/reload and independent disk reopen. The first selection fixture matched
+all shared-prefix names; corrected ID search passed. Narrow actions/table layout
+was repaired and a read-only browser recheck preserves all project/history/files.
+The final540px screenshot is inspected, with no page errors. Native prepared PROT
+reopen matches all six draft positions, including only the two selected movements;
+MAN/PROT hashes match the preparation audit and project files remain unchanged.
+A copied native helper initially pointed at the prior grid fixture; corrected
+fixture preparation/readback passes. No normal Build, game, install or disc export.
+Evidence: `local-output/sdk-20260909/npc-draft-group-20261005/{proof,native-proof}.json`.
+
 ## Rectangular NPC draft repetition — 2026-10-05
 
 **Repeat draft → Rectangular grid** now reviews independent donor-bound copies

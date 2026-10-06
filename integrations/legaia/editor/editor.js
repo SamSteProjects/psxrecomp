@@ -79,6 +79,7 @@ import {mountProjectScriptBookmarks} from '/project-script-bookmarks.js';
 import {openScriptComponentReset} from '/script-component-reset.js';
 import {mountScriptOwnerInspector} from '/script-owner-inspector.js';
 import {openDraftRepeat} from '/draft-repeat.js';
+import {openDraftGroup} from '/draft-group.js';
 import {mountActorSelectionSets,decodeSavedActorSelection} from '/actor-selection-sets.js';
 import {mountGroupAppearance} from '/group-appearance.js';
 import {textureSceneUsage} from '/texture-usage.js';
@@ -2921,6 +2922,18 @@ function renderInspector(){
       }
     });
 
+    const draftGroup=document.createElement('button');draftGroup.id='draft-group-button';draftGroup.textContent='Move NPC draft group...';repeat.after(draftGroup);
+    draftGroup.disabled=busy||!canEdit()||Object.values(state.actor_drafts??{}).filter(d=>d.scene_id===state.scene.id).length<2;
+    draftGroup.onclick=()=>openDraftGroup({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,setBusy,api,
+      canInspectScene:()=>sceneModelsReady()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection,
+      getScenePreview:()=>scenePreview,
+      inspectScene:(proposed,report,returnToReview,isCurrent)=>{
+        cancelViewportGesture();const failures=sceneRenderer.load(structuredClone(proposed));if(failures.length){sceneRenderer.load(structuredClone(scenePreview));throw new Error(failures.join('; '));}
+        scenePose={key:sceneKey,name:'Proposed NPC draft movement - not applied',returnToFile:returnToReview,isCurrent};scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`${report.targets.length} proposed NPC draft movements - not applied`;
+        configureSceneInspectionComparison(proposed);for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('[aria-label="Scene preview rate"]').parentElement])control.hidden=true;
+        const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to NPC draft group';frameShapeProposal({instance_scope:'all_model_instances',proposal_instances:report.targets},null);draw();
+      }
+    });
     for(const control of [nameInput,rename,duplicate,repeat])control.disabled=busy||!canEdit();
     const donorForm=document.createElement('form');donorForm.id='draft-donor-form';
     const donorLabel=document.createElement('label');donorLabel.textContent='Retail donor ';const donorSelect=document.createElement('select');donorSelect.name='donor';donorSelect.setAttribute('aria-label','Draft retail donor');

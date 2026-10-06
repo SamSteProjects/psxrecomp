@@ -54,6 +54,8 @@ The 540px controls are inspected. Evidence:
 `local-output/sdk-20260909/npc-grid-repetition-20261005/{proof,native-proof}.json`.
 This establishes authored placement/serialization; gameplay remains deferred.
 
+Copies can subsequently be moved together with [NPC draft group movement](legaia-npc-draft-groups.md).
+
 ## Build and runtime boundaries
 
 Normal Build includes source-qualified compressed and raw streaming MAN candidates.

@@ -778,6 +778,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/scene-tool-drawer.js": ("scene-tool-drawer.js", "text/javascript"),
                  "/preset-batch.js": ("preset-batch.js", "text/javascript"),
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
+                 "/draft-group.js": ("draft-group.js", "text/javascript"),
                  "/draft-review.js": ("draft-review.js", "text/javascript"),
                  "/script-operand-bundle.js": ("script-operand-bundle.js", "text/javascript"),
                  "/script-capture.js": ("script-capture.js", "text/javascript"),
@@ -2686,6 +2687,32 @@ class EditorHandler(BaseHTTPRequestHandler):
                         self._json(200, self.server.export_preview(preview, frame_index, clip_fps))
                         return
                     self._json(200, self.server.model_preview(asset, clip_id))
+                    return
+                if route in ('/api/draft-group','/api/draft-group-scene'):
+                    from .draft_group import review as draft_group_review, proposal_view
+                    fields={'entity_ids','delta'}
+                    if set(body)!=(fields|{'review_key'} if route.endswith('-scene') else fields):
+                        raise ProjectError('NPC draft group request has unsupported fields')
+                    project=self.server.project
+                    report=draft_group_review(project,{key:body[key] for key in fields})
+                    if route=='/api/draft-group':
+                        self._json(200,report)
+                        return
+                    if body['review_key']!=report['review_key']:
+                        raise ProjectError('NPC draft group changed since review')
+                    from .project_copy import source_key as project_source_key
+                    from importer.scene_animation import load_scene_actor_animation_catalog
+                    from importer.environment import load_environment_preview_catalog
+                    from .terrain_preview import terrain_preview
+                    view=proposal_view(project,report)
+                    proposed=self.server.scene_previews.preview(
+                        view,lambda asset,*args,**kwargs:self.server.model_preview(asset,*args,effective_shape=True,project_view=view,**kwargs),
+                        load_scene_actor_animation_catalog,load_environment_preview_catalog,terrain_preview)
+                    if project_source_key(project)!=report['project_source_key']:
+                        raise ProjectError('Project changed during NPC draft group scene inspection')
+                    self._json(200,dict(schema_version='legaia.draft-group-scene.v1',scene_id=report['scene_id'],
+                        project_source_key=report['project_source_key'],scene_preview_source_key=report['scene_preview_source_key'],
+                        review_key=report['review_key'],scene=dict(proposed,representation='authored')))
                     return
                 if route in ('/api/draft-repeat','/api/draft-repeat-scene'):
                     from .draft_repeat import preview as draft_repeat_preview, proposal_view

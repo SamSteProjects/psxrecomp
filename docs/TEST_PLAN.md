@@ -2,6 +2,30 @@
 
 
 
+
+## NPC draft group movement checkpoint — 2026-10-05
+
+Eight focused Python group/repetition cases pass detached full-group review,
+canonical selection order, exact offsets, invalid last target, stale/tampered
+review, Live rejection, zero-delta no-op, one Undo entry and Save/Open. New Node
+contracts pass source/request/target binding, detached copies, unchanged unselected
+scene content, donor/model/display preservation and malformed response rejection.
+Existing repetition Node and both editor module syntax checks pass.
+
+Actual private HTTP/browser passes selected subset movement, visible/search
+selection, detached scene qualification, no preview mutation, zero delta/bounds
+rejection, Apply/Undo/Redo/Save/reload and independent disk reopen. Initial shared-
+prefix name search was corrected to stable ID. Narrow clipped actions and cramped
+table cells were fixed; the read-only recheck preserves all document/history/files.
+Final540px screenshot inspected, no page errors. Native prepared PROT readback
+matches six draft positions, including two moved members, and final MAN/PROT hashes;
+all project files stay unchanged during native preparation/readback. Initial copied
+helper path was corrected to this fixture. No normal Build, gameplay or disc export.
+Proof: `local-output/sdk-20260909/npc-draft-group-20261005/{proof,native-proof}.json`.
+Campaign follow-up: close/abort races, fresh server project switches, maximum count,
+source reimport/other-scene donors, source terrain changes, normal-package routes
+and runtime visibility/collision/scheduling/actor-pool headroom acceptance.
+
 ## NPC grid repetition checkpoint — 2026-10-05
 
 Twelve focused Python repetition/review cases and expanded Node coordinate checks

@@ -1,0 +1,92 @@
+import {decodeActorPlacementScene} from './actor-placement-batch.js';
+
+export function decodeDraftGroupReview(value,request,state){
+  const ids=request.entity_ids,drafts=state.actor_drafts??{};
+  if(value?.schema_version!=='legaia.draft-group-review.v1'||value.scene_id!==state.scene?.id||value.scene_preview_source_key!==state.scene_preview_source_key||
+     typeof value.project_source_key!=='string'||!/^[a-f0-9]{64}$/.test(value.project_source_key)||typeof value.review_key!=='string'||!/^[a-f0-9]{64}$/.test(value.review_key)||
+     Object.keys(value.request??{}).sort().join(',')!=='delta,entity_ids'||JSON.stringify(value.request.entity_ids)!==JSON.stringify(ids)||Object.keys(value.request.delta??{}).sort().join(',')!=='x,z'||['x','z'].some(axis=>value.request.delta[axis]!==request.delta[axis])||!Array.isArray(value.targets)||value.targets.length!==ids.length||ids.length<2||ids.length>128||
+     value.gameplay_verified!==false||value.changed_count!==(request.delta.x||request.delta.z?ids.length:0)||
+     !Array.isArray(value.limitations)||value.limitations.length>32||value.limitations.some(s=>typeof s!=='string'||!s||s.length>2048))throw new Error('NPC draft group report differs from its source/request.');
+  for(const [index,row] of value.targets.entries()){
+    const draft=drafts[ids[index]];
+    if(row.entity_id!==ids[index]||!draft||draft.scene_id!==state.scene.id||JSON.stringify(row.draft)!==JSON.stringify(draft)||
+       Object.keys(row.proposed??{}).sort().join(',')!=='x,z'||['x','z'].some(axis=>row.proposed[axis]!==draft.position[axis]+request.delta[axis]||!Number.isSafeInteger(row.proposed[axis])||row.proposed[axis]%64||row.proposed[axis]<64||row.proposed[axis]>16384))throw new Error('NPC draft group target differs from authored placement.');
+  }
+  return structuredClone(value);
+}
+
+export function decodeDraftGroupScene(response,report,base){
+  const scene=response?.scene;
+  if(response?.schema_version!=='legaia.draft-group-scene.v1'||response.project_source_key!==report.project_source_key||response.review_key!==report.review_key||
+     response.scene_preview_source_key!==base.source_key||response.scene_id!==base.scene_id||scene?.scene_id!==base.scene_id||scene.schema!=='legaia.scene-preview.v1'||scene.representation!=='authored'||
+     !Array.isArray(scene.entities)||scene.entities.length!==base.entities.length||scene.entities.length>512||JSON.stringify(scene.assets)!==JSON.stringify(base.assets)||JSON.stringify(scene.position_to_display)!==JSON.stringify(base.position_to_display))throw new Error('NPC draft group scene differs from its source/review.');
+  const rows=new Map(scene.entities.map(row=>[row.entity_id,row])),targets=new Map(report.targets.map(row=>[row.entity_id,row]));
+  if(rows.size!==scene.entities.length)throw new Error('NPC draft group scene identities are ambiguous.');
+  const positions=[];
+  for(const original of base.entities){
+    const row=rows.get(original.entity_id),target=targets.get(original.entity_id);
+    if(!target){if(JSON.stringify(row)!==JSON.stringify(original))throw new Error('NPC draft group scene changed unselected content.');continue;}
+    if(original.kind!=='actor_draft'||!row||row.kind!=='actor_draft'||JSON.stringify(row.authored_position)!==JSON.stringify(target.proposed))throw new Error('NPC draft group authored binding differs from review.');
+    const unchanged=value=>Object.fromEntries(Object.entries(value).filter(([key])=>!['position','preview_position','preview_ground_sample','display_position','preview_height_status','model_to_scene','authored_position'].includes(key)));
+    if(JSON.stringify(unchanged(row))!==JSON.stringify(unchanged(original)))throw new Error('NPC draft group changed donor metadata or appearance.');
+    const matrix=[...original.model_to_scene];matrix[3]=row.display_position?.x;matrix[7]=row.display_position?.y;matrix[11]=row.display_position?.z;
+    if(JSON.stringify(matrix)!==JSON.stringify(row.model_to_scene))throw new Error('NPC draft group model transform differs from placement.');
+    positions.push(row);
+  }
+  decodeActorPlacementScene({schema_version:'legaia.actor-placement-scene.v1',scene_id:response.scene_id,project_source_key:base.source_key,review_key:response.review_key,positions},
+    {scene_id:report.scene_id,review_key:report.review_key,targets:report.targets.map(row=>({entity_id:row.entity_id,proposed:{...row.proposed,y:null}}))},base.source_key);
+  return structuredClone(scene);
+}
+
+export function openDraftGroup({entityId,getState,isBusy,canEdit,setBusy,api,canInspectScene,getScenePreview,inspectScene}){
+  if(isBusy()||!canEdit())return;
+  const state=getState(),drafts=Object.entries(state.actor_drafts??{}).filter(([,d])=>d.scene_id===state.scene?.id).sort(([a],[b])=>a.localeCompare(b));
+  if(drafts.length<2)return;
+  const dialog=document.createElement('dialog');dialog.id='draft-group-dialog';document.body.append(dialog);
+  dialog.innerHTML='<h2>Move NPC draft group</h2><p>Select authored NPC drafts in this scene. Review an X/Z offset on the retail 64-unit grid, from 64 through 16384. Donor binding, names, scripts and unselected content stay unchanged. Source elevation is preview only; runtime spawning and gameplay remain unverified.</p><form><label>Find drafts<input name="search" type="search" aria-label="Find NPC group drafts"></label><div class="dialog-actions"><button type="button" data-select>Select visible drafts</button><button type="button" data-clear>Clear selection</button></div><div class="batch-actors" data-drafts></div><p data-count role="status"></p><label>X offset<input name="x" type="number" step="64" min="-16320" max="16320" value="64" required aria-label="NPC group X offset"></label><label>Z offset<input name="z" type="number" step="64" min="-16320" max="16320" value="0" required aria-label="NPC group Z offset"></label><div class="dialog-actions"><button type="submit" data-preview>Preview group movement</button><button type="button" data-inspect disabled>Inspect group in scene</button><button type="button" data-apply disabled>Apply group movement</button></div></form><p data-error class="dialog-error" role="alert"></p><div data-result></div><button type="button" data-close>Close NPC draft group</button>';
+  for(const actions of dialog.querySelectorAll('.dialog-actions')){actions.style.flexWrap='wrap';actions.style.justifyContent='flex-start';}
+  let selected=new Set(drafts.some(([id])=>id===entityId)?[entityId]:[]),report=null,generation=0,controller=null,keepClose=false;
+  const key=()=>{const s=getState();return JSON.stringify([s.project.path,s.scene.id,s.scene_preview_source_key,s.actor_drafts]);},context=key(),current=()=>context===key()&&canEdit();
+  const request=()=>({entity_ids:[...selected].sort(),delta:{x:Number(dialog.querySelector('[name=x]').value),z:Number(dialog.querySelector('[name=z]').value)}});
+  const visible=()=>drafts.filter(([id,d])=>(d.name+' '+id).toLowerCase().includes(dialog.querySelector('[name=search]').value.toLowerCase()));
+  function update(){
+    if(!dialog.open)return;const disabled=isBusy()||!current();for(const control of dialog.querySelectorAll('input,button'))if(!control.matches('[data-close]'))control.disabled=disabled;
+    dialog.querySelector('[data-count]').textContent=`${selected.size} drafts selected · one Undo step`;
+    dialog.querySelector('[data-preview]').disabled=disabled||selected.size<2||!dialog.querySelector('form').checkValidity();
+    dialog.querySelector('[data-apply]').disabled=disabled||!report?.changed_count;
+    dialog.querySelector('[data-inspect]').disabled=disabled||!report||!canInspectScene();
+  }
+  function invalidate(){generation++;report=null;dialog.querySelector('[data-result]').replaceChildren();dialog.querySelector('[data-error]').textContent='';update();}
+  function render(){
+    const list=dialog.querySelector('[data-drafts]');list.replaceChildren();for(const [id,draft] of visible()){
+      const label=document.createElement('label'),input=document.createElement('input'),name=document.createElement('span');input.type='checkbox';input.value=id;input.checked=selected.has(id);input.setAttribute('aria-label','Include '+draft.name);name.textContent=draft.name;label.title=id;label.append(input,name);list.append(label);
+      input.onchange=()=>{if(!dialog.contains(input)||!dialog.open||isBusy()||!current())return;if(input.checked)selected.add(id);else selected.delete(id);invalidate();};
+    }update();
+  }
+  dialog.querySelector('[name=search]').oninput=render;
+  dialog.querySelector('[data-select]').onclick=()=>{if(isBusy()||!current())return;for(const [id] of visible())selected.add(id);invalidate();render();};
+  dialog.querySelector('[data-clear]').onclick=()=>{if(isBusy()||!current())return;selected.clear();invalidate();render();};
+  for(const input of dialog.querySelectorAll('[name=x],[name=z]'))input.oninput=invalidate;
+  dialog.querySelector('[data-close]').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{if(keepClose){keepClose=false;return;}generation++;controller?.abort();report=null;dialog.remove();});
+  async function post(route,body,signal){const r=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal}),v=await r.json();if(!r.ok||v.error)throw new Error(v.error||'NPC draft group request failed.');return v;}
+  dialog.querySelector('form').onsubmit=async event=>{
+    event.preventDefault();if(dialog.querySelector('[data-preview]').disabled)return;const body=request(),token=++generation,active=new AbortController();controller=active;report=null;setBusy(true);dialog.querySelector('[data-result]').replaceChildren();dialog.querySelector('[data-error]').textContent='';update();
+    try{const value=await post('/api/draft-group',body,active.signal);if(!dialog.open||token!==generation||!current()||JSON.stringify(body)!==JSON.stringify(request()))return;
+      report=decodeDraftGroupReview(value,body,getState());const table=document.createElement('table');table.style.width='100%';table.innerHTML='<tr><th>Draft</th><th>Current X/Z</th><th>Proposed X/Z</th></tr>';
+      for(const row of report.targets){const tr=document.createElement('tr');for(const value of [row.draft.name,`${row.draft.position.x} / ${row.draft.position.z}`,`${row.proposed.x} / ${row.proposed.z}`]){const td=document.createElement('td');td.textContent=value;tr.append(td);}table.append(tr);}for(const cell of table.querySelectorAll('th,td')){cell.style.padding='0.35rem';cell.style.textAlign='left';cell.style.overflowWrap='anywhere';}dialog.querySelector('[data-result]').append(table);
+      for(const line of report.limitations){const p=document.createElement('p');p.className='field-note';p.textContent=line;dialog.querySelector('[data-result]').append(p);}
+    }catch(error){if(error.name!=='AbortError'&&dialog.open&&token===generation)dialog.querySelector('[data-error]').textContent=error.message;}
+    finally{if(controller===active){controller=null;setBusy(false);}update();}
+  };
+  dialog.querySelector('[data-inspect]').onclick=async()=>{
+    if(isBusy()||!current()||!report||!canInspectScene())return;const accepted=report,base=getScenePreview(),token=++generation,active=new AbortController();controller=active;setBusy(true);update();
+    try{const value=await post('/api/draft-group-scene',{...accepted.request,review_key:accepted.review_key},active.signal);if(!dialog.open||token!==generation||!current()||!canInspectScene()||getScenePreview()!==base)return;
+      const scene=decodeDraftGroupScene(value,accepted,base),back=()=>{if(token!==generation||!current()||report!==accepted)return false;dialog.showModal();update();return true;};inspectScene(scene,accepted,back,current);keepClose=true;dialog.close();
+    }catch(error){if(error.name!=='AbortError'&&dialog.open&&token===generation)dialog.querySelector('[data-error]').textContent=error.message;}
+    finally{if(controller===active){controller=null;setBusy(false);}update();}
+  };
+  dialog.querySelector('[data-apply]').onclick=async()=>{
+    if(isBusy()||!current()||!report?.changed_count)return;const accepted=report;report=null;update();if(await api('/api/command',{type:'offset_actor_drafts',...accepted.request,review_key:accepted.review_key},{success:`Moved ${accepted.targets.length} NPC drafts. Undo restores the group.`}))dialog.close();else if(dialog.open)dialog.querySelector('[data-error]').textContent='Group rejected. Review current drafts again.';update();
+  };
+  dialog.showModal();render();
+}
