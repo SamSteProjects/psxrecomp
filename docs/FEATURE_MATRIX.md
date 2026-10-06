@@ -1,5 +1,34 @@
 # Legaia SDK feature matrix
 
+## Inspect NPC scripts emitted in saved Builds - 2026-10-05
+
+NPC Inspector and Asset Details now offer **Inspect saved Build script...**.
+Choose an intact saved package matching current authored inputs. The SDK verifies
+the receipt/audit/manifest/archive and user-owned source disc, reconstructs the
+emitted PROT from verified fixed-span overlays or relocation data, then reads the
+actual generated MAN record by the audited NPC allocation index. Final table
+spans are parsed from emitted bytes, never copied from intermediate append offsets.
+
+The read-only workspace exposes generated dialogue, instruction navigation and
+raw/record evidence with Build-scoped script identities. Retail donor inspection
+remains separate. Stale inputs, wrong NPC/record/package identities, changed
+payloads, ambiguous overlay spans and invalid record bounds reject. Package and
+source-disc integrity do not establish runtime spawning, scheduling or execution.
+The former **Inspect serialized candidate** label is corrected to **Inspect donor
+append prototype**; prototype text now directs complete-project readiness to
+Review Build rather than claiming that normal NPC Build is unavailable.
+
+Offline evidence: 21 focused Python checks and Node generated/donor/Asset/NPC
+Inspector contracts pass. Actual browser workflows passed both Inspector entries,
+generated/retail separation, path navigation and inspected 540px layouts for a
+format6 fixed-span package and a format7 relocated package. Stale-input receipts
+reject. Final bounded payload reads and record/hash guards accept both actual
+package responses. Generated offsets are44648 and44720 respectively. Project,
+history, Build input identity and preexisting files are unchanged. No new Build,
+Save, game launch, install or disc export occurred. Evidence:
+`local-output/sdk-20260909/npc-saved-build-script-20261005/` (`proof.json`,
+`final-readback.json`, `fixed-540.png`, `relocated-540.png`). Gameplay remains deferred.
+
 ## NPC retail donor script inspection - 2026-10-05
 
 Authored NPCs now expose **Inspect retail donor script...** in the NPC Inspector

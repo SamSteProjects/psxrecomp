@@ -79,6 +79,7 @@ import {mountScriptBookmarks,qualifyScriptBookmark} from '/script-bookmarks.js';
 import {mountProjectScriptBookmarks} from '/project-script-bookmarks.js';
 import {openScriptComponentReset} from '/script-component-reset.js';
 import {mountScriptOwnerInspector} from '/script-owner-inspector.js';
+import {openNpcBuildScript} from './npc-build-script.js';
 import {openNpcDonorScript} from './npc-donor-script.js';
 import {openDraftRepeat} from '/draft-repeat.js';
 import {openDraftGroup} from '/draft-group.js';
@@ -1769,6 +1770,7 @@ async function resolveProjectAsset(record){
 async function activateAsset(record,action=null){
   if(busy)return;
   try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
+  if(action==='inspect-npc-build-script'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC Build target changed. Reopen Asset Details.');openNpcBuildScript({entityId:record.id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});return;}
   if(action==='inspect-npc-donor-script'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC retail donor changed. Reopen Asset Details.');openNpcDonorScript({entityId:record.id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});return;}
   if(action==='inspect-npc-donor-model'){const model=npcDonorModel(record);if(!model||!state.model_references?.some(ref=>ref.source_id===record.id&&ref.target_id===model&&ref.scene_id===record.sceneId&&ref.kind==='draft_initial_model_assignment'&&ref.effective_donor_id===record.authoredRecord.donor_entity_id))throw new Error('NPC donor model assignment changed. Reopen Asset Details.');openModel(model,null,null,'imported');return;}
   if(action==='inspect-asset-region-bounds'){await inspectRegionBounds(record);return;}
@@ -2929,6 +2931,7 @@ function renderInspector(){
     const rename=document.createElement('button');rename.type='submit';rename.textContent='Rename';nameForm.append(nameLabel,rename);$('draft-inspector-form').before(nameForm);
     nameForm.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'rename_actor_draft',entity_id:id,name:nameInput.value});};
     const presets=document.createElement('button');presets.id='npc-presets-button';presets.textContent='NPC presets...';presets.disabled=busy||!canEdit();presets.onclick=showTemplates;$('delete-npc-draft').before(presets);
+    const buildScript=document.createElement('button');buildScript.id='npc-build-script-button';buildScript.textContent='Inspect saved Build script...';buildScript.disabled=busy||!state.capabilities?.actor_script_preview;buildScript.onclick=()=>openNpcBuildScript({entityId:id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});$('delete-npc-draft').before(buildScript);
     const donorScript=document.createElement('button');donorScript.id='npc-donor-script-button';donorScript.textContent='Inspect retail donor script...';donorScript.disabled=busy||!state.capabilities?.actor_script_preview;donorScript.onclick=()=>openNpcDonorScript({entityId:id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});$('delete-npc-draft').before(donorScript);
     const duplicate=document.createElement('button');duplicate.id='duplicate-npc-draft';duplicate.textContent='Duplicate draft';duplicate.title='Creates an independent draft at the same position, then selects it to move';$('delete-npc-draft').before(duplicate);
     duplicate.onclick=async()=>{const previous=new Set(Object.keys(state.actor_drafts??{}));if(await api('/api/command',{type:'duplicate_actor_draft',entity_id:id,name:npc.name.slice(0,115)+' copy'})){const created=Object.keys(state.actor_drafts??{}).find(key=>!previous.has(key));if(created){selectNpcDraft(created);frameNpcDraft();notify('Draft duplicated at the same position. Move it with X/Z or the viewport handles.');}}};
@@ -2977,7 +2980,7 @@ function renderInspector(){
     form.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'set_actor_draft_position',entity_id:id,position:{x:Number(form.elements.x.value),z:Number(form.elements.z.value)}});};
     $('frame-npc-draft').textContent=sceneRepresentation==='retail'?'Show in authored scene':'Frame draft';
     $('frame-npc-draft').onclick=frameNpcDraft;
-    const inspectDraft=document.createElement('button');inspectDraft.id='inspect-npc-draft';inspectDraft.textContent='Inspect serialized candidate';inspectDraft.disabled=busy;inspectDraft.onclick=()=>openActorCandidate({id,name:npc.name,components:{Transform:{effective:{position:{...npc.position,y:null}}}}});$('inspector').querySelector('section').append(inspectDraft);
+    const inspectDraft=document.createElement('button');inspectDraft.id='inspect-npc-draft';inspectDraft.textContent='Inspect donor append prototype';inspectDraft.disabled=busy;inspectDraft.onclick=()=>openActorCandidate({id,name:npc.name,components:{Transform:{effective:{position:{...npc.position,y:null}}}}});$('inspector').querySelector('section').append(inspectDraft);
     const exportDraft=document.createElement('button');exportDraft.id='export-npc-drafts';exportDraft.textContent='Export experimental disc';exportDraft.disabled=busy||!canEdit();exportDraft.onclick=()=>exportNpcDrafts(id);$('inspector').querySelector('section').append(exportDraft);
     $('delete-npc-draft').disabled=busy||!canEdit();$('delete-npc-draft').onclick=()=>api('/api/command',{type:'delete_actor_draft',entity_id:id});
     return;
@@ -3437,21 +3440,21 @@ async function openActorCandidate(entity){
     if(state.scene?.id!==sceneId)throw new Error('Active scene changed; inspect this donor again');
     const rows=report.actor.script_coverage.records;
     const containerStatus=report.container.supported===false?`unavailable (${report.container.reason})`:`${report.container.growth_bytes} bytes`;
-    dialog.querySelector('p').textContent=`${entity.name}: ${report.includes_project_overrides ? "retail donor with authored X/Z placement" : "retail donor at imported placement"}; other project overrides are excluded. This inspection does not create an NPC. ${report.actor.reached_spawn_changes.length} decoded spawn references need updates; ${rows.filter(row=>row.coverage!=='decoded_supported_paths').length} scripts remain partial. Container growth: ${containerStatus}. Overlapping archive entries: ${report.archive.overlapping_entries.length}. Playable creation remains unavailable until script, scheduling and archive dependencies are resolved.`;
+    dialog.querySelector('p').textContent=`${entity.name}: ${report.includes_project_overrides ? "retail donor with authored X/Z placement" : "retail donor at imported placement"}; other project overrides are excluded. This inspection does not create an NPC. ${report.actor.reached_spawn_changes.length} decoded spawn references need updates; ${rows.filter(row=>row.coverage!=='decoded_supported_paths').length} scripts remain partial. Container growth: ${containerStatus}. Overlapping archive entries: ${report.archive.overlapping_entries.length}. This donor-only prototype does not assess complete project Build readiness. Use Review Build for serialization status; spawning, scheduling and gameplay remain unverified.`;
     const placement=document.createElement('p');
     const included=Object.entries(report.included_overrides?.Transform?.position??{}).map(([axis,value])=>`${axis.toUpperCase()}=${value}`);
     const excluded=[...(report.excluded_override_components??[]),...(report.excluded_transform_axes??[]).map(axis=>`Position ${axis.toUpperCase()}`)];
     placement.textContent=`Candidate placement: ${included.length?included.join(', ')+'; remaining axes inherit the donor':'inherited from the retail donor'}.${excluded.length?' Excluded authored values: '+excluded.join(', ')+'.':''}`;
     dialog.append(placement);
     const form=document.createElement('form');
-    form.innerHTML='<h3>New NPC draft</h3><label>Name <input name="name" maxlength="120" required></label><label>X <input name="x" type="number" min="64" max="16384" step="64" required></label><label>Z <input name="z" type="number" min="64" max="16384" step="64" required></label><p>Creates a saved-project draft through Undo/Redo. Use Save to persist it. Drafts appear in the viewport but are not yet included in playable builds.</p><p class="dialog-error" role="alert"></p><button type="submit">Create NPC draft</button>';
+    form.innerHTML='<h3>New NPC draft</h3><label>Name <input name="name" maxlength="120" required></label><label>X <input name="x" type="number" min="64" max="16384" step="64" required></label><label>Z <input name="z" type="number" min="64" max="16384" step="64" required></label><p>Creates a saved-project draft through Undo/Redo. Use Save to persist it. Drafts appear in the viewport. Review Build assesses supported native candidates and the complete authored project; gameplay remains unverified.</p><p class="dialog-error" role="alert"></p><button type="submit">Create NPC draft</button>';
     form.elements.name.value=`${entity.name} draft`;
     const donorPosition=entity.components.Transform.effective.position;
     form.elements.x.value=donorPosition.x;form.elements.z.value=donorPosition.z;
     form.onsubmit=async event=>{
       event.preventDefault();if(busy)return;
       if(state.scene?.id!==sceneId){form.querySelector('.dialog-error').textContent='Active scene changed; inspect this donor again';return;}
-      await api('/api/command',{type:'create_actor_draft',donor_entity_id:entity.id,name:form.elements.name.value,position:{x:Number(form.elements.x.value),z:Number(form.elements.z.value)}},{dialog,success:'NPC draft created. Save persists the draft; playable Build is not yet supported.'});
+      await api('/api/command',{type:'create_actor_draft',donor_entity_id:entity.id,name:form.elements.name.value,position:{x:Number(form.elements.x.value),z:Number(form.elements.z.value)}},{dialog,success:'NPC draft created. Save persists it; Review Build assesses native serialization.'});
     };
     if(!state.actor_drafts?.[entity.id])dialog.append(form);
     const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='Technical evidence';pre.textContent=JSON.stringify(report,null,2);details.append(summary,pre);dialog.append(details);

@@ -780,6 +780,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
                  "/draft-group.js": ("draft-group.js", "text/javascript"),
                  "/draft-donor-group.js": ("draft-donor-group.js", "text/javascript"),
+                 "/npc-build-script.js": ("npc-build-script.js", "text/javascript"),
                  "/npc-donor-script.js": ("npc-donor-script.js", "text/javascript"),
                  "/npc-draft-inspector.js": ("npc-draft-inspector.js", "text/javascript"),
                  "/npc-presets.js": ("npc-presets.js", "text/javascript"),
@@ -2589,6 +2590,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     result = (project.preview_dialogue_json if route.endswith("preview") else project.import_dialogue_json)(body["entity_id"], content)
                     self._json(200, self.server.state() if route.endswith("import") else result)
                     return
+                if route=='/api/npc-build-script':
+                    if set(body)!={'entity_id','build_id'}:raise ProjectError('Saved NPC script accepts authored NPC and saved Build identities only')
+                    from .npc_build_script import inspect as inspect_npc_build_script
+                    self._json(200,inspect_npc_build_script(self.server.project,body['entity_id'],body['build_id']));return
                 if route=='/api/npc-donor-script':
                     if set(body)!={'entity_id'} or not isinstance(body['entity_id'],str):raise ProjectError('NPC donor script accepts only an authored entity identity')
                     from .npc_donor_script import inspect as inspect_npc_donor_script
