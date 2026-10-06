@@ -916,3 +916,9 @@ hashes. A missing/changed file or changed Current context rejects the download.
 Closing recovery cancels pending requests; no later file is published from that
 closed panel. Settings are historical evidence. Choose Current donors and perform
 a fresh Review before a new Apply; downloading them does not change project state.
+
+## 2026-10-06: recovered mesh settings become editable drafts
+
+`Import GLB mesh` now accepts the bounded JSON downloaded by `Retained mesh sources` after a GLB is chosen. Single settings restore scene/section, unit scale, XYZ origin/rotation, UV channel, color choice and packet-group mode. Batch settings open the section donor editor with saved section selection, per-section UVs and group/object replacement choices. Both paths request a fresh SDK inventory of the selected GLB before publishing controls, clear any previous Review, and require fresh Review plus explicit Apply. Unavailable Current triangle donors remain unselected; no donor is substituted. Unknown fields, invalid bounds, missing sections/scenes/UVs and conflicting mappings reject.
+
+Validation: new Node settings decoder/qualification checks and the existing recovery/download Node checks passed; all five Python mesh source retention/history/HTTP tests passed. Actual browser checks restored both saved recipes, rejected malformed settings without changing draft choices, required missing-donor reselection, and completed fresh single and mapped Reviews. No Apply, project/history/file mutation, game launch, runtime attach or installation occurred. Wide and narrow screenshots inspected. Evidence: `local-output/sdk-20260909/mesh-settings-draft-20261006/proof.json`. Gameplay acceptance remains deferred; the full SDK goal is incomplete.

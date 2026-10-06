@@ -1003,3 +1003,7 @@ GLB. Detached settings/receipt JSON is published only after that source check an
 a final context guard. Dialog-owned AbortController and pending controls prevent
 closed or concurrent reads from publishing artifacts. Initial recovery availability
 is tied to the parent mesh source read; native import recipes are never replayed.
+
+## Mesh settings draft recovery (2026-10-06)
+
+`model-mesh-settings.js` decodes bounded single/batch recipes and qualifies them against a freshly decoded GLB inventory and Current native triangle donors. `model-mesh-append.js` owns the file read, generation/context checks and abortable inventory request; it publishes draft controls only after successful qualification. A batch recipe hands the qualified inventory and detached settings to `model-mesh-batch.js`, which restores selected sections and per-section choices. Missing donors produce an empty selection and disable Review. Loading settings never calls native Apply; existing Review/Apply endpoints retain their current-source, file-hash and review-key checks. No receipt or recipe is accepted as write authority.

@@ -1,3 +1,4 @@
+import {qualifyMeshSettings} from './model-mesh-settings.js';
 import { MODEL_FACE_BUDGET } from './model-topology-limits.js';
 import {decodeFaceRemovalSource,decodeFaceRemovalReview} from './model-face-removal.js';
 import {renderPackets,qualifyRender} from './model-group-allocation.js';
@@ -61,7 +62,7 @@ function decodeMappedObjectRetirement(value,source,previous,mappings){
   if(!same(review.preview.bounds,current.preview.bounds))fail('Mapped retirement changed stored vector bounds.');
   return review;
 }
-export function openModelMeshBatch({assetId,source,inventory,content,glbHash,materialColors=false,sceneIndex=null,uvSet=0,sourceScale=1,sourceOffset=[0,0,0],sourceRotation=[0,0,0],getContext,busy,setBusy,onError,onApplied,onScenePreview}){
+export function openModelMeshBatch({initialSettings=null,assetId,source,inventory,content,glbHash,materialColors=false,sceneIndex=null,uvSet=0,sourceScale=1,sourceOffset=[0,0,0],sourceRotation=[0,0,0],getContext,busy,setBusy,onError,onApplied,onScenePreview}){
   const context=structuredClone(getContext());source=decodeMeshAppendSource(source,assetId,context.sourceKey);inventory=decodeMeshFile(inventory,glbHash,sourceScale,sourceOffset,sourceRotation);
   if(context.mode!=='edit'||busy())fail('Donor mapping requires Edit mode.');
   const dialog=document.createElement('dialog');dialog.className='diagnostic-dialog model-mesh-batch-dialog';
@@ -82,7 +83,14 @@ export function openModelMeshBatch({assetId,source,inventory,content,glbHash,mat
     const label=document.createElement('label'),replace=document.createElement('input');replace.type='checkbox';replace.style.width='auto';label.style.display='flex';label.style.flexDirection='row';label.style.alignItems='center';label.style.gap='8px';replace.setAttribute('aria-label',`Replace donor group for primitive ${primitive.primitive_index}`);label.append(replace,document.createTextNode('Replace the existing donor group'));
     const uvLabel=document.createElement('label'),uv=document.createElement('select');uvLabel.textContent='Source UV channel';uv.setAttribute('aria-label',`UV channel for primitive ${primitive.primitive_index}`);for(const set of new Set([0,...(inventory.uv_sets??[]).flat()])){const option=document.createElement('option');option.value=String(set);option.textContent=`TEXCOORD_${set}`;uv.append(option);}uv.value=String(uvSet);uvLabel.append(uv);row.append(legend,includeLabel,donor,uvLabel,label);host.append(row);rows.push({primitiveIndex:primitive.primitive_index,include,donor,replace,uv});
   }
+  if(initialSettings){
+    const {recipe}=qualifyMeshSettings(initialSettings,source,inventory);
+    if(recipe.kind!=='batch')fail('Mapped draft requires batch import settings.');
+    replaceObjects.checked=recipe.replace_objects;
+    for(const row of rows){const mapping=recipe.mappings.find(m=>m.primitive_index===row.primitiveIndex);row.include.checked=!!mapping;if(mapping){row.donor.value=mapping.donor_face_id;row.replace.checked=mapping.replace_group;row.uv.value=String(mapping.uv_set??recipe.uv_set);}}
+  }
   const reviewButton=dialog.querySelector('[data-review]'),applyButton=dialog.querySelector('[data-apply]'),sceneButton=dialog.querySelector('[data-scene]'),close=dialog.querySelector('[data-close]'),status=dialog.querySelector('[role=status]'),comparison=dialog.querySelector('[data-comparison]'),layer=dialog.querySelector('[data-layer]'),canvas=dialog.querySelector('canvas');
+  if(initialSettings)status.textContent=rows.some(row=>row.include.checked&&!row.donor.value)?'Settings loaded. Some saved donors are unavailable in Current; choose donors, then Review. Nothing applied.':'Settings loaded into a new mapped draft. Fresh Review and explicit Apply required. Nothing applied.';
   const workspace=document.createElement('div'),settings=document.createElement('div'),previewPane=document.createElement('aside'),actions=document.createElement('div');
   workspace.className='mesh-donor-workspace';settings.className='mesh-donor-settings';previewPane.className='mesh-donor-preview';actions.className='mesh-donor-actions';
   for(const child of Array.from(dialog.children).slice(2))if(child!==comparison)settings.append(child);
