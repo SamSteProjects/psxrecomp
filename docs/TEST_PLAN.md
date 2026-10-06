@@ -1,5 +1,28 @@
 # Legaia SDK validation plan
 
+## 2026-10-06 checkpoint: saved model input to source inspector navigation
+
+Project model inputs now provides Open model in source scene. The editor verifies
+the exact historical receipt against the current library, navigates to its imported
+scene, requalifies project/mode/library after navigation and verifies membership in
+the current model asset inventory. It opens authored geometry when an override is
+present, otherwise Retail. Pending model edits, busy/stale project contexts,
+missing receipts and absent or wrong-type target assets reject navigation.
+
+The workflow opens the normal model inspector and current GLB export controls;
+it does not replay historical input bindings. Five Node checks passed, including
+navigation races and membership guards. An actual private retail editor workflow
+started in town0c, navigated to the saved town01 model, inspected authored geometry
+and downloaded a fresh binding matching its native candidate. History, native
+content, receipts and all non-export project files stayed unchanged. The normal
+export generated files under Exports, as intended. The first verifier incorrectly
+included those expected generated files in its unchanged-file assertion; the
+completed proof qualifies them separately. No native Apply, Build or game launch
+was needed for this navigation feature.
+Evidence: `local-output/sdk-20260909/model-source-navigation-20261006/proof.json`.
+The full SDK goal and manual gameplay acceptance remain outstanding.
+
+
 ## 2026-10-06 checkpoint: project-wide model input library
 
 The editor now exposes Project model inputs beside the project browsing tools.

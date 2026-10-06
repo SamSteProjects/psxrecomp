@@ -884,3 +884,15 @@ Recovery is available in Live mode; removal is exposed only in Edit mode. The
 panel refreshes after publication, and registered shared-byte accounting is
 separate from physical file deletion. Source receipts remain historical evidence,
 not authority to replay a stale external import.
+
+
+### Model input source navigation
+
+The project input modal exposes an optional navigation callback, separately from
+receipt mutation. Before leaving the modal it requalifies the selected receipt.
+`navigateModelSource` captures project root, mode and library key, checks the exact
+receipt before and after scene navigation, then verifies the stable model identity
+in the current SDK asset inventory. It selects the authored or imported inspector
+layer from current project state. The parent editor supplies its normal scene API
+and model inspector; pending model edits prevent navigation. Historical bindings
+remain recovery evidence, while the normal current export creates fresh bindings.

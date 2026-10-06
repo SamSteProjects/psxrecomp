@@ -852,3 +852,12 @@ external editing, export a fresh binding from Current, preserve source attribute
 and choose the mapping appropriate to that GLB, then Review again. No receipt
 silently replays changes or authorizes native/runtime writes. Gameplay rendering
 and lighting acceptance remain deferred.
+
+
+From Project model inputs, choose Open model in source scene to inspect the current
+model. This verifies the saved receipt, opens its imported scene and checks that
+the model is still present. Authored geometry is shown when a native override exists;
+otherwise the inspector shows Retail. Use Edit model through GLB and Prepare GLB
+export to obtain a fresh binding before editing again. Navigation preserves receipts
+and authoring history; explicit export creates normal files under Exports. Finish
+or discard pending model edits before navigating to another source model.
