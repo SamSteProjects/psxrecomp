@@ -36,6 +36,9 @@ def preview(project, request):
     if 'waits' in original:
         from .npc_waits import source as wait_source
         wait_source(project,identifier)
+    if 'branches' in original:
+        from .npc_branches import source as branches_source
+        branches_source(project,identifier)
     if 'flags' in original:
         from .npc_flags import source as flags_source
         flags_source(project,identifier)

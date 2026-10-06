@@ -1,5 +1,36 @@
 # Legaia SDK status — 2026-10-05
 
+## NPC branch authoring through editor and normal Build - 2026-10-05
+
+NPC branch destinations now connect source-qualified review to the root Inspector
+and Asset Details, reviewed commands, Undo/Redo, Save/Open and both normal Build
+carrier paths. Review composes existing own dialogue/movement/facing/flags/waits
+before qualifying the proposed graph. Build composes branch destinations after all
+six existing NPC edit families, retaining original instruction spans even when
+changed edges skip them. Conditions, selectors and extended dispatch stay held.
+Repetition qualifies and retains branches. Branch-bearing preset capture rejects
+until portable interchange is connected; saved authored-span explanations are also
+pending. See [NPC branch workflow](legaia-npc-branches.md).
+
+Validation: 19 focused Python checks pass with retail input enabled; the Node
+source/review/opener contract suite passes. Actual browser Review/Apply/Clear,
+changed-input withdrawal, Undo/Redo and Save/reload pass. A module export mismatch
+found by the first browser probe was corrected and the opener export is now
+checked. The saved 540px dialog top and bottom were visually inspected without
+project/history/file mutation. Private Town01 Build `6e6a47c3f7d988fe` reopens
+branch PC14 with target11 and changes only its destination word against the
+verified six-family baseline. Package SHA256:
+`df94104dd232c590cf6a1fc99633ff58b34b8c3a6a2919dd8aa0e9b61fa92636`.
+Streaming Rayman Build `0dc504a3a5d7cf6f` reopens two NPC branches at PC12 with
+targets9/10, with only branch-word changes and all six prior families retained.
+Package SHA256: `7d3ea68002c864c4580f3fb3d2ce60abb802af573f9499d5b90a1f585104c18d`.
+Evidence: `local-output/sdk-20260909/npc-branches-editor-20261005/proof.json`
+and `local-output/sdk-20260909/npc-branches-streaming-20261005/proof.json`.
+
+No game launch or full-disc export occurred. Branch activation, story reachability
+and termination remain unknown. Manual acceptance stays deferred and the full SDK
+goal remains active/incomplete.
+
 ## NPC-owned branch destination serialization foundation - 2026-10-05
 
 Appended NPC records now have a native branch-word serializer using the existing
