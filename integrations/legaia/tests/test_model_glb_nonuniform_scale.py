@@ -87,4 +87,63 @@ class NonuniformModelScale(unittest.TestCase):
         with self.assertRaises(ImportError):import_model_glb(source,content,profile)
 
 
+class ComposedModelScaleBounds(unittest.TestCase):
+    def test_reciprocal_anisotropic_parent_is_native_noop(self):
+        source = lit_source(0x16)
+        glb, profile = export_model_glb(source, decode_tmd(source))
+        def edit(doc, binary):
+            group(doc, dict(scale=[1/1024,1024,1]))
+            group(doc, dict(scale=[1024,1/1024,1]))
+        content = rewrite(glb, edit)
+        self.assertEqual(import_model_glb(source, content, profile)[0], source)
+
+    def test_actual_singular_bounds_for_composed_shear(self):
+        # A = diag(2,1,1) R45 diag(1,3,1). The two planar squared
+        # singular values solve lambda^2 - 25 lambda + 36 = 0.
+        doc = dict(nodes=[dict(name='object-0',scale=[1,3,1],rotation=[0,0,math.sin(math.pi/8),math.cos(math.pi/8)]),
+                          dict(children=[0],scale=[2,1,1])],scenes=[dict(nodes=[1])],scene=0)
+        _, poses = static_model_hierarchy(doc, 1)
+        lower, upper = poses[0].scale_bounds
+        self.assertAlmostEqual(lower, 1, places=12)
+        self.assertAlmostEqual(upper, math.sqrt((25+math.sqrt(481))/2), places=12)
+
+    def test_rotated_extreme_axes_keep_small_singular_value(self):
+        # Rotation on both sides preserves the exact singular values, even
+        # though every resulting column is much larger than the small axis.
+        from importer.model_glb_transforms import _composed_bounds, _multiply
+        c = math.sqrt(.5)
+        rotation = ((c,-c,0),(c,c,0),(0,0,1))
+        matrix = _multiply(_multiply(rotation,((1024,0,0),(0,1/1024,0),(0,0,1))),rotation)
+        lower, upper = _composed_bounds(matrix)
+        self.assertAlmostEqual(lower, 1/1024, places=12)
+        self.assertAlmostEqual(upper, 1024, places=10)
+
+    def test_rotated_boundary_axes_allow_only_roundoff(self):
+        import random
+        from importer.animation_glb import _rotate_vector
+        from importer.model_glb_transforms import _composed_bounds, _multiply
+        randomizer = random.Random(23)
+        def rotation():
+            q = [randomizer.uniform(-1,1) for _ in range(4)]
+            length = math.hypot(*q);q = [v/length for v in q]
+            columns = [_rotate_vector(q,[int(i==j) for j in range(3)]) for i in range(3)]
+            return tuple(tuple(columns[j][i] for j in range(3)) for i in range(3))
+        for _ in range(20):
+            left, right = rotation(), rotation()
+            matrix = _multiply(_multiply(left,((1024,0,0),(0,1/1024,0),(0,0,1))),right)
+            lower, upper = _composed_bounds(matrix)
+            self.assertAlmostEqual(lower,1/1024,delta=1e-11)
+            self.assertAlmostEqual(upper,1024,delta=1e-10)
+            for diagonal in (((1024.000001,0,0),(0,1,0),(0,0,1)),
+                             ((1024,0,0),(0,1/1024-1e-8,0),(0,0,1))):
+                with self.assertRaises(ImportError):
+                    _composed_bounds(_multiply(_multiply(left,diagonal),right))
+
+    def test_actual_out_of_range_composition_still_rejects(self):
+        for child, parent in (([2,1,1],[1024,1,1]),([.5,1,1],[1/1024,1,1])):
+            doc = dict(nodes=[dict(name='object-0',scale=child),dict(children=[0],scale=parent)],
+                       scenes=[dict(nodes=[1])],scene=0)
+            with self.assertRaises(ImportError):static_model_hierarchy(doc,1)
+
+
 if __name__=='__main__':unittest.main()

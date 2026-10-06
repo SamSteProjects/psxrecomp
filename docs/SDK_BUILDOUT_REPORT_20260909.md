@@ -1,5 +1,39 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-06 checkpoint: measured composed model scale bounds
+
+Model GLB hierarchy qualification now measures the actual composed singular
+scales instead of multiplying conservative ancestor axis minima/maxima. This
+admits reciprocal nonuniform parent/child scales whose final transform is valid.
+Local axes and every composed ancestor remain bounded 1/1024..1024; excessive
+intermediate transforms still reject. A bounded one-sided Jacobi calculation
+preserves small-axis precision without squared normal equations or a new runtime
+dependency. Floating-point endpoint allowance is 64 ulps of the largest measured
+scale. Native geometry, normal transforms, quantization and review formats stay
+unchanged. This supersedes the earlier conservative cancellation limitation.
+
+Validation: 53 focused Python checks and both model GLB Node checks passed.
+Analytic composite-shear singular values, reciprocal native no-op, out-of-range
+composition and rotated boundary/over-limit cases are covered. A final-code
+read-only HTTP check accepted the saved Current fixture as a native no-op with
+project files/history unchanged; 100 rotated extreme-axis fixtures passed.
+
+A fresh private town01 project used axes [1024,1/1024,1] followed by reciprocal
+child axes and an independently packed native translation of model 0009. The
+actual resource browser completed Review, proposed model inspection, Return and
+Apply, followed by Undo/Redo, Save/Open and normal Build. Complete native TMD
+readback matched; normals, decoded neighboring bytes and retail inputs remained
+unchanged. Invalid scale, incorrect Review and stale bindings rejected.
+
+Evidence: `local-output/sdk-20260909/model-glb-composed-scale-20261006/proof.json`
+and `final-code-proof.json` in the same directory.
+Build: `3594b3faedff0fe6`.
+Package SHA-256: `c4e265df8ceceda9d3b8e4abf296233f58e445fa82792c2bc829b4523eb0b917`.
+Native TMD SHA-256: `96e94ff3778b07af810b88dc9640c09dd699da2ddda8c3205773813b30328b28`.
+The proposed model screenshot was inspected. No game was launched or mod
+installed. Gameplay remains deferred; the full SDK goal is active and incomplete.
+
+
 ## 2026-10-06 checkpoint: positive nonuniform model scale
 
 Fixed-layout model GLB imports now bake positive per-axis node scale through

@@ -784,7 +784,7 @@ native animation formats or scene-instance transforms.
 ### Positive nonuniform model scale and normal directions (2026-10-06)
 
 Model hierarchy poses now store full linear matrices, translations, cofactor
-normal matrices, conservative scale bounds and an optional uniform-only rotation.
+normal matrices, measured singular scale bounds and an optional uniform-only rotation.
 Local matrix columns are divided by their positive axis lengths for the existing
 rigid orientation/TRS validation. Parent linear matrices multiply child linear
 matrices and translations; this preserves shear arising from valid nested TRS.
@@ -796,7 +796,13 @@ direction as inverse-transpose; its common determinant factor cancels when
 restoring the original raw normal magnitude. Zero normals stay zero. Uniform-only
 poses keep their prior quaternion normal path. The importer converts native normal
 axes before/after this operation and applies the existing integer/alias guards.
-Legacy lit profiles cannot omit required normal edits. Local axis bounds and
-ancestor minimum/maximum scale products bound numerical conditioning, with
-conservative rejection of some extreme cancelling combinations. No source metadata
-is mutated; no new binding, command or Build format is introduced.
+Legacy lit profiles cannot omit required normal edits. Local axes and actual
+composed singular scales are bounded 1/1024..1024. A one-sided Jacobi SVD uses
+copied columns, three pair rotations per sweep and at most 32 sweeps; nonconvergence
+rejects. It avoids the loss of small singular values from forming A^T A, admits
+bounded reciprocal parent/child scales and still rejects excessive intermediate
+ancestors. The boundary allowance is 64 ulps of the largest singular scale because
+absolute roundoff follows that scale, including on small rotated axes. Accepted
+boundary noise is clamped in pose diagnostics only; geometry and normals use the
+original composed matrix. No source metadata is mutated; no new dependency,
+binding, command or Build format is introduced.

@@ -757,8 +757,9 @@ the existing reviewed quantization diagnostics. Unused native vectors, packet
 layout, padding, image/material fields and unlit sentinels remain unchanged.
 
 Uniform matrix decomposition uses the existing rigid orientation checks with
-float32 tolerance. Negative or zero TRS scales, nonuniform scale, shear,
-reflection, perspective, matrix-plus-TRS and excessive composed scales reject.
+float32 tolerance. Negative or zero TRS scales, local matrix shear, reflection, perspective,
+matrix-plus-TRS and excessive composed scales reject. Positive nonuniform scale
+is supported as described below.
 Animation GLB imports retain their existing unit-scale requirement. Scene
 placements are separate authored values. Use a fresh binding and the ordinary
 Review/Pose/Return/Apply, Undo/Redo, Save/Open and normal Build workflow; gameplay
@@ -781,11 +782,14 @@ hierarchies retain the earlier rotation path and exact source behavior. The
 native/GLB Y conversion, unlit sentinels, shared source aliases and unused vector
 preservation remain in force. The viewport still does not prove retail lighting.
 
-Each positive local axis is bounded 1/1024..1024. Ancestor products of minimum and
-maximum local scales provide conservative composed bounds in the same range;
-these may reject extreme reciprocal/cross-axis combinations even when a final
-matrix would cancel them. Native integer-domain and quantization checks remain
-separate. Negative/zero scales, reflection, perspective, local shear, animation
+Each positive local axis is bounded 1/1024..1024. Every composed node transform
+must have singular scales in that same range. A bounded one-sided Jacobi
+measurement works directly on matrix columns, preserving small-axis precision
+without forming squared normal equations. Reciprocal/cross-axis cancellation is
+accepted when the actual composed transform stays bounded; out-of-range
+intermediate ancestors still reject. Only floating-point boundary noise is
+allowed (64 ulps of the largest measured scale). Native integer-domain and
+quantization checks remain separate. Negative/zero scales, reflection, perspective, local shear, animation
 and skinning remain unsupported. Legacy lit profiles without stored-normal
 editing reject nonuniform transforms; unlit legacy geometry remains supported.
 

@@ -24,6 +24,45 @@ def _multiply(a, b):
     return tuple(tuple(sum(a[i][k]*b[k][j] for k in range(3)) for j in range(3)) for i in range(3))
 
 
+def _composed_bounds(matrix):
+    # One-sided Jacobi SVD works directly on columns, avoiding the cancellation
+    # in eigenvalues of A^T A for strongly anisotropic transforms. Only singular
+    # values are needed; the original matrix remains untouched.
+    columns = [[matrix[i][j] for i in range(3)] for j in range(3)]
+    if any(not math.isfinite(v) for column in columns for v in column):
+        raise ImportError('Model GLB composed transform is nonfinite')
+    for _ in range(32):
+        changed = False
+        for p, q in ((0, 1), (0, 2), (1, 2)):
+            a, b = columns[p], columns[q]
+            alpha = sum(v*v for v in a)
+            beta = sum(v*v for v in b)
+            gamma = sum(x*y for x, y in zip(a, b))
+            if alpha == 0 or beta == 0:
+                raise ImportError('Model GLB composed transform is singular')
+            if abs(gamma) <= 1e-14 * math.sqrt(alpha) * math.sqrt(beta):
+                continue
+            tau = (beta - alpha) / (2 * gamma)
+            tangent = math.copysign(1, tau) / (abs(tau) + math.hypot(1, tau))
+            cosine = 1 / math.hypot(1, tangent)
+            sine = cosine * tangent
+            columns[p] = [cosine*x - sine*y for x, y in zip(a, b)]
+            columns[q] = [sine*x + cosine*y for x, y in zip(a, b)]
+            changed = True
+        if not changed:
+            break
+    else:
+        raise ImportError('Model GLB composed scale measurement did not converge')
+    lengths = [math.hypot(*column) for column in columns]
+    # Permit only floating-point boundary noise, not a wider authoring budget.
+    # Absolute error follows the largest singular value, not the smallest;
+    # a relative epsilon on the small axis falsely rejects rotated endpoints.
+    tolerance = 64 * math.ulp(max(lengths))
+    if min(lengths) < MIN_SCALE-tolerance or max(lengths) > MAX_SCALE+tolerance:
+        raise ImportError('Model GLB composed singular scales must be 1/1024..1024')
+    return (max(MIN_SCALE, min(lengths)), min(MAX_SCALE, max(lengths)))
+
+
 def _cofactor(matrix):
     # inverse-transpose times positive determinant: the common factor cancels
     # when restoring the original raw normal magnitude.
@@ -98,8 +137,7 @@ def static_model_hierarchy(doc, object_count):
             if any(not math.isfinite(v) for v in translation):
                 raise ImportError('Model GLB hierarchy produced a nonfinite translation')
             linear = _multiply(parent_pose.linear, linear)
-            bounds = (_scale(bounds[0]*parent_pose.scale_bounds[0]),
-                      _scale(bounds[1]*parent_pose.scale_bounds[1]))
+            bounds = _composed_bounds(linear)
             uniform = tuple(_multiply_quaternions(parent_pose.uniform_rotation, rotation)) if uniform is not None and parent_pose.uniform_rotation is not None else None
         poses[index] = ModelPose(tuple(translation), linear, _cofactor(linear), uniform, bounds)
     return mapping, poses
