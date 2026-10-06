@@ -67,14 +67,27 @@ export function decodeDraftGroupScene(response,report,base){
   return structuredClone(scene);
 }
 
-export function openDraftGroup({entityId,getState,isBusy,canEdit,setBusy,api,canInspectScene,getScenePreview,inspectScene}){
+export function draftGroupSelection(entityId,entityIds,state){
+  if(typeof state?.scene?.id!=='string'||!state.scene.id)throw new Error('NPC group selection requires an active scene.');
+  const selection=entityIds??[],drafts=state.actor_drafts??{};
+  if(!Array.isArray(selection)||selection.length>128||new Set(selection).size!==selection.length||selection.some(id=>typeof id!=='string'))throw new Error('NPC group selection must contain at most 128 distinct scene placements.');
+  const ids=selection.filter(id=>id.startsWith('authored-actor://'));
+  for(const id of ids)if(drafts[id]?.scene_id!==state.scene?.id)throw new Error('Selected NPC draft is unavailable in the active scene.');
+  if(ids.length)return {entity_ids:ids.slice().sort(),ignored_count:selection.length-ids.length,from_selection:true};
+  if(drafts[entityId]?.scene_id!==state.scene?.id)throw new Error('Focused NPC draft is unavailable in the active scene.');
+  return {entity_ids:[entityId],ignored_count:0,from_selection:false};
+}
+
+export function openDraftGroup({entityId,entityIds=null,onError=()=>{},getState,isBusy,canEdit,setBusy,api,canInspectScene,getScenePreview,inspectScene}){
   if(isBusy()||!canEdit())return;
   const state=getState(),drafts=Object.entries(state.actor_drafts??{}).filter(([,d])=>d.scene_id===state.scene?.id).sort(([a],[b])=>a.localeCompare(b));
   if(drafts.length<2)return;
+  let seed;try{seed=draftGroupSelection(entityId,entityIds,state);}catch(error){onError(error);return;}
   const dialog=document.createElement('dialog');dialog.id='draft-group-dialog';document.body.append(dialog);
   dialog.innerHTML='<h2>Edit NPC draft group</h2><p>Select authored NPC drafts in this scene. Offset, align, distribute, rotate positions, scale spacing or reflect a coordinate about a selected anchor along X/Z on the retail 64-unit grid, from 64 through 16384. Spacing scale accepts 1-1000 percent and rounds final coordinates to the nearest 64 units, with half steps away from zero; rounded placements may coincide. Rotation and reflection change positions while model geometry and facing stay fixed. Removal deletes only reviewed project drafts and preserves unselected content and retail donors. Undo restores identities and metadata. Placement keeps donor binding, names and scripts unchanged. Source elevation is preview only; runtime spawning and gameplay remain unverified.</p><form><label>Placement operation<select name="operation" aria-label="NPC group placement operation"><option value="remove">Remove selected NPC drafts</option><option value="offset" selected>Offset X/Z together</option><option value="align_x">Align X to anchor</option><option value="align_z">Align Z to anchor</option><option value="distribute_x">Distribute along X</option><option value="distribute_z">Distribute along Z</option><option value="rotate_1">Rotate positions +90 degrees</option><option value="rotate_-1">Rotate positions -90 degrees</option><option value="rotate_2">Rotate positions 180 degrees</option><option value="scale">Scale spacing</option><option value="mirror_x">Reflect X about anchor</option><option value="mirror_z">Reflect Z about anchor</option></select></label><label hidden>Layout anchor<select name="anchor" aria-label="NPC group alignment anchor"></select></label><label hidden>Spacing percent<input name="percent" type="number" min="1" max="1000" step="1" value="100" aria-label="NPC group spacing percent"></label><label>Find drafts<input name="search" type="search" aria-label="Find NPC group drafts"></label><div class="dialog-actions"><button type="button" data-select>Select visible drafts</button><button type="button" data-clear>Clear selection</button></div><div class="batch-actors" data-drafts></div><p data-count role="status"></p><label>X offset<input name="x" type="number" step="64" min="-16320" max="16320" value="64" required aria-label="NPC group X offset"></label><label>Z offset<input name="z" type="number" step="64" min="-16320" max="16320" value="0" required aria-label="NPC group Z offset"></label><div class="dialog-actions"><button type="submit" data-preview>Preview group movement</button><button type="button" data-inspect disabled>Inspect group in scene</button><button type="button" data-apply disabled>Apply group movement</button></div></form><p data-error class="dialog-error" role="alert"></p><div data-result></div><button type="button" data-close>Close NPC draft group</button>';
   for(const actions of dialog.querySelectorAll('.dialog-actions')){actions.style.flexWrap='wrap';actions.style.justifyContent='flex-start';}
-  let selected=new Set(drafts.some(([id])=>id===entityId)?[entityId]:[]),report=null,generation=0,controller=null,keepClose=false;
+  const seedNote=document.createElement('p');seedNote.className='field-note';seedNote.dataset.selectionSeed='';seedNote.textContent=seed.from_selection?`Using ${seed.entity_ids.length} NPC drafts from the current selection.${seed.ignored_count?` ${seed.ignored_count} other placement${seed.ignored_count===1?' is':'s are'} excluded from this NPC tool; use mixed scene placements to edit the whole selection.`:''}`:'Select NPC drafts to include in this group.';dialog.querySelector('form').before(seedNote);
+  let selected=new Set(seed.entity_ids),report=null,generation=0,controller=null,keepClose=false;
   const key=()=>{const s=getState();return JSON.stringify([s.project.path,s.scene.id,s.scene_preview_source_key,s.actor_drafts]);},context=key(),current=()=>context===key()&&canEdit();
   const request=()=>{
     const entity_ids=[...selected].sort(),mode=dialog.querySelector('[name=operation]').value;

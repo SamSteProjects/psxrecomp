@@ -1,5 +1,35 @@
 # Legaia SDK status — 2026-10-05
 
+## Saved NPC selections feed group authoring - 2026-10-05
+
+Opening **Move NPC draft group...** now checks the NPC members of the current
+scene placement selection, including recalled saved selections. A focused draft
+remains the default when no NPC group is selected. The dialog copies membership
+and qualifies every selected NPC against the active scene before opening.
+Unavailable, wrong-scene, duplicate or oversized selections reject with a visible
+error. Existing checkbox/search controls still let the user change membership.
+
+For mixed selections, the NPC tool includes only NPC members and reports how many
+other placements it excludes. Use mixed scene placements to edit all kinds together.
+This closes the saved-selection-to-authoring handoff for offset/layout/removal review;
+selection alone does not change project or game data. The existing review source
+binding, detached scene proposal, atomic command history and serializer remain.
+
+Validation: 16 focused SDK group/selection cases, the expanded group and saved
+selection Node checks, and editor syntax passed. Actual private Town01 browser
+checks covered focused default membership, saving/reloading/recalling an NPC pair,
+exact checked members and review targets, preview without mutation, Apply/Undo/Redo,
+unchanged unselected drafts, explicit mixed-selection scope, Save/reload and disk
+reopen. The 540px dialog was inspected; no page errors occurred. Normal format 7
+Build readback matched the complete prepared MAN and all seven appended NPC rows,
+including the edited pair with donor model/animation preserved. Saved package
+verification matches current inputs; Build preserves project/history/preexisting
+files. Package SHA256:
+`cafe9311747208ea97b8dbc54cb50e7a772397aaaeb1189761b8444011550cc4`.
+Evidence: `local-output/sdk-20260909/npc-selection-group-handoff-20261005/proof.json`
+and `normal-build-proof.json`. No game launch, installation or full-disc export ran.
+Gameplay remains deferred; the full SDK goal remains active and work stays solo.
+
 ## Native-grid NPC group rotation, scale and reflection - 2026-10-05
 
 The NPC group Inspector tool now adds position rotation (-90/+90/180 degrees),

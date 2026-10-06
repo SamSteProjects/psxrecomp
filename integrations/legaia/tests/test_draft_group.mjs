@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {decodeDraftGroupReview,decodeDraftGroupScene,draftGroupPositions} from '../editor/draft-group.js';
+import {decodeDraftGroupReview,decodeDraftGroupScene,draftGroupPositions,draftGroupSelection} from '../editor/draft-group.js';
 const state={scene:{id:'scene'},scene_preview_source_key:'b'.repeat(64),actor_drafts:{a:{scene_id:'scene',donor_entity_id:'donor',name:'A',position:{x:128,z:512}},b:{scene_id:'scene',donor_entity_id:'donor',name:'B',position:{x:192,z:512}}}},request={entity_ids:['a','b'],delta:{x:64,z:-128}},report={schema_version:'legaia.draft-group-review.v1',scene_id:'scene',scene_preview_source_key:state.scene_preview_source_key,project_source_key:'c'.repeat(64),review_key:'d'.repeat(64),request,targets:['a','b'].map(id=>({entity_id:id,draft:state.actor_drafts[id],proposed:{x:state.actor_drafts[id].position.x+64,z:384}})),changed_count:2,gameplay_verified:false,limitations:['Scope']};
 const accepted=decodeDraftGroupReview(report,request,state);accepted.targets[0].draft.name='Detached';assert.equal(state.actor_drafts.a.name,'A');
 const reordered={...report,request:{delta:request.delta,entity_ids:request.entity_ids}};assert.deepEqual(decodeDraftGroupReview(reordered,request,state).request,reordered.request);
@@ -35,3 +35,13 @@ for(const layout of [{kind:'rotate',quarter_turns:0},{kind:'scale',percent:0},{k
 const nativeState={...state,actor_drafts:Object.fromEntries(nativeIds.map(id=>[id,{...nativeDrafts[id],scene_id:'scene',name:id,donor_entity_id:'donor'}]))},nativeRequest={entity_ids:nativeIds,layout:{kind:'rotate',quarter_turns:1,anchor_entity_id:nativeIds[0]}},nativePositions=draftGroupPositions(nativeRequest,nativeDrafts),nativeReport={...structuredClone(report),request:nativeRequest,changed_count:2,targets:nativeIds.map(id=>({entity_id:id,draft:nativeState.actor_drafts[id],proposed:nativePositions.get(id)}))};
 assert.equal(decodeDraftGroupReview(nativeReport,nativeRequest,nativeState).changed_count,2);const forged=structuredClone(nativeReport);forged.targets[1].proposed.x+=64;assert.throws(()=>decodeDraftGroupReview(forged,nativeRequest,nativeState));
 console.log('NPC native rotation, half-step scale rounding, mirror, fixed anchor, typed fields and forged proposals passed.');
+
+const seededState={scene:{id:'scene'},actor_drafts:Object.fromEntries(nativeIds.map(id=>[id,{scene_id:'scene'}]))};
+assert.deepEqual(draftGroupSelection(nativeIds[0],[nativeIds[2],nativeIds[0]],seededState),{entity_ids:[nativeIds[0],nativeIds[2]],ignored_count:0,from_selection:true});
+assert.deepEqual(draftGroupSelection(nativeIds[0],['scene://scene/actors/man-p1/0001',nativeIds[1]],seededState),{entity_ids:[nativeIds[1]],ignored_count:1,from_selection:true});
+assert.deepEqual(draftGroupSelection(nativeIds[0],null,seededState),{entity_ids:[nativeIds[0]],ignored_count:0,from_selection:false});
+for(const ids of [[nativeIds[0],nativeIds[0]],['authored-actor://missing'],[null],Array.from({length:129},(_,i)=>String(i))])assert.throws(()=>draftGroupSelection(nativeIds[0],ids,seededState));
+assert.throws(()=>draftGroupSelection(nativeIds[0],[nativeIds[0]],{...seededState,scene:{id:'other'}}));assert.throws(()=>draftGroupSelection('missing',[],seededState));
+const seed=draftGroupSelection(nativeIds[0],nativeIds,seededState);seed.entity_ids.pop();assert.equal(nativeIds.length,3);
+console.log('NPC group selection seeding retains exact members, qualifies scene, detaches IDs and reports excluded mixed placements.');
+assert.throws(()=>draftGroupSelection('missing',[],{actor_drafts:{}}));

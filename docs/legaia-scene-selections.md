@@ -37,8 +37,9 @@ editor metadata only. Names are unique per scene; the library allows 128 sets.
 **Recall placements** can switch to the saved imported scene. It verifies fresh
 source membership, selects the focused entity and recalls actor-only, scenery-only
 or mixed membership into the corresponding existing placement tools. NPC-only
-sets focus a draft or retain multiple draft IDs; mixed NPC sets feed the mixed
-placement tool. A single
+sets focus a draft or retain multiple draft IDs. Opening the NPC group Inspector
+tool seeds those recalled IDs for placement or removal review. Mixed NPC sets feed
+the mixed placement tool; the NPC tool scopes them to their NPC members explicitly. A single
 member focuses one placement. Recall does not apply saved transforms or move
 objects; edited objects keep their current authored positions.
 

@@ -2941,7 +2941,7 @@ function renderInspector(){
 
     const draftGroup=document.createElement('button');draftGroup.id='draft-group-button';draftGroup.textContent='Move NPC draft group...';repeat.after(draftGroup);
     draftGroup.disabled=busy||!canEdit()||Object.values(state.actor_drafts??{}).filter(d=>d.scene_id===state.scene.id).length<2;
-    draftGroup.onclick=()=>openDraftGroup({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,setBusy,api,
+    draftGroup.onclick=()=>openDraftGroup({entityId:id,entityIds:currentPlacementSelection(),onError:error=>notify(error.message,true),getState:()=>state,isBusy:()=>busy,canEdit,setBusy,api,
       canInspectScene:()=>sceneModelsReady()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection,
       getScenePreview:()=>scenePreview,
       inspectScene:(proposed,report,returnToReview,isCurrent)=>{
