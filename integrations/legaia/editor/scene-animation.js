@@ -1,6 +1,7 @@
+import {MAX_PREVIEW_ENTITIES} from './scene-limits.js';
 // Coordinated offline sampling only: no retail clock, scheduling or project commands.
 import {rigidFrameNormals,qualifyRigidPoseScope} from './source-normal-view.js';
-const MAX_BYTES=64*1024*1024,MAX_TRACKS=128,MAX_INSTANCES=512,MAX_FRAMES=4096,MAX_VERTICES=100000,MAX_FRAME_VERTICES=1000000;
+const MAX_BYTES=64*1024*1024,MAX_TRACKS=128,MAX_INSTANCES=MAX_PREVIEW_ENTITIES,MAX_FRAMES=4096,MAX_VERTICES=100000,MAX_FRAME_VERTICES=1000000;
 const eligible=new Set(['reference_party_idle','reference_global_loop','imported_scene_animation_frame0','authored_scene_animation_frame0','authored_initial_animation_frame0']);
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v));
 const exact=(v,keys)=>object(v)&&Object.keys(v).length===keys.length&&keys.every(key=>Object.hasOwn(v,key));

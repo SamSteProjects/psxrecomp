@@ -156,6 +156,29 @@ class ScenePreviewWorkflow(unittest.TestCase):
                 self.assertEqual(first['assets'],restored['assets'])
                 self.assertEqual(len(calls),count)
 
+    def test_source_capacity_terrain_and_authored_npcs_have_separate_bounded_allowances(self):
+        from sdk.scene_preview import preview_project
+        from sdk.scene_limits import MAX_SOURCE_ENTITIES,MAX_DRAFT_ENTITIES,MAX_PREVIEW_ENTITIES
+        with tempfile.TemporaryDirectory() as directory:
+            project=ProjectService(Path(directory));imported=synthetic_scene();imported['actors'][0]['placement_fields']['animation_id']=0;project.import_metadata(imported)
+            disc=Path(directory)/'fixture.bin';disc.write_bytes(b'synthetic');project.disc_path=str(disc);donor=imported['actors'][0]['semantic_id'];asset=imported['actors'][0]['model_reference']['asset_semantic_id']
+            transform=dict(position=dict(x=100,y=0,z=200),rotation_psx=dict(x=0,y=0,z=0))
+            placements=[dict(semantic_id=f'decoration-{i}',name=f'Decoration {i}',model_asset_id=asset,imported_transform=deepcopy(transform),animation_id=0) for i in range(MAX_SOURCE_ENTITIES-len(imported['actors']))]
+            catalog=SimpleNamespace(metadata=dict(placements=placements,mesh_pool={}),pose_preview=lambda _:dict(pose=dict(kind='static')))
+            ground=dict(geometry(),source_record=dict(sha256='a'*64),cells=[],limitations=[])
+            for i in range(MAX_DRAFT_ENTITIES):project.command(dict(type='create_actor_draft',donor_entity_id=donor,name=f'NPC {i}',position=dict(x=128,z=256)))
+            before=deepcopy((project._document(),project.undo_stack,project.redo_stack));service=ScenePreviewService()
+            loader=lambda *_args,**_kwargs:dict(geometry(),bounds=dict(min=[0,-20,0],max=[10,0,5]))
+            with patch('sdk.scene_preview._disc_context',side_effect=lambda _:nullcontext()),patch('sdk.scene_preview.import_scene',return_value=deepcopy(imported)):
+                result=service.preview(project,loader,environment_loader_factory=lambda *_:catalog,terrain_loader=lambda _:ground)
+                self.assertEqual(len(result['entities']),MAX_PREVIEW_ENTITIES);self.assertEqual(result['metrics']['draft_count'],MAX_DRAFT_ENTITIES)
+                baseline=service.preview(preview_project(project,'retail'),loader,environment_loader_factory=lambda *_:catalog,terrain_loader=lambda _:ground)
+                self.assertEqual(len(baseline['entities']),MAX_SOURCE_ENTITIES+1)
+                self.assertEqual({r['entity_id'] for r in baseline['entities']},{r['entity_id'] for r in result['entities'] if r.get('kind')!='actor_draft'})
+                self.assertEqual((project._document(),project.undo_stack,project.redo_stack),before)
+                project.actor_drafts['authored-actor://00000000-0000-4000-8000-000000000099']=deepcopy(next(iter(project.actor_drafts.values())))
+                with self.assertRaisesRegex(ProjectError,'authored NPC entity limit'):service.preview(project,lambda *_:self.fail('over-budget drafts decoded geometry'))
+
     def test_environment_matrix_rotates_before_single_y_reflection(self):
         matrix = environment_matrix({"position": {"x": 10, "y": -20, "z": 30},
                                      "rotation_psx": {"x": 0, "y": 1024, "z": 0}})

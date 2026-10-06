@@ -858,6 +858,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/model-material-donor.js': ('model-material-donor.js', 'text/javascript'),
                  '/model-texture-binding.js': ('model-texture-binding.js', 'text/javascript'),
                  '/scene-animation.js': ('scene-animation.js', 'text/javascript'),
+                 '/scene-limits.js': ('scene-limits.js', 'text/javascript'),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
                  "/inspector-component-filter.js": ("inspector-component-filter.js", "text/javascript"),
                  "/inspector-sections.js": ("inspector-sections.js", "text/javascript"),

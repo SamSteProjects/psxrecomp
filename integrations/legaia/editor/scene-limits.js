@@ -1,0 +1,3 @@
+// Source scene entities, independent NPC drafts and one derived ground mesh.
+export const MAX_SOURCE_ENTITIES=512,MAX_DRAFT_ENTITIES=128,MAX_TERRAIN_ENTITIES=1;
+export const MAX_PREVIEW_ENTITIES=MAX_SOURCE_ENTITIES+MAX_DRAFT_ENTITIES+MAX_TERRAIN_ENTITIES;

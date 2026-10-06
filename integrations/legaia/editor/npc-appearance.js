@@ -1,3 +1,4 @@
+import {MAX_PREVIEW_ENTITIES} from './scene-limits.js';
 const canonical=v=>JSON.stringify(v,(_,x)=>x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.keys(x).sort().map(k=>[k,x[k]])):x),same=(a,b)=>canonical(a)===canonical(b);
 export function decodeNpcAppearanceSource(value,id,state){
   const draft=state.actor_drafts?.[id],options=value?.options;
@@ -11,7 +12,7 @@ export function decodeNpcAppearanceReview(value,request,source,state){
 }
 export function decodeNpcAppearanceScene(value,review,state,base,source){
   const scene=value?.scene,id=review.entity_id,witness=review.proposed.appearance?.donor_entity_id??review.proposed.donor_entity_id;
-  if(value?.schema_version!=='legaia.npc-appearance-scene.v1'||!same(value.review,review)||review.project_source_key!==state.project_copy_source_key||value.scene_preview_source_key!==state.scene_preview_source_key||base?.source_key!==value.scene_preview_source_key||scene?.schema!=='legaia.scene-preview.v1'||scene.representation!=='authored'||scene.scene_id!==base.scene_id||!same(scene.coordinate_system,base.coordinate_system)||!same(scene.position_to_display,base.position_to_display)||!Array.isArray(scene.entities)||scene.entities.length!==base.entities.length||scene.entities.length>512||!Array.isArray(scene.assets)||scene.assets.length>128)throw new Error('NPC appearance scene differs from the reviewed source.');
+  if(value?.schema_version!=='legaia.npc-appearance-scene.v1'||!same(value.review,review)||review.project_source_key!==state.project_copy_source_key||value.scene_preview_source_key!==state.scene_preview_source_key||base?.source_key!==value.scene_preview_source_key||scene?.schema!=='legaia.scene-preview.v1'||scene.representation!=='authored'||scene.scene_id!==base.scene_id||!same(scene.coordinate_system,base.coordinate_system)||!same(scene.position_to_display,base.position_to_display)||!Array.isArray(scene.entities)||scene.entities.length!==base.entities.length||scene.entities.length>MAX_PREVIEW_ENTITIES||!Array.isArray(scene.assets)||scene.assets.length>128)throw new Error('NPC appearance scene differs from the reviewed source.');
   const rows=new Map(scene.entities.map(e=>[e.entity_id,e])),assets=new Map(scene.assets.map(a=>[a.geometry_key,a]));
   if(rows.size!==scene.entities.length||assets.size!==scene.assets.length)throw new Error('NPC appearance scene identities are ambiguous.');
   const binding=new Set(['geometry_key','asset_id','source_actor_id','source_record','model_reference','appearance_authored','pose_kind','reason','renderable']);

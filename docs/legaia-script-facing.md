@@ -270,6 +270,8 @@ compressed `actor` receipts, with strict carrier-schema and ambiguity checks.
 The read-only browser comparison labels the facing sector among all five families.
 Evidence: `local-output/sdk-20260909/npc-owned-streaming-20261005/proof.json`.
 
-Rayman's full viewport exceeded the initial 60-second readiness probe and is not
-render-performance verified here. No game ran. Visible facing and branch execution
+Rayman's earlier 60-second viewport readiness failure was subsequently diagnosed
+as a source/ground/NPC entity-budget mismatch. The preview now loads 515 entries
+with 514 rendered instances in about 10 seconds in the recorded browser check:
+`local-output/sdk-20260909/rayman-preview-loading-20261005/proof.json`. No game ran. Visible facing and branch execution
 remain subject to later gameplay acceptance.

@@ -1,3 +1,4 @@
+import {MAX_PREVIEW_ENTITIES} from './scene-limits.js';
 // Accept a complete SDK projection only when owners and placement remain bound.
 function sharedGeometryContent(preview){
   const value=structuredClone(preview);
@@ -9,7 +10,7 @@ function sharedGeometryContent(preview){
 
 export function decodeGroupAppearanceScene(response, report, current){
   const proposed=response?.scene;
-  if(response?.schema_version!=='legaia.actor-appearance-scene.v1'||response.review_key!==report.review_key||response.project_source_key!==current?.source_key||response.scene_id!==report.scene_id||proposed?.schema!=='legaia.scene-preview.v1'||proposed.scene_id!==current.scene_id||proposed.representation!=='authored'||proposed.coordinate_system!==current.coordinate_system||JSON.stringify(proposed.position_to_display)!==JSON.stringify(current.position_to_display)||!Array.isArray(proposed.entities)||proposed.entities.length!==current.entities.length||proposed.entities.length>512||!Array.isArray(proposed.assets)||proposed.assets.length>128)throw new Error('Group appearance scene identity differs from review');
+  if(response?.schema_version!=='legaia.actor-appearance-scene.v1'||response.review_key!==report.review_key||response.project_source_key!==current?.source_key||response.scene_id!==report.scene_id||proposed?.schema!=='legaia.scene-preview.v1'||proposed.scene_id!==current.scene_id||proposed.representation!=='authored'||proposed.coordinate_system!==current.coordinate_system||JSON.stringify(proposed.position_to_display)!==JSON.stringify(current.position_to_display)||!Array.isArray(proposed.entities)||proposed.entities.length!==current.entities.length||proposed.entities.length>MAX_PREVIEW_ENTITIES||!Array.isArray(proposed.assets)||proposed.assets.length>128)throw new Error('Group appearance scene identity differs from review');
   const selected=new Set(report.targets.map(row=>row.entity_id)),donor=report.options.find(row=>row.donor_entity_id===report.donor_entity_id),owners=new Map(proposed.entities.map(row=>[row.entity_id,row])),assets=new Map(proposed.assets.map(row=>[row.geometry_key,row])),sourceAssets=new Map(current.assets.map(row=>[row.geometry_key,row]));
   if([...selected].some(id=>!owners.has(id))||!donor||selected.size!==report.targets.length||owners.size!==proposed.entities.length||assets.size!==proposed.assets.length)throw new Error('Ambiguous group appearance scene');
   const binding=new Set(['geometry_key','asset_id','source_actor_id','source_record','model_reference','appearance_authored','pose_kind','reason','renderable']);

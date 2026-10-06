@@ -1,5 +1,37 @@
 # Legaia SDK validation plan
 
+## Keep dense source scenes previewable with authored NPCs - 2026-10-05
+
+The Rayman viewport failure was a combined entity-budget mismatch, not an endless
+decode. Its supported source scene occupies 512 actor/scenery entries plus one
+derived ground mesh; two authored NPCs raised the total to 515 and the old final
+512-entry check rejected the whole preview after decoding. Scene preview now keeps
+separate allowances for 512 source entries, one terrain instance and 128 independent
+NPC drafts, with an explicit combined ceiling of 641 entries. A 129th active-scene draft
+rejects before geometry decoding. Existing geometry/triangle/texture budgets stay
+held. Shared scene constants align animation, NPC repetition/group/appearance,
+preset proposal and texture-usage decoders with the supported total. The separate
+world-source scene graph keeps its own existing budget.
+
+Validation: 16 focused Python checks and nine Node suites pass. The synthetic
+boundary includes all 512 source entries, ground and 128 NPCs with unchanged project
+history/imports and exact source identity retention; 129 drafts reject. Actual retail
+Rayman browser preview now reaches readiness in 9896 ms (one measured cold load),
+with 515 entities, 514 rendered instances, 93 geometries, 15971 triangles and 5533230
+texture bytes. Environment/terrain/animation errors are null. Frame All and the
+NPC Focus control pass, including changed camera target and closer distance.
+Overview, focused NPCs and 540px scene screenshots were visually inspected.
+Project/imports/history and existing file hashes stay unchanged. Evidence:
+`local-output/sdk-20260909/rayman-preview-loading-20261005/proof.json`.
+A separately profiled server preview takes about 23 seconds with profiler overhead;
+the earlier 60-second readiness failure is resolved by the capacity fix.
+
+No Build/Save/authoring command, game launch or full-disc export occurred.
+One unsupported scenery instance remains a source marker. Unknown NPC height,
+initial heading and live placement are still explicit preview conventions; rendered
+models do not establish gameplay alignment. Manual runtime acceptance stays deferred
+and the full SDK goal remains active/incomplete.
+
 ## Streaming NPC readback and saved-inspector receipt fix - 2026-10-05
 
 A fresh normal Build of the retail streaming `rayman` scene now has independent
@@ -26,8 +58,9 @@ and supplies retail streaming evidence for own waits/text/appearance together.
 
 The first browser probe exceeded its 60-second full-scene viewport readiness
 window. The script comparison was then verified after project readiness, separately
-from scene rendering. Rayman preview-loading performance still needs investigation;
-this checkpoint does not verify its full rendered scene. No game or full-disc export
+from scene rendering. Rayman preview loading was subsequently diagnosed as an entity-budget mismatch
+and resolved in the newer checkpoint above. This earlier checkpoint did not verify
+its full rendered scene. No game or full-disc export
 ran. Runtime allocation/scheduling, branch execution and visible facing still need
 later gameplay acceptance. The full SDK goal remains active/incomplete.
 
@@ -1605,7 +1638,7 @@ This feature needs no game launch. Broader runtime/gameplay acceptance stays def
 
 **Retail NPC actor-pool lower bound (2026-10-03):** Normal Review Build/Build now qualify the complete SCUS executable and seven retail function spans, derive the143-slot/216-byte actor pool, and reject unavoidable initial-placement overflow before MAN encoding. Source setup evidence establishes the anchor plus partition-1 loop; successful audit metadata keeps other scenery/channel/script demand unknown. Candidate features stay disabled and runtime allocation/gameplay unverified. See [pool check and evidence](legaia-npc-actor-pool.md).
 
-Validation: six focused private-enabled Python checks and existing Node review guards pass. A bounded instruction harness executes the actual pool initializer/pop/failure path:143 distinct slots, then zero without memory changes. Six browser checks prove a normal one-draft package plus a real91-draft Town01 blocker (minimum144 nodes), disabled reviewed Build, unchanged authoring and540px layout. Independent full carrier readback preserves the earlier candidate MAN and fixed-span ownership. Package SHA256 `e8907db2b03619303d72cf3e09fbe2ac82bff7815534733d15c9337a00443c06`. Private proof: `local-output/sdk-20260909/npc-runtime-source-20261003/`. Helpers are closed; no game, install or disc export ran. Full runtime demand/acceptance remain deferred.
+Validation: six focused private-enabled Python checks and existing Node review guards pass. A bounded instruction harness executes the actual pool initializer/pop/failure path:143 distinct slots, then zero without memory changes. Six browser checks prove a normal one-draft package plus a real91-draft Town01 blocker (minimum144 nodes), disabled reviewed Build, unchanged authoring and 540px layout. Independent full carrier readback preserves the earlier candidate MAN and fixed-span ownership. Package SHA256 `e8907db2b03619303d72cf3e09fbe2ac82bff7815534733d15c9337a00443c06`. Private proof: `local-output/sdk-20260909/npc-runtime-source-20261003/`. Helpers are closed; no game, install or disc export ran. Full runtime demand/acceptance remain deferred.
 
 **Packet-group texture-binding copy (2026-10-02):** The source-binding picker now fills all textured primitives in a qualified target group in one draft action, with explicit target count. Other group/object drafts, group ABE, untextured rows, target UVs/geometry and source-owned bits remain separate. The complete resulting batch validates before draft replacement; over-budget groups reject atomically. Review, Proposed/Return, one Apply, history, persistence and Build reuse the existing material workflow. See [group copy](legaia-material-binding-picker.md#packet-group-copy-evidence-2026-10-02).
 
@@ -1613,7 +1646,7 @@ Validation: focused donor/material Node guards and seven actual browser workflow
 
 **Imported model texture-binding picker (2026-10-02):** The material editor now browses active-scene AssetDB models and qualifies their Current source primitive bindings. Explicit Copy fills page/depth/indexed CLUT draft controls while retaining target UVs, geometry and blend flags. Review/Apply, Proposed/Return, history, persistence and normal Build reuse the existing source material command. See [binding picker](legaia-material-binding-picker.md).
 
-Validation: three catalog Python cases, donor Node guards and the existing material lifecycle suite pass. Seven actual browser checks pass through one Apply and Build; a separate visual follow-up verifies UTF-8 labels and540px layout. Independent complete TMD construction/readback proves Current-to-Proposed bytes1102/1103/1106 only, retaining prior ABE byte1095; the entire carrier's neighboring decoded bytes stay unchanged. Package SHA256 `a952ee4f6443068d63f8ddc5b6f636aa31168d3625851d01fcc6a14d0e8a89a3`. Private proof: `local-output/sdk-20260909/material-binding-picker-20261002/parent/`. Helpers are closed. No game, install or disc export ran; UV suitability, live residency, palette animation and native blend appearance remain deferred.
+Validation: three catalog Python cases, donor Node guards and the existing material lifecycle suite pass. Seven actual browser checks pass through one Apply and Build; a separate visual follow-up verifies UTF-8 labels and 540px layout. Independent complete TMD construction/readback proves Current-to-Proposed bytes1102/1103/1106 only, retaining prior ABE byte1095; the entire carrier's neighboring decoded bytes stay unchanged. Package SHA256 `a952ee4f6443068d63f8ddc5b6f636aa31168d3625851d01fcc6a14d0e8a89a3`. Private proof: `local-output/sdk-20260909/material-binding-picker-20261002/parent/`. Helpers are closed. No game, install or disc export ran; UV suitability, live residency, palette animation and native blend appearance remain deferred.
 
 **Assigned actor animation GLB interchange (2026-10-02):** Qualified appearance/initial-clip assignments now export and preview the assigned existing rigid pose. V2 sidecars bind the selected actor, imported clip contribution owner and inherited model witness; the export/review names ownership before Apply. Changes use the owner's existing AnimationChannels command, preserving the selected actor's original clip edits and assignments. Fresh witness/source checks and existing shared-axis conflict guards remain in force; unassigned v1 sidecars remain compatible. See [assigned GLB workflow](legaia-assigned-animation-glb.md).
 
@@ -2416,7 +2449,7 @@ record/chunk structure, unaudited mutation/bad locator rejection before writes,
 raw donor/dialogue/P2 transition/flag composition with raw ANM, reviewed/build audit
 agreement and saved artifact verification. Existing compressed/header/texture/
 animation package regressions passed. Browser mixed Town01/Dolk2 Review Build
-and Build agree on ten changes/two overlays/68,930 bytes with no authored/persisted
+and Build agree on ten changes/two overlays/68, 930 bytes with no authored/persisted
 mutation, page error or Run dispatch; screenshot inspected. Broader raw numeric
 families/scenes and deferred gameplay require separate evidence. This postdates
 integrated498. See [Raw MAN Build](legaia-raw-MAN-normal-build.md).

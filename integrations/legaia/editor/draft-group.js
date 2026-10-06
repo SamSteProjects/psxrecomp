@@ -1,3 +1,4 @@
+import {MAX_PREVIEW_ENTITIES} from './scene-limits.js';
 import {mixedLayoutPositions} from './scene-placement-group.js';
 import {decodeActorPlacementScene} from './actor-placement-batch.js';
 
@@ -47,7 +48,7 @@ export function decodeDraftGroupScene(response,report,base){
   const scene=response?.scene;
   if(response?.schema_version!=='legaia.draft-group-scene.v1'||response.project_source_key!==report.project_source_key||response.review_key!==report.review_key||
      response.scene_preview_source_key!==base.source_key||response.scene_id!==base.scene_id||scene?.scene_id!==base.scene_id||scene.schema!=='legaia.scene-preview.v1'||scene.representation!=='authored'||
-     !Array.isArray(scene.entities)||scene.entities.length!==base.entities.length-(report.request.remove?report.targets.length:0)||scene.entities.length>512||JSON.stringify(scene.assets)!==JSON.stringify(base.assets)||JSON.stringify(scene.position_to_display)!==JSON.stringify(base.position_to_display))throw new Error('NPC draft group scene differs from its source/review.');
+     !Array.isArray(scene.entities)||scene.entities.length!==base.entities.length-(report.request.remove?report.targets.length:0)||scene.entities.length>MAX_PREVIEW_ENTITIES||JSON.stringify(scene.assets)!==JSON.stringify(base.assets)||JSON.stringify(scene.position_to_display)!==JSON.stringify(base.position_to_display))throw new Error('NPC draft group scene differs from its source/review.');
   const rows=new Map(scene.entities.map(row=>[row.entity_id,row])),targets=new Map(report.targets.map(row=>[row.entity_id,row]));
   if(rows.size!==scene.entities.length)throw new Error('NPC draft group scene identities are ambiguous.');
   const positions=[];

@@ -18,7 +18,8 @@ from .scene_preview import preview_project, source_key
 
 
 MAX_TRACKS = 128
-MAX_INSTANCES = 512
+from .scene_limits import MAX_PREVIEW_ENTITIES
+MAX_INSTANCES = MAX_PREVIEW_ENTITIES
 MAX_FRAMES = 4096
 MAX_VERTICES_PER_FRAME = 100000
 MAX_FRAME_VERTICES = 1000000

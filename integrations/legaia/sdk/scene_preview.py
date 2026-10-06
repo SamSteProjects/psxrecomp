@@ -12,7 +12,8 @@ from .project import ProjectError, digest
 
 
 POSITION_TO_DISPLAY = [1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
-MAX_ENTITIES = 512
+from .scene_limits import MAX_SOURCE_ENTITIES, MAX_DRAFT_ENTITIES, MAX_TERRAIN_ENTITIES, MAX_PREVIEW_ENTITIES
+MAX_ENTITIES = MAX_SOURCE_ENTITIES
 MAX_GEOMETRIES = 128
 MAX_TRIANGLES = 200_000
 MAX_TEXTURE_BYTES = 16 * 1024 * 1024
@@ -204,6 +205,9 @@ class ScenePreviewService:
             del self._cache[next(iter(self._cache))]
 
     def preview(self, project, model_loader, pose_loader_factory=None, environment_loader_factory=None, terrain_loader=None) -> dict:
+        drafts={i:d for i,d in getattr(project,'actor_drafts',{}).items() if d['scene_id']==project.active_scene}
+        if len(drafts)>MAX_DRAFT_ENTITIES:
+            raise ProjectError('Scene preview exceeds authored NPC entity limit')
         # Cached geometry must not hide missing or modified authored files.
         for asset_id, binding in project.model_overrides.items():
             project.read_model_replacement(asset_id, binding)
@@ -260,7 +264,7 @@ class ScenePreviewService:
                                            "heading": "unknown; identity orientation is a display convention",
                                            "scale": "source units retained; physical scale is unknown"}})
         by_id = {instance['entity_id']: instance for instance in instances}
-        for identifier, draft in getattr(project,'actor_drafts',{}).items():
+        for identifier, draft in drafts.items():
             if draft['scene_id'] != project.active_scene:
                 continue
             project._validate_actor_draft(identifier,draft)
@@ -299,8 +303,8 @@ class ScenePreviewService:
                                 model_to_scene=environment_matrix(transform),
                                 effective_transform=deepcopy(transform), authored_transform=True)
         instances.extend(environment)
-        if len(instances)>MAX_ENTITIES:
-            raise ProjectError('Scene preview including drafts exceeds entity limit')
+        if len(instances)-len(drafts)>MAX_SOURCE_ENTITIES+MAX_TERRAIN_ENTITIES or len(instances)>MAX_PREVIEW_ENTITIES:
+            raise ProjectError('Scene preview exceeds source or combined entity limit')
         if source_key(project) != key:
             raise ProjectError("Scene preview source changed during transform projection")
         actors = [instance for instance in instances if instance.get('kind') != 'environment']

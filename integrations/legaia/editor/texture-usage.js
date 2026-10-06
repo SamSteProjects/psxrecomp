@@ -1,6 +1,7 @@
+import {MAX_PREVIEW_ENTITIES} from './scene-limits.js';
 // Source-address dependencies from one verified scene preview, not runtime use.
 export function textureSceneUsage(preview,textureId){
-  if(!preview||typeof textureId!=='string'||!Array.isArray(preview.assets)||!Array.isArray(preview.entities)||preview.assets.length>128||preview.entities.length>512)throw new Error('Invalid or oversized scene usage source');
+  if(!preview||typeof textureId!=='string'||!Array.isArray(preview.assets)||!Array.isArray(preview.entities)||preview.assets.length>128||preview.entities.length>MAX_PREVIEW_ENTITIES)throw new Error('Invalid or oversized scene usage source');
   const matches=[],candidates=[];let unresolved=0,textured=0;
   for(const asset of preview.assets){
     const rows=[],partial=[];

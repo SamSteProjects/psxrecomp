@@ -1,3 +1,4 @@
+import {MAX_PREVIEW_ENTITIES} from './scene-limits.js';
 import {draftGroupSelection} from './draft-group.js';
 export function draftRepeatPosition(original,request,index){
   if(!Number.isSafeInteger(index)||index<1||index>request.count)throw new Error('Invalid draft copy index.');
@@ -31,7 +32,7 @@ export function draftRepeatLimits(value){
 }
 export function decodeDraftRepeatScene(response,report,base){
   const scene=response?.scene,expected=new Map(report.copies.map(row=>[row.entity_id,row.draft]));
-  if(response?.schema_version!=='legaia.draft-repeat-scene.v1'||response.project_source_key!==base.source_key||response.review_key!==report.review_key||response.scene_id!==report.scene_id||scene?.scene_id!==base.scene_id||scene.schema!=='legaia.scene-preview.v1'||scene.representation!=='authored'||!Array.isArray(scene.entities)||scene.entities.length!==base.entities.length+expected.size||expected.size!==report.copies.length||scene.entities.length>512||JSON.stringify(scene.assets)!==JSON.stringify(base.assets)||JSON.stringify(scene.position_to_display)!==JSON.stringify(base.position_to_display))throw new Error('Repeated draft scene differs from its source/review');
+  if(response?.schema_version!=='legaia.draft-repeat-scene.v1'||response.project_source_key!==base.source_key||response.review_key!==report.review_key||response.scene_id!==report.scene_id||scene?.scene_id!==base.scene_id||scene.schema!=='legaia.scene-preview.v1'||scene.representation!=='authored'||!Array.isArray(scene.entities)||scene.entities.length!==base.entities.length+expected.size||expected.size!==report.copies.length||scene.entities.length>MAX_PREVIEW_ENTITIES||JSON.stringify(scene.assets)!==JSON.stringify(base.assets)||JSON.stringify(scene.position_to_display)!==JSON.stringify(base.position_to_display))throw new Error('Repeated draft scene differs from its source/review');
   const owners=new Map(scene.entities.map(row=>[row.entity_id,row]));if(owners.size!==scene.entities.length)throw new Error('Repeated draft owners are ambiguous');
   for(const row of base.entities)if(JSON.stringify(owners.get(row.entity_id))!==JSON.stringify(row))throw new Error('Repeated draft proposal changed an existing instance');
   for(const [id,draft] of expected){
