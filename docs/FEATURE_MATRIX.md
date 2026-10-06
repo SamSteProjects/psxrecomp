@@ -1,5 +1,33 @@
 # Legaia SDK feature matrix
 
+## NPC-owned movement operand serializer - 2026-10-05
+
+Added native serialization for source-qualified movement operands in allocated
+NPC scripts: MOVE_TO/NPC_RUN encoded X/Z and NPC_RUN/EXEC_MOVE move selectors.
+Requests name a draft, its retail script donor and stable supported instruction
+IDs. Final clone indices, local/script entry ownership, exact extent and alias
+checks are now shared with NPC wait serialization. Source-stopped paths, wrong
+owners, unsupported fields, stale opcode/dispatch/operand preimages and overlapping
+writes reject. Source-identical requests also qualify current preimages.
+
+Only requested fixed-width operand bytes may change. NPC_RUN depth, extended
+context, Y, placement, opaque bytes and unrelated candidate content remain held.
+Script targets are not current NPC transforms or live actor coordinates; selector
+meanings and runtime dispatch remain unresolved. Bounds remain 128 allocated drafts
+and 1024 requested targets with a 4 MiB MAN candidate.
+
+Validation: 18 focused Python checks pass across movement/waits/appearance/dialogue.
+Ordinary/extended MOVE_TO/NPC_RUN/EXEC_MOVE, two clones, final offsets, no-op,
+wrong values/fields/donors, aliases and stopped paths are covered. A fresh retail
+actor0040 two-clone candidate composes independent X/Z and selector edits with own
+waits and initial appearance. Exactly six movement bytes changed; layout, waits,
+all unrelated candidate bytes and every project file/history entry remain held.
+The existing retail NPC wait probe passed again after sharing allocation guards.
+Evidence: `local-output/sdk-20260909/npc-movement-native-20261005/proof.json`.
+Project commands, persistence, editor controls, presets and normal Build integration
+remain next. No game was launched; runtime movement remains deferred. The full SDK
+goal stays active/incomplete.
+
 ## Explain NPC authored edits in saved-script comparison - 2026-10-05
 
 Retail donor/generated NPC comparison now labels exact bytes accounted for by
