@@ -14,7 +14,7 @@ def decode_terrain(data: bytes, floor_lut: list[int]) -> dict:
     if (not isinstance(floor_lut, list) or len(floor_lut) != 16 or
             any(type(v) is not int or not -32768 <= v <= 32767 for v in floor_lut)):
         raise ImportError("terrain requires sixteen signed MAN floor heights")
-    result = {"vertices": [], "triangles": [], "triangle_uvs": [],
+    result = {"vertices": [], "vertex_floor_tiers": [], "triangles": [], "triangle_uvs": [],
               "triangle_colors": [], "triangle_materials": [], "materials": [], "cells": [],
               "coordinate_system": "retail_field_y_down", "objects": [],
               "limitations": ["Source walk-visible cell surface; no script visibility or terrain deformation.",
@@ -38,6 +38,7 @@ def decode_terrain(data: bytes, floor_lut: list[int]) -> dict:
         base = len(result["vertices"])
         for dx, dz in ((0, 0), (1, 0), (0, 1), (1, 1)):
             tier = data[0x4000 + min(row + dz, 127) * 128 + min(col + dx, 127)] & 15
+            result["vertex_floor_tiers"].append(tier)
             result["vertices"].append([(col + dx) * 128, -floor_lut[tier], (row + dz) * 128])
         u, v = (tile % 8) * 32, (tile // 8) * 32
         uvs = [[u, v + 31], [u + 31, v + 31], [u, v], [u + 31, v]]

@@ -17,6 +17,7 @@ class TerrainTests(unittest.TestCase):
         g = decode_terrain(bytes(data), [i * 16 for i in range(16)])
         self.assertEqual(g['vertices'], [[0,-16,0],[128,-32,0],[0,-48,128],[128,-64,128]])
         self.assertEqual(g['triangles'], [[0,1,2],[1,3,2]])
+        self.assertEqual(g['vertex_floor_tiers'], [1,2,3,4])
         self.assertEqual(g['triangle_uvs'][0], [[224,255],[255,255],[224,224]])
 
     def test_border_clamps_height_and_missing_page_has_no_fallback(self):
@@ -25,6 +26,7 @@ class TerrainTests(unittest.TestCase):
         data[0x7FFF] = 1
         g = decode_terrain(bytes(data), [0,64]+[0]*14)
         self.assertEqual([v[1] for v in g['vertices']], [-64]*4)
+        self.assertEqual(g['vertex_floor_tiers'], [1]*4)
         self.assertFalse(g['materials'][0]['textured'])
         self.assertEqual(g['triangle_uvs'], [None,None])
 

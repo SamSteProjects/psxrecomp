@@ -821,6 +821,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/environment-group.js": ("environment-group.js", "text/javascript"),
                  "/wall-viewport.js": ("wall-viewport.js", "text/javascript"),
                  "/wall-pattern.js": ("wall-pattern.js", "text/javascript"),
+                 "/floor-picking.js": ("floor-picking.js", "text/javascript"),
                  "/floor-rectangle.js": ("floor-rectangle.js", "text/javascript"),
                  "/collision-rectangle.js": ("collision-rectangle.js", "text/javascript"),
                  "/model-normal-length.js": ("model-normal-length.js", "text/javascript"),

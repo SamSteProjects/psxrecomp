@@ -26,6 +26,7 @@ import {mountScenePlacementGroup} from '/scene-placement-group.js';
 import {mergeScenePlacementSelection} from '/scene-placement-selection.js';
 import {mountWallRectangle,wallRectangleGeometry} from '/collision-rectangle.js';
 import {mountFloorRectangle,decodeFloorRectangle} from '/floor-rectangle.js';
+import {nativeFloorSelectorAtTriangle} from '/floor-picking.js';
 import {rescaleStoredNormal} from '/model-normal-length.js';
 import {mountNormalUsers,decodeNormalUsers} from '/model-normal-users.js';
 import {validateNormalRetarget} from '/normal-retarget.js';
@@ -1301,9 +1302,9 @@ function activeScenePreview(){return scenePreview&&state.capabilities?.scene_pre
 function scenePreviewCurrent(){return !!activeScenePreview()&&sceneKey===sceneRequestKey()&&!sceneError;}
 function sceneModelsReady(){return modelsEnabled&&activeScenePreview()&&sceneRenderer&&!sceneRenderer.lost&&!sceneError;}
 function sceneView(){const positions=new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]));if(environmentGroupInspection?.layer==='proposed')for(const row of environmentGroupInspection.report.targets){const proposed=sceneryGroupPosition(row);if(proposed)positions.set(row.entity_id,proposed);}if(scenePlacementInspection?.layer==='proposed')for(const row of scenePlacementInspection.report.targets){const proposed=scenePlacementPosition(row);if(proposed)positions.set(row.entity_id,proposed);}if(draft&&!draft.group&&!draft.sceneryYaw)positions.set(draft.id,draft.position);return {normalDiagnostic:sceneNormalDiagnostic,normalGeometryKeys:sceneNormalDiagnostic?new Set(scenePose?.report?.tracks.filter(track=>track.normal_pose).map(track=>track.geometry_key)??[]):undefined,transforms:yawPreviewTransforms(),camera,basis:basis(),width,height,grid,hiddenEntities:hiddenSceneEntities(),positions};}
-let sceneFacePickMode=false;
+let sceneFacePickMode=false,floorPickMode=false;
 const sceneFacePickButton=document.createElement('button');sceneFacePickButton.id='scene-face-pick';sceneFacePickButton.textContent='Pick model face';sceneFacePickButton.title='Click a visible authored model surface to open its Current native face';sceneFacePickButton.setAttribute('aria-pressed','false');$('frame-selected').after(sceneFacePickButton);
-function canPickSceneFace(allowBusy=false){return (allowBusy||!busy)&&canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePendingKey&&!scenePose&&!shapeDraft&&!draft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!scenePlacementMode&&!actorBoxMode&&!wallSelectMode&&!wallInspection&&!pickScriptTargets&&!pickRuntimeNodes&&!fieldSpatialPick;}
+function canPickSceneFace(allowBusy=false){return (allowBusy||!busy)&&canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePendingKey&&!scenePose&&!shapeDraft&&!draft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!scenePlacementMode&&!actorBoxMode&&!wallSelectMode&&!wallInspection&&!pickScriptTargets&&!pickRuntimeNodes&&!fieldSpatialPick&&!floorPickMode;}
 function updateSceneFacePick(){sceneFacePickButton.disabled=!canPickSceneFace();if(sceneFacePickButton.disabled)sceneFacePickMode=false;sceneFacePickButton.classList.toggle('active',sceneFacePickMode);sceneFacePickButton.setAttribute('aria-pressed',String(sceneFacePickMode));}
 sceneFacePickButton.onclick=()=>{if(!canPickSceneFace())return;sceneFacePickMode=!sceneFacePickMode;updateSceneFacePick();if(sceneFacePickMode)notify('Click a visible model surface. Drag still orbits; picking is display only.');};
 async function inspectSceneFace(point,gesture){
@@ -2075,8 +2076,20 @@ floorRectangleTool=mountFloorRectangle({host:wallTools,getState:()=>state,busy:(
       camera.target={x:(report.rectangle.column_start+report.rectangle.column_end)*64,y:0,z:(report.rectangle.row_start+report.rectangle.row_end)*64};camera.distance=Math.max(400,Math.hypot(report.rectangle.column_end-report.rectangle.column_start+1,report.rectangle.row_end-report.rectangle.row_start+1)*320);cameraRevision++;draw();
     }catch(error){clearScenePose();if(scenePreviewCurrent())sceneRenderer.load(structuredClone(scenePreview));draw();throw error;}
   }});
+const floorPickButton=document.createElement('button');floorPickButton.id='floor-selector-pick';floorPickButton.textContent='Pick floor selector';floorPickButton.setAttribute('aria-pressed','false');wallTools.append(floorPickButton);
+function canPickFloorSelector(){return !busy&&!fieldPending&&canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePendingKey&&!scenePose&&!shapeDraft&&!draft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!scenePlacementMode&&!actorBoxMode&&!wallSelectMode&&!wallInspection&&!sceneFacePickMode&&!pickScriptTargets&&!pickRuntimeNodes&&!fieldSpatialPick;}
+floorPickButton.onclick=async()=>{if(!canPickFloorSelector())return;if(floorPickMode){floorPickMode=false;updateFieldToggle();return;}if(!fieldMap||fieldKey!==resourceStateKey()){if(resourceKey!==resourceStateKey())await refreshResources();const records=assetRecords().filter(r=>r.type==='collision');if(records.length!==1||!await loadFieldMap(records[0])){notify('Load one verified source collision map before picking floor selectors.',true);return;}}if(!canPickFloorSelector()||!wallSourceCurrent())return;cancelViewportGesture();floorPickMode=true;updateFieldToggle();updateSceneFacePick();notify('Click visible ground to edit its nearest triangle corner selector. Drag still orbits; Apply requires Review.');};
+function pickFloorSelector(point,gesture){
+ if(!canPickFloorSelector()||!wallSourceCurrent()||gesture.context!==resourceStateKey()||gesture.sourceKey!==state.scene_preview_source_key||gesture.projectKey!==state.project_copy_source_key||gesture.cameraRevision!==cameraRevision||gesture.width!==width||gesture.height!==height)throw Error('Floor picking context changed; pick from Current again.');
+ const document=activeScenePreview(),hit=sceneRenderer.pickSurface(point.x,point.y,sceneView());if(!hit){notify('No visible ground at this point.');return;}
+ const entity=document.entities.find(e=>e.entity_id===hit.entity_id&&e.geometry_key===hit.geometry_key&&e.renderable),geometry=document.assets.find(a=>a.geometry_key===hit.geometry_key&&a.asset_id===entity?.asset_id);
+ if(!entity||entity.asset_id!==`environment://${state.scene.id.replace('scene://','')}/field-map/ground`||entity.pose_kind!=='source_heightfield'||!geometry)throw Error('Pick visible source ground; models in front of it are not floor selectors.');
+ const picked=nativeFloorSelectorAtTriangle(geometry,hit.triangle_index,point,v=>project({x:v[0],y:-v[1],z:v[2]}));
+ if(fieldDialog.open)fieldDialog.close();floorRectangleTool.open({row_start:picked.row,row_end:picked.row,column_start:picked.column,column_end:picked.column,tier:picked.tier});
+ notify(`Current floor row ${picked.row}, column ${picked.column}, tier ${picked.tier}${picked.edge_clamped?' - outer preview corner uses the clamped edge selector':''}. Fresh Review required.`);
+}
 wallSelectButton.onclick=async()=>{
-  if(busy||wallSelectButton.disabled)return;cancelViewportGesture();wallSelection=null;
+  if(busy||wallSelectButton.disabled)return;floorPickMode=false;cancelViewportGesture();wallSelection=null;
   if(wallSelectMode){wallSelectMode=false;updateFieldToggle();draw();return;}
   if(!fieldMap||fieldKey!==resourceStateKey()){
     if(resourceKey!==resourceStateKey())await refreshResources();
@@ -2092,11 +2105,12 @@ function updateFieldToggle(){
   fieldToggle.hidden=!state.capabilities?.field_map_preview;fieldToggle.disabled=busy||fieldPending;
   wallSelectButton.hidden=fieldToggle.hidden;wallSelectButton.disabled=busy||fieldPending||!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||!!scenePose||!!shapeDraft||!!actorGroupInspection||!!environmentGroupInspection||!!wallInspection||scenePlacementMode||!!scenePlacementInspection;
   if(!wallSourceCurrent()){wallSelectMode=false;wallSelection=null;}wallSelectButton.classList.toggle('active',wallSelectMode);wallSelectButton.setAttribute('aria-pressed',String(wallSelectMode));wallRectangleTool?.refresh();floorRectangleTool?.refresh();
+  floorPickButton.hidden=fieldToggle.hidden;floorPickButton.disabled=!canPickFloorSelector();if(floorPickButton.disabled||!wallSourceCurrent())floorPickMode=false;floorPickButton.classList.toggle('active',floorPickMode);floorPickButton.setAttribute('aria-pressed',String(floorPickMode));
   collisionLayer.hidden=fieldToggle.hidden;collisionLayer.disabled=busy||fieldPending;
   fieldToggle.classList.toggle('active',!!fieldMap);fieldToggle.setAttribute('aria-pressed',!!fieldMap);fieldToggle.textContent=fieldPending?'Loading collision…':collisionLayer.value==='effective'?'Effective collision':'Base collision';
 }
 function clearFieldMap(){
-  fieldAbort?.abort();fieldAbort=null;fieldMap=null;fieldKey=null;fieldPending=false;fieldNote.hidden=true;wallSelectMode=false;wallSelection=null;wallRectangleTool?.restore();floorRectangleTool?.restore();updateFieldToggle();
+  fieldAbort?.abort();fieldAbort=null;fieldMap=null;fieldKey=null;fieldPending=false;fieldNote.hidden=true;floorPickMode=false;wallSelectMode=false;wallSelection=null;wallRectangleTool?.restore();floorRectangleTool?.restore();updateFieldToggle();
 }
 function validateFieldMap(result,record,key){
   if(key!==resourceStateKey()||result.source_key!==state.scene_preview_source_key||result.scene_id!==state.scene?.id||result.semantic_id!==record.id||result.asset_kind!=='collision'||result.coordinate_system!=='psx_guest_xz')throw new Error('Field map source changed while loading. Refresh scene resources and retry.');
@@ -4139,6 +4153,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelViewp
 canvas.addEventListener('pointerdown',event=>{
   pendingEntityFrame=null;
   if(busy||drag)return;const p=pointer(event),entity=movableSelection();canvas.focus({preventScroll:true});canvas.setPointerCapture(event.pointerId);
+  if(floorPickMode&&event.button===0){drag={pointerId:event.pointerId,type:'floor-selector',context:resourceStateKey(),sourceKey:state.scene_preview_source_key,projectKey:state.project_copy_source_key,cameraRevision,width,height,start:p,last:p,moved:false};canvas.classList.add('dragging');return;}
   if(sceneFacePickMode&&event.button===0){drag={pointerId:event.pointerId,type:'scene-face',context:resourceStateKey(),sourceKey:state.scene_preview_source_key,cameraRevision,width,height,start:p,last:p,moved:false};canvas.classList.add('dragging');return;}
   if(wallSelectMode&&event.button===0){const cell=wallCellAt(groundAt(p.x,p.y,0));if(!wallSourceCurrent()||wallInspection||!cell){canvas.releasePointerCapture(event.pointerId);notify('Point is outside the canonical source-wall reference plane.',true);return;}drag={pointerId:event.pointerId,type:'wall-rectangle',context:resourceStateKey(),sourceKey:state.project_copy_source_key,cameraRevision,width,height,wallStart:cell,start:p,last:p,moved:false};wallSelection=wallDragRectangle(cell,cell);canvas.classList.add('dragging');draw();return;}
   const placementBox=scenePlacementBoxMode&&!scenePlacementHost.querySelector('[data-mixed-box]').disabled&&event.button===0&&!event.shiftKey&&!event.altKey;
@@ -4159,7 +4174,7 @@ canvas.addEventListener('pointermove',event=>{
     else if(drag.type==='wall-rectangle'){if(!wallGestureCurrent(drag)){cancelViewportGesture();return;}try{wallSelection=wallRectangleAt(drag,p);$('transform-drag-status').textContent=`Source wall rows ${wallSelection.row_start}–${wallSelection.row_end}, columns ${wallSelection.column_start}–${wallSelection.column_end} · Y=0 reference plane · Release to review`;}catch(error){wallSelection=null;$('transform-drag-status').textContent=error.message;}}
     else if(drag.type==='scene-placement-box'){if(!scenePlacementBoxCurrent(drag)){cancelViewportGesture();return;}drag.last=p;$('transform-drag-status').textContent='Visible placement pixels · Release to select; Ctrl/Command adds';}
     else if(drag.type==='actor-box'){drag.last=p;}
-    else if(drag.type==='orbit'||drag.type==='scene-face'){camera.yaw-=dx*.006;camera.pitch=Math.max(camera.projection==='orthographic'?0:.12,Math.min(Math.PI/2,camera.pitch+dy*.005));cameraRevision++;}
+    else if(drag.type==='orbit'||drag.type==='scene-face'||drag.type==='floor-selector'){camera.yaw-=dx*.006;camera.pitch=Math.max(camera.projection==='orthographic'?0:.12,Math.min(Math.PI/2,camera.pitch+dy*.005));cameraRevision++;}
     else if(camera.projection==='orthographic'){const a=sceneCameraPlanePoint(camera,{width,height},0,0),b=sceneCameraPlanePoint(camera,{width,height},dx,dy);for(const axis of ['x','y','z'])camera.target[axis]+=a[axis]-b[axis];cameraRevision++;}
     else {const b=basis(),scale=camera.distance/Math.max(1,Math.min(width,height)*.9);camera.target.x-=dx*scale*b.right.x;camera.target.z-=dx*scale*b.right.z;camera.target.x-=dy*scale*Math.sin(camera.yaw)/Math.max(.15,Math.sin(camera.pitch));camera.target.z-=dy*scale*Math.cos(camera.yaw)/Math.max(.15,Math.sin(camera.pitch));cameraRevision++;}
     if(draft&&['transform','group-transform','environment-group-transform','scene-placement-group-transform'].includes(drag.type))$('transform-drag-status').textContent=['group-transform','environment-group-transform','scene-placement-group-transform'].includes(drag.type)?`${drag.type==='scene-placement-group-transform'?'Placement':drag.type==='environment-group-transform'?'Scenery':'Actor'} group ${drag.handle.axis.toUpperCase()} offset ${format(draft.groupAmount)} · ${drag.snapStep>1?`Snap ${drag.snapStep}`:'Integer move'} · Release to review; preview height held while dragging`:`${drag.handle.axis.toUpperCase()} ${format(draft.position[drag.handle.axis])} · ${drag.snapStep>1?`Snap ${drag.snapStep} units`:'Free move'} · Release to apply`;
@@ -4171,6 +4186,7 @@ canvas.addEventListener('pointerup',async event=>{
   if(!drag||event.pointerId!==drag.pointerId)return;
   if(['environment-yaw','transform','group-transform','environment-group-transform','scene-placement-group-transform'].includes(drag.type)&&(busy||!transformGestureCurrent(drag))){cancelViewportGesture();return;}
   const finished=drag,p=pointer(event),edit=draft;drag=null;draft=null;canvas.classList.remove('dragging');$('transform-drag-status').textContent='X/Z moves · snap aligns to scene origin';
+  if(finished.type==='floor-selector'){floorPickMode=false;updateFieldToggle();if(!finished.moved&&event.button===0){try{pickFloorSelector(p,finished);}catch(error){notify(error.message,true);}}draw();return;}
   if(finished.type==='scene-face'){sceneFacePickMode=false;updateSceneFacePick();if(!finished.moved&&event.button===0){try{await inspectSceneFace(p,finished);}catch(error){notify(error.message,true);}}draw();return;}
   if(finished.type==='wall-rectangle'){wallSelection=null;wallSelectMode=false;updateFieldToggle();if(wallGestureCurrent(finished)){try{wallRectangleTool.open(wallRectangleAt(finished,p));}catch(error){notify(error.message,true);}}draw();return;}
   if(finished.type==='scene-placement-box'){
@@ -4987,7 +5003,7 @@ modelCanvas.addEventListener('pointerup',event=>{const clicked=modelDrag&&!model
 modelCanvas.addEventListener('pointercancel',()=>{modelDrag=null;});
 modelCanvas.addEventListener('wheel',event=>{event.preventDefault();modelView.zoom=Math.max(.15,Math.min(2.5,modelView.zoom*Math.exp(-event.deltaY*.001)));drawModel();},{passive:false});
 
-function arrivalMoveAllowed(){return !!transitionArrivalOverlay&&transitionArrivalCurrent(transitionArrivalOverlay,state)&&arrivalMove.checked&&!!arrivalLocalPreview()&&canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!busy&&!drag&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!scenePlacementMode&&!actorBoxMode&&!wallSelectMode&&!wallInspection&&!sceneFacePickMode&&!pickScriptTargets&&!pickRuntimeNodes&&!fieldSpatialPick;}
+function arrivalMoveAllowed(){return !!transitionArrivalOverlay&&transitionArrivalCurrent(transitionArrivalOverlay,state)&&arrivalMove.checked&&!!arrivalLocalPreview()&&canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!busy&&!drag&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!scenePlacementMode&&!actorBoxMode&&!wallSelectMode&&!wallInspection&&!sceneFacePickMode&&!floorPickMode&&!pickScriptTargets&&!pickRuntimeNodes&&!fieldSpatialPick;}
 function arrivalMoveContext(){return JSON.stringify([resourceStateKey(),state.project_transition_state_key,state.scene_preview_source_key,cameraRevision,width,height,transitionArrivalHeight,arrivalMove.checked]);}
 function arrivalMoveAxes(){if(!arrivalMoveAllowed())return {};const point=arrivalLocalPreview().proposed_arrival,origin={...point,y:transitionArrivalHeight},start=project(displayPosition(origin));if(!start)return {};const axes={};for(const axis of ['x','z']){const measure=project(displayPosition({...origin,[axis]:origin[axis]+64}));if(!measure)continue;const span=Math.hypot(measure.x-start.x,measure.y-start.y);if(span<.05)continue;const units=64*Math.max(1,Math.min(128,Math.round(70/span))),end=project(displayPosition({...origin,[axis]:origin[axis]+units}));if(end&&Math.hypot(end.x-start.x,end.y-start.y)>=4)axes[axis]={start,end,units};}return axes;}
 arrivalGizmo=mountPlacementGizmo({host:$('viewport-wrap'),idPrefix:'arrival-placement',getAxes:arrivalMoveAxes,getContext:arrivalMoveContext,allowed:arrivalMoveAllowed,getStep:()=>64,
