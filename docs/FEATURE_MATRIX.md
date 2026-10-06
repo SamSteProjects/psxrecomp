@@ -1,5 +1,31 @@
 # Legaia SDK feature matrix
 
+## Saved NPC model-selector explanations - 2026-10-06
+
+Saved-build comparison now explains NPC-owned SET_ACTOR_MODEL selector words.
+Native qualification binds the typed signed16 request, original donor/PC/opcode,
+extended context, source hash and separate retail/generated offsets to the exact
+receipt and emitted bytes. Browser decoding independently verifies MENU_CTRL
+sub-op0x50, signed word encoding, source metadata, instruction width and held
+dispatch. Retained selectors still qualify when a changed branch skips their
+original instruction. Source-identical requests receive no authored change span.
+
+Validation: 17 focused Python checks with private retail input and the Node
+comparison suite pass. Signed boundaries, ordinary/extended forms, no-ops,
+skipped-body composition, forged requests/receipts and duplicate spans are covered.
+A fresh read-only Town01 Build `47211a52e78d1b75` comparison labels one selector
+byte out of three changed bytes; two stay unexplained. The 540px table was visually
+inspected. Streaming Build `a283762d47e6985f` qualifies the requested -1 word and
+correctly leaves the source-identical 240 request unlabelled. The private helper's
+initial assumption that both requests changed bytes was corrected using each
+retail preimage. Both project documents, histories and every file hash stay held.
+Evidence:
+`local-output/sdk-20260909/npc-model-selectors-script-comparison-20261006/proof.json`.
+
+Portable NPC model-selector presets remain pending. No new Build, game launch or
+full-disc export occurred. Runtime pool identity, restaging, pairing and story
+execution remain unknown; manual acceptance is deferred and the SDK goal active.
+
 ## NPC model selectors through editor and normal Build - 2026-10-05
 
 Independent NPC SET_ACTOR_MODEL signed selectors now connect source inspection,

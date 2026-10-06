@@ -138,4 +138,44 @@ class ScriptComparisonTests(unittest.TestCase):
         offset,raw,entry=context._source.verified_record(ACTOR);index=allocations['drafts'][0]['record_index'];final=next(r for r in read_man_layout(result)['records'] if r['partition']==1 and r['record_index']==index);start,length=final['byte_offset'],final['byte_length'];retail=dict(self.record(raw,entry),byte_offset=offset,record_index=1);generated=dict(self.record(result[start:start+length],entry),byte_offset=start,record_index=index)
         self.assertIn(8,audit['changes'][0]['unreachable_source_pcs']);self.assertEqual({s['category'] for s in authored_spans(metadata,'npc-a',retail,generated,draft)},{'own_movement','own_facing','own_wait','own_branch'})
 
+    def test_model_selector_explanations_signed_words_source_dispatch_and_forgery(self):
+        from copy import deepcopy
+        from test_npc_model_selectors import NpcModelSelectorTests,ACTOR
+        from sdk.npc_model_selectors import patch_allocated_model_selectors
+        from importer.man_layout import read_man_layout
+        for extended in (False,True):
+            for n in (-32768,-1,0,239,240,32767):
+                context,candidate,allocations,target=NpcModelSelectorTests().fixture(extended);values=dict(model_selector_signed=n)
+                result,audit=patch_allocated_model_selectors(context,candidate,allocations,[dict(draft_id='npc-a',donor_entity_id=ACTOR,entries={target['semantic_id']:values})])
+                offset,raw,entry=context._source.verified_record(ACTOR);index=allocations['drafts'][0]['record_index'];final=next(r for r in read_man_layout(result)['records'] if r['partition']==1 and r['record_index']==index);start,length=final['byte_offset'],final['byte_length']
+                retail=dict(self.record(raw,entry),byte_offset=offset,record_index=1);generated=dict(self.record(result[start:start+length],entry),byte_offset=start,record_index=index);draft=dict(donor_entity_id=ACTOR,model_selectors=dict(donor_entity_id=ACTOR,entries={target['semantic_id']:values}));metadata={'npc_model_selectors_changes':audit}
+                spans=authored_spans(metadata,'npc-a',retail,generated,draft)
+                if n==239:
+                    self.assertEqual(spans,[]);continue
+                self.assertEqual(len(spans),1);self.assertEqual(spans[0]['category'],'own_model_selector');self.assertEqual(spans[0]['byte_length'],2)
+                for change in (dict(pc=True),dict(record_index=1),dict(donor_entity_id='wrong'),dict(model_selector_id='wrong'),dict(source_record_sha256='0'*64),dict(mnemonic='UNKNOWN'),dict(target_context=255),dict(record_relative_byte_offset=0),dict(after_selector=True),dict(field='asset_id'),dict(before_hex='0000')):
+                    forged=deepcopy(metadata);forged['npc_model_selectors_changes']['changes'][0].update(change)
+                    with self.assertRaises(ProjectError):authored_spans(forged,'npc-a',retail,generated,draft)
+                for fields in ({},dict(model_selector_signed=True),dict(model_selector_signed=32768)):
+                    forged=deepcopy(draft);forged['model_selectors']['entries'][target['semantic_id']]=fields
+                    with self.assertRaises(ProjectError):authored_spans(metadata,'npc-a',retail,generated,forged)
+                forged=deepcopy(metadata);forged['npc_model_selectors_changes']['changes']*=2
+                with self.assertRaises(ProjectError):authored_spans(forged,'npc-a',retail,generated,draft)
+                mutated=bytearray.fromhex(generated['raw_hex']);mutated[target['pc']+1]^=1;forged=dict(generated,raw_hex=mutated.hex())
+                with self.assertRaises(ProjectError):authored_spans(metadata,'npc-a',retail,forged,draft)
+
+    def test_skipped_model_selector_remains_explained_against_source_boundaries(self):
+        from hashlib import sha256
+        from test_importer_dialogue_authoring import fixture,ACTOR
+        from importer.model_selector_authoring import ModelSelectorAuthoringContext
+        from importer.branch_authoring import BranchAuthoringContext
+        from importer.man_actor_structure import append_actor_donor
+        from importer.man_layout import read_man_layout
+        from sdk.npc_model_selectors import patch_allocated_model_selectors
+        from sdk.npc_branches import patch_allocated_branches
+        source,man=fixture(b'\x26\x02\0\x4c\x50\xef\0\x26\xf8\xff');selectors=ModelSelectorAuthoringContext(source);branches=BranchAuthoringContext(source);selector=selectors.options(ACTOR)['targets'][0]['semantic_id'];branch=branches.options(ACTOR)['targets'][0]['semantic_id'];candidate,row=append_actor_donor(man,sha256(man).hexdigest(),1);allocation={'drafts':[dict(row,draft_id='npc-a')]}
+        selector_values={selector:dict(model_selector_signed=-1)};branch_values={branch:dict(target_pc=12)};candidate,selector_audit=patch_allocated_model_selectors(selectors,candidate,allocation,[dict(draft_id='npc-a',donor_entity_id=ACTOR,entries=selector_values)]);result,branch_audit=patch_allocated_branches(branches,candidate,allocation,[dict(draft_id='npc-a',donor_entity_id=ACTOR,entries=branch_values)])
+        self.assertIn(8,branch_audit['changes'][0]['unreachable_source_pcs']);offset,raw,entry=source.verified_record(ACTOR);final=next(r for r in read_man_layout(result)['records'] if r['partition']==1 and r['record_index']==row['record_index']);start,length=final['byte_offset'],final['byte_length'];retail=dict(self.record(raw,entry),byte_offset=offset,record_index=1);generated=dict(self.record(result[start:start+length],entry),byte_offset=start,record_index=row['record_index']);draft=dict(donor_entity_id=ACTOR,model_selectors=dict(donor_entity_id=ACTOR,entries=selector_values),branches=dict(donor_entity_id=ACTOR,entries=branch_values))
+        spans=authored_spans(dict(npc_model_selectors_changes=selector_audit,npc_branches_changes=branch_audit),'npc-a',retail,generated,draft);self.assertEqual({r['category'] for r in spans},{'own_model_selector','own_branch'})
+
 if __name__=='__main__':unittest.main()
