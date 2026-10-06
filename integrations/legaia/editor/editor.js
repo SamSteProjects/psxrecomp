@@ -245,19 +245,27 @@ let scriptTargetOverlay=null,scriptTargetHits=[],pickScriptTargets=false;
 const scriptTargetTools=document.createElement('div');scriptTargetTools.id='script-target-tools';scriptTargetTools.hidden=true;
 scriptTargetTools.innerHTML='<span role="status"></span><select aria-label="Script target instruction"></select><button type="button" data-inspect>Inspect target</button><button type="button" data-pick aria-pressed="false">Pick script target</button><button type="button" data-frame>Frame script targets</button><button type="button" data-clear>Clear script targets</button>';
 $('viewport-wrap').before(scriptTargetTools);
-scriptTargetTools.querySelector('[data-clear]').onclick=()=>{scriptTargetOverlay=null;draw();};
+scriptTargetTools.querySelector('[data-clear]').onclick=()=>{scriptTargetOverlay?.onClear?.();scriptTargetOverlay=null;draw();};
 scriptTargetTools.querySelector('[data-frame]').onclick=()=>frameScriptTargets();
 scriptTargetTools.querySelector('[data-inspect]').onclick=()=>inspectScriptTarget(Number(scriptTargetTools.querySelector('select').value));
 scriptTargetTools.querySelector('[data-pick]').onclick=()=>{cancelViewportGesture();pickScriptTargets=!pickScriptTargets;draw();};
 async function inspectScriptTarget(pc){
   const overlay=currentScriptTargets();if(busy||!overlay||!overlay.targets.some(target=>target.pc===pc))return;
+  if(overlay.inspect){cancelViewportGesture();overlay.inspect(pc);return;}
   const id=overlay.identity.replace(/^script:\/\//,'scene://');
   const owner=id.includes('/scripts/man-p2/')?{id,name:overlay.identity,partitionTwo:true}:entities().find(entity=>entity.id===id);
   if(!owner){notify('The source script owner is unavailable. Reopen its script report.',true);return;}
   cancelViewportGesture();await openActorScript(owner,false,null,null,pc);
 }
+function showNpcMovementTargets(overlay,returnToEditor,isCurrent,onClear){
+  if(busy||!scenePreviewCurrent()||overlay.project_source_key!==state.project_copy_source_key||!isCurrent()||!overlay.targets.length||overlay.targets.some(r=>!Number.isFinite(r.position.x)||!Number.isFinite(r.position.z)))throw new Error('Scene or NPC movement source changed. Reopen the movement editor.');
+  scriptTargetOverlay?.onClear?.();cancelViewportGesture();
+  scriptTargetOverlay={...overlay,key:resourceStateKey(),identity:overlay.entity_id+' - NPC script dispatch unresolved',partial:false,inspect:returnToEditor,isCurrent,onClear};
+  const select=scriptTargetTools.querySelector('select');select.replaceChildren();for(const target of overlay.targets){const option=document.createElement('option');option.value=target.pc;option.textContent=scriptOffset(target.pc)+' '+target.mnemonic+' - X '+target.position.x+', Z '+target.position.z;select.append(option);}
+  frameScriptTargets();
+}
 function currentScriptTargets(){
-  if(scriptTargetOverlay&&scriptTargetOverlay.key!==resourceStateKey())scriptTargetOverlay=null;
+  if(scriptTargetOverlay&&(scriptTargetOverlay.key!==resourceStateKey()||scriptTargetOverlay.isCurrent&&!scriptTargetOverlay.isCurrent())){scriptTargetOverlay.onClear?.();scriptTargetOverlay=null;}
   return scriptTargetOverlay;
 }
 function frameScriptTargets(){
@@ -1789,7 +1797,7 @@ async function activateAsset(record,action=null){
   if(action==='edit-npc-appearance'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC appearance target changed. Reopen Asset Details.');openNpcAppearanceInspector(record.id);return;}
   if(action==='edit-npc-dialogue'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC dialogue target changed. Reopen Asset Details.');openNpcDialogue({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api});return;}
   if(action==='edit-npc-waits'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC waits target changed. Reopen Asset Details.');openNpcWaits({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api});return;}
-  if(action==='edit-npc-movement'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC script movement target changed. Reopen Asset Details.');openNpcMovement({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api});return;}
+  if(action==='edit-npc-movement'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC script movement target changed. Reopen Asset Details.');openNpcMovement({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api,showTargets:showNpcMovementTargets});return;}
   if(action==='inspect-npc-build-script'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC Build target changed. Reopen Asset Details.');openNpcBuildScript({entityId:record.id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});return;}
   if(action==='inspect-npc-donor-script'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC retail donor changed. Reopen Asset Details.');openNpcDonorScript({entityId:record.id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});return;}
   if(action==='inspect-npc-donor-model'){const model=npcDonorModel(record);if(!model||!state.model_references?.some(ref=>ref.source_id===record.id&&ref.target_id===model&&ref.scene_id===record.sceneId&&ref.kind==='draft_initial_model_assignment'&&ref.effective_donor_id===(record.authoredRecord.authored?.appearance?.donor_entity_id??record.authoredRecord.donor_entity_id)))throw new Error('NPC donor model assignment changed. Reopen Asset Details.');openModel(model,null,null,'imported');return;}
@@ -2286,6 +2294,7 @@ function appendScriptInstructions(host,report,identity=report.semantic_id??repor
       if(busy||key!==resourceStateKey()||!height.reportValidity()||!height.value.trim()||!numeric(Number(height.value)))return;
       if(layer.value==='authored'&&effectiveOption.disabled)return;
       const chosen=layer.value==='authored'?targets.map(target=>({...target,position:{...target.position,...effective.get(target.pc).effective_values},parked:!!effective.get(target.pc).effective_parked_target})):targets;
+      scriptTargetOverlay?.onClear?.();
       scriptTargetOverlay={key,identity,targets:chosen,representation:layer.value,height:Number(height.value),partial:report.status==='partial'};
       const targetSelect=scriptTargetTools.querySelector('select');targetSelect.replaceChildren();
       for(const target of chosen){const option=document.createElement('option');option.value=target.pc;option.textContent=`${scriptOffset(target.pc)} ${target.mnemonic} · X ${target.position.x}, Z ${target.position.z}`;targetSelect.append(option);}
@@ -2954,7 +2963,7 @@ function renderInspector(){
     const npcAppearance=document.createElement('button');npcAppearance.id='npc-appearance-button';npcAppearance.textContent='Choose NPC initial appearance...';npcAppearance.disabled=busy||!canEdit();npcAppearance.onclick=()=>openNpcAppearanceInspector(id);$('delete-npc-draft').before(npcAppearance);
     const npcDialogue=document.createElement('button');npcDialogue.id='npc-dialogue-button';npcDialogue.textContent='Edit NPC dialogue...';npcDialogue.disabled=busy||!canEdit();npcDialogue.onclick=()=>openNpcDialogue({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,api});$('delete-npc-draft').before(npcDialogue);
     const npcWaits=document.createElement('button');npcWaits.id='npc-waits-button';npcWaits.textContent='Edit NPC wait targets...';npcWaits.disabled=busy||!canEdit();npcWaits.onclick=()=>openNpcWaits({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,api});$('delete-npc-draft').before(npcWaits);
-    const npcMovement=document.createElement('button');npcMovement.id='npc-movement-button';npcMovement.textContent='Edit NPC script movement...';npcMovement.disabled=busy||!canEdit();npcMovement.onclick=()=>openNpcMovement({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,api});$('delete-npc-draft').before(npcMovement);
+    const npcMovement=document.createElement('button');npcMovement.id='npc-movement-button';npcMovement.textContent='Edit NPC script movement...';npcMovement.disabled=busy||!canEdit();npcMovement.onclick=()=>openNpcMovement({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,api,showTargets:showNpcMovementTargets});$('delete-npc-draft').before(npcMovement);
     const buildScript=document.createElement('button');buildScript.id='npc-build-script-button';buildScript.textContent='Inspect saved Build script...';buildScript.disabled=busy||!state.capabilities?.actor_script_preview;buildScript.onclick=()=>openNpcBuildScript({entityId:id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});$('delete-npc-draft').before(buildScript);
     const donorScript=document.createElement('button');donorScript.id='npc-donor-script-button';donorScript.textContent='Inspect retail donor script...';donorScript.disabled=busy||!state.capabilities?.actor_script_preview;donorScript.onclick=()=>openNpcDonorScript({entityId:id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});$('delete-npc-draft').before(donorScript);
     const duplicate=document.createElement('button');duplicate.id='duplicate-npc-draft';duplicate.textContent='Duplicate draft';duplicate.title='Creates an independent draft at the same position, then selects it to move';$('delete-npc-draft').before(duplicate);

@@ -1,5 +1,31 @@
 # Legaia SDK feature matrix
 
+## Inspect NPC-owned movement targets in the scene - 2026-10-05
+
+The NPC movement editor now offers retail donor, current NPC and reviewed proposal
+scene target layers. Enter an explicit reference Y and choose **Show NPC script
+targets**. The existing viewport target overlay frames qualified MOVE_TO/NPC_RUN
+X/Z markers with source PCs. Selector-only EXEC_MOVE has no scene position.
+Script Y, dispatch identity, branch execution and live actor position stay unknown;
+markers never move NPC placement or scene geometry.
+
+Target selection/Inspect returns to the retained movement editor at that instruction,
+including unapplied inputs and reviewed Apply. Changed inputs invalidate a proposal
+overlay. Clear, stale source state or overlay replacement dispose the hidden editor;
+ordinary imported-script overlays keep their existing behavior. Inspector and Asset
+Details use the same NPC movement editor entry.
+
+Validation: 18 focused Python checks and two Node suites pass. Actual browser
+verified three markers, explicit/invalid height guards, current X3200/Z5696,
+reviewed X3264/Z5696 and retail X13888/Z5056, return-to-editor review retention,
+input withdrawal and Clear cleanup. The scene overlay and 540px scrollable controls
+were visually inspected. Project document, history and all existing file hashes
+remained unchanged; only source/review preview requests ran. Evidence:
+`local-output/sdk-20260909/npc-movement-target-scene-20261005/proof.json`.
+No Build/Save/authoring command or game launch occurred. Reference Y is a display
+choice, not a recovered script height or gameplay alignment claim. Manual gameplay
+remains deferred and the full SDK goal stays active/incomplete.
+
 ## Preserve NPC-owned edits through repetition - 2026-10-05
 
 Line/grid and selected-arrangement repetition retain each source NPC's own

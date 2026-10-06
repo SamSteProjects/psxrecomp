@@ -202,3 +202,22 @@ receives a movement instruction. Its movement X/Z are script targets, separate
 from NPC placement. Missing audit evidence never becomes an inferred label.
 Actual four-family comparison evidence is recorded in
 `local-output/sdk-20260909/npc-movement-script-comparison-20261005/proof.json`.
+
+## Inspect NPC script movement targets spatially
+
+Open **Edit NPC script movement**, choose **Retail donor targets**, **Current NPC
+targets**, or **Reviewed proposal targets**, enter an explicit **NPC target reference
+Y**, then choose **Show NPC script targets**. A proposal requires reviewing the
+edited operands first. Scene markers show supported X/Z instructions only; move
+selectors alone have no position. Reference Y controls marker display and is not
+script height or a live actor coordinate. NPC placement stays unchanged.
+
+Use the viewport instruction selector and **Inspect target** to return to the same
+editor at that source PC with unapplied inputs and review intact. Changed inputs
+withdraw Apply and invalidate the proposal overlay. **Clear script targets** discards
+the hidden editor. Source changes reject stale markers/reviews. Existing scene
+geometry and authored project data are untouched by inspection.
+
+Offline browser evidence and inspected layouts are in
+`local-output/sdk-20260909/npc-movement-target-scene-20261005/`. Dispatch identity,
+selector behavior and runtime movement still require gameplay verification.
