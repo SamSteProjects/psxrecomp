@@ -1743,23 +1743,25 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200,review(self.server.project,body['entity_id'],body['entity_ids'],body['delta']))
                     return
                 if route == '/api/floor-rectangle-scene':
-                    if set(body)!={'entity_id','rectangle','review_key'}:raise ProjectError('Floor scene requires exact reviewed fields')
+                    if set(body) not in ({'entity_id','rectangle','review_key'},{'entity_id','rectangle','review_key','cell_edits'}):raise ProjectError('Floor scene requires exact reviewed fields')
+                    if 'cell_edits' in body and not isinstance(body['cell_edits'],list):raise ProjectError('Floor paint scene requires a selector list')
                     from .floor_rectangle import review,proposal_view
                     from .scene_preview import source_key as preview_source_key
                     from .project_copy import source_key
                     from importer.scene_animation import load_scene_actor_animation_catalog
                     from importer.environment import load_environment_preview_catalog
                     from .terrain_preview import terrain_preview
-                    project=self.server.project;report=review(project,body['entity_id'],body['rectangle'])
+                    project=self.server.project;report=review(project,body['entity_id'],body['rectangle'],body.get('cell_edits'))
                     if report['review_key']!=body['review_key']:raise ProjectError('Floor inputs changed since Review')
                     scene_key=preview_source_key(project);view=proposal_view(project,report)
                     proposed=self.server.scene_previews.preview(view,lambda asset,*args,**kwargs:self.server.model_preview(asset,*args,effective_shape=True,project_view=view,**kwargs),load_scene_actor_animation_catalog,load_environment_preview_catalog,terrain_preview)
                     if source_key(project)!=report['project_source_key'] or preview_source_key(project)!=scene_key:raise ProjectError('Project changed during floor scene inspection')
                     self._json(200,dict(schema_version='legaia.floor-rectangle-scene.v1',review=report,scene_preview_source_key=scene_key,scene=dict(proposed,representation='authored')));return
                 if route == '/api/floor-rectangle-review':
-                    if set(body)!={'entity_id','rectangle'}:raise ProjectError('Floor Review requires scene and rectangle only')
+                    if set(body) not in ({'entity_id','rectangle'},{'entity_id','rectangle','cell_edits'}):raise ProjectError('Floor Review requires scene, rectangle and optional selectors only')
+                    if 'cell_edits' in body and not isinstance(body['cell_edits'],list):raise ProjectError('Floor paint requires a selector list')
                     from .floor_rectangle import review
-                    self._json(200,review(self.server.project,body['entity_id'],body['rectangle']))
+                    self._json(200,review(self.server.project,body['entity_id'],body['rectangle'],body.get('cell_edits')))
                     return
                 if route == '/api/collision-rectangle-review':
                     if set(body) not in ({'entity_id','rectangle'},{'entity_id','rectangle','cell_edits'}):raise ProjectError('Wall rectangle review requires scene, rectangle and optional quadrant edits only')
