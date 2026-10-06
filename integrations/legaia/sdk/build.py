@@ -145,7 +145,21 @@ def package_change_kinds(edits) -> list[str]:
         'source-man-draft-composed-overrides': 'NPC scene operand composition',
         'worldmap-source-record-transform-only': 'world source placement transforms',
     }
-    return sorted({('initial actor animation' if edit.get('assignment_kind') == 'ActorAnimation' and edit.get('field') == 'animation_id' else labels.get(edit.get('scope', 'initial-man-placement-only'), 'other audited scene data')) for edit in edits})
+    kinds = set()
+    for edit in edits:
+        if edit.get('assignment_kind') == 'ActorAnimation' and edit.get('field') == 'animation_id':
+            kinds.add('initial actor animation')
+        else:
+            kinds.add(labels.get(edit.get('scope', 'initial-man-placement-only'), 'other audited scene data'))
+        # NPC preparation retains the exact height audit inside its composed family.
+        # Describe only present emitted evidence, while preserving the NPC summary.
+        if (edit.get('scope') == 'source-man-draft-composed-overrides' and
+                edit.get('field') == 'npc.composed.floor_height_changes' and
+                isinstance(edit.get('composition_changes'), list) and
+                any(isinstance(row, dict) and row.get('scope') == 'MAN-floor-height-table-only' and
+                    row.get('field') == 'floor_height' for row in edit['composition_changes'])):
+            kinds.add('source floor heights')
+    return sorted(kinds)
 
 
 def build_report(audit) -> dict:
@@ -1335,7 +1349,9 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         package_suffix = " authored scene data"
         feature_name = "Authored scene data"
         description = "Private source-bound scene edits and rebuilt resources with relocated disc reads."
-        feature_description = "Apply composed scene edits, rebuilt model, texture and animation packs against the matching source disc. Allocated clips remain unassigned; gameplay is unverified."
+        feature_description = "Apply composed scene edits, rebuilt model, texture and animation packs against the matching source disc. Gameplay remains unverified."
+        if change_kinds:
+            feature_description += " Packaged edits: " + ", ".join(change_kinds) + "."
     lines = [
         "format_version = 7" if relocation else "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
         f"name = {json.dumps(project.name + package_suffix, ensure_ascii=False)}",

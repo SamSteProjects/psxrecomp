@@ -12,6 +12,17 @@ from integrations.legaia.tests.test_project_workflow import synthetic_scene
 
 
 class BuildReportTests(unittest.TestCase):
+    def test_npc_floor_heights_summary_requires_emitted_height_evidence(self):
+        row = dict(scope='source-man-draft-composed-overrides',
+                   field='npc.composed.floor_height_changes',
+                   composition_changes=[dict(scope='MAN-floor-height-table-only',field='floor_height')])
+        original = deepcopy(row)
+        self.assertEqual(package_change_kinds([row]), ['NPC scene operand composition','source floor heights'])
+        self.assertEqual(row, original)
+        for changes in ([], {}, None, [dict(scope='unknown',field='floor_height')]):
+            self.assertEqual(package_change_kinds([{**row,'composition_changes':changes}]), ['NPC scene operand composition'])
+        self.assertNotIn('source floor heights', package_change_kinds([{**row,'field':'npc.composed.facing_changes'}]))
+
     def test_texture_payload_report_is_detached_with_exact_pixel_identity(self):
         diff={'palette_words_changed':1,'pixel_indices_changed':1,'image_bytes_changed':1,
               'total_change_count':2,'changes_truncated':False,

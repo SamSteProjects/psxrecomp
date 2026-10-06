@@ -1,5 +1,14 @@
 # Legaia SDK status — 2026-10-06
 
+## 2026-10-06: floor-height delivery with NPC appends and raw streaming
+
+Native package composition is now exercised against retail Town01 and Dolk2: one NPC in a compressed fixed span, eight NPCs requiring compressed relocation, a raw streaming MAN without an NPC, and a raw streaming MAN with an appended NPC requiring relocation. Each height-edited package is reopened independently and its complete decoded MAN compared with an otherwise identical NPC/MAP build using retail heights; only the requested two-byte tier entry may differ. The complete emitted MAP also matches an independent wall-bit and floor-selector calculation, including relocated archive delivery. Actor counts, imported metadata, authored state and history remain unchanged by Build; the authored project passes Save/Open and Review Build. This supersedes the earlier unexercised appended/streaming height-delivery limitation.
+
+Build summaries now name source floor heights when an NPC composition contains the emitted height audit. Missing/empty/unrelated nested audits cannot add that label. Relocation feature descriptions retain the packaged edit list and no longer claim that all allocated clips are unassigned. Gameplay remains explicitly unverified.
+
+Validation: four opt-in retail delivery checks and nine focused Build-report checks passed against the final code (13 total); Python syntax and diff checks passed. Evidence: `local-output/sdk-20260909/floor-height-delivery-20261006/final/proof.json`. The initial compressed verifier used an incorrect carrier field name; that verifier was corrected before the final passing run. No game launch, runtime attachment, installation or full-disc export occurred. Manual floor collision, movement, ramps and NPC behavior acceptance remain deferred; the full SDK goal remains active/incomplete.
+
+
 ## 2026-10-06: height-table editor and Proposed scene inspection
 
 `Edit floor heights` now opens from the source collision inspector and Scene Tools, exposing all sixteen source-qualified Retail/Current/draft MAN values and draft reference Y. Signed integer bounds, reset-to-retail, discard-to-Current, fresh Review and normal one-command Apply are connected. Input changes withdraw old Apply and scene-inspection authority. Owned reads abort on close and reject stale scene/project context; the dialog remains bound to its reviewed source. The SDK context route supplies Current values without authoring a change.
