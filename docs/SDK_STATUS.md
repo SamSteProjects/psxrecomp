@@ -1,5 +1,41 @@
 # Legaia SDK status — 2026-10-06
 
+## 2026-10-06 checkpoint: fixed-layout model rigid hierarchy baking
+
+Static rigid GLB object transforms and parent groups now bake into existing native
+positions and stored normal words through the reviewed model workflow. Parent-first
+TRS/matrix composition shares the bounded animation hierarchy implementation, with
+model-specific one-scene, 1024-node, complete reachability and source ownership
+checks. Stored normals rotate through native/GLB axes without normalization;
+unlit sentinels, unused vector slots, padding, packet layout and opaque bytes stay
+intact. Scale, shear, reflection, perspective, animation and skinning reject.
+Legacy lit profiles without normal authoring reject rotation; unlit legacy objects
+and translation retain their field scope. Scene placements are not changed.
+
+Validation: 39 focused Python checks passed with the retail disc configured and
+both model GLB Node checks passed. The actual resource browser completed
+Review/Pose/Return/Apply for a transformed retail wall model. A second lit retail
+model, `asset://town01/models/scene-tmd/0013`, passed exact SDK/HTTP pose,
+Review and Apply with 8 referenced normal slots. Both ordinary native
+commands passed exact Undo/Redo and Save/Open. Identity parent no-op, native
+material-face qualification, wrong Review and nonrigid rejection passed.
+Normal Build `6a80be847d43ac0b` package SHA-256:
+`bfcceace5790ef8dab37eb0f1d366b00b4e972f96e6b6a202d135eec1679a971`.
+Independent native readback matched both TMD candidates:
+`9224765f5ab7336f86f926b0c43696905a168baf3c3737c2edc1c675f3b11b4d` and
+`c4fa5ea4f473f1c1264ffc2bd0753aab7ed7f2ea4b9cd015127176242fad2615`.
+Every unedited decoded bank byte and retail/imported source remained unchanged.
+
+Evidence: `local-output/sdk-20260909/model-glb-rigid-hierarchy-20261006/proof.json`,
+`browser-proof.json`, `proposed-model.png` and `review-returned.png`.
+Initial expected-byte checks were corrected to preserve unused native vector slots.
+The extra lit-model proof resumed the completed saved editor state after selecting
+an unlit NPC and correcting proof-only donor discovery; no completed native edit
+was repeated. No game launched. Gameplay appearance and retail lighting remain
+unverified; full SDK buildout remains active, including general skinning, packet
+allocation and the other reported feature gaps.
+
+
 ## 2026-10-06 checkpoint: model GLB object identity survives external names
 
 Fixed-layout model GLB editing now resolves preserved source-object tags before

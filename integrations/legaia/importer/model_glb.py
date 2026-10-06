@@ -16,7 +16,7 @@ import math
 import re
 import struct
 
-from .animation_glb import _read_glb
+from .animation_glb import _read_glb, _nodes, _hierarchy_order, _sample_hierarchy, _rotate_vector
 from .assets import decode_tmd
 from .core import ImportError
 from .export import encode_model_glb
@@ -46,7 +46,7 @@ LIMITATIONS = [
     'Edit raw byte-domain baked RGB through _LEGAIA_SOURCE_RGB; display COLOR_0 is not imported.',
     'Edit stored signed-i16 normal XYZ through _LEGAIA_SOURCE_NORMAL in retail [x,y,z] axes, without the POSITION Y flip or normalization; display NORMAL is ignored.',
     'Unlit corners retain normal XYZ sentinel [32768,32768,32768] and normal index -1; no normal tables or slots are allocated.',
-    'No added or removed faces, skinning, animation, hierarchy or unapplied object transforms are imported.',
+    'Static rigid node transforms and parents are baked into existing positions and stored normal words; no scale, skinning, animation or topology allocation.',
     'Keep source-object tags (or object-N names) and all source identity attributes; import in Blender with Merge Vertices disabled and export custom attributes enabled.',
     'Duplicate seam and quad corners must agree after source-domain quantization.',
     'Edit exact stored CLUT/TPage words and shared group ABE through _LEGAIA_SOURCE_MATERIAL; reserved CLUT, TPage ABR and reserved bits survive. Untextured words remain -1.',
@@ -374,12 +374,28 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
     meshes = _array(doc.get('meshes'), 'meshes', 1024)
     scenes = _array(doc.get('scenes'), 'scenes', 1)
     if len(scenes) != 1 or doc.get('scene', 0) != 0:
-        raise ImportError('Model GLB authoring requires one flat source scene')
-    roots = _array(_object(scenes[0], 'scene').get('nodes'), 'root nodes', 1024)
-    if any(type(i) is not int for i in roots) or sorted(roots) != list(range(len(nodes))):
-        raise ImportError('Model GLB requires each source object exactly once as a root')
-    if len(nodes) != len(inspection['objects']):
-        raise ImportError('Model GLB object count differs from the source')
+        raise ImportError('Model GLB authoring requires one source scene')
+    # Reuse the bounded rigid hierarchy math already qualified by animation
+    # interchange, while retaining model-specific ownership and node budgets.
+    for raw_node in nodes:
+        node = _object(raw_node, 'source object node')
+        if any(key in node for key in ('skin', 'camera', 'weights')):
+            raise ImportError('Model GLB skinning, cameras and morph weights are unsupported')
+        extras = node.get('extras', {})
+        name = node.get('name', '')
+        tagged = isinstance(extras, dict) and 'source_object' in extras
+        canonical = isinstance(name, str) and re.fullmatch(r'object-(0|[1-9][0-9]*)', name)
+        if tagged or canonical or 'mesh' in node:
+            source_object_identity(node, len(inspection['objects']))
+    mapping, static, parents = _nodes(doc, len(inspection['objects']))
+    poses = _sample_hierarchy(_hierarchy_order(mapping, parents, 1), parents, static, {}, 0)
+    reachable, stack = set(), list(scenes[0]['nodes'])
+    while stack:
+        index = stack.pop()
+        reachable.add(index)
+        stack.extend(nodes[index].get('children', []))
+    if reachable != set(range(len(nodes))):
+        raise ImportError('Model GLB contains detached nodes outside its source scene')
     reader = _Accessors(doc, binary)
     result = bytearray(effective_tmd)
     positions, uv_values, color_values, reference_values = {}, {}, {}, {}
@@ -387,7 +403,7 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
     from .model_glb_materials import material_bindings, apply_material_values
     source_material_bindings = material_bindings(effective_tmd, inspection)
     material_values, group_values = {}, {}
-    seen_objects, seen_meshes = set(), set()
+    seen_meshes = set()
     quantization = dict(vertex_max_error=0.0, uv_max_error=0.0,
                         color_max_error=0.0, quantized_component_count=0)
     if normals_enabled:
@@ -410,18 +426,18 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
             quantized_keys.add(key)
         return rounded
 
-    for node in nodes:
-        node = _object(node, 'source object node')
-        identity = source_object_identity(node, len(inspection['objects']))
-        if identity not in triangles or identity in seen_objects:
-            raise ImportError('Model GLB source object identity is missing or duplicated')
-        seen_objects.add(identity)
-        if node.get('children') or any(key in node for key in ('skin', 'camera', 'weights')):
-            raise ImportError('Model GLB source hierarchy, skinning and morph weights are unsupported')
-        for key, default in (('translation', [0, 0, 0]), ('rotation', [0, 0, 0, 1]),
-                             ('scale', [1, 1, 1]), ('matrix', [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])):
-            if key in node and node[key] != default:
-                raise ImportError('Apply object transforms to mesh coordinates before model GLB export')
+    for identity, node_index in mapping.items():
+        node = nodes[node_index]
+        translation, rotation = poses[node_index]
+        if (not normals_enabled and any(not row['baked_colors'] for row in inspection['objects'][identity]['primitives'])
+                and any(abs(v) > 1e-12 for v in rotation[:3])):
+            raise ImportError('Rigid model rotation requires a profile with stored normal authoring')
+        def position(value):
+            return [v+t for v,t in zip(_rotate_vector(rotation, value), translation)]
+        def normal(value):
+            # Raw normal attributes use native XYZ, unlike glTF POSITION.
+            converted = _rotate_vector(rotation, [value[0], -value[1], value[2]])
+            return [converted[0], -converted[1], converted[2]]
         expected = Counter(_canonical_triangle(tuple(row['corners'][c] for c in (0, 2, 1))) for row in triangles[identity])
         actual = Counter()
         source_corners = {row['primitive_index'] * 4 + corner: (row, corner)
@@ -445,7 +461,7 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
             attrs = _object(primitive.get('attributes'), 'vertex attributes')
             if any(key.startswith('JOINTS_') or key.startswith('WEIGHTS_') for key in attrs):
                 raise ImportError('Model GLB skinned mesh attributes are unsupported')
-            values = reader.read(attrs.get('POSITION'), 3, 'positions')
+            values = [position(value) for value in reader.read(attrs.get('POSITION'), 3, 'positions')]
             vertex_ids = reader.read(attrs.get(VERTEX_ID), 1, 'source vertex IDs')
             corner_ids = reader.read(attrs.get(CORNER_ID), 1, 'source corner IDs')
             if len(vertex_ids) != len(values) or len(corner_ids) != len(values):
@@ -521,7 +537,7 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
                         normal_reference_values[reference_key] = normal_index
                     key = identity, normal_index
                     xyz = tuple(quantize(v, -32768, 32767, 'normal', ('normal', identity, normal_index, axis))
-                                for axis, v in enumerate(normal_value))
+                                for axis, v in enumerate(normal(normal_value)))
                     if key in normal_values and normal_values[key] != xyz:
                         raise ImportError('Model GLB shared source normal copies disagree after quantization')
                     normal_values[key] = xyz

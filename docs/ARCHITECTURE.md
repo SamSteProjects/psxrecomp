@@ -739,8 +739,26 @@ changes. Native playback timing and skeletal retargeting remain separate gaps.
 before canonical object-N name fallback. Tagged nodes may be renamed, unnamed or
 reordered; canonical tag/name contradictions and invalid indices reject. The
 fixed-layout importer still validates unique complete native object coverage,
-flat scene ownership, source aliases, topology, transforms and packet fields.
+static scene ownership, source aliases, topology, transforms and packet fields.
 Source metadata selects an existing object, never retail ownership or capacity.
 Material-face selection shares this resolver after complete Current no-op GLB
 qualification, so renamed inputs cannot diverge between geometry and material
 workflows. Binding schemas and native command formats remain unchanged.
+
+
+### Fixed-layout model rigid hierarchy baking (2026-10-06)
+
+The model importer reuses bounded static-node validation and parent-first rigid
+composition from animation interchange. Model-specific source identity, one-scene,
+1024-node, complete reachability and unowned-mesh checks remain explicit. It
+transforms represented POSITION aliases and rotates raw stored normal vectors
+through the native/GLB Y conversion before existing quantization and packet audit.
+Unused vector slots and padding remain source bytes. Unlit sentinels are checked
+before rotation; legacy lit profiles without normal authoring reject rotation.
+
+These transforms bake external geometry into existing native object slots;
+scene placement and animation records remain separate authored concepts. Native
+capacity, object count and packet topology are unchanged. Material-face selection
+continues through complete Current native roundtrip qualification and the shared
+object resolver, including transform-only groups. Review schemas, authorization,
+commands and normal Build serializers remain unchanged.

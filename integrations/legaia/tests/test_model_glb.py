@@ -307,7 +307,7 @@ class ModelGlbTests(unittest.TestCase):
                     doc['accessors'].append(dict(bufferView=vi, componentType=5123, count=count, type='SCALAR'))
         self.assertEqual(import_model_glb(source, rewrite(glb, interleave), profile)[0], source)
 
-    def test_conflicting_aliases_lost_ids_topology_and_unapplied_transforms_reject(self):
+    def test_conflicting_aliases_lost_ids_topology_and_nonrigid_transforms_reject(self):
         source = synthetic(((0x22,),))
         glb, profile = export_model_glb(source, decode_tmd(source))
         def alias(doc, binary):
@@ -327,7 +327,7 @@ class ModelGlbTests(unittest.TestCase):
             at, _ = rows(doc, binary, p, CORNER_ID)[0]
             struct.pack_into('<f', binary, at, 3)
         def transform(doc, binary):
-            doc['nodes'][0]['translation'] = [1, 0, 0]
+            doc['nodes'][0]['scale'] = [2, 1, 1]
         for edit in (alias, uv_alias, lost, topology, transform):
             with self.subTest(edit=edit.__name__), self.assertRaises(ImportError):
                 import_model_glb(source, rewrite(glb, edit), profile)

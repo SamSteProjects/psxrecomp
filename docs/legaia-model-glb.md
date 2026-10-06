@@ -709,8 +709,33 @@ Unnamed tagged nodes also work. If a tag is absent, preserve its canonical
 duplicate or out-of-range tags. Renaming untagged nodes remains unqualified.
 
 Retain all source vertex/corner/normal/material attributes, their repeated aliases,
-the flat scene and existing native layout. This change does not bake unapplied
-transforms, add hierarchy or allocate geometry. Use a fresh binding, Review,
+the source scene and existing native layout. Static rigid transforms and parent groups are now baked as described below; this
+does not allocate geometry. Use a fresh binding, Review,
 Inspect proposed model, close to Return, then Apply. GLB image-to-native-face
 selection uses the same object resolver after qualifying the complete unchanged
 native model. The ordinary command, Undo/Redo, Save/Open and Build paths apply.
+
+
+## Bake static rigid object transforms and parent groups
+
+Fixed-layout **Edit model through GLB** now accepts static translation/rotation
+TRS and affine rigid matrices on source objects and their parent groups. Matrices
+and TRS cannot be mixed on a node. The selected source scene must contain every
+node and each existing native object exactly once; up to 1024 nodes are allowed.
+Preserve source-object identities and all source corner/vector attributes.
+
+Parent-first composition bakes each represented POSITION into native object
+coordinates. Stored normal attributes are raw native XYZ words: the importer
+converts them to GLB axes, rotates them by the composed orientation, then converts
+back and quantizes without normalization. Translation does not change normals.
+Unlit sentinel attributes, unrepresented native vector slots, padding, packet
+layout and opaque bytes remain intact. Display NORMAL remains ignored. Aliased
+corners must agree after transformation and source-domain quantization.
+
+Scale, shear, reflection, perspective, skinning, morphs, animation, cycles,
+multiple-parent trees, detached nodes and unowned meshes reject. Rotating lit
+objects with an old profile that cannot author stored normals rejects; unlit
+legacy objects and translation-only imports retain their supported field scope.
+Use Review, inspect the proposed model, close to Return, then Apply. Undo/Redo,
+Save/Open and normal Build use the existing native replacement pipeline. These
+are geometry edits and do not move scene instances or establish retail lighting.
