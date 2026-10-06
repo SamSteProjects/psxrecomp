@@ -2048,6 +2048,9 @@ class ProjectService:
         if command.get('type')=='set_actor_draft_branches':
             from .npc_branches import apply
             apply(self,command);return
+        if command.get('type')=='set_actor_draft_model_selectors':
+            from .npc_model_selectors import apply
+            apply(self,command);return
         if command.get('type')=='set_actor_draft_flags':
             from .npc_flags import apply
             apply(self,command);return
@@ -2759,7 +2762,7 @@ class ProjectService:
                 raise ValueError()
         except ValueError:
             raise ProjectError('Invalid authored actor UUID') from None
-        if not isinstance(draft, dict) or set(draft)-{'scene_id','donor_entity_id','position','name','dialogue','appearance','waits','movement','facing','flags','branches'} or not {'scene_id','donor_entity_id','position','name'}<=set(draft):
+        if not isinstance(draft, dict) or set(draft)-{'scene_id','donor_entity_id','position','name','dialogue','appearance','waits','movement','facing','flags','branches','model_selectors'} or not {'scene_id','donor_entity_id','position','name'}<=set(draft):
             raise ProjectError('Invalid actor draft fields')
         if not isinstance(draft['name'],str) or not draft['name'].strip() or len(draft['name']) > 120:
             raise ProjectError('Actor draft name must contain 1 through 120 characters')
@@ -2780,6 +2783,8 @@ class ProjectService:
         validate_movement(self,draft)
         from .npc_facing import validate as validate_facing
         validate_facing(self,draft)
+        from .npc_model_selectors import validate as validate_model_selectors
+        validate_model_selectors(self,draft)
         from .npc_flags import validate as validate_flags
         validate_flags(self,draft)
         from .npc_branches import validate as validate_branches

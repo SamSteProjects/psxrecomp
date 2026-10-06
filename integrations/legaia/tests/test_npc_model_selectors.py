@@ -53,4 +53,48 @@ class NpcModelSelectorTests(unittest.TestCase):
         with self.assertRaises(ProjectError):patch_allocated_model_selectors(context,candidate,forged,[request])
         source,_=fixture(b'\x4c\x50\xef\0\xff');self.assertFalse(ModelSelectorAuthoringContext(source).options(ACTOR)['supported'])
 
+    def test_project_review_history_repetition_and_http_contract(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from unittest.mock import patch
+        from sdk.project import ProjectService
+        from sdk.npc_model_selectors import source,review
+        from sdk.draft_repeat import preview
+        from test_project_workflow import synthetic_scene
+        from test_model_primitive_workflow import http_server
+        context,_,_,target=self.fixture(True);selector=target['semantic_id']
+        with TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));p.import_metadata(synthetic_scene());p.command(dict(type='create_actor_draft',donor_entity_id=ACTOR,name='Resident',position=dict(x=128,z=256)));id=next(iter(p.actor_drafts));before=deepcopy(p.actor_drafts)
+            with patch.object(ProjectService,'_model_selector_context',return_value=context):
+                request=dict(entity_id=id,entries={selector:dict(model_selector_signed=-1)});accepted=review(p,request);self.assertEqual(p.actor_drafts,before)
+                p.actor_drafts[id]['position']['x']=192
+                with self.assertRaises(ProjectError):p.command(dict(type='set_actor_draft_model_selectors',**request,review_key=accepted['review_key']))
+                p.actor_drafts[id]['position']['x']=128;p.command(dict(type='set_actor_draft_model_selectors',**request,review_key=accepted['review_key']));after=deepcopy(p.actor_drafts);self.assertEqual(source(p,id)['options']['targets'][0]['effective_values'],dict(model_selector_signed=-1));p.undo();self.assertEqual(p.actor_drafts,before);p.redo();self.assertEqual(ProjectService.open(p.save()).actor_drafts,after)
+                self.assertEqual(preview(p,dict(entity_id=id,count=1,step=dict(x=64,z=0),name='Selector copy'))['copies'][0]['draft']['model_selectors'],after[id]['model_selectors'])
+                with self.assertRaises(ProjectError):p.command(dict(type='create_npc_preset',entity_id=id,name='Selector resident'))
+                with http_server(p) as (server,post):
+                    server.RequestHandlerClass.log_message=lambda *args:None
+                    self.assertEqual(post('/api/npc-model-selectors-source',dict(entity_id=id))[0],200)
+                    self.assertEqual(post('/api/npc-model-selectors-review',dict(entity_id=id,entries={selector:dict(model_selector_signed=True)}))[0],400)
+                clear=dict(entity_id=id,entries={});accepted=review(p,clear);p.command(dict(type='set_actor_draft_model_selectors',**clear,review_key=accepted['review_key']));self.assertEqual(p.actor_drafts,before)
+                p.mode='live'
+                with self.assertRaises(ProjectError):source(p,id)
+
+    def test_owned_branch_composes_selector_before_skipping_original_instruction(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from unittest.mock import patch
+        from importer.branch_authoring import BranchAuthoringContext
+        from sdk.project import ProjectService
+        from sdk.npc_branches import review as branch_review,patch_allocated_branches
+        from sdk.npc_model_selectors import review as selector_review
+        from test_project_workflow import synthetic_scene
+        source,man=fixture(b'\x26\x02\0\x4c\x50\xef\0\x26\xf8\xff');selectors=ModelSelectorAuthoringContext(source);branches=BranchAuthoringContext(source);selector=selectors.options(ACTOR)['targets'][0]['semantic_id'];branch=branches.options(ACTOR)['targets'][0]['semantic_id']
+        with TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));p.import_metadata(synthetic_scene());p.command(dict(type='create_actor_draft',donor_entity_id=ACTOR,name='Skipped selector',position=dict(x=128,z=256)));id=next(iter(p.actor_drafts))
+            with patch.object(ProjectService,'_model_selector_context',return_value=selectors),patch.object(ProjectService,'_branch_context',return_value=branches):
+                request=dict(entity_id=id,entries={selector:dict(model_selector_signed=-1)});accepted=selector_review(p,request);p.command(dict(type='set_actor_draft_model_selectors',**request,review_key=accepted['review_key']))
+                request=dict(entity_id=id,entries={branch:dict(target_pc=12)});accepted=branch_review(p,request);self.assertIn(8,accepted['changes'][0]['unreachable_source_pcs']);p.command(dict(type='set_actor_draft_branches',**request,review_key=accepted['review_key']))
+                candidate,row=append_actor_donor(man,sha256(man).hexdigest(),1);allocation={'drafts':[dict(row,draft_id=id)]};candidate,selector_audit=patch_allocated_model_selectors(selectors,candidate,allocation,[dict(draft_id=id,**p.actor_drafts[id]['model_selectors'])]);result,_=patch_allocated_branches(branches,candidate,allocation,[dict(draft_id=id,**p.actor_drafts[id]['branches'])]);at=selector_audit['changes'][0]['decoded_byte_offset'];self.assertEqual(result[at:at+2],b'\xff\xff')
+
 if __name__=='__main__':unittest.main()

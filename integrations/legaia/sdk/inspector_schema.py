@@ -268,6 +268,8 @@ def inspector_schema():
                     'when':['authoredRecord','donor_entity_id']},
                    {'id':'edit-npc-branches','label':'Edit NPC script branches','capability':'actor_branch_authoring',
                     'when':['authoredRecord','donor_entity_id']},
+                   {'id':'edit-npc-model-selectors','label':'Edit NPC script model selectors','capability':'actor_model_selector_authoring',
+                    'when':['authoredRecord','donor_entity_id']},
                    {'id':'edit-npc-flags','label':'Edit NPC script flags','capability':'actor_flag_authoring',
                     'when':['authoredRecord','donor_entity_id']},
                    {'id':'edit-npc-facing','label':'Edit NPC script facing','capability':'actor_facing_authoring',

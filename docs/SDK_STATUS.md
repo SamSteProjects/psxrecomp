@@ -1,5 +1,35 @@
 # Legaia SDK status — 2026-10-05
 
+## NPC model selectors through editor and normal Build - 2026-10-05
+
+Independent NPC SET_ACTOR_MODEL signed selectors now connect source inspection,
+complete reviewed entries, Apply/Clear, Undo/Redo, Save/Open, root Inspector and
+Asset Details. Normal compressed and streaming Builds compose selector words
+before NPC branches. Branch review includes selectors in its complete frozen
+composition, retaining original operands when a changed edge skips them.
+Repetition qualifies and retains entries. Preset capture explicitly rejects
+selector-bearing NPCs until portable interchange is connected; saved authored
+comparison for this family also remains pending.
+
+Validation: 24 focused Python checks with private retail input and the Node source,
+review and opener contract pass. Checks include stale review, typed fields,
+HTTP rejection, history/persistence, repetition and a changed branch skipping a
+retained selector. Actual Town01 browser Review/Apply/Clear, changed-input
+withdrawal, Undo/Redo and Save/reload pass; the 540px dialog was visually inspected.
+Build `47211a52e78d1b75` reopens selector0 at PC12, preserving every other record
+byte against its baseline Build. Package SHA256:
+`f12191b0735f0c0de979219c6f145e121e09a2870cb2bbba236373ce2f886293`.
+Streaming Rayman Build `a283762d47e6985f` reopens two independent NPC selectors
+240/-1 at PC12 with only their word bytes changed. Package SHA256:
+`7319c7612354b6cf878a31c33d69ec745968a98de51dbfeb3df59d8d304aa3ab`.
+Evidence: `local-output/sdk-20260909/npc-model-selectors-editor-20261005/proof.json`
+and `local-output/sdk-20260909/npc-model-selectors-streaming-20261005/proof.json`.
+
+Selectors are encoded script operands, not resolved model assets. Runtime pool
+identity, pairing, restaging and story execution remain unverified. No game launch
+or full-disc export occurred. Manual acceptance stays deferred; the SDK goal stays
+active/incomplete.
+
 ## NPC-owned script model selector foundation - 2026-10-05
 
 Appended NPC scripts now have independent native SET_ACTOR_MODEL selector-word

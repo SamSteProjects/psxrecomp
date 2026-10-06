@@ -13,7 +13,7 @@ from .project_copy import source_key
 
 def effective_man(project,draft,context):
     candidate=bytearray(context._man);occupied=set()
-    adapters=[('dialogue',project._dialogue_context,'runs'),('movement',project._movement_context,'entries'),('facing',project._facing_context,'entries'),('flags',project._flag_context,'entries'),('waits',project._wait_context,'entries')]
+    adapters=[('dialogue',project._dialogue_context,'runs'),('movement',project._movement_context,'entries'),('facing',project._facing_context,'entries'),('flags',project._flag_context,'entries'),('waits',project._wait_context,'entries'),('model_selectors',project._model_selector_context,'entries')]
     for field,factory,key in adapters:
         if field not in draft:continue
         adapter=factory(draft['donor_entity_id'])

@@ -202,6 +202,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_wait_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_movement_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_facing_authoring"] = bool(self.project.disc_path)
+        state["capabilities"]["actor_model_selector_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_flag_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_branch_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["text_font_preview"] = bool(self.project.disc_path)
@@ -789,6 +790,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/npc-build-script.js": ("npc-build-script.js", "text/javascript"),
                  "/npc-dialogue.js": ("npc-dialogue.js", "text/javascript"),
                  "/npc-branches.js": ("npc-branches.js", "text/javascript"),
+                 "/npc-model-selectors.js": ("npc-model-selectors.js", "text/javascript"),
                  "/npc-flags.js": ("npc-flags.js", "text/javascript"),
                  "/npc-facing.js": ("npc-facing.js", "text/javascript"),
                  "/npc-waits.js": ("npc-waits.js", "text/javascript"),
@@ -2621,6 +2623,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200,source(self.server.project,body['entity_id']));return
                 if route=='/api/npc-branches-review':
                     from .npc_branches import review
+                    self._json(200,review(self.server.project,body));return
+                if route=='/api/npc-model-selectors-source':
+                    from .npc_model_selectors import source
+                    if set(body)!={'entity_id'}:raise ProjectError('NPC model selectors source requires identity only')
+                    self._json(200,source(self.server.project,body['entity_id']));return
+                if route=='/api/npc-model-selectors-review':
+                    from .npc_model_selectors import review
                     self._json(200,review(self.server.project,body));return
                 if route=='/api/npc-flags-source':
                     from .npc_flags import source

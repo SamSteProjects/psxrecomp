@@ -374,6 +374,12 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
             from .npc_appearance import patch_project
             npc_assignment_context=load_man_assignment_context(project.disc_path,scene)
             candidate,npc_appearance_audit=patch_project(project,draft['scene_id'],npc_assignment_context,candidate,actor_audit)
+        npc_model_selectors_audit=None
+        if any('model_selectors' in item for item in drafts.values()):
+            from .npc_model_selectors import patch_project as patch_npc_model_selectors
+            from importer.model_selector_authoring import load_model_selector_authoring_context
+            npc_model_selectors_context=load_model_selector_authoring_context(project.disc_path,scene)
+            candidate,npc_model_selectors_audit=patch_npc_model_selectors(project,draft['scene_id'],npc_model_selectors_context,candidate,actor_audit)
         npc_branches_audit=None
         if any('branches' in item for item in drafts.values()):
             from .npc_branches import patch_project as patch_npc_branches
@@ -457,7 +463,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         selected_draft_id=draft_id,drafts=drafts,scene_id=draft['scene_id'],
         **({'_rebuild_request':request,'_asset_patches':map_patches} if defer_rebuild else {}),
         map_changes=map_audit,
-        texture_changes=texture_audit,model_changes=model_audit,animation_changes=animation_audit,npc_dialogue_changes=npc_dialogue_audit,npc_appearance_changes=npc_appearance_audit,npc_wait_changes=npc_wait_audit,npc_movement_changes=npc_movement_audit,npc_facing_changes=npc_facing_audit,npc_flags_changes=npc_flags_audit,npc_branches_changes=npc_branches_audit,
+        texture_changes=texture_audit,model_changes=model_audit,animation_changes=animation_audit,npc_dialogue_changes=npc_dialogue_audit,npc_appearance_changes=npc_appearance_audit,npc_wait_changes=npc_wait_audit,npc_movement_changes=npc_movement_audit,npc_facing_changes=npc_facing_audit,npc_flags_changes=npc_flags_audit,npc_branches_changes=npc_branches_audit,npc_model_selectors_changes=npc_model_selectors_audit,
         authored_state_key=input_key,
         imported_document_sha256=digest(document),source_disc_sha256=disc_hash,
         source_prot_sha256=prot_hash,result_prot_sha256=sha256(rebuilt).hexdigest(),

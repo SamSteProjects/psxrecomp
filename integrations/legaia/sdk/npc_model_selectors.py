@@ -8,7 +8,86 @@ from hashlib import sha256
 from importer.man_layout import read_man_layout
 from importer.model_selector_authoring import patch_model_selector_target
 from .npc_script_allocation import allocated_scripts
-from .project import ProjectError
+from .project import ProjectError, digest
+from .project_copy import source_key
+
+
+def validate(project, draft):
+    if 'model_selectors' not in draft:
+        return
+    value = draft['model_selectors']
+    if not isinstance(value, dict) or set(value) != {'donor_entity_id', 'entries'} or value['donor_entity_id'] != draft['donor_entity_id']:
+        raise ProjectError('NPC model selectors belong to their script donor; clear model selectors before changing donor')
+    project._validate_model_selectors(draft['donor_entity_id'], {'entries': value['entries']})
+
+
+def source(project, identifier):
+    draft = project.actor_drafts.get(identifier) if isinstance(identifier, str) else None
+    if project.mode != 'edit' or not isinstance(draft, dict) or draft['scene_id'] != project.active_scene:
+        raise ProjectError('NPC model selectors require an active-scene draft in Edit mode')
+    project._validate_actor_draft(identifier, draft);key = source_key(project)
+    context = project._model_selector_context(draft['donor_entity_id'])
+    options = context.options(draft['donor_entity_id'])
+    entries = draft.get('model_selectors', {}).get('entries', {})
+    if set(entries) - {r['semantic_id'] for r in options['targets']}:
+        raise ProjectError('Current NPC model selectors are not source-qualified')
+    context.patch(entries)
+    for row in options['targets']:
+        row['authored_values'] = deepcopy(entries.get(row['semantic_id']))
+        row['effective_values'] = deepcopy(entries.get(row['semantic_id'], row['values']))
+    if source_key(project) != key:
+        raise ProjectError('Project changed during NPC model_selector inspection')
+    return dict(schema_version='legaia.npc-model-selectors-source.v1', entity_id=identifier,
+                scene_id=draft['scene_id'], project_source_key=key, draft=deepcopy(draft),
+                options=options, gameplay_verified=False, runtime_model_identity='not_asserted', model_restaging='not_asserted')
+
+
+def review(project, request):
+    if not isinstance(request, dict) or set(request) != {'entity_id', 'entries'} or not isinstance(request['entries'], dict):
+        raise ProjectError('NPC model_selector review requires identity and complete typed entries')
+    report = source(project, request['entity_id']);draft = report['draft'];proposed = deepcopy(draft)
+    if request['entries']:
+        proposed['model_selectors'] = dict(donor_entity_id=draft['donor_entity_id'], entries=deepcopy(request['entries']))
+    else:
+        proposed.pop('model_selectors', None)
+    project._validate_actor_draft(request['entity_id'], proposed)
+    if set(request['entries']) - {r['semantic_id'] for r in report['options']['targets']}:
+        raise ProjectError('NPC model_selector entry is not qualified by its script donor')
+    _, changes = project._model_selector_context(draft['donor_entity_id']).patch(request['entries'])
+    if source_key(project) != report['project_source_key']:
+        raise ProjectError('Project changed during NPC model_selector review')
+    return dict(schema_version='legaia.npc-model-selectors-review.v1', entity_id=request['entity_id'],
+                project_source_key=report['project_source_key'], request=deepcopy(request),
+                current=draft, proposed=proposed, changes=changes,
+                review_key=digest(dict(source=report['project_source_key'], request=request, algorithm='npc-model_selector-targets.v1')),
+                gameplay_verified=False, runtime_model_identity='not_asserted', model_restaging='not_asserted')
+
+
+def apply(project, command):
+    if set(command) != {'type', 'entity_id', 'entries', 'review_key'}:
+        raise ProjectError('NPC model_selector Apply requires exact reviewed fields')
+    report = review(project, {k: command[k] for k in ('entity_id', 'entries')})
+    if command['review_key'] != report['review_key']:
+        raise ProjectError('NPC model selectors changed; review again')
+    if report['current'] == report['proposed']:
+        return
+    project.actor_drafts[command['entity_id']] = deepcopy(report['proposed'])
+    project.undo_stack.append(dict(target='actor_drafts', entity_id=command['entity_id'], before=report['current'], after=deepcopy(report['proposed'])))
+    project.redo_stack.clear()
+
+
+def patch_project(project, scene_id, context, candidate, allocations):
+    requests = []
+    for row in allocations['drafts']:
+        draft = project.actor_drafts[row['draft_id']]
+        if draft['scene_id'] != scene_id:
+            raise ProjectError('NPC model_selector allocation belongs to another scene')
+        if 'model_selectors' not in draft:
+            continue
+        validate(project, draft)
+        requests.append(dict(draft_id=row['draft_id'], **deepcopy(draft['model_selectors'])))
+    return patch_allocated_model_selectors(context, candidate, allocations, requests) if requests else (candidate, None)
+
 
 
 def patch_allocated_model_selectors(context,candidate,allocations,requests):
