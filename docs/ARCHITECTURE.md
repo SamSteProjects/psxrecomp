@@ -6,6 +6,8 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+`importer/audio_bank.py` independently qualifies bounded contiguous/split VAB carriers and program, packed tone and sample-size tables. `sdk/resources.py` and `/api/audio-bank` enforce current scene and physical entry identities; `editor/audio-bank.js` verifies the DTO, owns the read-only filtered table view and withdraws stale sources. Metadata does not establish PCM, playback, instrument mapping or native authoring.
+
 `importer/actor_runtime_capacity.py` qualifies the complete source SCUS/load image and retail function hashes before deriving the static actor-pool bound. `sdk/npc_build.py` assesses appended MAN counts before encoding and includes source evidence in normal package audits. The lower bound rejects guaranteed overflow; it does not resolve scenery/script demand or enable native gameplay acceptance.
 
 `sdk/model_materials.py` exposes a bounded, read-only AssetDB model catalog tied to the active scene source key. `editor/model-material-donor.js` qualifies its DTO and extracts only semantic page/depth/indexed CLUT values from a qualified Current model snapshot. The existing material editor owns requests, draft capture, review and Apply; copied values create no donor runtime dependency or new serialization family. Target geometry, UVs and blend flags retain existing ownership. Packet-group copy constructs source-qualified primitive diffs in a separate candidate draft map, validates the whole resulting batch and budget, then replaces drafts atomically. It preserves group and unrelated primitive contributions.

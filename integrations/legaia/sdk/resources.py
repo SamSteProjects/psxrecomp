@@ -577,3 +577,15 @@ def audio_sequence_preview(project, asset_id, expected_source_key, expected_entr
     return dict(schema_version='legaia.audio-sequence-inspection.v1',asset_id=asset_id,
                 scene_id=project.active_scene,source_key=key,source_record=source,
                 read_only=True,project_changed=False,runtime_state='not_observed',**report)
+
+
+def audio_bank_preview(project, asset_id, expected_source_key, expected_entry_sha256):
+    from importer.audio_bank import read_audio_bank
+    document,key=_scene(project)
+    if expected_source_key!=key:raise ProjectError('Audio bank source changed; refresh resources')
+    with _disc_context(project.disc_path):
+        _verify(project,document)
+        report=read_audio_bank(project.disc_path,asset_id,expected_entry_sha256)
+    if key!=source_key(project):raise ProjectError('Audio bank source changed during inspection')
+    return dict(schema_version='legaia.audio-bank-inspection.v1',asset_id=asset_id,scene_id=project.active_scene,
+                source_key=key,read_only=True,project_changed=False,runtime_state='not_observed',**report)

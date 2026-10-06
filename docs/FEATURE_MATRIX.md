@@ -41,6 +41,14 @@ Validation: 164 Node checks and 160 editor-module syntax checks passed without f
 
 Current overview: [SDK_CURRENT_STATUS.md](SDK_CURRENT_STATUS.md). Its subsystem summary separates current capabilities from historical checkpoints below; full runtime/gameplay acceptance remains incomplete.
 
+## Source VAB bank table inspector checkpoint (2026-10-06)
+
+Audio records now offer **Inspect bank tables** when their complete bank can be independently qualified. The read-only inspector separates all 128 program slots, packed tone pages and size-table sample spans; it supports used-slot/page/search filters, pagination, bounded tone-to-sample navigation and exact metadata download. Packed pages are not assumed to be program slot indices. Each table row and sample span carries its source hash. Current scene/entry/bank identities guard publication; source changes withdraw rows and closed views reject late replies.
+
+The pinned Andrew VAB and split-bank parsers supply format evidence. Of 218 recognized audio entries, 202 have qualified bank tables and 16 retain explicit unavailable reasons. Bank qualification is independent of SEQ container coverage (83 supported sequence carriers, 135 unresolved sequence containers). The frontend decoder accepted all 202 fresh retail reports: 17,264 tone rows and 1,696 sample spans. Source table entry zero stays an uninterpreted spacer; sample operands resolve only when bounded by the one-based source sample table. These facts do not establish waveform validity, pitch, audible duration, runtime instruments, playback or replacement.
+
+Validation: 45 retail-enabled focused Python tests passed without skips/errors/failures; bank DTO/lifecycle and existing asset inspector Node checks passed, as did syntax checks for all three changed editor modules. Actual browsers passed program/tone/sample views, filters/pagination, sample navigation, banks without sequences, hidden unsupported actions, exact download, pending close and wide/narrow layouts without page errors; screenshots inspected. Exact HTTP fields, stale source/hash and unsupported banks were rejected. Project/document/history/files and the reference fixture were unchanged after inspection; native packages before/after were byte-identical (SHA-256 `82fcb1dab13822a5f8d6c88ba018133e42c51d106ba75e07a5e584416f384551`). The initial fixture snapshot incorrectly preceded baseline Build output creation; the repeat separated preservation checks and passed. Private evidence: `local-output/sdk-20260909/audio-bank-20261006/proof.json`, `preservation.json`, `baseline-copy-delta.json`, `retail-banks.json`, `all-source-node.json` and focused logs. No game launch, runtime attachment, installation or full-disc export. Gameplay remains deferred; the full goal remains active.
+
 
 ## 2026-10-06: inspect historical samples from the viewport
 

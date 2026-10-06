@@ -2,7 +2,7 @@
 
 This is the current overview of the buildout, not a claim that the full SDK goal is complete. Detailed dated entries in the [feature matrix](FEATURE_MATRIX.md) and [buildout report](SDK_BUILDOUT_REPORT_20260909.md) retain their original source revisions and acceptance boundaries. Older unsupported-feature statements are historical when a later checkpoint implements the same workflow.
 
-The integrated verification baseline is `5591cc37`, followed by test-maintenance checkpoint `80d330db`. The latest feature adds source-qualified SEQ event inspection to the Audio Asset Database; repeat/ping-pong sampling is implemented in both animation GLB workflows; selected-actor historical coordinate comparison is also implemented. Native runtime and Build implementations are unchanged by these editor/importer additions. Development is continuing solo, with gameplay verification deferred.
+The integrated verification baseline is `5591cc37`, followed by test-maintenance checkpoint `80d330db`. The latest features add source-qualified VAB program/tone/sample table inspection and SEQ event inspection to the Audio Asset Database; repeat/ping-pong sampling is implemented in both animation GLB workflows; selected-actor historical coordinate comparison is also implemented. Native runtime and Build implementations are unchanged by these editor/importer additions. Development is continuing solo, with gameplay verification deferred.
 
 | Subsystem | Current capability | Remaining boundary |
 | --- | --- | --- |

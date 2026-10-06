@@ -121,13 +121,22 @@ def load_audio_asset_catalog(disc, scene):
                                sequence=None, chunks=[], declared_bank_complete=None,
                                container_validated=False, structural_limitations=[str(exc)])
                 partial += 1
+            from .audio_bank import bank_from_entry, inspect_bank
+            try:
+                bank_bytes, bank_pieces, bank_carrier = bank_from_entry(body)
+                bank_report = inspect_bank(bank_bytes)
+                bank_inspection = dict(status='available', reason=None, bank_sha256=bank_report['bank_sha256'],
+                    carrier=bank_carrier, tone_page_count=bank_report['header']['program_count'],
+                    sample_count=len(bank_report['samples']))
+            except ImportError as exc:
+                bank_inspection = dict(status='unavailable', reason=str(exc))
             records.append(dict(semantic_id=f'audio://legaia/prot/{index:04d}', asset_kind='audio', kind='audio',
                 name=f"{decoded['format']} PROT {index:04d}", scope='global-source-audio',
                 source_record=dict(disc=dict(sha256=disc_hash,serial='SCUS-94254'),iso_file='PROT.DAT',
                     prot_entry_index=index,prot_entry_name=mapping.get(index),byte_offset=offset,size_bytes=size,
                     sha256=sha256(body).hexdigest(),boundary='physical-next-TOC-entry'),
                 reference_commit=REFERENCE_COMMIT, confidence='partial', status='partial',
-                playback_assignment='unknown', preview_supported=False, **decoded, limitations=list(LIMITATIONS)))
+                playback_assignment='unknown', preview_supported=False, bank_inspection=bank_inspection, **decoded, limitations=list(LIMITATIONS)))
         result=dict(schema_version='legaia.audio-asset-catalog.v1', scene=scene,
                     reference_commit=REFERENCE_COMMIT, assets=records, asset_count=len(records),
                     unavailable_entries=unavailable, scanned_entry_count=len(archive.entries),
