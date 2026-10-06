@@ -44,4 +44,33 @@ class MeshLibraryTests(unittest.TestCase):
             with self.assertRaisesRegex(ProjectError,'64 MiB'):model_mesh_library.library(p,str(p.root))
         p.model_overrides={};self.assertEqual(model_mesh_library.library(p,str(p.root))['imports'],[])
 
+class MeshComparisonTests(unittest.TestCase):
+    fixture=MeshLibraryTests.fixture
+    def compare(self,p,receipt):
+        catalog=model_mesh_library.library(p,str(p.root))
+        return model_mesh_library.compare_native(p,receipt,str(p.root),catalog['library_key'])
+
+    def test_native_match_later_import_and_retirement_undo(self):
+        from sdk import model_mesh_append,model_face_removal
+        p,asset,raw=self.fixture();receipt=p.model_overrides[asset]['mesh_imports'][0]['receipt_key']
+        result=self.compare(p,receipt);self.assertTrue(result['matches_current']);self.assertEqual(result['imported_face_count'],2);self.assertEqual(result['active_imported_face_count'],2)
+        source=model_face_removal.source(p,asset,'a'*64);face=source['face_topology'][-1];selection=[dict(object_index=face['object_index'],primitive_index=face['current_primitive_index'])]
+        report=model_face_removal.review(p,asset,selection,source['effective_sha256'],'a'*64);p.apply_model_face_removal(asset,selection,source['effective_sha256'],'a'*64,report['proposed_sha256'])
+        held=deepcopy((p._document(),p.undo_stack,p.redo_stack));result=self.compare(p,receipt);self.assertFalse(result['matches_current']);self.assertEqual(result['active_imported_face_count'],1);self.assertEqual(result['retired_imported_face_count'],1);self.assertEqual((p._document(),p.undo_stack,p.redo_stack),held)
+        p.undo();self.assertTrue(self.compare(p,receipt)['matches_current'])
+        source=model_mesh_append.source(p,asset,'a'*64);MeshSourceTests().apply(p,asset,source['topology']['faces'][0]['face_id'],raw,new_group=True)
+        result=self.compare(p,receipt);self.assertFalse(result['matches_current']);self.assertEqual(result['active_imported_face_count'],2);self.assertEqual(result['retired_imported_face_count'],0)
+
+    def test_native_comparison_http_exact_and_stale_context(self):
+        p,asset,raw=self.fixture();catalog=model_mesh_library.library(p,str(p.root));receipt=catalog['imports'][0]['receipt']['receipt_key'];body=dict(receipt_key=receipt,expected_project_path=str(p.root),expected_library_key=catalog['library_key']);held=deepcopy((p._document(),p.undo_stack,p.redo_stack))
+        with http_server(p) as (_,post):
+            status,value=post('/api/mesh-library-native-comparison',body);self.assertEqual(status,200,value);self.assertTrue(value['matches_current'])
+            for extra in ({'receipt_key':'b'*64},{'expected_library_key':'b'*64},{'expected_project_path':'wrong'},{'path':'arbitrary'}):self.assertEqual(post('/api/mesh-library-native-comparison',{**body,**extra})[0],400)
+        self.assertEqual((p._document(),p.undo_stack,p.redo_stack),held)
+        original_library=model_mesh_library.library
+        def mutate(*args):
+            value=original_library(*args);p.mode='live';return value
+        with patch.object(model_mesh_library,'library',side_effect=mutate):
+            with self.assertRaisesRegex(ProjectError,'context changed'):model_mesh_library.compare_native(p,**body)
+
 if __name__=='__main__':unittest.main()

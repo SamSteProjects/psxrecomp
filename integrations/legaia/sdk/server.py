@@ -2294,6 +2294,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                         operation=library if route=='/api/animation-source-library' else library_download if route.endswith('download') else library_removal_review
                         self._json(200,operation(self.server.project,**body))
                     return
+                if route=='/api/mesh-library-native-comparison':
+                    if set(body)!={'receipt_key','expected_project_path','expected_library_key'}:raise ProjectError('Mesh native comparison requires exact fields')
+                    from .model_mesh_library import compare_native
+                    self._json(200,compare_native(self.server.project,**body));return
                 if route in ('/api/mesh-source-library','/api/mesh-library-download'):
                     expected={'expected_project_path'}
                     if route.endswith('download'):expected.update({'receipt_key','expected_library_key'})

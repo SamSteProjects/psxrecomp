@@ -41,3 +41,36 @@ def download(project,receipt_key,expected_project_path,expected_library_key):
     raw=model_mesh_sources.read_source(project,selected['receipt'])
     if value['library_key']!=_key(project):raise ProjectError('Mesh input library changed during download')
     return dict(value,selected=deepcopy(selected),content_base64=base64.b64encode(raw).decode('ascii'))
+
+
+def compare_native(project,receipt_key,expected_project_path,expected_library_key):
+    """Compare complete model bytes and import face lifetime, without replaying writes."""
+    value=library(project,expected_project_path)
+    if value['library_key']!=expected_library_key:raise ProjectError('Mesh input library changed; refresh it')
+    row=next((row for row in value['imports'] if row['receipt']['receipt_key']==receipt_key),None)
+    if row is None:raise ProjectError('Mesh input receipt is absent from Current')
+    from hashlib import sha256
+    from importer.pipeline import _disc_context
+    from importer.model_face_ledger import replay_face_ledger
+    from .model_face_addition import base_content
+    receipt=row['receipt'];asset=receipt['asset_id'];scene=row['scene_id'];disc=project.disc_path
+    if not disc:raise ProjectError('Mesh native comparison requires the matching retail disc')
+    with _disc_context(disc):
+        original=project._model_source(asset,scene);binding=project.model_overrides.get(asset)
+        if not binding or binding.get('format')!='tmd-face-addition-v1':raise ProjectError('Mesh comparison requires the retained native ledger')
+        current=project.read_model_replacement(asset,binding)
+        if not isinstance(current,bytes) or not 1<=len(current)<=4*1024*1024:raise ProjectError('Mesh native comparison requires bounded immutable model bytes')
+        base=base_content(project,asset,original,binding)
+        operations=model_mesh_sources.operations(binding)
+        def prefix(length):
+            return dict(schema_version=binding['ledger']['schema_version'],source_sha256=binding['ledger']['source_sha256'],source_byte_length=binding['ledger']['source_byte_length'],operations=deepcopy(operations[:length]))
+        start=receipt['first_operation'];end=start+receipt['operation_count']
+        _,before=replay_face_ledger(base,prefix(start));historical,after=replay_face_ledger(base,prefix(end));replayed,active=replay_face_ledger(base,binding['ledger'])
+        if replayed!=current or sha256(historical).hexdigest()!=receipt['proposed_sha256']:raise ProjectError('Mesh comparison native ledger differs from the retained input')
+        previous={face['face_id'] for face in before['faces']};created={face['face_id'] for face in after['faces']}-previous;current_faces={face['face_id'] for face in active['faces']}
+        if not created:raise ProjectError('Mesh comparison requires imported face identities')
+        current_hash=sha256(current).hexdigest()
+        report=dict(schema_version='legaia.mesh-source-native-comparison.v1',project_path=value['project_path'],library_key=value['library_key'],receipt_key=receipt_key,scene_id=scene,asset_id=asset,historical_candidate_sha256=receipt['proposed_sha256'],current_sha256=current_hash,current_byte_length=len(current),matches_current=current_hash==receipt['proposed_sha256'],imported_face_count=len(created),active_imported_face_count=len(created&current_faces),retired_imported_face_count=len(created-current_faces),comparison_scope='complete_native_model_and_imported_face_lifetime',face_content_match_asserted=False,project_changed=False,native_content_changed=False,gameplay_verified=False)
+        if project.disc_path!=disc or value['library_key']!=_key(project):raise ProjectError('Mesh native comparison context changed')
+    if project.disc_path!=disc or value['library_key']!=_key(project):raise ProjectError('Mesh native comparison context changed')
+    return report
