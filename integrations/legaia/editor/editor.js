@@ -2929,7 +2929,7 @@ function renderInspector(){
     const presets=document.createElement('button');presets.id='npc-presets-button';presets.textContent='NPC presets...';presets.disabled=busy||!canEdit();presets.onclick=showTemplates;$('delete-npc-draft').before(presets);
     const duplicate=document.createElement('button');duplicate.id='duplicate-npc-draft';duplicate.textContent='Duplicate draft';duplicate.title='Creates an independent draft at the same position, then selects it to move';$('delete-npc-draft').before(duplicate);
     duplicate.onclick=async()=>{const previous=new Set(Object.keys(state.actor_drafts??{}));if(await api('/api/command',{type:'duplicate_actor_draft',entity_id:id,name:npc.name.slice(0,115)+' copy'})){const created=Object.keys(state.actor_drafts??{}).find(key=>!previous.has(key));if(created){selectNpcDraft(created);frameNpcDraft();notify('Draft duplicated at the same position. Move it with X/Z or the viewport handles.');}}};
-    const repeat=document.createElement('button');repeat.id='repeat-npc-draft';repeat.textContent='Repeat draft...';duplicate.after(repeat);repeat.onclick=()=>openDraftRepeat({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,setBusy,api,
+    const repeat=document.createElement('button');repeat.id='repeat-npc-draft';repeat.textContent='Repeat draft...';duplicate.after(repeat);repeat.onclick=()=>openDraftRepeat({entityId:id,entityIds:currentPlacementSelection(),onError:error=>notify(error.message,true),getState:()=>state,isBusy:()=>busy,canEdit,setBusy,api,
       canInspectScene:()=>sceneModelsReady()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection,
       getScenePreview:()=>scenePreview,
       inspectScene:(proposed,report,returnToReview,isCurrent)=>{

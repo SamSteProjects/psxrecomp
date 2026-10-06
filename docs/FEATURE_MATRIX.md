@@ -1,5 +1,34 @@
 # Legaia SDK feature matrix
 
+## Copy selected NPC arrangements - 2026-10-05
+
+**Repeat draft...** now offers **Copy selected NPC arrangement** when the current
+or recalled selection contains at least two same-scene NPC drafts. Mixed selection
+members outside the NPC group are excluded with a count. Copy the arrangement in
+a line or rectangular grid: each member keeps its own retail donor and receives
+the same native-grid offset per repetition, preserving relative X/Z positions.
+Copies receive independent stable IDs and bounded member-derived names. They are
+independent NPC drafts; no parenting, prefab inheritance or runtime spawning is
+asserted. The project-wide 128-draft limit and native coordinate bounds apply.
+
+Review creates no project changes. Detached scene inspection retains original
+entities and each copied member's model binding, with Current/Proposed/Return.
+Source/input changes withdraw the review. Apply adds all copies in one Undo step;
+Redo and Save/Open preserve them through the existing normal Build pipeline.
+
+Offline: 13 focused Python checks and Node proposal/scene contracts pass. A private
+retail browser copied two differently bound NPCs, checked held originals, exact
+relative placement and member-specific geometry, then Apply/Undo/Redo/reload.
+The 540px review was inspected. Normal format-7 Build independently decoded the
+complete candidate MAN and all nine appended records: new record57 is X3392/Z5632,
+model105/animation13; record58 is X3072/Z5632, model111/animation56. Current saved
+receipt and preserved project/history/preexisting files pass. Evidence lives in
+`local-output/sdk-20260909/npc-arrangement-repeat-20261005/` (`project-verified-2`,
+`proof.json`, `normal-build-proof.json`, `arrangement-540.png`). Package SHA-256:
+`88fe43534bacd8dfe12a5d9a9e02d3b56f0d2fc834e636cc2397880056c2f6ab`.
+Gameplay spawning, scheduling, scripts, collision and visibility remain deferred.
+No game launch, install or disc export occurred.
+
 ## Reviewed NPC group retail donor assignment - 2026-10-05
 
 The NPC Inspector now offers **Assign NPC group donor...** for 2 through 128

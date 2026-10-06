@@ -2049,6 +2049,9 @@ class ProjectService:
             from .draft_group import apply as apply_draft_group
             apply_draft_group(self,command)
             return
+        if command.get('type') == 'repeat_actor_drafts':
+            from .draft_repeat_group import apply as apply_draft_arrangement
+            apply_draft_arrangement(self,command);return
         if command.get('type') == 'repeat_actor_draft':
             from .draft_repeat import apply as apply_draft_repeat
             apply_draft_repeat(self,command)
