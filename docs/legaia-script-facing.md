@@ -227,7 +227,7 @@ Normal Build composes the facing nibbles in the final allocated NPC record while
 retaining appearance, dialogue, waits and movement. Compressed package readback
 is verified; a separate own-facing retail streaming package check is pending.
 Preset capture and v6 transfer retain facing-bearing drafts. Authored comparison
-labels remain next.
+labels now identify exact source-qualified facing bytes.
 Evidence: `local-output/sdk-20260909/npc-facing-editor-20261005/proof.json`.
 Gameplay dispatch, branch execution and visible facing require later verification.
 
@@ -245,5 +245,17 @@ checks reject a facing target parked by the preset's own movement.
 Browser transfer/persistence/placement and compressed normal Build readback are
 verified in `local-output/sdk-20260909/npc-facing-presets-20261005/proof.json`.
 The emitted sector and all four earlier NPC-owned families survive transfer.
-Saved-script comparison still treats facing changes as unexplained. Visible facing,
+Saved-script comparison now identifies exact source-qualified facing bytes. Visible facing,
 branch execution and dispatch remain subject to later gameplay verification.
+
+## Compare emitted facing bytes
+
+Open the retail donor/generated NPC comparison for a saved Build matching the
+current project inputs. The byte table labels **Own script facing sector** only
+when the receipt, raw retail and generated records, authored sector and preserved
+flags agree. Ordinary and extended CAM_CFG/nonparked NPC_RUN are qualified.
+Dispatch/context, mode and composed movement remain checked; other changes stay
+unexplained. These byte labels do not establish initial heading or branch execution.
+
+Read-only browser evidence and the narrow table are recorded in
+`local-output/sdk-20260909/npc-facing-script-comparison-20261005/proof.json`.

@@ -1,5 +1,28 @@
 # Legaia SDK validation plan
 
+## Explain NPC-owned facing in saved script comparison - 2026-10-05
+
+The retail-donor/generated-NPC comparison now labels **Own script facing sector**
+for exact source-qualified authored bytes. Receipt rows must match the native
+facing serializer, retail donor/PC/context/hash, current owned sector, final clone
+allocation and separate source/generated offsets. The generated target must remain
+supported after own movement. Typed sectors, full upper flags, opcode/dispatch and
+CAM_CFG mode stay bound. No-op or duplicate/overlapping spans, parked targets and
+forged/stale receipt rows reject. The browser independently checks raw ordinary and
+extended CAM_CFG/NPC_RUN forms and the exact owned nibble. Other bytes remain
+unexplained; labels establish no branch execution or runtime heading.
+
+Validation: 39 focused Python checks and the Node comparison suite pass with the
+retail disc enabled. Read-only actual browser inspection of saved Build
+`2ef03e22f5a78f7b` accounts for 27 of 30 changed bytes across appearance, dialogue,
+waits, movement and facing; three remain unexplained. The 540px comparison table
+was visually inspected. Project document/history and all existing project file
+hashes stayed fixed. Evidence:
+`local-output/sdk-20260909/npc-facing-script-comparison-20261005/proof.json`.
+No Build/Save/authoring command or game launch occurred. A separate own-facing
+retail streaming package check and later gameplay acceptance remain open.
+The full SDK goal remains active/incomplete.
+
 ## Transfer NPC-owned facing presets - 2026-10-05
 
 NPC preset capture now freezes supported own facing sectors alongside appearance,
@@ -21,8 +44,8 @@ source NPCs/imports stayed fixed. Package SHA256:
 `8a4c6fb933dce117e9796c2a2ad35944ada8db6f7eab37aaac2cfc6dbdc65524`.
 Evidence: `local-output/sdk-20260909/npc-facing-presets-20261005/proof.json`.
 No game launched. Visible facing, dispatch and branch execution still need later
-gameplay acceptance. Facing explanations in saved-script comparison remain next;
-a separate own-facing retail streaming package check is also pending.
+gameplay acceptance. Facing explanations in saved-script comparison are now supported, as recorded
+above. A separate own-facing retail streaming package check is still pending.
 The full SDK goal remains active/incomplete.
 
 ## Independently author NPC script facing - 2026-10-05
@@ -39,7 +62,7 @@ are unavailable, and movement review rejects parking a target with an owned faci
 override. Normal compressed/streaming MAN composition applies facing after movement,
 uses final clone allocation and records npc_facing_changes. Repetition qualifies and
 retains own facing. Preset capture and v6 transfer now retain facing; see the latest
-checkpoint above. Saved-script authored-span explanations remain next.
+checkpoints above. Saved-script facing explanations are also now supported.
 
 Validation: 45 focused Python checks and two Node suites pass. Actual root editor
 Review/Apply/withdrawal/Clear/history/persistence and the inspected 540px dialog

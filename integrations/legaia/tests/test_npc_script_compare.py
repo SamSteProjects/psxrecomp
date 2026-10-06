@@ -50,4 +50,29 @@ class ScriptComparisonTests(unittest.TestCase):
             forged=deepcopy(metadata);forged['npc_movement_changes']['changes']*=2
             with self.assertRaises(ProjectError):authored_spans(forged,'npc-a',retail,generated,draft)
 
+    def test_facing_spans_source_flags_dispatch_and_composed_parked_guards(self):
+        from copy import deepcopy
+        from test_npc_facing import NpcFacingTests,ACTOR
+        from sdk.npc_facing import patch_allocated_facing
+        from importer.man_layout import read_man_layout
+        for instruction in (b'\x38\xa3\x80',b'\xb8\x07\xa3\x80',b'\x4c\x51\0\x80\xb3\x09',b'\xcc\x07\x51\0\x80\xb3\x09'):
+            context,candidate,allocations,target=NpcFacingTests().fixture(instruction);values=dict(sector=7)
+            result,audit=patch_allocated_facing(context,candidate,allocations,[dict(draft_id='npc-a',donor_entity_id=ACTOR,entries={target['semantic_id']:values})])
+            offset,raw,entry=context._source.verified_record(ACTOR);index=allocations['drafts'][0]['record_index'];final=next(r for r in read_man_layout(result)['records'] if r['partition']==1 and r['record_index']==index);start,length=final['byte_offset'],final['byte_length']
+            retail=dict(self.record(raw,entry),byte_offset=offset,record_index=1);generated=dict(self.record(result[start:start+length],entry),byte_offset=start,record_index=index);draft=dict(donor_entity_id=ACTOR,facing=dict(donor_entity_id=ACTOR,entries={target['semantic_id']:values}));metadata={'npc_facing_changes':audit}
+            spans=authored_spans(metadata,'npc-a',retail,generated,draft);self.assertEqual(len(spans),1);self.assertEqual(spans[0]['category'],'own_facing');self.assertEqual(spans[0]['byte_length'],1)
+            for change in (dict(pc=True),dict(record_index=1),dict(donor_entity_id='wrong'),dict(facing_id='wrong'),dict(source_record_sha256='0'*64),dict(mnemonic='UNKNOWN'),dict(target_context=255),dict(record_relative_byte_offset=0),dict(after_sector=0),dict(field='flags'),dict(before_byte=0)):
+                forged=deepcopy(metadata);forged['npc_facing_changes']['changes'][0].update(change)
+                with self.assertRaises(ProjectError):authored_spans(forged,'npc-a',retail,generated,draft)
+            for changed in ({},dict(sector=3),dict(sector=True)):
+                forged=deepcopy(draft);forged['facing']['entries'][target['semantic_id']]=changed
+                with self.assertRaises(ProjectError):authored_spans(metadata,'npc-a',retail,generated,forged)
+            forged=deepcopy(metadata);forged['npc_facing_changes']['changes']*=2
+            with self.assertRaises(ProjectError):authored_spans(forged,'npc-a',retail,generated,draft)
+            changed=bytearray(bytes.fromhex(generated['raw_hex']));pc=target['pc'];header=2 if target['target_context'] is not None else 1
+            if target['mnemonic']=='NPC_RUN':changed[pc+header+1:pc+header+3]=b'\xff\xff'
+            else:changed[pc+header+1]=0
+            bad=dict(self.record(bytes(changed),entry),byte_offset=start,record_index=index)
+            with self.assertRaises(ProjectError):authored_spans(metadata,'npc-a',retail,bad,draft)
+
 if __name__=='__main__':unittest.main()
