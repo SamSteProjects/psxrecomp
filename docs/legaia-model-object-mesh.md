@@ -53,3 +53,15 @@ is incompatible. Review lists the original retired face count and selected
 objects; changing the mode invalidates it. Each group retains its chosen donor's
 native layout and texture binding. Shared asset instances, historical budgets,
 qualified pose limits and normal Build behavior remain as described above.
+
+## Frame imported geometry
+
+Both the single-donor importer and Map GLB section donors expose **Camera
+framing** after Review. **Shared visible geometry** keeps Current and Proposed
+at one common scale. **Visible geometry in this layer** frames only vertices
+referenced by its rendered triangles, making replacements easier to inspect
+when retired geometry leaves unused native vectors. **All stored vertices in
+this layer** includes those unused rows. **Frame mesh** resets zoom without
+resetting orbit. Switching layers or framing preserves the reviewed candidate;
+these camera controls do not author coordinates, change native bounds or add
+history entries. Other surviving objects remain part of the visible model frame.

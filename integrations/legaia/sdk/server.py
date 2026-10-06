@@ -836,6 +836,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-object-allocation.js": ("model-object-allocation.js", "text/javascript"),
                  "/model-mesh-append.js": ("model-mesh-append.js", "text/javascript"),
                  "/model-mesh-batch.js": ("model-mesh-batch.js", "text/javascript"),
+                 "/model-preview-frame.js": ("model-preview-frame.js", "text/javascript"),
                  "/model-allocation.js": ("model-allocation.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),

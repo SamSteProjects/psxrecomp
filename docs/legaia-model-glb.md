@@ -608,3 +608,15 @@ outside GLB import. Earlier position/UV and RGB milestones retain their dated ev
 ## Face-removal bindings
 
 Models with `tmd-face-removal-v1` overrides now use `legaia.model-glb-binding.v2` sidecars and `legaia.model-glb-review.v2` reviews. Each carries the exact sorted removed Retail identities. Export and import profiles bind the reduced Current packet layout, while final candidate qualification uses actual Retail bytes and that removal set. The review includes every removed Retail face exactly once and permits only supported typed Current fields as pending edits. V1 bindings remain valid for models without removal. Export again after any source/removal change; GLB topology insertion/allocation remains unsupported. Apply uses the ordinary model override/history/Build path and retains prior material/reference edits. Native gameplay appearance remains deferred.
+
+## Frame imported geometry
+
+Both the single-donor importer and Map GLB section donors expose **Camera
+framing** after Review. **Shared visible geometry** keeps Current and Proposed
+at one common scale. **Visible geometry in this layer** frames only vertices
+referenced by its rendered triangles, making replacements easier to inspect
+when retired geometry leaves unused native vectors. **All stored vertices in
+this layer** includes those unused rows. **Frame mesh** resets zoom without
+resetting orbit. Switching layers or framing preserves the reviewed candidate;
+these camera controls do not author coordinates, change native bounds or add
+history entries. Other surviving objects remain part of the visible model frame.

@@ -1,5 +1,29 @@
 # Legaia SDK feature matrix
 
+## Visible geometry framing for GLB comparisons - 2026-10-06
+
+Single-donor and mapped-section GLB dialogs now expose **Camera framing** and
+**Frame mesh**. The default shared frame covers visible triangles in both
+Current and Proposed at the same scale. Active-layer visible framing ignores
+unused vertex rows, including rows retained after object/group retirement.
+Stored-vertex framing remains available to inspect their full native extent.
+Frame mesh resets zoom while retaining orbit. These are display controls: they
+preserve Review, native coordinates/bounds, authored geometry and history.
+
+Validation passed 13 focused Python workflow/scene cases and two Node suites for
+framing and existing scene cameras. Actual retail HTTP Reviews exercised both
+dialogs, all three frame modes, shared layer switching, zoom reset, and inspected
+desktop / 540-pixel captures. In the mapped Town01 model0036 proposal, retiring
+177 faces across two objects changed the useful visible radius to 70.7107 from
+the stored-vector radius 429.2534; the retained native vectors remain untouched.
+Camera actions issued no API requests, Apply was not used, and all private
+project-file hashes, document state and Undo history remained unchanged.
+
+Evidence: `local-output/sdk-20260909/model-visible-frame-20261006/proof.json`
+and `validated/` captures/reports. No game launch, mod installation or new Build
+was required for this camera-only change. Gameplay acceptance remains deferred;
+the complete SDK goal remains active and incomplete.
+
 ## Replace mapped objects with per-section native materials - 2026-10-06
 
 **Map GLB section donors** now offers **Replace all existing geometry in mapped
