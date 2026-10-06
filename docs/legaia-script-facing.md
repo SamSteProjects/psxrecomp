@@ -205,7 +205,7 @@ a parked movement target rejects facing authoring. Source header/context, full
 facing preimage and CAM_CFG mode checks also apply to no-op requests.
 
 Project commands, NPC Inspector controls and normal Build composition are now
-wired; see the authoring workflow below. Preset transfer remains pending. It establishes
+wired; see the authoring workflow below. Preset transfer is supported through v6, as described below. It establishes
 no initial or live Transform heading. Focused checks and the private retail
 post-append/composition proof are recorded in
 `local-output/sdk-20260909/npc-facing-native-20261005/proof.json`. No game ran.
@@ -226,7 +226,24 @@ target rejects. Clear facing before changing its recorded script donor.
 Normal Build composes the facing nibbles in the final allocated NPC record while
 retaining appearance, dialogue, waits and movement. Compressed package readback
 is verified; a separate own-facing retail streaming package check is pending.
-Preset capture currently rejects facing-bearing drafts rather than dropping the
-field. Facing preset transfer and authored comparison labels remain next.
+Preset capture and v6 transfer retain facing-bearing drafts. Authored comparison
+labels remain next.
 Evidence: `local-output/sdk-20260909/npc-facing-editor-20261005/proof.json`.
 Gameplay dispatch, branch execution and visible facing require later verification.
+
+## Capture and transfer facing-bearing NPC presets
+
+Capture the selected NPC through **NPC draft presets**, then **Export preset JSON**.
+Facing-bearing files use `legaia.npc-preset-file.v6` and include the NPC's own
+facing, movement, waits, appearance and dialogue metadata when present. Earlier
+preset versions keep their existing formats. The file contains no retail bytes.
+Import through the preset library, Review and Import, then separately Review a new
+NPC instance in the owning scene. Facing sectors stay bound to the retail script
+donor and remain independent of the later source NPC. Fresh transfer and placement
+checks reject a facing target parked by the preset's own movement.
+
+Browser transfer/persistence/placement and compressed normal Build readback are
+verified in `local-output/sdk-20260909/npc-facing-presets-20261005/proof.json`.
+The emitted sector and all four earlier NPC-owned families survive transfer.
+Saved-script comparison still treats facing changes as unexplained. Visible facing,
+branch execution and dispatch remain subject to later gameplay verification.

@@ -1,5 +1,30 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Transfer NPC-owned facing presets - 2026-10-05
+
+NPC preset capture now freezes supported own facing sectors alongside appearance,
+dialogue, waits and movement. Facing-bearing exports use **legaia.npc-preset-file.v6**;
+v1-v5 retain their existing formats and bounds. V6 contains bounded source-bound
+metadata only. Export/import and instance placement freshly qualify the facing
+against the same donor and its own movement-composed record; parked targets reject.
+The import/placement dialogs show facing counts and require separate reviewed Apply.
+Frozen presets stay independent of later source NPC edits. History and Save/Open
+retain exact facing metadata without changing existing actors or imported scenes.
+
+Validation: 37 focused Python checks and two Node suites pass. Actual editor
+capture/download/upload, reviewed library import, changed-input withdrawal,
+Undo/Redo, Save/reload and reviewed detached-scene placement passed. The 540px
+import dialog was visually inspected. Recipient normal Build `2ef03e22f5a78f7b`
+was independently reopened: sector0 and upper flags, X3200/Z5696/selector10,
+wait11, own text and model105/animation13 all survived. Placement was X3200/Z5824;
+source NPCs/imports stayed fixed. Package SHA256:
+`8a4c6fb933dce117e9796c2a2ad35944ada8db6f7eab37aaac2cfc6dbdc65524`.
+Evidence: `local-output/sdk-20260909/npc-facing-presets-20261005/proof.json`.
+No game launched. Visible facing, dispatch and branch execution still need later
+gameplay acceptance. Facing explanations in saved-script comparison remain next;
+a separate own-facing retail streaming package check is also pending.
+The full SDK goal remains active/incomplete.
+
 ## Independently author NPC script facing - 2026-10-05
 
 NPC Inspector and registered Asset Details now offer **Edit NPC script facing**.
@@ -13,8 +38,8 @@ Facing qualifies the NPC's own movement-composed record. Parked NPC_RUN targets
 are unavailable, and movement review rejects parking a target with an owned facing
 override. Normal compressed/streaming MAN composition applies facing after movement,
 uses final clone allocation and records npc_facing_changes. Repetition qualifies and
-retains own facing. Preset capture currently rejects facing-bearing drafts; facing
-transfer and saved-script authored-span explanations remain next.
+retains own facing. Preset capture and v6 transfer now retain facing; see the latest
+checkpoint above. Saved-script authored-span explanations remain next.
 
 Validation: 45 focused Python checks and two Node suites pass. Actual root editor
 Review/Apply/withdrawal/Clear/history/persistence and the inspected 540px dialog
@@ -54,7 +79,7 @@ to the post-append/composition baseline. Project document, history and existing 
 hashes stayed unchanged. Evidence:
 `local-output/sdk-20260909/npc-facing-native-20261005/proof.json`.
 Project commands, editor controls and normal Build integration have now landed;
-see the latest checkpoint above. Preset transfer remains next. No Build, export or game launch
+see the latest checkpoints above, including v6 preset transfer. No Build, export or game launch
 occurred. Manual gameplay remains deferred; the full SDK goal is active/incomplete.
 
 ## Inspect NPC-owned movement targets in the scene - 2026-10-05

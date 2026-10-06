@@ -156,4 +156,39 @@ class NpcPresetTests(unittest.TestCase):
             with self.assertRaises((ProjectError,NativeError)):transfer_review(target,json.dumps(forged),'Wrong opcode field')
             self.assertEqual((target._document(),target.undo_stack,target.redo_stack),before)
 
+    def test_owned_facing_v6_frozen_transfer_placement_and_movement_coupling(self):
+        from importer.facing_authoring import FacingAuthoringContext
+        from importer.movement_authoring import MovementAuthoringContext
+        from test_importer_dialogue_authoring import fixture
+        from test_wait_authoring import END
+        from sdk.npc_facing import review as facing_review
+        context=FacingAuthoringContext(fixture(b'\x4c\x51\0\x80\xb3\x09'+END)[0]);movement=MovementAuthoringContext(context._source)
+        face=context.options(self.donor)['targets'][0]['semantic_id'];move=movement.options(self.donor)['targets'][0]['semantic_id'];p=self.p
+        disc=p.root/'fixture.bin';disc.write_bytes(b'synthetic');p.disc_path=str(disc)
+        with patch.object(ProjectService,'_facing_context',return_value=context),patch.object(ProjectService,'_movement_context',return_value=movement),patch('importer.pipeline._disc_context',side_effect=lambda _:nullcontext()),patch('importer.pipeline.import_scene',return_value=self.doc):
+            request=dict(entity_id=self.original,entries={face:dict(sector=7)});result=facing_review(p,request);p.command(dict(type='set_actor_draft_facing',**request,review_key=result['review_key']))
+            p.command(dict(type='create_npc_preset',entity_id=self.original,name='Facing guard'));template=next(t for t in p.actor_templates.values() if t['name']=='Facing guard');frozen=deepcopy(template)
+            reset=dict(entity_id=self.original,entries={});result=facing_review(p,reset);p.command(dict(type='set_actor_draft_facing',**reset,review_key=result['review_key']));self.assertEqual(template,frozen)
+            value=export_file(p,template['id']);self.assertEqual(value['schema_version'],'legaia.npc-preset-file.v6');content=json.dumps(value)+' '*9000;self.assertEqual(parse(content),value)
+            for version in range(1,6):
+                with self.assertRaises(ProjectError):parse(json.dumps(dict(value,schema_version=f'legaia.npc-preset-file.v{version}')))
+            target=ProjectService(p.root/'facing-recipient');target.import_metadata(self.doc);target.disc_path=p.disc_path;before=deepcopy(target._document());report=transfer_review(target,content,'Transferred facing');self.assertEqual(target._document(),before)
+            target.command(dict(type='import_actor_template',content=content,name='Transferred facing',review_key=report['review_key']));self.assertFalse(target.actor_drafts)
+            request=dict(template_id=report['template']['id'],name='Facing instance',position=dict(x=192,z=576),expected_source_key=source_key(target));instance=review(target,request);self.assertEqual(instance['draft']['facing'],frozen['components']['NpcDraft']['facing'])
+            target.command(dict(type='instantiate_npc_preset',**request,review_key=instance['review_key']));self.assertEqual(ProjectService.open(target.save()).actor_drafts,target.actor_drafts);target.undo();self.assertFalse(target.actor_drafts);target.redo();self.assertEqual(target.actor_drafts[instance['entity_id']],instance['draft'])
+            before=deepcopy((target._document(),target.undo_stack,target.redo_stack))
+            for fields in (dict(sector=True),dict(sector=8),dict(sector=-1),dict(sector=1,flags=0)):
+                forged=deepcopy(value);forged['template']['components']['NpcDraft']['facing']['entries'][face]=fields
+                with self.assertRaises(ProjectError):transfer_review(target,json.dumps(forged),'Forged facing')
+            forged=deepcopy(value);forged['template']['components']['NpcDraft']['facing']['entries']={face[:-4]+'ffff':dict(sector=0)}
+            with self.assertRaises((ProjectError,NativeError)):transfer_review(target,json.dumps(forged),'Missing facing target')
+            forged=deepcopy(value);forged['template']['components']['NpcDraft']['movement']=dict(donor_entity_id=self.donor,entries={move:dict(x=16384,z=16384)})
+            with self.assertRaises((ProjectError,NativeError)):transfer_review(target,json.dumps(forged),'Parked facing')
+            # A forged stored template is also requalified at placement, not just import.
+            target.actor_templates[report['template']['id']]['components']['NpcDraft']['movement']=deepcopy(forged['template']['components']['NpcDraft']['movement'])
+            invalid_request=dict(request,name='Parked instance',expected_source_key=source_key(target))
+            with self.assertRaises((ProjectError,NativeError)):review(target,invalid_request)
+            target.actor_templates[report['template']['id']].get('components')['NpcDraft'].pop('movement')
+            self.assertEqual((target._document(),target.undo_stack,target.redo_stack),before)
+
 if __name__=='__main__':unittest.main()

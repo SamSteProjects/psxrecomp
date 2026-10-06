@@ -92,7 +92,8 @@ class NpcFacingTests(TestCase):
                 from sdk.draft_repeat import preview as repeat_preview
                 repeated=repeat_preview(p,dict(entity_id=id,count=1,step=dict(x=64,z=0),name='Facing copy'))
                 self.assertEqual(repeated['copies'][0]['draft']['facing'],after[id]['facing'])
-                with self.assertRaisesRegex(ProjectError,'preset capture'):p.command(dict(type='create_npc_preset',entity_id=id,name='Cannot omit facing'))
+                p.command(dict(type='create_npc_preset',entity_id=id,name='Facing resident'))
+                self.assertEqual(next(iter(p.actor_templates.values()))['components']['NpcDraft']['facing'],after[id]['facing'])
                 parked=dict(entity_id=id,entries={move:dict(x=16384,z=16384)})
                 with self.assertRaises((ProjectError,ImportError)):movement_review(p,parked)
                 self.assertEqual(p.actor_drafts,after)
