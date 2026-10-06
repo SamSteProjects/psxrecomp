@@ -1,7 +1,7 @@
 """Readonly GLB display-material use mapped through freshly qualified native corners."""
 from hashlib import sha256
 from importer.animation_glb import _read_glb
-from importer.model_glb import _Accessors,CORNER_ID,_integer
+from importer.model_glb import _Accessors,CORNER_ID,_integer,source_object_identity
 from importer.model_primitives import inspect_model_primitives
 from importer.texture_glb_dependencies import inspect_glb_dependencies
 from .project import ProjectError,digest
@@ -33,9 +33,9 @@ def _face_rows(current,content,material_index):
     owners={};triangles={}
     for node in doc['nodes']:
         if 'mesh' not in node:continue
-        # Names, mesh ownership, accessor aliases and triangle topology have already
+        # Source identities, mesh ownership, accessor aliases and topology have already
         # passed the existing complete native GLB importer in _qualified.
-        object_index=int(node['name'].split('-')[1])
+        object_index=source_object_identity(node,len(inspection['objects']))
         for primitive in doc['meshes'][node['mesh']]['primitives']:
             corners=reader.read(primitive['attributes'].get(CORNER_ID),1,'source corner IDs')
             indices=[r[0] for r in reader.read(primitive['indices'],1,'indices',True)] if 'indices' in primitive else list(range(len(corners)))

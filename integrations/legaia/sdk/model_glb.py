@@ -25,6 +25,7 @@ BINDING_KEYS = {'schema_version', 'asset_id', 'scene_id', 'source_sha256',
 QUANTIZATION_KEYS = {'vertex_max_error', 'uv_max_error', 'color_max_error', 'normal_max_error',
                      'quantized_component_count'}
 LIMITATIONS = [
+    'Preserved source-object tags identify renamed or reordered nodes; canonical object-N names are the legacy fallback. Conflicting or duplicate identities reject.',
     'Existing object, vertex and primitive layout only; no insertion or allocation.',
     'Existing packet corner references may select existing vertices in the same object; counts and capacities remain unchanged.',
     'Source vertex and stored normal coordinates, UVs and qualified raw RGB attributes are rounded to their existing integer domains.',

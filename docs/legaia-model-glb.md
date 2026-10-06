@@ -696,3 +696,21 @@ assets. Older snapshots created without mesh sources are not repaired implicitly
 
 The same capture routine serves export input snapshots and editable recovery
 copies. Synthetic snapshot/recovery checks do not generate a retail disc export.
+
+
+## Renamed or reordered source object nodes
+
+The fixed-layout **Edit model through GLB** workflow now accepts readable node
+names and reordered node/mesh indices when exported
+`extras.source_object.object_index` tags are preserved. Source tags identify
+native objects; readable names do not create semantic object identities.
+Unnamed tagged nodes also work. If a tag is absent, preserve its canonical
+`object-N` name. A canonical name that contradicts a tag rejects, as do malformed,
+duplicate or out-of-range tags. Renaming untagged nodes remains unqualified.
+
+Retain all source vertex/corner/normal/material attributes, their repeated aliases,
+the flat scene and existing native layout. This change does not bake unapplied
+transforms, add hierarchy or allocate geometry. Use a fresh binding, Review,
+Inspect proposed model, close to Return, then Apply. GLB image-to-native-face
+selection uses the same object resolver after qualifying the complete unchanged
+native model. The ordinary command, Undo/Redo, Save/Open and Build paths apply.

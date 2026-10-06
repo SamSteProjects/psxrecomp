@@ -47,7 +47,7 @@ LIMITATIONS = [
     'Edit stored signed-i16 normal XYZ through _LEGAIA_SOURCE_NORMAL in retail [x,y,z] axes, without the POSITION Y flip or normalization; display NORMAL is ignored.',
     'Unlit corners retain normal XYZ sentinel [32768,32768,32768] and normal index -1; no normal tables or slots are allocated.',
     'No added or removed faces, skinning, animation, hierarchy or unapplied object transforms are imported.',
-    'Keep all source identity attributes; import in Blender with Merge Vertices disabled and export custom attributes enabled.',
+    'Keep source-object tags (or object-N names) and all source identity attributes; import in Blender with Merge Vertices disabled and export custom attributes enabled.',
     'Duplicate seam and quad corners must agree after source-domain quantization.',
     'Edit exact stored CLUT/TPage words and shared group ABE through _LEGAIA_SOURCE_MATERIAL; reserved CLUT, TPage ABR and reserved bits survive. Untextured words remain -1.',
     'Material edits retain source UV crop conversion; fresh candidate previews reassociate textures. Display materials and images are not edit authority.',
@@ -337,6 +337,29 @@ def _profile(profile, data, inspection, geometry, triangles):
     return crops, color_enabled, references_enabled, normals_enabled, normal_references_enabled, materials_enabled
 
 
+def source_object_identity(node, object_count):
+    """Resolve preserved source tags, with canonical name-only legacy fallback."""
+    name = node.get('name', '')
+    if not isinstance(name, str):
+        raise ImportError('Model GLB node display name must be a string')
+    match = re.fullmatch(r'object-(0|[1-9][0-9]*)', name)
+    if match and len(match.group(1)) > 4:
+        raise ImportError('Model GLB source object name exceeds source bounds')
+    named_identity = int(match.group(1)) if match else None
+    extras = node.get('extras', {})
+    if isinstance(extras, dict) and 'source_object' in extras:
+        source_object = extras['source_object']
+        if (not isinstance(source_object, dict) or 'extensions' in source_object or
+                type(source_object.get('object_index')) is not int):
+            raise ImportError('Model GLB source object metadata is malformed')
+        identity = source_object['object_index']
+        if named_identity is not None and named_identity != identity:
+            raise ImportError('Model GLB source object metadata conflicts with its name')
+    else:
+        identity = named_identity
+    return _integer(identity, 0, object_count - 1, 'source object identity')
+
+
 def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tuple[bytes, dict]:
     """Recover qualified source mesh/material fields; reject topology and alias conflicts."""
     inspection, vectors, geometry, triangles = _source(effective_tmd)
@@ -389,16 +412,10 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
 
     for node in nodes:
         node = _object(node, 'source object node')
-        match = re.fullmatch(r'object-(0|[1-9][0-9]*)', node.get('name', '') if isinstance(node.get('name'), str) else '')
-        if not match:
-            raise ImportError('Model GLB nodes must retain their object-N source names')
-        identity = int(match.group(1))
+        identity = source_object_identity(node, len(inspection['objects']))
         if identity not in triangles or identity in seen_objects:
             raise ImportError('Model GLB source object identity is missing or duplicated')
         seen_objects.add(identity)
-        source_object = node.get('extras', {}).get('source_object') if isinstance(node.get('extras', {}), dict) else None
-        if source_object is not None and (not isinstance(source_object, dict) or type(source_object.get('object_index')) is not int or source_object['object_index'] != identity):
-            raise ImportError('Model GLB source object metadata conflicts with its name')
         if node.get('children') or any(key in node for key in ('skin', 'camera', 'weights')):
             raise ImportError('Model GLB source hierarchy, skinning and morph weights are unsupported')
         for key, default in (('translation', [0, 0, 0]), ('rotation', [0, 0, 0, 1]),

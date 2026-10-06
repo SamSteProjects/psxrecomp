@@ -1,5 +1,34 @@
 # Legaia SDK feature matrix
 
+## 2026-10-06 checkpoint: model GLB object identity survives external names
+
+Fixed-layout model GLB editing now resolves preserved source-object tags before
+canonical object-N name fallback. Tagged nodes may be renamed, unnamed, reordered
+or use reordered mesh indices. Malformed, duplicated and out-of-range identities
+and canonical name/tag contradictions reject. The existing flat scene, complete
+object coverage, topology, transform and source alias checks remain unchanged.
+Material image-to-native-face selection uses the same resolver after its complete
+Current model qualification; source tags do not establish retail ownership.
+
+Validation: 35 focused Python checks passed with the retail disc configured;
+both model GLB Node checks passed. A private town01 model went through the actual
+resource browser and Review/Pose/Return/Apply. Native commands remained one history
+step, with exact Undo/Redo and Save/Open. Renamed baseline no-op, material-face
+qualification, conflicting tag rejection, wrong Review rejection and stale binding
+rejection also passed. Normal Build `84131c7a8e37f333` produced package SHA-256
+`c912aeb56aaa12c18e739e4a8c5c5abd33badf8f423ca89854ed9295c76ff3d7`. Independent native TMD
+readback matched `b67a8c302a03a9586f80996e64ec6c03b2160f4bb4f836417457aad98cd1c3db` exactly;
+neighbor decoded bytes and imported/retail data stayed unchanged.
+
+Evidence: `local-output/sdk-20260909/model-glb-node-identity-20261006/proof.json`,
+`browser-proof.json`, `proposed-model.png` and `review-returned.png`.
+The first browser check stopped before Apply on an incorrect proof-only close
+selector; terminal state and unchanged saved native data were verified before
+correcting it and completing the workflow. No game launched. Manual visual
+acceptance remains deferred; the complete SDK goal remains active. This feature
+does not add model hierarchy, arbitrary packet allocation or skeletal skinning.
+
+
 ## 2026-10-06 checkpoint: external animation time sampling
 
 Implemented optional external GLB sampling in both imported and retained animation

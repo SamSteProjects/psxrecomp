@@ -731,3 +731,16 @@ receipts validate and retain the choice; historical input remains distinct from
 current native replay authority. `animation-glb-sampling.js` shares controls and
 validation between both animation dialogs, with fresh Review required after
 changes. Native playback timing and skeletal retargeting remain separate gaps.
+
+
+### Model GLB source-object identity (2026-10-06)
+
+`importer.model_glb.source_object_identity` resolves preserved object-index tags
+before canonical object-N name fallback. Tagged nodes may be renamed, unnamed or
+reordered; canonical tag/name contradictions and invalid indices reject. The
+fixed-layout importer still validates unique complete native object coverage,
+flat scene ownership, source aliases, topology, transforms and packet fields.
+Source metadata selects an existing object, never retail ownership or capacity.
+Material-face selection shares this resolver after complete Current no-op GLB
+qualification, so renamed inputs cannot diverge between geometry and material
+workflows. Binding schemas and native command formats remain unchanged.
