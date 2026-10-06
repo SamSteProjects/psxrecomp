@@ -1,5 +1,31 @@
 # Legaia SDK feature matrix
 
+## NPC-owned branch destination serialization foundation - 2026-10-05
+
+Appended NPC records now have a native branch-word serializer using the existing
+source-qualified BranchAuthoringContext. It resolves final clone allocations,
+qualifies each clone against immutable donor graph anchors and composes complete
+branch requests together. Original opcodes, dispatch contexts, branch conditions,
+selectors, word preimages and record boundaries stay held. Targets must be reached
+source instruction or atomic message starts; opaque/interior targets reject.
+Original source spans remain retained when edited edges make them unreachable.
+Branch composition belongs after other qualified NPC operand edits.
+
+Validation: 13 focused Python checks pass with the retail fixture enabled.
+Synthetic cases cover ordinary/extended supported family words, two independent
+clones, final offsets, no-op preimages, invalid types/owners and changed conditions
+or selectors. A fresh retail Town01 donor0040 two-clone proof changes the qualified
+SYSFLAG_TEST at PC14 to source boundaries11/12, preserving appearance, waits,
+movement, flags, the source donor, MAN structure, every unrelated byte and project
+files/history. Evidence:
+`local-output/sdk-20260909/npc-branches-native-20261005/proof.json`.
+
+This is a serialization foundation. Project review/history, editor controls,
+normal Build, portable presets and saved-script explanations are not yet connected.
+Branch activation, termination and story reachability remain unknown. No game
+launch or full-disc export occurred. Manual acceptance stays deferred and the full
+SDK goal remains active/incomplete.
+
 ## Portable NPC presets retain qualified flag-bit overrides - 2026-10-05
 
 NPC preset capture now freezes source-qualified flag entries alongside appearance,
