@@ -74,3 +74,12 @@ export function historicalRuntimePositions(input,context){
  const nodes=review.nodes.filter(node=>['x','y','z'].every(axis=>Number.isFinite(node.observed_position[axis])&&Math.abs(node.observed_position[axis])<=1e8));
  return {review,nodes,skipped:review.nodes.length-nodes.length};
 }
+
+// Rebuild the comparison from validated files; never trust imported comparison rows.
+export function historicalRuntimeComparisonPositions(before,after,context,layer='both'){
+ if(!['both','baseline','comparison'].includes(layer))throw new Error('Choose both, baseline or comparison historical samples.');
+ const comparison=compareRuntimeReviews(before,after),a=historicalRuntimePositions(comparison.before,context),b=historicalRuntimePositions(comparison.after,context);
+ const nodes=[...(layer==='comparison'?[]:a.nodes.map(node=>({...node,sample_layer:'baseline'}))),...(layer==='baseline'?[]:b.nodes.map(node=>({...node,sample_layer:'comparison'})))];
+ const beforeById=new Map(a.nodes.map(node=>[node.runtime_node_id,node])),pairs=layer==='both'?b.nodes.flatMap(node=>{const first=beforeById.get(node.runtime_node_id);return first&&['x','y','z'].some(axis=>first.observed_position[axis]!==node.observed_position[axis])?[{runtime_node_id:node.runtime_node_id,before:first.observed_position,after:node.observed_position}]:[];}):[];
+ return {comparison,review:comparison.before,nodes,pairs,layer,skipped:(layer==='comparison'?0:a.skipped)+(layer==='baseline'?0:b.skipped)};
+}

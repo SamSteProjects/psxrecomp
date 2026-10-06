@@ -1,5 +1,14 @@
 # Saved runtime node review
 
+## Compare files spatially — 2026-10-06
+
+After comparing two saved reviews in the dialog, choose **Show historical comparison positions** while their matching scene is loaded in Edit mode. Use **Historical samples** to show Both files, Baseline (blue) or Comparison (amber). Complete XYZ samples appear independently; skipped counts follow the selected layer. Dashed lines join differing complete samples sharing a declared key. File-only keys are unconnected. Lines do not establish movement paths, actor identity, a common process or capture order. Missing heights remain unknown.
+
+**Frame historical positions** fits the chosen layer while preserving camera angles and scene visibility; an empty layer disables framing. **Return to historical review** reopens the full comparison table and evidence. Clear, source-change withdrawal and the read-only/nonpersistent rules remain unchanged. These are file metadata displays, never accepted Live correlation. Both files must pass the existing scene/epoch/profile comparison guards.
+
+Node guards, a retail-source browser with synthetic files and the existing single-review browser workflow passed. Wide/narrow comparison screenshots were inspected, with no page errors or retained authored changes. Evidence: `local-output/sdk-20260909/historical-runtime-comparison-viewport-20261006/final-pass/proof.json`. No real runtime or gameplay verification occurred. This supersedes the earlier statement that comparison has no camera authority: explicit Frame now affects only the editor camera.
+
+
 ## Historical viewport display — 2026-10-06
 
 Open a saved review while the matching scene is loaded in Edit mode, then choose **Show historical positions**. Complete XYZ samples within the supported display range appear as dashed amber markers. Unknown axes are skipped rather than placed on an invented ground plane. The count includes skipped samples. File-declared scene/epoch and unconfirmed identity remain explicit; schema validation does not authenticate the file or its coordinates. Markers include occluded samples and never select or bind imported actors.
