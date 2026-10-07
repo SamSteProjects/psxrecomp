@@ -99,13 +99,14 @@ def options(project,asset_id,expected_entry_sha256,expected_source_key):
     from .scene_preview import source_key as resource_key
     if expected_source_key!=resource_key(project):raise ProjectError('Bank resource source changed; refresh resources')
     key=source_key(project);body,current,bank,record,binding=_current(project,asset_id,expected_entry_sha256)
-    effective,_,_=bank_from_entry(current)
+    effective,pieces,carrier=bank_from_entry(current)
     if key!=source_key(project):raise ProjectError('Bank authored state changed during inspection')
-    return dict(schema_version='legaia.audio-bank-authoring.v1',asset_id=asset_id,scene_id=project.active_scene,
+    return dict(schema_version='legaia.audio-bank-authoring.v2' if project.audio_sample_overrides.get(asset_id,{}).get('format')=='sample-wav-allocated-v1' else 'legaia.audio-bank-authoring.v1',asset_id=asset_id,scene_id=project.active_scene,
                 source_key=expected_source_key,authoring_key=key,source_record=record,
                 current_entry_sha256=_hash(current),binding_source_scene_id=binding['source_scene_id'] if binding else project.active_scene,
                 sequence_authored=asset_id in project.audio_overrides,samples_authored=asset_id in project.audio_sample_overrides,
                 authored_edits=deepcopy(binding['edits']) if binding else [],retail=_profile(bank),current=_profile(effective),
+                **(dict(current_layout=dict(entry_sha256=_hash(current),entry_size_bytes=len(current),bank_size_bytes=len(effective),carrier=carrier,pieces=pieces)) if project.audio_sample_overrides.get(asset_id,{}).get('format')=='sample-wav-allocated-v1' else {}),
                 max_edits=MAX_EDITS,project_changed=False,runtime_state='not_observed')
 
 
@@ -119,6 +120,8 @@ def review(project,asset_id,expected_entry_sha256,expected_authoring_key,edits):
         at,width=row['bank_byte_offset'],row['byte_length']
         owner=next(p for p in pieces if p['bank_offset']<=at and at+width<=p['bank_offset']+p['size_bytes'])
         position=owner['entry_offset']+at-owner['bank_offset']
+        source_owner=next(p for p in record['pieces'] if p['bank_offset']<=at and at+width<=p['bank_offset']+p['size_bytes'])
+        if position!=source_owner['entry_offset']+at-source_owner['bank_offset']:raise ProjectError('Current bank parameter table moved outside its fixed source owner')
         isolated[position:position+width]=current[position:position+width]
     changed,audit=replace_audio_bank_parameters(body,bytes(isolated),expected_source_sha256=_hash(body),
         expected_current_sha256=_hash(bytes(isolated)),edits=edits)
