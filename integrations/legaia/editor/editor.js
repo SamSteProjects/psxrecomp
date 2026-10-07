@@ -1,3 +1,4 @@
+import {createAnimationChannelGraph} from '/animation-channel-graph.js';
 import {openProjectChanges} from '/project-changes.js';
 import {openCommandHistory} from '/command-history.js';
 import {mountSceneRuler} from '/scene-ruler.js';
@@ -5155,7 +5156,9 @@ $('shape-upload').onclick=()=>readShapeFile();
 $('shape-file-preview').onclick=()=>readShapeFile(true);
 function modelObject(){return $('model-object').value==='all' && model?.frames?.length?{vertex_start:0,vertex_count:model.vertices.length,triangle_start:0,triangle_count:model.triangles.length}:model?.objects[Number($('model-object').value)];}
 function frameVertices(){return model?.frames?.[animationFrame]?.vertices ?? model?.vertices ?? [];}
+const animationChannelGraph=createAnimationChannelGraph($('animation-controls'),{onFrame:index=>{stopAnimation();setAnimationFrame(index);},onObject:index=>{$('model-object').value=String(index);fitModelObject();}});
 function configureAnimation(clipId){
+  animationChannelGraph.load(model);
   const support=model.animation_support ?? {},clips=support.clips ?? [],frames=model.frames ?? [];
   $('animation-controls').hidden=!support.supported && !frames.length;
   $('animation-clip').replaceChildren();const unposed=document.createElement('option');unposed.value='';unposed.textContent='Object-local geometry (unposed)';$('animation-clip').append(unposed);
@@ -5170,7 +5173,7 @@ function configureAnimation(clipId){
   $('animation-frame-label').textContent=frames.length?`1 / ${frames.length}`:'No clip loaded';
 }
 function stopAnimation(){if(animationTick!==null)cancelAnimationFrame(animationTick);animationTick=null;animationClock=null;$('animation-play').textContent='Play';}
-function setAnimationFrame(index){const count=model?.frames?.length ?? 0;if(!count)return;animationFrame=((index%count)+count)%count;$('animation-frame').value=animationFrame;$('animation-frame-label').textContent=`${animationFrame+1} / ${count}`;drawModel();}
+function setAnimationFrame(index){const count=model?.frames?.length ?? 0;if(!count)return;animationFrame=((index%count)+count)%count;$('animation-frame').value=animationFrame;$('animation-frame-label').textContent=`${animationFrame+1} / ${count}`;animationChannelGraph.frame(animationFrame);drawModel();}
 $('animation-clip').onchange=()=>{const clip=$('animation-clip').value || null;openModel(modelAssetId,clip,['scene-header','authored-appearance','authored-initial-animation','authored-channels'].includes(clip)?modelEntityId:null,'imported',modelSceneEntityId);};
 $('animation-frame').oninput=()=>{stopAnimation();setAnimationFrame(Number($('animation-frame').value));};
 $('animation-previous').onclick=()=>{stopAnimation();setAnimationFrame(animationFrame-1);};
@@ -5215,7 +5218,7 @@ function fitModelObject(){
   $('model-counts').textContent=`${object.vertex_count} vertices · ${object.triangle_count} triangles`;updateModelNormalView();
   drawModel();
 }
-$('model-object').onchange=fitModelObject;
+$('model-object').onchange=()=>{animationChannelGraph.setObject(Number($('model-object').value));fitModelObject();};
 $('model-wireframe').onchange=drawModel;
 const modelShading=document.createElement('select');modelShading.id='model-shading-mode';modelShading.setAttribute('aria-label','Model shading');for(const [value,text] of [['surface','Textures and stored colors'],['source-normals','Source normal directions']]){const option=document.createElement('option');option.value=value;option.textContent=text;modelShading.append(option);}const modelShadingLabel=document.createElement('label');modelShadingLabel.textContent='View ';modelShadingLabel.append(modelShading);$('model-wireframe').closest('label').after(modelShadingLabel);const modelNormalNote=document.createElement('p');modelNormalNote.id='model-normal-note';modelNormalNote.setAttribute('role','status');$('model-description').after(modelNormalNote);modelShading.onchange=()=>{updateModelNormalView();drawModel();};
 const modelNormalFrameCache=new WeakMap();
