@@ -1,0 +1,13 @@
+# Named GLB Animation Clip Picker
+
+Open a model in Edit mode, choose **Import GLB mesh**, and select the original GLB. Enable **Sample animation pose**, choose its named source clip, set the time in seconds and use **Inspect animation pose** before Review or Apply. Existing single-donor and mapped-section import commands retain the original GLB, exact clip index and time. Names are descriptive labels; duplicate names never change clip identity.
+
+The read-only `/api/model-mesh-animations` catalog accepts file bytes only. Its explicit schema binds the original SHA-256 and byte length to bounded clip indices, optional source names, channel/sampler counts and sorted node/path targets. It does not decode sampler payloads, invent durations, qualify sampling, register native animation assets or mutate the project. Selected pose inspection still qualifies actual sampling through the existing importer. Unsupported payloads in another clip therefore do not prevent selecting a usable clip.
+
+The picker renders names as text. Missing selected indices remain unavailable rather than silently choosing another clip. Changing the clip invalidates Review/Apply; recovered settings require the exact clip to exist in the original catalog. Native recipe and Build formats are unchanged.
+
+Offline checks on 2026-10-07: eleven focused Python cases with zero skips, one Node suite with twelve forged-catalog refusals, two JS syntax and three Python AST checks passed. Python includes duplicate names, unselected invalid sampler data, empty clips, malformed source ownership, exact HTTP inputs and read-only project/files/history. Separate synthetic HTTP Review/Apply matched a complete independently declared static model, retained original GLB and numeric recipe, and passed one-command Undo/Redo and Save/Open. The synthetic reopen uses its fixture model-source reader; history depth includes existing setup commands.
+
+The actual private Town01 editor loaded a GLB with a broken first clip, selected and inspected named clip 1, qualified Review, withdrew Apply when changing the clip and passed wide/400 px visual inspection. Unavailable-index retention and text-only labels were checked in the browser. This browser run did not Apply. Project/native model/authored files and Save/Open stayed exact with empty history, zero page errors and no Run requests. All owned helpers terminated. Evidence is retained privately under `local-output/sdk-20260909/mesh-clip-picker-20261007/`.
+
+No new native Build, runtime change or game ran. Existing [sampled-pose Build qualification](legaia-sampled-animation-mesh.md) remains the Build evidence. Native animation playback, retargeting and gameplay verification remain unfinished; the full SDK goal remains active.

@@ -903,6 +903,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-mesh-append.js": ("model-mesh-append.js", "text/javascript"),
                  "/model-mesh-settings.js": ("model-mesh-settings.js", "text/javascript"),
                  "/mesh-scene-scope.js": ("mesh-scene-scope.js", "text/javascript"),
+                 "/mesh-animation-catalog.js": ("mesh-animation-catalog.js", "text/javascript"),
                  "/model-mesh-batch.js": ("model-mesh-batch.js", "text/javascript"),
                  "/model-preview-frame.js": ("model-preview-frame.js", "text/javascript"),
                  "/model-mesh-sources.js": ("model-mesh-sources.js", "text/javascript"),
@@ -1036,7 +1037,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 68 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-png-preview','/api/texture-png-pixels-preview','/api/texture-png-scene-preview','/api/texture-png-import'):
                 request_limit = 68 * 1024 * 1024
-            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-material-links','/api/model-glb-material-faces', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-batch-preview', '/api/model-mesh-batch', '/api/model-mesh-batch-scene-preview', '/api/model-mesh-file','/api/model-mesh-scenes','/api/texture-glb-images','/api/texture-glb-image','/api/texture-glb-dependencies','/api/texture-glb-retain-review','/api/texture-glb-retain', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
+            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-material-links','/api/model-glb-material-faces', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-batch-preview', '/api/model-mesh-batch', '/api/model-mesh-batch-scene-preview', '/api/model-mesh-file','/api/model-mesh-scenes','/api/model-mesh-animations','/api/texture-glb-images','/api/texture-glb-image','/api/texture-glb-dependencies','/api/texture-glb-retain-review','/api/texture-glb-retain', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
                 request_limit = 44 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/animation-record-glb-review','/api/animation-record-glb-pose','/api/animation-record-glb-import'):
                 request_limit = 44 * 1024 * 1024
@@ -1445,17 +1446,20 @@ class EditorHandler(BaseHTTPRequestHandler):
                             self._json(200,self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],candidate,report,body['source_key'],body['all_instances'],prepared_binding=binding))
                         else:self._json(200,report)
                     return
-                if route in ('/api/model-mesh-file','/api/model-mesh-scenes'):
+                if route in ('/api/model-mesh-file','/api/model-mesh-scenes','/api/model-mesh-animations'):
                     if (not {'content_base64'}<=set(body) or not set(body)<={'content_base64','scene_index','source_scale','source_offset','source_rotation','animation_pose'}) or not isinstance(body['content_base64'],str) or not 0<len(body['content_base64'])<=44739244:
                         raise ProjectError('Mesh file inspection requires bounded GLB bytes and an optional source scene')
-                    if route=='/api/model-mesh-scenes' and set(body)!={'content_base64'}:
-                        raise ProjectError('Scene catalog requires file bytes only; it does not qualify geometry')
+                    if route in ('/api/model-mesh-scenes','/api/model-mesh-animations') and set(body)!={'content_base64'}:
+                        raise ProjectError('Source catalog requires file bytes only; it does not qualify geometry or sampling')
                     try:payload=base64.b64decode(body['content_base64'],validate=True)
                     except ValueError as exc:raise ProjectError('Mesh file requires valid base64') from exc
                     if not 28<=len(payload)<=32*1024*1024:raise ProjectError('Mesh file exceeds its byte bounds')
                     if route=='/api/model-mesh-scenes':
                         from importer.model_mesh_scene import inspect_source_scenes
                         self._json(200,inspect_source_scenes(payload))
+                    elif route=='/api/model-mesh-animations':
+                        from importer.model_mesh_animation_catalog import inspect_mesh_animations
+                        self._json(200,inspect_mesh_animations(payload))
                     else:
                         from importer.model_mesh_append import inspect_append_mesh
                         self._json(200,inspect_append_mesh(payload,scene_index=body.get('scene_index'),source_scale=body.get('source_scale',1),source_offset=body.get('source_offset',(0,0,0)),source_rotation=body.get('source_rotation',(0,0,0)),animation_pose=body.get('animation_pose')))

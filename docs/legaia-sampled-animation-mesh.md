@@ -1,5 +1,7 @@
 # Sample an external animation pose into native mesh geometry
 
+The [named source clip picker](legaia-mesh-animation-catalog.md) now lists original GLB animation labels alongside their exact clip indices. Choosing a clip still requires pose qualification before Review/Apply.
+
 Status: **qualified offline single-donor and mapped-section editor workflows**. The importer, SDK commands and HTTP routes accept an explicit `animation_pose` containing `animation_index` and `time_seconds`. Choose the pose in the existing mesh dialog, then import with one donor or Map section donors. Review/Apply, retained original-source/settings recovery, actual private retail-project Save/Open and normal Build are qualified. The full SDK and native animation system remain unfinished.
 
 The existing scene proposal workflow now exposes [one/all-instance inspection scope](legaia-mesh-scene-scope.md), qualified through the actual editor for sampled single and mapped imports. Its view scope stays separate from native shared-asset Apply.
