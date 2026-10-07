@@ -76,8 +76,6 @@ def _normalise(source, edits):
 
 
 def _current(project, asset_id, entry_sha256):
-    if project.audio_sample_overrides.get(asset_id,{}).get('format')=='sample-wav-allocated-v1':
-        raise ProjectError('This bank has sample allocations; offset-aware sequence authoring is pending')
     body, sequence, record = _source(project, asset_id, entry_sha256, project.active_scene)
     binding = project.audio_overrides.get(asset_id)
     current = body
@@ -90,18 +88,34 @@ def _current(project, asset_id, entry_sha256):
     return body, current, sequence, record, binding
 
 
+def _layout(body,current,record):
+    source=decode_audio_entry(body);effective=decode_audio_entry(current)
+    if source['format']!=effective['format'] or effective['sequence']!=source['sequence']:
+        raise ProjectError('Current sequence carrier or timing header changed')
+    if source['format']=='SEQ':start,size=0,len(current)
+    else:
+        chunk=effective['chunks'][2];start,size=chunk['payload_offset'],chunk['size_bytes']
+    if size!=record['sequence_size_bytes'] or start-record['sequence_offset']!=len(current)-len(body):
+        raise ProjectError('Current sequence extent differs from qualified carrier allocation')
+    return start,size
+
+
+def _allocated(project,asset_id):
+    return project.audio_sample_overrides.get(asset_id,{}).get('format')=='sample-wav-allocated-v1'
+
+
 def options(project, asset_id, expected_entry_sha256, expected_source_key):
     from .scene_preview import source_key as resource_key
     if expected_source_key != resource_key(project):
         raise ProjectError('Audio resource source changed; refresh resources')
     key = source_key(project)
     body, current, sequence, record, binding = _current(project, asset_id, expected_entry_sha256)
-    start, size = record['sequence_offset'], record['sequence_size_bytes']
+    start,size=_layout(body,current,record)
     source_report = _inspection(sequence)
     current_report = _inspection(current[start:start+size])
     if source_key(project) != key:
         raise ProjectError('Audio authored state changed during inspection')
-    return dict(schema_version='legaia.audio-sequence-authoring.v1', asset_id=asset_id,
+    return dict(schema_version='legaia.audio-sequence-authoring.v2' if _allocated(project,asset_id) else 'legaia.audio-sequence-authoring.v1', asset_id=asset_id,
                 authoring_key=key, source_key=expected_source_key, scene_id=project.active_scene,
                 source_record=record, current_entry_sha256=_hash(current),
                 current_sequence_sha256=_hash(current[start:start+size]),
@@ -109,6 +123,7 @@ def options(project, asset_id, expected_entry_sha256, expected_source_key):
                 bank_authored=asset_id in project.audio_bank_overrides,samples_authored=asset_id in project.audio_sample_overrides,
                 authored_edits=deepcopy(binding['edits']) if binding else [],
                 retail=source_report, current=current_report, max_edits=MAX_EDITS,
+                **(dict(current_sequence_offset=start,current_entry_size_bytes=len(current)) if _allocated(project,asset_id) else {}),
                 project_changed=False, runtime_state='not_observed')
 
 
@@ -116,12 +131,17 @@ def review(project, asset_id, expected_entry_sha256, expected_authoring_key, edi
     if project.mode != 'edit' or expected_authoring_key != source_key(project):
         raise ProjectError('Audio authored state changed or is not in Edit mode; inspect again')
     body, current, sequence, record, binding = _current(project, asset_id, expected_entry_sha256)
-    start, size = record['sequence_offset'], record['sequence_size_bytes']
+    start,size=_layout(body,current,record)
+    retail_start=record['sequence_offset'];retail_end=retail_start+size
     end = start + size
-    isolated = body[:start] + current[start:end] + body[end:]
+    isolated = body[:retail_start] + current[start:end] + body[retail_end:]
     changed, audit = replace_audio_entry_sequence(body, isolated,
         expected_source_sha256=_hash(body), expected_current_sha256=_hash(isolated), edits=edits)
-    candidate = current[:start] + changed[start:end] + current[end:]
+    candidate = current[:start] + changed[retail_start:retail_end] + current[end:]
+    if _allocated(project,asset_id):
+        audit.update(source_sequence_offset=retail_start,source_entry_size_bytes=len(body),current_entry_size_bytes=len(current))
+        audit['sequence_offset']=start
+        audit['changed_entry_byte_offsets']=[i+start-retail_start for i in audit['changed_entry_byte_offsets']]
     audit.update(before_entry_sha256=_hash(current), after_entry_sha256=_hash(candidate))
     merged = {e['event_offset']: deepcopy(e) for e in (binding['edits'] if binding else [])}
     merged.update({e['event_offset']: deepcopy(e) for e in edits})
@@ -139,7 +159,7 @@ def review(project, asset_id, expected_entry_sha256, expected_authoring_key, edi
         raise ProjectError('Composed audio operands differ from their native reconstruction')
     if source_key(project) != expected_authoring_key:
         raise ProjectError('Audio state changed while reviewing operands')
-    report = dict(schema_version='legaia.audio-sequence-review.v1', asset_id=asset_id,
+    report = dict(schema_version='legaia.audio-sequence-review.v2' if _allocated(project,asset_id) else 'legaia.audio-sequence-review.v1', asset_id=asset_id,
                   authoring_key=expected_authoring_key, source_record=record,
                   proposed_binding=after, native_audit=audit, no_change=current==candidate,
                   project_changed=False, runtime_state='not_observed')
@@ -158,15 +178,16 @@ def proposed_inspection(project,asset_id,expected_entry_sha256,expected_authorin
     if binding:view.audio_overrides[asset_id]=deepcopy(binding)
     else:view.audio_overrides.pop(asset_id,None)
     from .audio_composition import read_entry
-    candidate=read_entry(view,asset_id,body);start,size=record['sequence_offset'],record['sequence_size_bytes']
+    candidate=read_entry(view,asset_id,body);start,size=_layout(body,candidate,record)
     decoded=_inspection(candidate[start:start+size])
     if (_hash(current)!=proposal['native_audit']['before_entry_sha256'] or
             _hash(candidate)!=proposal['native_audit']['after_entry_sha256'] or source_key(project)!=expected_authoring_key):
         raise ProjectError('Proposed sequence native inputs changed during inspection')
-    return dict(schema_version='legaia.audio-sequence-proposed.v1',asset_id=asset_id,
+    return dict(schema_version='legaia.audio-sequence-proposed.v2' if _allocated(project,asset_id) else 'legaia.audio-sequence-proposed.v1',asset_id=asset_id,
         authoring_key=expected_authoring_key,review_key=review_key,source_record=record,
         before_entry_sha256=_hash(current),after_entry_sha256=_hash(candidate),
         sequence_sha256=_hash(candidate[start:start+size]),sequence=decoded,
+        **(dict(current_sequence_offset=start,current_entry_size_bytes=len(candidate)) if _allocated(project,asset_id) else {}),
         project_changed=False,runtime_state='not_observed')
 
 def command(project, value):
