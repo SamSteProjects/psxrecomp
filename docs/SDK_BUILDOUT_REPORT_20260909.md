@@ -1,5 +1,29 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Stored object normal rotation - accepted offline (2026-10-07)
+
+The model vector inspector now rotates an object's stored normals independently
+about source X/Y/Z by a reviewed angle. Exact 1/4096-turn quantization, signed-word
+rounding, overflow rejection and zero preservation match browser and native
+writers. Input changes withdraw Apply; scene return requires a fresh review.
+Geometry, topology, materials, padding and prior edits remain exact. Direction
+colors diagnose source normals; retail lighting is still unverified.
+
+Thirteen Python checks, four Node suites and two syntax checks passed. Actual
+Town01 model 0009 object 1 browser validation passed reviewed Apply, normal
+Current/Proposed diagnostics, scene return, Undo/Redo, Save/Open and wide/400 px
+layout. Eleven normal rows yielded nine changed rows, 18 scalar words and 34
+bytes at 45 degrees about Y. Independent native-word comparison and complete
+section directory/ZIP readback passed. Build `c33bb0bab3da6a0a` package SHA256:
+`7a2dfe6c04d2f94136bce6850a502e7b4fdb8d3bbe3f5b005eedab60264f0c09`.
+The missing static-module registration found by the first browser check was
+fixed and covered by an HTTP test; resolved harness failures are retained.
+See [stored normal rotation](legaia-model-normal-angle.md) and private
+`local-output/sdk-20260909/object-normal-angle-20261007/` evidence. No runtime
+change, full campaign, game launch, installation or full-disc export occurred.
+Manual lighting verification remains deferred; development stays solo and the
+full SDK goal remains active.
+
 ## Direct SPU pitch envelope preview - accepted offline (2026-10-07)
 
 Qualified native Gaussian loop and one-pass previews now accept a direct 14-bit

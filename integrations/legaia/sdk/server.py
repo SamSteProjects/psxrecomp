@@ -871,6 +871,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/floor-pattern.js": ("floor-pattern.js", "text/javascript"),
                  "/collision-rectangle.js": ("collision-rectangle.js", "text/javascript"),
                  "/model-normal-length.js": ("model-normal-length.js", "text/javascript"),
+                 "/model-normal-rotation.js": ("model-normal-rotation.js", "text/javascript"),
                  "/model-normal-users.js": ("model-normal-users.js", "text/javascript"),
                  "/normal-retarget.js": ("normal-retarget.js", "text/javascript"),
                  "/vertex-retarget.js": ("vertex-retarget.js", "text/javascript"),
@@ -1337,6 +1338,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body) != {'asset_id','object_index','percent','expected_sha256'} or not isinstance(body['asset_id'],str):
                         raise ProjectError('Object scale requires model, object, percent and inspected hash')
                     self.server.project.scale_model_object(body['asset_id'],body['object_index'],body['percent'],body['expected_sha256'])
+                    self._json(200,self.server.state())
+                    return
+                if route == '/api/model-object-normal-angle':
+                    if set(body)!={'asset_id','object_index','axis','angle_units','expected_sha256','proposed_sha256'} or not isinstance(body['asset_id'],str):raise ProjectError('Normal rotation requires model, object, axis, angle and exact inspected/proposed hashes')
+                    self.server.project.rotate_model_normals_angle(body['asset_id'],body['object_index'],body['axis'],body['angle_units'],body['expected_sha256'],body['proposed_sha256'])
                     self._json(200,self.server.state())
                     return
                 if route == '/api/model-object-normal-length':

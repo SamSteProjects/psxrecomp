@@ -1,0 +1,15 @@
+# Rotate stored object normals
+
+Open **Edit model vectors**, select an object, and expand **Rotate stored normals in this object**. Choose source X, Y or Z and enter degrees from -360 to 360. Source Y points down. Angles quantize to the nearest 1/4096 revolution, with halves away from zero; full revolutions are identity operations.
+
+**Preview normal rotation** qualifies the effective model and compares exact native words with the browser calculation. Current/Proposed previews enable the source-normal direction diagnostic. Scene preview uses the same proposal; returning to model vectors requires a fresh review. Changing inputs withdraws Apply. **Apply reviewed normal rotation** rechecks both inspected and proposed hashes and creates one model-replacement command when bytes change. Undo/Redo and Save/Open use existing history and persistence.
+
+The writer rotates only existing normal XYZ words of the selected object using Q30 trigonometry and one final signed-integer rounding, with halves away from zero. It accepts 1 through 8192 stored normals. Zero vectors remain zero. Missing normals, malformed fields, stale receipts and signed-16 overflow reject the whole operation. An unchanged proposal creates no history entry. Pending vector drafts must be applied or discarded first.
+
+Vertices, normal references, padding, topology, materials, counts, offsets and other object spans remain unchanged, including prior authored replacements. This tool rotates stored normals independently; it does not regenerate face normals or reconstruct retail lighting. Diagnostic colors show source normal directions rather than native lighting output.
+
+`normal_rotation_angle` proposals carry exact `axis` and `angle_units` values plus current/proposed normal words. POST `/api/model-object-normal-angle` accepts exactly `asset_id`, `object_index`, `axis`, `angle_units`, `expected_sha256` and `proposed_sha256`. Generic model-object and scene preview routes remain read-only.
+
+Thirteen focused Python checks, four Node suites and two syntax checks passed. Actual Town01 model 0009 object 1 browser validation rotated its 11 normal rows by 45 degrees about Y: nine rows changed, comprising 18 scalar words and 34 bytes. Independent native-word construction matched the candidate. Reviewed Apply, input invalidation, Current/Proposed diagnostics, scene return, Undo/Redo, Save/Open and wide/400 px layouts passed without page errors. Complete native section directory and ZIP readback matched, preserving neighboring assets and prior geometry edits.
+
+Build `c33bb0bab3da6a0a` package SHA256: `7a2dfe6c04d2f94136bce6850a502e7b4fdb8d3bbe3f5b005eedab60264f0c09`. Private evidence is in `local-output/sdk-20260909/object-normal-angle-20261007/`, including inspected wide, narrow and scene screenshots. An initial missing static-module registration was repaired and covered by an HTTP test; resolved browser harness failures are retained. No full test campaign, game launch, installation or full-disc export ran. Gameplay lighting remains deferred; solo SDK development continues and the full goal remains active.

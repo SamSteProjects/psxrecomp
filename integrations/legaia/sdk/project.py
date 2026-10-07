@@ -1762,6 +1762,7 @@ class ProjectService:
         from importer.model_json import translate_shape_object, translate_shape_vertices, align_shape_vertices, distribute_shape_vertices, scale_shape_vertices, scale_shape_vertices_axes, rotate_shape_vertices, rotate_shape_vertices_angle, rotate_shape_object, scale_shape_object
         from importer.model_vertex_grid import snap_shape_vertices
         from importer.model_normal_length import rescale_object_normals
+        from importer.model_normal_rotation import rotate_object_normals
         from importer.model_normal_retarget import retarget_object_normals
         from importer.model_vertex_references import retarget_object_vertices
         from importer.assets import decode_tmd
@@ -1798,6 +1799,8 @@ class ProjectService:
             replacement = rotate_shape_object(*args, values['axis'], values['quarter_turns'])
         elif operation == 'scale' and set(values) == {'percent'}:
             replacement = scale_shape_object(*args, values['percent'])
+        elif operation == 'normal_rotation_angle' and set(values) == {'axis','angle_units'}:
+            replacement = rotate_object_normals(*args,values['axis'],values['angle_units'])
         elif operation == 'normal_length' and set(values) == {'length'}:
             replacement = rescale_object_normals(*args, values['length'])
         elif operation == 'normal_references' and set(values) == {'from_index','to_index'}:
@@ -1805,18 +1808,29 @@ class ProjectService:
         elif operation == 'vertex_references' and set(values) == {'from_index','to_index'}:
             replacement = retarget_object_vertices(*args, values['from_index'], values['to_index'])
         else:
-            raise ProjectError('Choose translation, vertex_translation, vertex_alignment, vertex_distribution, vertex_scaling, vertex_axis_scaling, vertex_rotation, vertex_rotation_angle, vertex_grid, rotation, scale, normal_length, normal_references or vertex_references with exact operation fields')
+            raise ProjectError('Choose translation, vertex_translation, vertex_alignment, vertex_distribution, vertex_scaling, vertex_axis_scaling, vertex_rotation, vertex_rotation_angle, vertex_grid, rotation, scale, normal_length, normal_rotation_angle, normal_references or vertex_references with exact operation fields')
         report = self.preview_model_file(asset_id, replacement)
         report.update(effective_sha256=hashlib.sha256(effective).hexdigest(),
                       object_index=object_index, operation=operation,
                       preview=decode_tmd(replacement), current_preview=decode_tmd(effective))
         if operation in ('vertex_translation','vertex_alignment','vertex_distribution','vertex_scaling','vertex_axis_scaling','vertex_rotation','vertex_rotation_angle','vertex_grid'):
             report['values'] = deepcopy(values)
+        if operation == 'normal_rotation_angle':
+            from importer.model_json import export_shape_json
+            import json
+            report['values']=deepcopy(values)
+            report['normal_rotation_words']={key:json.loads(export_shape_json(content))['objects'][object_index]['normals'] for key,content in [('current',effective),('proposed',replacement)]}
         return replacement, report
 
     def preview_model_object(self, asset_id: str, object_index: int, operation: str,
                              values: dict, expected_sha256: str) -> dict:
         return self._prepare_model_object(asset_id, object_index, operation, values, expected_sha256)[1]
+
+    def rotate_model_normals_angle(self,asset_id,object_index,axis,angle_units,expected_sha256,proposed_sha256):
+        replacement,report=self._prepare_model_object(asset_id,object_index,'normal_rotation_angle',{'axis':axis,'angle_units':angle_units},expected_sha256)
+        if not isinstance(proposed_sha256,str) or hashlib.sha256(replacement).hexdigest()!=proposed_sha256:
+            raise ProjectError('Normal rotation proposal changed; review again')
+        if report['changes_from_current']:self.set_model_replacement(asset_id,replacement)
 
     def rescale_model_normals(self, asset_id: str, object_index: int, length: int,
                              expected_sha256: str) -> None:
