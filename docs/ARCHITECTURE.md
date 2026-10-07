@@ -1,5 +1,34 @@
 # Architecture
 
+## Static stereo voice-gain audition - accepted offline (2026-10-07)
+
+Envelope audition now offers explicit left/right static SPU voice registers
+and stereo playback/WAV export after every existing mono synthesis path.
+Direct 15-bit register decoding, signed floor rounding and one-voice saturation
+match the recomp's arithmetic. Negative gain reverses phase; sweep mode is
+refused. Mono remains the default with its previous bytes unchanged. Gain edits
+stop playback, invalid inputs block Play/Save, source/configuration changes
+withdraw or reset preview ownership, and the monitor volume stays separate.
+The existing long explanation is now in expandable audition help.
+
+Nine focused client suites, two syntax checks and server AST checks passed.
+All 32768 direct registers × 9 signed samples × 2 channels (589824 values) matched
+a freshly compiled unchanged native decode/product oracle. Actual PROT 0877
+loop/one-pass tones passed Retail/Current/reviewed Proposed playback and six
+stereo exports, independently compared frame by frame against paired mono
+exports. Narrow Play/Stop, wide/400px controls, guards and exact Save/Open passed
+with zero page errors or game launches. Document/history/imports/saved bytes,
+native entry and Build inputs stayed exact. Current entry SHA-256:
+`2763446be4afa339ba8e6a10266e9216a96162608138e2f7f635894c37a60b40`.
+
+See [static stereo audition](legaia-audio-static-stereo.md) and private
+`local-output/sdk-20260909/audio-static-stereo-20261007/` evidence. The corrected
+stale-action test assumption and initial clipped capture remain recorded. No
+runtime change, native Build, full campaign, game, installation or disc export
+ran. Static single-voice preview does not resolve VAB pan, driver mix, reverb or
+runtime instruments. Gameplay stays deferred; solo development and the full SDK
+goal remain active.
+
 ## Whole-object axis scaling with normal correction - accepted offline (2026-10-07)
 
 Model vectors now offers separate X/Y/Z percentages and an origin or Current

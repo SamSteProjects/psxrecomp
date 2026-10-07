@@ -840,6 +840,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/audio-bank-authoring.js": ("audio-bank-authoring.js", "text/javascript"),
                  "/audio-adsr.js": ("audio-adsr.js", "text/javascript"),
                  "/audio-envelope.js": ("audio-envelope.js", "text/javascript"),
+                 "/audio-static-stereo.js": ("audio-static-stereo.js", "text/javascript"),
                  "/audio-envelope-audition.js": ("audio-envelope-audition.js", "text/javascript"),
                  "/audio-pcm-loop.js": ("audio-pcm-loop.js", "text/javascript"),
                  "/audio-native-loop.js": ("audio-native-loop.js", "text/javascript"),
