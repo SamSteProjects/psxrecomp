@@ -2801,7 +2801,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .animation_record_offset import stage_rotation
                     self._json(200,stage_rotation(self.server.project,**body));return
                 if route=='/api/animation-record-pose-copy':
-                    if set(body)!={'scene_id','record_id','source_frame_indices','edits','object_index','source_frame_index','start','end','expected_source_key'}:
+                    if set(body)!={'scene_id','record_id','source_frame_indices','edits','object_index','source_frame_index','start','end','expected_source_key',*(['all_objects'] if 'all_objects' in body else [])}:
                         raise ProjectError('Pose copying requires exact source-bound clip, draft, object, source frame and range fields')
                     from .animation_record_pose_copy import stage
                     self._json(200,stage(self.server.project,**body));return

@@ -1,5 +1,7 @@
 # Effective Native Pose Copying
 
+The same editor now also offers [complete native frame pose copying](legaia-animation-frame-pose-copy.md). Selected rigid object remains the default; Complete rigid frame copies every existing object through an explicit v2 staging receipt.
+
 Open a retained animation from the project Asset Database and choose **Edit retained content**. Select the **Allocated frame index** and **Rigid object index** that supply the source pose. In **Frame sequence tools**, set the destination start/end output frames and choose **Stage effective pose copy**. Review, inspect the textured Proposed pose, return and Apply, then Save. Existing Undo/Redo, Save/Open and normal Build consume the same retained-record edit command.
 
 Copying includes all six native translation/rotation axes, combining frozen donor values with the current draft. It captures the source pose before changing any destination, including when the source lies inside the destination range. One frame or a whole range is supported. Other rigid objects, outside frames, donor frame mapping, frozen donor bytes and opaque channel bits remain unchanged. This is native rigid-object pose authoring; it does not infer playback timing, copy a whole skeletal pose or retarget an external rig.
