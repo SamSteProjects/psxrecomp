@@ -1415,6 +1415,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route in ('/api/model-mesh-batch-preview','/api/model-mesh-batch','/api/model-mesh-batch-scene-preview'):
                     fields={'asset_id','content_base64','mappings','expected_sha256','source_key'}
                     if 'replace_objects' in body:fields.add('replace_objects')
+                    if 'animation_pose' in body:fields.add('animation_pose')
                     if 'material_colors' in body:fields.add('material_colors')
                     if 'uv_set' in body:fields.add('uv_set')
                     if 'source_scale' in body:fields.add('source_scale')
@@ -1433,10 +1434,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from . import model_mesh_batch
                     args=(body['asset_id'],payload,body['mappings'],body['expected_sha256'],body['source_key'])
                     if route=='/api/model-mesh-batch':
-                        model_mesh_batch.apply(self.server.project,*args,review_key=body['review_key'],material_colors=body.get('material_colors',False),scene_index=body.get('scene_index'),uv_set=body.get('uv_set',0),source_scale=body.get('source_scale',1),source_offset=body.get('source_offset',(0,0,0)),source_rotation=body.get('source_rotation',(0,0,0)),replace_objects=body.get('replace_objects',False))
+                        model_mesh_batch.apply(self.server.project,*args,review_key=body['review_key'],material_colors=body.get('material_colors',False),scene_index=body.get('scene_index'),uv_set=body.get('uv_set',0),source_scale=body.get('source_scale',1),source_offset=body.get('source_offset',(0,0,0)),source_rotation=body.get('source_rotation',(0,0,0)),replace_objects=body.get('replace_objects',False),animation_pose=body.get('animation_pose'))
                         self._json(200,self.server.state())
                     else:
-                        candidate,binding,report=model_mesh_batch.prepare(self.server.project,*args,material_colors=body.get('material_colors',False),scene_index=body.get('scene_index'),uv_set=body.get('uv_set',0),source_scale=body.get('source_scale',1),source_offset=body.get('source_offset',(0,0,0)),source_rotation=body.get('source_rotation',(0,0,0)),replace_objects=body.get('replace_objects',False))
+                        candidate,binding,report=model_mesh_batch.prepare(self.server.project,*args,material_colors=body.get('material_colors',False),scene_index=body.get('scene_index'),uv_set=body.get('uv_set',0),source_scale=body.get('source_scale',1),source_offset=body.get('source_offset',(0,0,0)),source_rotation=body.get('source_rotation',(0,0,0)),replace_objects=body.get('replace_objects',False),animation_pose=body.get('animation_pose'))
                         if route.endswith('-scene-preview'):
                             if type(body['all_instances']) is not bool or not isinstance(body['entity_id'],str) or not 0<len(body['entity_id'])<=512 or report['review_key']!=body['review_key'] or report['proposed_sha256']!=body['proposed_sha256']:
                                 raise ProjectError('Mesh donor mapping scene proposal differs from Review')

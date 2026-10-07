@@ -14,7 +14,7 @@ export function decodeMeshSettings(value){
   const common=['kind','material_colors','scene_index','uv_set','source_scale','source_offset','source_rotation'];
   const single=['donor_face_id','new_group','replace_group','replace_object','preserve_primitives','primitive_index'];
   const batch=['mappings','replace_objects'];
-  if(!keys(value,[...common,...(value?.kind==='single'?single:value?.kind==='batch'?batch:[])],value?.kind==='single'?['animation_pose']:[])||!['single','batch'].includes(value.kind))fail('Import settings have unknown or missing fields.');
+  if(!keys(value,[...common,...(value?.kind==='single'?single:value?.kind==='batch'?batch:[])],['single','batch'].includes(value?.kind)?['animation_pose']:[])||!['single','batch'].includes(value.kind))fail('Import settings have unknown or missing fields.');
   if(Object.hasOwn(value,'animation_pose'))decodeMeshAnimationPose(value.animation_pose);
   if(typeof value.material_colors!=='boolean'||!(value.scene_index===null||integer(value.scene_index,63))||!integer(value.uv_set,7)||typeof value.source_scale!=='number'||!Number.isFinite(value.source_scale)||value.source_scale<1e-6||value.source_scale>1e6)fail('Import settings contain invalid scene, UV or unit scale.');
   for(const [field,min,max] of [['source_offset',-32768,32767],['source_rotation',-360,360]])if(!Array.isArray(value[field])||value[field].length!==3||value[field].some(n=>typeof n!=='number'||!Number.isFinite(n)||n<min||n>max))fail('Import settings contain invalid native origin or rotation.');

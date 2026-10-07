@@ -67,7 +67,7 @@ def _metadata(asset,binding):
             raise ProjectError('Retained mesh source ledger span changed')
         if digest({k:v for k,v in record.items() if k!='receipt_key'})!=record['receipt_key']:raise ProjectError('Mesh source receipt changed')
         recipe=record['recipe'];common={'material_colors','scene_index','uv_set','source_scale','source_offset','source_rotation'}
-        if isinstance(recipe,dict) and recipe.get('kind')=='single' and 'animation_pose' in recipe:
+        if isinstance(recipe,dict) and recipe.get('kind') in ('single','batch') and 'animation_pose' in recipe:
             from importer.model_mesh_animation import animation_pose_config
             if animation_pose_config(recipe['animation_pose']) is None:raise ProjectError('Retained mesh animation pose cannot be null')
             common=common|{'animation_pose'}
