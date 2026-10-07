@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {createAssetMetadataPin,compareAssetMetadata} from '../editor/asset-metadata-comparison.js';
+const context={project_path:'C:/project',source_key:'a'.repeat(64),project_assets_source_key:'b'.repeat(64)},pin=createAssetMetadataPin(),record={id:'asset://fixture/model',type:'model',label:'A',data:{'a/b~c':1,array:[1,null],missing:null,empty:{}}},held=structuredClone(record);
+const first=pin.pin(record,context);record.data.array[0]=99;assert.deepEqual(pin.read(context).record,held);first.record.data.array[0]=88;assert.deepEqual(pin.read(context).record,held);
+const current={...held,id:'asset://fixture/other',label:'B',data:{'a/b~c':2,array:[1,3],added:null,empty:{}}},report=pin.compare(current,{...context,source_key:'c'.repeat(64),active_scene_id:'scene://other'});
+assert.equal(report.read_only,true);assert.equal(report.difference_count,6);assert.deepEqual(report.rows.find(r=>r.path==='/data/missing'),{path:'/data/missing',state:'only-pinned',pinned_present:true,current_present:false,pinned:null,current:null});assert.equal(report.rows.find(r=>r.path==='/data/a~1b~0c').state,'changed');assert.equal(report.rows.find(r=>r.path==='/data/array/0').state,'same');assert.equal(report.rows.find(r=>r.path==='/data/added').state,'only-current');assert.equal(report.pinned.record.data.array[0],1);
+assert.equal(pin.compare({...held,data:{empty:{},missing:null,array:[1,null],'a/b~c':1}},context).difference_count,0);
+assert.equal(pin.read({...context,project_assets_source_key:'d'.repeat(64)}),null);assert.throws(()=>pin.compare(current,context));pin.pin(held,context);assert.equal(pin.read({...context,project_path:'other'}),null);
+pin.pin(held,context);const revision=pin.revision;pin.clear();assert(pin.revision>revision);assert.equal(pin.read(context),null);
+for(const data of [{number:NaN},{array:[undefined]},{date:new Date()},Object.assign(Object.create({inherited:1}),{x:1})])assert.throws(()=>pin.pin({...held,data},context));
+const cyclic={};cyclic.self=cyclic;assert.throws(()=>pin.pin({...held,data:cyclic},context));assert.throws(()=>pin.pin({...held,data:{value:'x'.repeat(8*1024*1024)}},context),/8 MiB/);
+pin.pin({...held,data:Object.fromEntries(Array.from({length:513},(_,i)=>['k'+i,i]))},context);assert.throws(()=>pin.compare(current,context),/512 fields/);
+assert.throws(()=>compareAssetMetadata({record:held,source_context:context},{record:held,source_context:{...context,project_assets_source_key:'e'.repeat(64)}}));
+console.log('Pinned metadata: detached snapshots, scene-independent project freshness, complete pointer diffs, null/missing, arrays, canonical objects and bounded refusal passed.');

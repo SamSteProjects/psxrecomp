@@ -46,6 +46,7 @@ import {appendCaptureSummary} from '/script-capture.js';
 import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files.js';
 import {npcDonorModel,npcDonorScript,mountAssetInspector,assetInspectorDefinition,mountTriggerBindingInspector} from '/asset-inspector.js';
 import {mountAssetRecordDownload} from '/asset-record-export.js';
+import {createAssetMetadataPin,mountAssetMetadataComparison} from '/asset-metadata-comparison.js';
 import {renderEnvironmentInspector} from '/environment-inspector.js';
 import {bindComponentReferences} from '/component-references.js';
 import {decodeFlagResource,openFlagResource} from '/flag-resource.js';
@@ -1485,6 +1486,7 @@ assetTools.innerHTML='<label class="asset-search-label"><input id="asset-search"
 $('assets').before(assetTools);
 const assetScope=document.createElement('details');assetScope.className='asset-scope';assetScope.innerHTML='<summary>Catalog scope</summary><p>Choose active scene resources or explicitly refresh imported project resources. Coverage and source memberships distinguish supported imported metadata from runtime state.</p>';$('assets').after(assetScope);
 mountScriptOperandBundle({after:assetTools,getState:()=>state,context:()=>JSON.stringify([resourceStateKey(),state.project?.mode,state.authored_assets]),canEdit:canEditDialogue,busy:()=>busy,setBusy,api,onError:error=>notify(error.message,true)});
+const assetMetadataPin=createAssetMetadataPin();
 const assetDetails=document.createElement('dialog');assetDetails.id='asset-details';document.body.append(assetDetails);
 let assetPage=0,assetPages=1,assetPageSignature=null;
 const assetPager=document.createElement('div');assetPager.className='dialog-actions';assetPager.dataset.assetPages='';assetPager.style.flexWrap='wrap';
@@ -1738,6 +1740,7 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
   const exportCurrent=()=>assetDetails.open&&exportContext===resourceStateKey()&&JSON.stringify(lookup().find(item=>item.id===record.id))===exportSnapshot;
   const evidence=document.createElement('div');evidence.className='dialog-actions';evidence.style.flexWrap='wrap';
   try{mountAssetRecordDownload(evidence,{record,getState:()=>state,current:exportCurrent,busy:()=>busy,onError:error=>notify(error.message,true)});}catch(error){const note=document.createElement('p');note.className='field-note';note.textContent=error.message;evidence.append(note);}
+  try{mountAssetMetadataComparison(evidence,{record,getState:()=>state,current:exportCurrent,busy:()=>busy,pin:assetMetadataPin,onError:error=>notify(error.message,true)});}catch(error){const note=document.createElement('p');note.className='field-note';note.textContent=error.message;evidence.append(note);}
   $('asset-source-data').parentElement.before(evidence);
   if(record.type!=='template'&&state.build_review_source_key){const button=document.createElement('button');button.textContent='Inspect saved Build records...';button.dataset.assetBuildHistory='';button.onclick=()=>{if(busy||!exportCurrent())return;assetDetails.close();openAssetBuildHistory({record,getState:()=>state,current:()=>exportContext===resourceStateKey()&&JSON.stringify(lookup().find(item=>item.id===record.id))===exportSnapshot,busy:()=>busy,setBusy,onError:error=>notify(error.message,true)});};evidence.append(button);}
   const source=isAuthored?(record.authoredRecord.source_record ?? record.data?.source_record ?? record.data?.components?.RetailMetadata ?? {note:'No additional imported provenance is attached to this authored record.'}):record.data;

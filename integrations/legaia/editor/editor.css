@@ -302,3 +302,10 @@
 #hierarchy-query-status{margin:6px 10px;font-size:10px;flex:none}#select-matching-actors{margin:0 10px 6px;font-size:11px;flex:none}.hierarchy-query-help{margin:0 10px 8px;font-size:11px;line-height:1.4;flex:none;max-height:110px;overflow:auto;overflow-wrap:anywhere}.hierarchy-query-help summary{cursor:pointer}.hierarchy-query-help p{margin:8px 0}
 @media(max-width:800px){.hierarchy-query-help{max-height:54px}}
 @media(max-width:800px){.workspace[data-panel="library"] .asset-panel{height:50%}}
+
+/* Recorded metadata paths and values must fit narrow asset comparison dialogs. */
+#asset-metadata-comparison > label{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:.5rem}
+#asset-metadata-comparison > label input{width:auto;margin:0}
+.asset-comparison-row{min-width:0;padding:.5rem 0;border-bottom:1px solid var(--line,#364b49)}
+.asset-comparison-row strong{display:block;overflow-wrap:anywhere;white-space:normal}
+.asset-comparison-row pre{white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%}

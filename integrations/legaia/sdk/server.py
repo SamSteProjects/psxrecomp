@@ -904,6 +904,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  "/asset-record-export.js": ("asset-record-export.js", "text/javascript"),
+                 "/asset-metadata-comparison.js": ("asset-metadata-comparison.js", "text/javascript"),
                  "/environment-inspector.js": ("environment-inspector.js", "text/javascript"),
                  '/flag-resource.js': ('flag-resource.js', 'text/javascript'),
                  '/transition-resource.js': ('transition-resource.js', 'text/javascript'),
