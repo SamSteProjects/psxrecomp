@@ -177,5 +177,10 @@ def _verify_build(project,identifier):
     return dict(id=identifier,integrity='verified',gameplay_verified=False,
                 matches_current_inputs=receipt['authored_state_key']==authored_state_key(project),
                 report=build_report(audit),receipt=receipt,
+                delivery=dict(schema_version='legaia.build-delivery.v1',
+                    representation='disc_relocation' if audit.get('relocation_payload') else 'standalone_overlays',
+                    embedded_overlay_count=len(audit['overlays']) if audit.get('relocation_payload') else 0,
+                    payload_bytes=sum(size for _,size in payloads.values()),
+                    files=[dict(file=name,sha256=digest,size=size,kind='disc_relocation' if audit.get('relocation_payload') else 'overlay') for name,(digest,size) in sorted(payloads.items())]),
                 scope='receipt_audit_manifest_package_source_files_and_ZIP_members',
                 source_disc_integrity='not_checked',runtime_status='package_built_not_launched')

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {decodeBuildHistory,decodeBuildVerification,decodeBuildVerificationForEntry} from '../editor/build-history.js';
+import {decodeBuildHistory,decodeBuildVerification,decodeBuildVerificationForEntry,decodeBuildDelivery} from '../editor/build-history.js';
 const id='a'.repeat(16),hash='b'.repeat(64),value={builds:[{id,status:'completed',gameplay_verified:false,integrity:'not_checked',matches_current_inputs:true,archive_sha256:hash,source_disc_sha256:hash,build_kind:'retail',change_count:0,archive_path:'private.psxmod'}],truncated:false,coverage:'project_Builds_only_identity_order'};
 const detached=decodeBuildHistory(value);detached.builds[0].id='c'.repeat(16);assert.equal(value.builds[0].id,id);
 for(const mutate of [v=>v.builds[0].gameplay_verified=true,v=>v.builds[0].integrity='verified',v=>v.builds.push(v.builds[0]),v=>v.coverage='newest',v=>v.builds[0].id='../escape',v=>v.builds[0].matches_current_inputs=null]){const v=structuredClone(value);mutate(v);assert.throws(()=>decodeBuildHistory(v));}
@@ -12,3 +12,9 @@ assert.equal(decodeBuildVerificationForEntry({...bound,matches_current_inputs:fa
 for(const mutate of [v=>v.receipt.archive_sha256='0'.repeat(64),v=>v.receipt.source_disc_sha256='0'.repeat(64),v=>v.receipt.build_kind='authored',v=>v.receipt.authored_state_key='0'.repeat(64),v=>delete v.receipt]){const bad=structuredClone(bound);mutate(bad);assert.throws(()=>decodeBuildVerificationForEntry(bad,value.builds[0],hash));}
 assert.throws(()=>decodeBuildVerificationForEntry(bound,{...value.builds[0],change_count:1},hash));assert.throws(()=>decodeBuildVerificationForEntry(bound,value.builds[0],null));
 console.log('Saved Build integrity/coverage and selected receipt/current-input binding contracts passed');
+
+const delivery={schema_version:'legaia.build-delivery.v1',representation:'disc_relocation',embedded_overlay_count:1,payload_bytes:120,files:[{file:'assets/disc-relocation.bin',size:120,sha256:hash,kind:'disc_relocation'}]};
+const decodedDelivery=decodeBuildDelivery(delivery);decodedDelivery.files[0].file='changed';assert.equal(delivery.files[0].file,'assets/disc-relocation.bin');decodeBuildVerification({...verified,delivery},id);
+for(const mutate of [v=>v.files[0].file='../escape',v=>v.files[0].file='assets/sub/file',v=>v.files[0].sha256='bad',v=>v.files[0].size=95,v=>v.files[0].kind='overlay',v=>v.files.push(structuredClone(v.files[0])),v=>v.files=[],v=>v.payload_bytes++,v=>v.embedded_overlay_count=4097,v=>v.extra=true,v=>v.files[0].extra=true,v=>v.representation='unknown']){const bad=structuredClone(delivery);mutate(bad);assert.throws(()=>decodeBuildDelivery(bad));assert.throws(()=>decodeBuildVerification({...verified,delivery:bad},id));}
+const standalone={...delivery,representation:'standalone_overlays',embedded_overlay_count:0,payload_bytes:12,files:[{file:'assets/town01-man.lzs',size:12,sha256:hash,kind:'overlay'}]};decodeBuildDelivery(standalone);assert.throws(()=>decodeBuildDelivery({...standalone,embedded_overlay_count:1}));decodeBuildDelivery({...standalone,payload_bytes:0,files:[]});
+console.log('Delivered payload inventory: relocation versus standalone, exact hashes/paths/totals, detached output and 13 forged metadata refusals passed.');

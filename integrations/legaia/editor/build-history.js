@@ -10,10 +10,32 @@ export function decodeBuildHistory(value){
   }
   return structuredClone(value);
 }
+export function decodeBuildDelivery(value){
+  const exact=(row,keys)=>row&&typeof row==='object'&&!Array.isArray(row)&&Object.keys(row).length===keys.length&&keys.every(key=>Object.hasOwn(row,key));
+  const count=value=>Number.isSafeInteger(value)&&value>=0;
+  if(!exact(value,['schema_version','representation','embedded_overlay_count','payload_bytes','files'])||value.schema_version!=='legaia.build-delivery.v1'||!['disc_relocation','standalone_overlays'].includes(value.representation)||!count(value.embedded_overlay_count)||value.embedded_overlay_count>4096||!count(value.payload_bytes)||!Array.isArray(value.files)||value.files.length>4096)throw new Error('Invalid delivered Build payload inventory');
+  const relocation=value.representation==='disc_relocation',seen=new Set();let bytes=0;
+  for(const row of value.files){
+    if(!exact(row,['file','sha256','size','kind'])||typeof row.file!=='string'||!/^assets\/[A-Za-z0-9_.-]+$/.test(row.file)||seen.has(row.file)||!hash(row.sha256)||!count(row.size)||row.size<(relocation?96:1)||row.size>(relocation?256:64)*1024*1024||row.kind!==(relocation?'disc_relocation':'overlay'))throw new Error('Invalid delivered Build payload file');
+    seen.add(row.file);bytes+=row.size;
+  }
+  if(bytes!==value.payload_bytes||relocation&&value.files.length!==1||!relocation&&value.embedded_overlay_count!==0)throw new Error('Delivered Build payload totals or representation differ');
+  return structuredClone(value);
+}
+export function appendBuildDelivery(host,value){
+  if(value===undefined){const note=document.createElement('p');note.textContent='Delivered file inventory is unavailable from this server.';host.append(note);return;}
+  const delivery=decodeBuildDelivery(value),heading=document.createElement('h3');heading.textContent='Delivered payload files';host.append(heading);
+  const note=document.createElement('p');note.textContent=delivery.representation==='disc_relocation'?`One relocation payload (${delivery.payload_bytes.toLocaleString()} bytes) embeds ${delivery.embedded_overlay_count} audited overlay region(s). Those edits are not separate files in this package.`:`${delivery.files.length} standalone overlay file(s), ${delivery.payload_bytes.toLocaleString()} payload bytes.`;host.append(note);
+  const table=document.createElement('table');table.className='build-change-table';const header=document.createElement('tr');for(const text of ['File','Bytes','SHA-256']){const cell=document.createElement('th');cell.textContent=text;header.append(cell);}table.append(header);
+  for(const file of delivery.files.slice(0,256)){const row=document.createElement('tr');for(const value of [file.file,file.size.toLocaleString(),file.sha256]){const cell=document.createElement('td');cell.style.overflowWrap='anywhere';cell.textContent=value;row.append(cell);}table.append(row);}
+  const wrap=document.createElement('div');wrap.style.overflowX='auto';wrap.append(table);host.append(wrap);
+  if(delivery.files.length>256){const note=document.createElement('p');note.textContent='First 256 payload files shown; the verified inventory contains all files.';host.append(note);}
+}
 export function decodeBuildVerification(value,id){
   const r=value?.report;
   if(value?.id!==id||value.integrity!=='verified'||value.gameplay_verified!==false||typeof value.matches_current_inputs!=='boolean'||value.source_disc_integrity!=='not_checked'||value.runtime_status!=='package_built_not_launched'||value.scope!=='receipt_audit_manifest_package_source_files_and_ZIP_members'||r?.schema_version!=='legaia.build-report.v1'||!Array.isArray(r.changes)||r.changes.length>65536||r.change_count!==r.changes.length||!Number.isSafeInteger(r.overlay_bytes)||r.overlay_bytes<0||r.validation?.live_runtime!=='not_run')throw new Error('Invalid saved Build verification');
   for(const row of r.changes)if(!row||!['asset_id','scene','field','scope'].every(key=>typeof row[key]==='string')||!('before' in row)||!('after' in row))throw new Error('Invalid saved Build change');
+  if(value.delivery!==undefined)decodeBuildDelivery(value.delivery);
   return structuredClone(value);
 }
 export function decodeBuildVerificationForEntry(value,entry,key){
@@ -78,7 +100,7 @@ export function mountBuildHistory({after,getState,busy,setBusy}){
         check.onclick=async()=>{
           if(busy())return;check.disabled=true;setBusy(true);outcome.textContent='Checking receipt, audit, manifest, payload files and package ZIP…';report.replaceChildren();
           try{const verified=decodeBuildVerificationForEntry(await request('/api/builds/verify',{id:item.id}),item,key);outcome.textContent=`Saved package integrity verified · ${verified.matches_current_inputs?'matches current authored inputs':'different authored inputs'}. Source disc integrity and gameplay remain unverified.`;
-            const counts=document.createElement('p');counts.textContent=`${verified.report.change_count} changes · ${verified.report.overlay_bytes.toLocaleString()} overlay bytes`;report.append(counts);
+            const counts=document.createElement('p');counts.textContent=`${verified.report.change_count} changes · ${verified.report.overlay_bytes.toLocaleString()} audited fixed-span bytes`;report.append(counts);appendBuildDelivery(report,verified.delivery);
             const table=document.createElement('table');table.className='build-change-table';const head=document.createElement('tr');for(const name of ['Asset','Field','Before','After']){const cell=document.createElement('th');cell.textContent=name;head.append(cell);}table.append(head);
             for(const change of verified.report.changes.slice(0,256)){const row=document.createElement('tr');for(const value of [change.asset_id,change.field,change.before,change.after]){const cell=document.createElement('td');cell.style.overflowWrap='anywhere';cell.textContent=typeof value==='string'?value:JSON.stringify(value);row.append(cell);}table.append(row);}const wrap=document.createElement('div');wrap.style.overflowX='auto';wrap.append(table);report.append(wrap);
             if(verified.report.changes.length>256){const note=document.createElement('p');note.textContent='First 256 changes shown; the saved audit retains the full report.';report.append(note);}

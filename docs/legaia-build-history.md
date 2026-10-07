@@ -127,3 +127,34 @@ List summaries use **Matched inputs when listed** or **Different inputs when lis
 They describe that list snapshot; the explicit verification outcome reports its
 fresh qualified input comparison. A stale-response failure does not preserve a
 list summary that claims a current comparison.
+
+## Delivered payload inventory
+
+After **Verify saved files and open report**, **Delivered payload files** lists the
+actual package payload filenames, byte lengths and SHA-256 hashes. The SDK derives
+this list from the exact manifest/audit inventory only after verifying local files,
+ZIP members and completion metadata. Payload totals exclude the manifest and the
+compressed archive container.
+
+For fixed-size overlay packages, the table lists the standalone overlay files. For
+format-7 relocation packages, it lists the single relocation payload and reports how
+many audited overlay regions were composed into it. Source overlay entries in the
+audit retain their original composition names and byte witnesses; they are not a
+promise that those names exist as separate delivered files. The report labels their
+size as **audited fixed-span bytes** separately from actual payload bytes.
+
+Older servers without the delivery field show an explicit unavailable message.
+Malformed inventories are refused. This is package integrity inspection: source-disc
+integrity, runtime behavior and gameplay remain unverified.
+
+Offline checks passed (2026-10-07): seven Python cases, one Node suite with 13 forged
+inventory refusals, JavaScript syntax and two Python AST checks. The actual editor
+verified retained native package `7dc4be632d6aafee` and displayed only
+`assets/disc-relocation.bin` (121272992 bytes), with one embedded overlay region.
+Wide and 400 px views passed visual inspection. Project document/history and saved
+file sizes/timestamps were unchanged; no game ran or package was installed. This
+milestone inspected the existing package rather than generating another native Build.
+Private evidence: `local-output/sdk-20260909/build-delivery-inspector-20261007/`
+(`verification.json`, `browser.json`, `readonly.json`, wide/narrow screenshots).
+The first browser attempt clicked during initial loading and opened no dialog; its
+log/screenshot are preserved, and the successful probe waits for scene completion.
