@@ -1,5 +1,30 @@
 # Architecture
 
+## Asset reference exploration trail - accepted offline (2026-10-07)
+
+Asset references now offers **Explore references** without closing the dialog.
+Back/Forward and a bounded32-entry Recent reference trail follow successive
+qualified neighborhoods; branching after Back drops Forward history. Scope
+changes reset the trail at the selected asset. Each request still validates exact
+identity/source/scope and recorded relation evidence; loading, source drift,
+close and superseded-response guards remain. Full report download now uses the
+currently explored asset. Existing Inspector/instruction navigation remains.
+
+Five focused Node suites and syntax passed. Actual Town01 Actor0049 to script
+to dialogue exploration passed Back/Forward, branch pruning, selected-script
+report download, Project scope reset, source-drift blocking, existing Inspector
+navigation and wide/400 px layout with zero page errors. Ten reference requests
+used the actual SDK service. Project/history/imports/authored state/Build inputs
+stayed exact through Save/Open. No backend/runtime change, native Build, full
+campaign, game, installation or disc export ran. Retained development failures
+cover DOM adapter style, a caught/repaired Windows encoding conversion and
+a visually caught/repaired narrow history layout.
+See [reference trail](legaia-asset-reference-trail.md) and private
+`local-output/sdk-20260909/reference-trail-20261007/` evidence. This is source
+relationship exploration, not transitive graph completeness or runtime use.
+Solo development continues; manual gameplay remains deferred and the full goal
+is active.
+
 ## Whole-object angle rotation - accepted offline (2026-10-07)
 
 The vector inspector rotates an object's vertices and stored normals together

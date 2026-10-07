@@ -1,0 +1,7 @@
+import assert from 'node:assert/strict';
+import {createReferenceTrail} from '../editor/asset-references.js';
+const a={id:'asset://a',label:'A'},b={id:'asset://b',label:'B'},c={id:'asset://c',label:'C'},trail=createReferenceTrail(a);assert(!trail.canBack());assert(!trail.canForward());assert.equal(trail.visit(a),false);trail.visit(b);trail.visit(c);assert(trail.canBack());assert(!trail.canForward());assert.deepEqual(trail.move(1),b);assert(trail.canForward());trail.visit(a);assert.deepEqual(trail.entries(),[a,b,a]);assert(!trail.canForward());
+const copy=trail.current();copy.id='forged';const entries=trail.entries();entries[0].id='forged';assert.equal(trail.current().id,a.id);assert.equal(trail.entries()[0].id,a.id);trail.reset();assert.deepEqual(trail.entries(),[a]);assert(!trail.canBack());
+for(let i=0;i<40;i++)trail.visit({id:'asset://'+i,label:'Asset '+i});assert.equal(trail.entries().length,32);assert.equal(trail.current().id,'asset://39');assert.equal(trail.entries()[0].id,'asset://8');assert.deepEqual(trail.move(0),{id:'asset://8',label:'Asset 8'});assert(!trail.canBack());assert(trail.canForward());
+for(const bad of [-1,32,true,1.5,NaN])assert.throws(()=>trail.move(bad));for(const bad of [{id:'',label:'A'},{id:'asset://a',label:''},{id:'a'.repeat(1025),label:'A'},null])assert.throws(()=>trail.visit(bad));assert.throws(()=>createReferenceTrail({id:'a',label:42}));
+console.log('Bounded immutable reference navigation, cycles, Back/Forward, branch pruning, scope reset and invalid history guards passed.');
