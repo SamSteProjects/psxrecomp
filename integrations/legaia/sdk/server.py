@@ -840,6 +840,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/audio-envelope.js": ("audio-envelope.js", "text/javascript"),
                  "/audio-envelope-audition.js": ("audio-envelope-audition.js", "text/javascript"),
                  "/audio-pcm-loop.js": ("audio-pcm-loop.js", "text/javascript"),
+                 "/audio-native-loop.js": ("audio-native-loop.js", "text/javascript"),
                  "/audio-waveform.js": ("audio-waveform.js", "text/javascript"),
                  "/audio-waveform-contract.js": ("audio-waveform-contract.js", "text/javascript"),
                  "/audio-audition.js": ("audio-audition.js", "text/javascript"),
@@ -2009,6 +2010,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .resources import audio_bank_preview
                     self._json(200, audio_bank_preview(self.server.project, **body))
                     return
+                if route == '/api/audio-sample-adpcm':
+                    from .audio_sample_adpcm import preview
+                    fields={'asset_id','expected_entry_sha256','sample_index','expected_authoring_key','layer','expected_sample_sha256'}
+                    if set(body)!=fields:raise ProjectError('Native ADPCM preview requires exact layer and freshness fields')
+                    self._json(200,preview(self.server.project,**body));return
                 if route == '/api/audio-sample-preview':
                     from .audio_sample_authoring import preview
                     fields={'asset_id','expected_entry_sha256','sample_index','expected_authoring_key','layer','expected_sample_sha256'}

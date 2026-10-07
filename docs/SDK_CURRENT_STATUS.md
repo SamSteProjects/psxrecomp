@@ -1,4 +1,31 @@
-# Current Legaia SDK status — 2026-10-06
+# Current Legaia SDK status — 2026-10-07
+
+## Native ADPCM loop audition - accepted offline (2026-10-07)
+
+The envelope sample audition now offers Native ADPCM loop, carrying both integer
+predictor history samples through source-qualified end/repeat boundaries. It
+loads complete Retail/Current encoded bytes separately, verifies their full hash
+and Current entry identity, and requires exact first-pass PCM equality. Reviewed
+Proposed envelopes use Current bytes. Standard shifts 0–12 and explicit loops
+are required; reserved-shift differences between the pinned reference and runtime
+remain outside this option. Existing diagnostic PCM previews stay available.
+Explicit preview rate and bounded envelope/WAV output do not establish driver
+pitch, Gaussian filtering, full SPU synthesis or the game mix.
+
+All 16 affected Python checks passed without skips, nine client suites and three
+syntax checks passed. The exact runtime decode_block function was compiled into
+a standalone fixture executable: all 240867 samples across five predictor cases
+and fresh Retail/Current source loops matched the editor. Actual editor auditions
+and WAVs passed all three envelope layers, source-byte qualification, mode stop,
+Discard, unavailable-loop refusal and wide/400 px inspection. Every Proposed
+WAV sample matched the compiled decoder at 44100 and 48000 Hz preview rates;
+native history differs from repeating PCM on the retail loop. Project/history,
+saved content, active scene, Build key and complete Current native entry stayed
+exact through Save/Open. No new native package Build, full campaign or gameplay
+actions were performed. Development stays solo; manual audio acceptance is
+deferred and the full SDK goal stays active.
+See [native ADPCM loop audition](legaia-audio-native-loop.md) and private evidence
+`local-output/sdk-20260909/audio-native-loop-20261007/`.
 
 ## Encoded PCM loop audition - accepted offline (2026-10-06)
 
