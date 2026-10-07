@@ -1,4 +1,5 @@
-const groups=new Set(['actors','npc-drafts','environment','transition','trigger','region','collision','script']);
+export const HIERARCHY_GROUP_IDS=Object.freeze(['actors','npc-drafts','environment','transition','trigger','region','collision','script']);
+const groups=new Set(HIERARCHY_GROUP_IDS);
 export function revealHierarchyEntity(root,id){
   if(typeof id!=='string'||!id||id.length>1024)return false;
   const row=[...root.querySelectorAll('.entity-row')].find(item=>item.title===id);if(!row||row.disabled)return false;

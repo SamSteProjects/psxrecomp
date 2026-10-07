@@ -76,6 +76,7 @@ import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {parseHierarchyQuery,hierarchyMatches,matchingActorIds} from '/hierarchy-query.js';
 import {mountHierarchyNavigation} from '/hierarchy-navigation.js';
 import {mountHierarchyGroups,revealHierarchyEntity} from '/hierarchy-groups.js';
+import {captureSceneViewHierarchy} from '/hierarchy-views.js';
 import {mountSceneToolDrawer} from '/scene-tool-drawer.js';
 import {mountSceneViews,decodeSavedSceneView,captureSceneViewVisibility,sceneViewIsolationIds,unavailableSceneViewNpcs} from '/scene-views.js';
 import {sceneCameraBasis,sceneCameraPlanePoint,sceneAxisCamera,sceneFrameCamera} from '/scene-camera.js';
@@ -1259,7 +1260,7 @@ groupPresetTool=mountPresetBatch({after:actorGroupTools,getState:()=>state,getSe
 function sceneViewState(){const preview=activeScenePreview();return {...state,scene_view_entity_ids:(preview?.entities??[]).map(e=>e.entity_id),scene_view_renderable_ids:(preview?.entities??[]).filter(e=>e.renderable).map(e=>e.entity_id),scene_view_map_sha256:staticDecorations()[0]?.source_record?.source_record?.map_sha256??preview?.assets?.find(a=>a.pose_kind==='source_heightfield')?.preview?.source_record?.map_sha256??null};}
 savedSceneViews=mountSceneViews({
   after:$('actor-box-select'),getState:sceneViewState,isBusy:()=>busy,canEdit,
-  getDisplay:()=>{hiddenSceneEntities();if(!scenePreviewCurrent())throw new Error('Wait for the current scene before saving visibility.');return {camera:structuredClone(camera),representation:sceneRepresentation,layers:{...sceneLayers},grid,visibility:captureSceneViewVisibility(sceneHidden,sceneIsolated?.ids,sceneViewState())};},
+  getDisplay:()=>{hiddenSceneEntities();if(!scenePreviewCurrent())throw new Error('Wait for the current scene before saving visibility.');return {camera:structuredClone(camera),representation:sceneRepresentation,layers:{...sceneLayers},grid,hierarchy:captureSceneViewHierarchy($('entity-search').value,hierarchyGroupState,JSON.stringify([state.project?.path,state.scene?.id])),visibility:captureSceneViewVisibility(sceneHidden,sceneIsolated?.ids,sceneViewState())};},
   canRecall:()=>canEdit()&&!scenePose&&!actorGroupInspection&&!shapeDraft&&!environmentGroupInspection&&!scenePlacementInspection&&!wallInspection,api,
   recall:async(value,projectPath,current)=>{
     const check=()=>{if(!current()||state.project.path!==projectPath||!canEdit()||scenePose||actorGroupInspection||shapeDraft||environmentGroupInspection||scenePlacementInspection||wallInspection||!state.scene_views?.some(row=>row.id===value.id&&row.review_key===value.review_key))throw new Error('Saved view context changed. Review it again.');};
@@ -1277,6 +1278,7 @@ savedSceneViews=mountSceneViews({
     if(Object.hasOwn(display,'grid')){grid=display.grid;$('grid-toggle').classList.toggle('active',grid);$('grid-toggle').setAttribute('aria-pressed',String(grid));}
     if(display.visibility){sceneHiddenScope=JSON.stringify([state.project?.path,state.scene?.id]);sceneHidden=new Set(display.visibility.hidden_entity_ids);const ids=sceneViewIsolationIds(display.visibility);sceneIsolated=ids.length?{ids,key:sceneRequestKey()}:null;}
     for(const layer of ['actors','scenery','ground']){const button=$('scene-layer-'+layer);if(button){button.classList.toggle('active',sceneLayers[layer]);button.setAttribute('aria-pressed',String(sceneLayers[layer]));}}
+    if(display.hierarchy){$('entity-search').value=display.hierarchy.query;hierarchyGroupState.scope=JSON.stringify([state.project?.path,state.scene?.id]);hierarchyGroupState.collapsed=new Set(display.hierarchy.collapsed_groups);}
     cameraRevision++;renderHierarchy();draw();return true;
   }
 });

@@ -6,11 +6,12 @@ import re
 import struct
 from hashlib import sha256
 from .project import ProjectError, digest
+from .hierarchy_views import hierarchy
 
 COMMANDS = {'create_scene_view', 'rename_scene_view', 'update_scene_view', 'delete_scene_view'}
 
 def display(value):
-    if not isinstance(value, dict) or not {'camera', 'representation', 'layers'} <= set(value) or set(value) - {'camera', 'representation', 'layers', 'grid', 'visibility'}:
+    if not isinstance(value, dict) or not {'camera', 'representation', 'layers'} <= set(value) or set(value) - {'camera', 'representation', 'layers', 'grid', 'visibility', 'hierarchy'}:
         raise ProjectError('Scene view requires supported camera, representation, layers and optional display visibility')
     camera = value['camera']
     if not isinstance(camera, dict) or set(camera) != {'projection', 'yaw', 'pitch', 'distance', 'target'}:
@@ -32,6 +33,7 @@ def display(value):
         raise ProjectError('Invalid scene view layers')
     if 'grid' in value and type(value['grid']) is not bool:
         raise ProjectError('Scene view grid must be a display boolean')
+    if 'hierarchy' in value:hierarchy(value['hierarchy'])
     return deepcopy(value)
 
 def _visibility(project, scene, value, *, require_available=False):

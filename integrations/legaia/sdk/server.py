@@ -801,6 +801,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/asset-search.js": ("asset-search.js", "text/javascript"),
                  "/hierarchy-navigation.js": ("hierarchy-navigation.js", "text/javascript"),
                  "/hierarchy-groups.js": ("hierarchy-groups.js", "text/javascript"),
+                 "/hierarchy-views.js": ("hierarchy-views.js", "text/javascript"),
                  "/scene-tool-drawer.js": ("scene-tool-drawer.js", "text/javascript"),
                  "/preset-batch.js": ("preset-batch.js", "text/javascript"),
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),

@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {decodeSceneViewHierarchy,captureSceneViewHierarchy} from '../editor/hierarchy-views.js';
+import {decodeSavedSceneView} from '../editor/scene-views.js';
+const scope='current',state={scope,collapsed:new Set(['script','actors'])},query='type:actor -authored:true name:"Actor One"',value=captureSceneViewHierarchy(query,state,scope);
+assert.deepEqual(value,{query,collapsed_groups:['actors','script']});value.collapsed_groups.length=0;assert.equal(state.collapsed.size,2);
+assert.throws(()=>captureSceneViewHierarchy('',state,'stale'));
+for(const bad of [{query:'name:',collapsed_groups:[]},{query:'unknown:a',collapsed_groups:[]},{query:'"unfinished',collapsed_groups:[]},{query:'a',collapsed_groups:['unknown']},{query:'a',collapsed_groups:['script','actors']},{query:'a',collapsed_groups:['actors','actors']},{query:'a',collapsed_groups:[null]},{query:'a',collapsed_groups:[],native_position:{}},{query:'a',collapsed_groups:null}])assert.throws(()=>decodeSceneViewHierarchy(bad));
+const display={camera:{projection:'orthographic',yaw:0,pitch:0,distance:1000,target:{x:0,y:0,z:0}},representation:'retail',layers:{actors:true,scenery:true,ground:true}},view={scene_id:'scene',import_sha256:'hash',display},current={scene:{id:'scene'},scene_view_source_key:'hash'};
+assert(!Object.hasOwn(decodeSavedSceneView(view,current),'hierarchy'));display.hierarchy=captureSceneViewHierarchy(query,state,scope);const held=structuredClone(view),decoded=decodeSavedSceneView(view,current);decoded.hierarchy.query='changed';assert.deepEqual(view,held);display.hierarchy.query='name:';assert.throws(()=>decodeSavedSceneView(view,current));
+console.log('Saved hierarchy capture, canonical folds, query validation, stale scope, detached metadata and legacy views passed.');

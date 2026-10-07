@@ -1,5 +1,9 @@
 # Saved scene views
 
+## Hierarchy inspection state — 2026-10-07
+
+New saved views also retain the typed hierarchy query and collapsed groups. Recall restores search and folds with the existing camera/display state. Matching groups temporarily expand while searching; clearing the search reveals the recalled folds. Legacy views omit this optional field and preserve their previous behavior. See [workflow and acceptance](legaia-hierarchy-views.md).
+
 ## Frame the isolated group — 2026-10-06
 
 After isolating a selection, use **Frame isolated** to fit its visible mesh bounds. Camera angles and Perspective/orthographic mode stay as selected; viewport aspect, current transforms and near-plane depth are included. Hidden layers are skipped. If every isolated member is hidden by its layer, framing is disabled. Restore the layer to frame again. Save the result through **Saved scene views** to retain that camera. Framing changes only the editor camera.
