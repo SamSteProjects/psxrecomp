@@ -1,14 +1,20 @@
 export const HIERARCHY_GROUP_IDS=Object.freeze(['actors','npc-drafts','environment','transition','trigger','region','collision','script']);
 const groups=new Set(HIERARCHY_GROUP_IDS);
-export function revealHierarchyEntity(root,id){
-  if(typeof id!=='string'||!id||id.length>1024)return false;
-  const row=[...root.querySelectorAll('.entity-row')].find(item=>item.title===id);if(!row||row.disabled)return false;
-  let heading=row.previousElementSibling;
-  while(heading&&!heading.dataset.hierarchyGroup)heading=heading.previousElementSibling;
-  if(row.hidden&&heading?.getAttribute('aria-expanded')==='false')heading.click();
-  if(row.hidden)return false;
-  row.scrollIntoView({block:'nearest'});row.focus({preventScroll:true});return true;
+export function revealHierarchyEntities(root,ids,focusId=ids?.[0]){
+  if(!Array.isArray(ids)||ids.length<1||ids.length>128||new Set(ids).size!==ids.length||!ids.includes(focusId))return false;
+  for(let index=0;index<ids.length;index++)if(typeof ids[index]!=='string'||!ids[index]||ids[index].length>1024)return false;
+  const all=[...root.querySelectorAll('.entity-row')],rows=ids.map(id=>all.filter(row=>row.title===id));
+  if(rows.some(matches=>matches.length!==1||matches[0].disabled))return false;
+  const selected=rows.map(matches=>matches[0]),headings=new Set();
+  for(const row of selected){
+    let heading=row.previousElementSibling;while(heading&&!heading.dataset.hierarchyGroup)heading=heading.previousElementSibling;
+    if(row.hidden&&heading?.getAttribute('aria-expanded')==='false')headings.add(heading);
+  }
+  for(const heading of headings)heading.click();
+  if(selected.some(row=>row.hidden))return false;
+  const focus=selected.find(row=>row.title===focusId);focus.scrollIntoView({block:'nearest'});focus.focus({preventScroll:true});return true;
 }
+export function revealHierarchyEntity(root,id){return revealHierarchyEntities(root,[id],id);}
 
 export function hierarchyGroupExpanded(id,state,filter=''){
   if(!groups.has(id)||!(state?.collapsed instanceof Set))throw new Error('Invalid hierarchy group state');

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {hierarchyGroupExpanded,revealHierarchyEntity} from '../editor/hierarchy-groups.js';
+import {hierarchyGroupExpanded,revealHierarchyEntity,revealHierarchyEntities} from '../editor/hierarchy-groups.js';
 const state={collapsed:new Set(['actors','script'])};
 assert.equal(hierarchyGroupExpanded('actors',state),false);assert.equal(hierarchyGroupExpanded('environment',state),true);
 assert.equal(hierarchyGroupExpanded('actors',state,'actor 0002'),true);assert.equal(hierarchyGroupExpanded('actors',state,'  '),false);
@@ -12,3 +12,13 @@ const row={title:'scene://fixture/actors/man-p1/0001',hidden:true,disabled:false
 assert.equal(revealHierarchyEntity(root,row.title),true);assert.deepEqual(events,['expand',['scroll',{block:'nearest'}],['focus',{preventScroll:true}]]);
 assert.equal(revealHierarchyEntity(root,'unknown'),false);row.disabled=true;assert.equal(revealHierarchyEntity(root,row.title),false);assert.equal(revealHierarchyEntity(root,null),false);
 console.log('Reveal expands an exact selected row and focuses without dispatching its entity selection action.');
+
+const groupEvents=[],one={title:'actor',hidden:true,disabled:false},two={title:'scenery',hidden:true,disabled:false},unrelated={title:'script',hidden:true};
+const actorHeading={dataset:{hierarchyGroup:'actors'},getAttribute:()=> 'false',click(){groupEvents.push('actors');one.hidden=false;}},sceneryHeading={dataset:{hierarchyGroup:'environment'},getAttribute:()=> 'false',click(){groupEvents.push('environment');two.hidden=false;}};
+one.previousElementSibling=actorHeading;two.previousElementSibling=sceneryHeading;
+for(const item of [one,two]){item.scrollIntoView=()=>groupEvents.push('scroll '+item.title);item.focus=()=>groupEvents.push('focus '+item.title);}
+const groupRoot={querySelectorAll:()=>[one,two,unrelated]};assert.equal(revealHierarchyEntities(groupRoot,['actor','scenery'],'scenery'),true);assert.deepEqual(groupEvents,['actors','environment','scroll scenery','focus scenery']);assert.equal(unrelated.hidden,true);
+groupEvents.length=0;one.hidden=true;two.hidden=true;
+for(const ids of [[],['actor','actor'],['actor','missing'],Array(2),[null],Array.from({length:129},(_,i)=>String(i))])assert.equal(revealHierarchyEntities(groupRoot,ids),false);
+assert.equal(revealHierarchyEntities(groupRoot,['actor','scenery'],'missing'),false);two.disabled=true;assert.equal(revealHierarchyEntities(groupRoot,['actor','scenery']),false);assert.deepEqual(groupEvents,[]);assert.equal(one.hidden,true);
+console.log('Group reveal: all selected folds expand, active focus held, unrelated folds preserved, invalid/duplicate/missing/disabled/oversized requests refused before presentation changes.');

@@ -11,3 +11,31 @@ Accepted offline on 2026-10-07: 16 focused Python tests, four Node suites, three
 Actual private Town01 editor saved a collapsed Actors group with `type:actor id:0049`, changed the inspection state, recalled the single matching actor, cleared search to confirm the restored fold and rejected an invalid query without a command. Saved project reload/recall passed. Only the new scene-view record changed; imports, native Build input key and every non-project file stayed exact. Full-document one-step Undo/Redo and Save/Open passed. Actual wide/400 px hierarchy and final visible-dialog captures were inspected with no page errors or game launches. A separate read-only visual pass preserved document/history/native keys.
 
 Private evidence: `local-output/sdk-20260909/hierarchy-view-20261007/`. The initial browser attempt stopped at a hidden narrow-layout hierarchy panel; the corrected attempt selects the existing workspace tabs. An early dialog screenshot taken before asynchronous opening is superseded by the explicit visible-dialog captures. Those proof corrections are retained. No native Build was needed for this metadata-only feature; no runtime change, game launch/attachment, installation or disc export occurred. This is focused editor acceptance, not a full regression campaign or native gameplay/coordinate validation. Solo development and the full SDK goal remain active.
+
+## Reveal selected placement groups
+
+**Reveal selection** clears hierarchy search and expands every group containing a
+member of the current mixed, actor or scenery selection. It keeps keyboard focus on
+the active member when that member belongs to the group; otherwise it focuses the
+first selected stable ID. It does not invoke a row's selection action or change the
+viewport selection. Unrelated group folds remain collapsed. Individual selections
+continue to use the same action.
+
+The helper accepts 1–128 unique bounded identities and qualifies every row before
+expanding groups. Missing, duplicate, disabled or oversized requests refuse. Folding
+and search remain editor presentation; saving the resulting hierarchy state still
+requires the existing Saved scene views command. On narrow screens, open the
+**Hierarchy & assets** workspace tab to use this action.
+
+Offline checks passed (2026-10-07): two focused Node suites and two JavaScript syntax
+checks. The actual Town01 editor revealed 19 selected group members across collapsed
+actor/environment groups after clearing a hiding search. Active focus, the complete
+viewport selection and an unrelated collapsed trigger group were preserved. Wide
+and 400 px hierarchy views were inspected; no page errors occurred. Project document,
+history and saved file sizes/timestamps stayed unchanged. No native Build, game launch
+or installation occurred; gameplay remains deferred. Private evidence:
+`local-output/sdk-20260909/hierarchy-group-reveal-20261007/`
+(`browser.json`, `readonly.json`, wide/narrow screenshots). Earlier probes assumed
+project-resource refresh populated the scene hierarchy and omitted the narrow
+workspace-tab switch; their logs/screenshots are preserved. The final probe loads
+active-scene resources and uses the Hierarchy & assets tab.
