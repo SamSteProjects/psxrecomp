@@ -1,4 +1,5 @@
 // Read-only recovery of original inputs retained by reviewed native imports.
+import {decodeMeshAnimationPose} from './model-mesh-settings.js';
 const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const exact=(v,fields)=>object(v)&&Object.keys(v).length===fields.length&&fields.every(k=>Object.hasOwn(v,k));
@@ -8,6 +9,7 @@ const same=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
 const fields=['schema_version','asset_id','glb_sha256','byte_length','first_operation','operation_count','operations_sha256','input_sha256','proposed_sha256','recipe','receipt_key'];
 function recipe(value){
   const common=['kind','material_colors','scene_index','uv_set','source_scale','source_offset','source_rotation'];
+  if(value?.kind==='single'&&Object.hasOwn(value,'animation_pose')){decodeMeshAnimationPose(value.animation_pose);common.push('animation_pose');}
   if(!exact(value,[...common,...(value?.kind==='single'?['donor_face_id','new_group','replace_group','replace_object','preserve_primitives','primitive_index']:['mappings','replace_objects'])])||!['single','batch'].includes(value.kind))throw Error('Invalid retained mesh import settings.');
   const encoded=JSON.stringify(value);if(new TextEncoder().encode(encoded).length>128*1024)throw Error('Retained mesh import settings exceed their budget.');
 }

@@ -2,11 +2,20 @@
 const fail=message=>{throw new Error(message);};
 const integer=(v,max)=>Number.isSafeInteger(v)&&v>=0&&v<=max;
 const keys=(value,required,optional=[])=>value&&typeof value==='object'&&!Array.isArray(value)&&required.every(k=>Object.hasOwn(value,k))&&Object.keys(value).every(k=>required.includes(k)||optional.includes(k));
+export function decodeMeshAnimationPose(value){
+  if(!keys(value,['animation_index','time_seconds'])||!integer(value.animation_index,63)||typeof value.time_seconds!=='number'||!Number.isFinite(value.time_seconds)||value.time_seconds<0||value.time_seconds>3600)fail('Choose an explicit animation clip and finite pose time from 0 through 3600 seconds.');
+  return {animation_index:value.animation_index,time_seconds:value.time_seconds};
+}
+export function meshAnimationPoseMatches(value,expected){
+  try{return JSON.stringify(value?decodeMeshAnimationPose(value):null)===JSON.stringify(expected?decodeMeshAnimationPose(expected):null);}catch{return false;}
+}
+export function meshInventoryPose(value){const p=value?.static_scope?.sampled_animation;return p?decodeMeshAnimationPose({animation_index:p.animation_index,time_seconds:p.time_seconds}):null;}
 export function decodeMeshSettings(value){
   const common=['kind','material_colors','scene_index','uv_set','source_scale','source_offset','source_rotation'];
   const single=['donor_face_id','new_group','replace_group','replace_object','preserve_primitives','primitive_index'];
   const batch=['mappings','replace_objects'];
-  if(!keys(value,[...common,...(value?.kind==='single'?single:value?.kind==='batch'?batch:[])])||!['single','batch'].includes(value.kind))fail('Import settings have unknown or missing fields.');
+  if(!keys(value,[...common,...(value?.kind==='single'?single:value?.kind==='batch'?batch:[])],value?.kind==='single'?['animation_pose']:[])||!['single','batch'].includes(value.kind))fail('Import settings have unknown or missing fields.');
+  if(Object.hasOwn(value,'animation_pose'))decodeMeshAnimationPose(value.animation_pose);
   if(typeof value.material_colors!=='boolean'||!(value.scene_index===null||integer(value.scene_index,63))||!integer(value.uv_set,7)||typeof value.source_scale!=='number'||!Number.isFinite(value.source_scale)||value.source_scale<1e-6||value.source_scale>1e6)fail('Import settings contain invalid scene, UV or unit scale.');
   for(const [field,min,max] of [['source_offset',-32768,32767],['source_rotation',-360,360]])if(!Array.isArray(value[field])||value[field].length!==3||value[field].some(n=>typeof n!=='number'||!Number.isFinite(n)||n<min||n>max))fail('Import settings contain invalid native origin or rotation.');
   const donor=v=>typeof v==='string'&&v.length>0&&v.length<=512;
@@ -20,6 +29,7 @@ export function decodeMeshSettings(value){
 }
 export function qualifyMeshSettings(value,source,inventory){
   const recipe=decodeMeshSettings(value);
+  if(!meshAnimationPoseMatches(meshInventoryPose(inventory),recipe.animation_pose??null))fail('Selected GLB pose differs from recovered settings.');
   if((recipe.scene_index!==null&&inventory.scene_source?.scene_index!==recipe.scene_index)||(inventory.source_scale??1)!==recipe.source_scale||JSON.stringify(inventory.source_offset??[0,0,0])!==JSON.stringify(recipe.source_offset)||JSON.stringify(inventory.source_rotation??[0,0,0])!==JSON.stringify(recipe.source_rotation))fail('Selected GLB inventory differs from recovered settings.');
   const available=new Set([0,...(inventory.uv_sets??[]).flat()]);
   if(!available.has(recipe.uv_set))fail('Recovered UV channel is unavailable in the selected GLB scene.');
