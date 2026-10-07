@@ -1,4 +1,33 @@
-# Hierarchy keyboard browsing
+# Hierarchy Keyboard Browsing
+
+## Type to Focus — 2026-10-07
+
+With keyboard focus in the hierarchy, type unmodified letters or numbers to
+focus the next visible name with that prefix. Consecutive characters within
+one second extend the prefix; repeating a single character cycles matching
+rows and wraps at the end. The prefix resets after inactivity, hierarchy
+rebuilding, project/scene changes or an arrow/Home/End navigation key.
+
+Group headings participate. Actor names use their displayed name rather than
+their icon or authored badge. Hidden and disabled rows are excluded. Modifiers,
+composition input and typing in search fields retain their normal behavior.
+Enter/Space still activate the existing selection action. Typing changes focus
+only and does not select entities or edit the project.
+
+Two focused Node suites and JavaScript syntax/whitespace checks passed. Actual
+private Town01 browser checks passed repeated-character cycling, multi-character
+prefixes, modifier isolation, collapsed-child exclusion, search reset and the
+400 px Hierarchy & assets tab. Selection, authored data, history and dirty state
+stayed unchanged; navigation issued no API writes. Complete document/history/
+file snapshots stayed unchanged, there were no page errors, the screenshot was
+inspected and owned helpers terminated. No native Build or game ran.
+
+Private evidence:
+`local-output/sdk-20260909/hierarchy-type-focus-20261007/qualified/`.
+Earlier harness failures are retained: one expected Environment rows before
+catalog loading; another overlooked matching script rows after actor folding.
+The passing harness uses the populated visible row order. Gameplay remains
+deferred and the full SDK goal remains active.
 
 Tab enters the scene hierarchy at its remembered focused row, selected row, or first available row. **Arrow Up/Down** browse rows; **Home/End** focus the first/last row. Browsing moves focus only. **Enter/Space** activate the existing button action to select an actor, draft, environment object or source resource. Existing pointer and modifier selection actions remain available. Group headers participate in focus browsing. Right expands a collapsed header, then enters its first available child on the next press. Left from a child returns to its header; Left on the header collapses the group. Search temporarily expands groups and disables their headers, so Left from a search result retains focus on that row.
 

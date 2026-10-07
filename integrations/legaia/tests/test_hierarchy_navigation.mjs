@@ -12,4 +12,20 @@ doc.activeElement=outside;snapshot=control.beforeRender();items=[row('new',true)
 const parent=row('Actors group'),child=row('actor'),sibling=row('other actor');parent.dataset={hierarchyGroup:'actors'};child.getAttribute=k=>k==='aria-level'?'2':k==='role'?'treeitem':null;child.previousElementSibling=sibling;sibling.previousElementSibling=parent;items=[parent,sibling,child];child.focus();key('ArrowLeft');assert(prevented);assert.equal(doc.activeElement,parent);assert.deepEqual(items.map(n=>n.tabIndex),[0,-1,-1]);
 child.focus();parent.disabled=true;key('ArrowLeft');assert(!prevented);assert.equal(doc.activeElement,child);parent.disabled=false;key('ArrowLeft',child,{ctrlKey:true});assert(!prevented);key('ArrowDown',child,{defaultPrevented:true});assert(!prevented);assert.equal(doc.activeElement,child);child.previousElementSibling=null;key('ArrowLeft');assert(!prevented);
 control.dispose();assert.equal(events.size,0);
+
+let clock=0;const typing=mountHierarchyNavigation(host,()=>scene,{now:()=>clock});
+items=[row('group'),row('a'),row('b'),row('c'),row('hidden'),row('disabled')];
+['▾ Actors (3)','Alice','Alfred','Bob','Albert','Barbara'].forEach((label,i)=>items[i].textContent=label);
+items[4].hidden=true;items[5].disabled=true;items[3].focus();key('a');assert.equal(doc.activeElement.title,'group');assert(prevented);
+key('a');assert.equal(doc.activeElement.title,'a');key('l');assert.equal(doc.activeElement.title,'a');key('f');assert.equal(doc.activeElement.title,'b');
+clock=1001;key('b');assert.equal(doc.activeElement.title,'c');key('b');assert.equal(doc.activeElement.title,'c');
+clock=2002;key('a',doc.activeElement,{isComposing:true});assert(!prevented);assert.equal(doc.activeElement.title,'c');
+key('a',doc.activeElement,{ctrlKey:true});assert(!prevented);key('a',doc.activeElement,{altKey:true});assert(!prevented);
+key('a');assert.equal(doc.activeElement.title,'group');scene='different';key('b');assert.equal(doc.activeElement.title,'c');
+key('Home');key('b');assert.equal(doc.activeElement.title,'c');
+const input={closest:()=>null};key('a',input);assert(!prevented);assert.equal(doc.activeElement.title,'c');
+typing.afterRender(typing.beforeRender());key('a',host);assert.equal(doc.activeElement.title,'group');
+key('l');typing.afterRender(typing.beforeRender());key('b');assert.equal(doc.activeElement.title,'c');
+typing.dispose();assert.equal(events.size,0);
 console.log('Hierarchy roving focus, bounds, filter/rerender restoration, empty/context guards and native selection keys passed.');
+console.log('Typed prefix/cycling focus, timeout, scope/render reset, folded/disabled exclusions, composition/modifiers and input isolation passed.');
