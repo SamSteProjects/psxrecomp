@@ -1,5 +1,27 @@
 # Architecture
 
+## Encoded PCM loop audition - accepted offline (2026-10-06)
+
+The bank editor's envelope sample audition now offers an explicit Encoded PCM
+loop beside One pass. Freshly qualified sample markers must contain a loop-start
+and final end/repeat block. The intro plays once, then the last encoded loop-start
+owns the repeated PCM range; linear interpolation crosses the wrap. The existing
+bounded 44.1 kHz envelope continues through key-off and Release. Retail uses Retail
+PCM; Current and Reviewed Proposed use Current PCM. Looping repeats decoded PCM,
+without claiming native ADPCM predictor-history replay, driver pitch or game mix.
+Changing playback stops the audition; source/review changes withdraw it.
+
+Eight affected client suites and three syntax checks passed. The actual private
+PROT 0877 bank editor played/exported all three layers in both modes, refused
+looping for a nonrepeat Current WAV sample, and passed wide/400 px inspection.
+All six WAVs passed header/extent readback; independent arithmetic matched every
+Proposed loop PCM sample. Project/history/scene/saved content/Build key and the
+complete Current native audio entry stayed exact through Save/Open. No new
+native Build, full campaign or gameplay actions were performed. Manual native
+audio acceptance stays deferred; development stays solo and the goal stays active.
+See [encoded PCM loop audition](legaia-audio-pcm-loop.md) and private evidence
+`local-output/sdk-20260909/audio-pcm-loop-20261007/`.
+
 ## Partial script flag qualification - accepted offline (2026-10-06)
 
 Imported actor Current flag edits now remain discoverable when the native flag
