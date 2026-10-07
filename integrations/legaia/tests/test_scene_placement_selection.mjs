@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {mergeScenePlacementSelection,invertScenePlacementSelection} from '../editor/scene-placement-selection.js';
+import {mergeScenePlacementSelection,invertScenePlacementSelection,scenePlacementSelectionKind} from '../editor/scene-placement-selection.js';
 
 const actor='scene://town01/actors/man-p1/0012';
 const decor='environment://town01/field-map/decorations/01833';
@@ -48,3 +48,8 @@ assert.throws(()=>invertScenePlacementSelection([],many,manyEligible),/at most 1
 for(const [current,hits] of [[['alien'],[]],[[],['alien']],[Array(1),[]],[[],Array(1)],[null,[]],[[],null]])assert.throws(()=>invertScenePlacementSelection(current,hits,eligible));
 assert.deepEqual(current,[actor,actor]);assert.deepEqual(hits,[decor,decor]);
 console.log('Visible inversion: offscreen selections held, duplicate hits toggle once, empty/exact sets, overflow and malformed input refused without mutation.');
+
+const kinds={actors:new Set([actor,other]),npcs:new Set(['draft']),decorations:new Set([decor])};
+assert.equal(scenePlacementSelectionKind([actor,other],kinds),'actors');assert.equal(scenePlacementSelectionKind([decor],kinds),'scenery');assert.equal(scenePlacementSelectionKind([actor,decor],kinds),'mixed');assert.equal(scenePlacementSelectionKind(['draft'],kinds),'mixed');assert.equal(scenePlacementSelectionKind([],kinds),'empty');
+assert.throws(()=>scenePlacementSelectionKind(['alien'],kinds));assert.throws(()=>scenePlacementSelectionKind([actor],{...kinds,npcs:new Set([actor])}));assert.throws(()=>scenePlacementSelectionKind([actor],{...kinds,actors:[]}));
+console.log('Placement authoring handoff: current SDK actor/scenery sets, mixed/NPC retention, empty and conflicting/foreign identity refusal passed.');

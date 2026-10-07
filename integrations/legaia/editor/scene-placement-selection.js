@@ -21,3 +21,14 @@ export function invertScenePlacementSelection(current,hits,eligible){
   for(const id of new Set(hits)){if(chosen.has(id))chosen.delete(id);else chosen.add(id);}
   return mergeScenePlacementSelection([],Array.from(chosen),eligible);
 }
+
+export function scenePlacementSelectionKind(ids,{actors,npcs,decorations}){
+  if(![actors,npcs,decorations].every(set=>set instanceof Set))throw new Error('Placement kinds require current SDK identity sets.');
+  const eligible=new Set([...actors,...npcs,...decorations]);
+  for(const id of eligible)if(Number(actors.has(id))+Number(npcs.has(id))+Number(decorations.has(id))!==1)throw new Error('Placement identity has conflicting SDK kinds.');
+  const selected=mergeScenePlacementSelection([],ids,eligible);
+  if(!selected.length)return 'empty';
+  if(selected.every(id=>actors.has(id)))return 'actors';
+  if(selected.every(id=>decorations.has(id)))return 'scenery';
+  return 'mixed';
+}

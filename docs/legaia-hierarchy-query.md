@@ -30,8 +30,10 @@ becomes active. Selection creates no project command or history step.
 
 Use **Move scene placement group** for supported mixed-group Review/Apply, **Focus**
 to frame the selected group, **Reveal selection** to expand its hierarchy folds, or
-**Saved scene selections** to retain the IDs. Homogeneous actor/scenery authoring
-continues through its existing dedicated tools and selection workflows.
+**Saved scene selections** to retain the IDs. Actor-only results populate the existing actor group; scenery-only results populate
+the existing scenery group. Their dedicated placement tools receive the exact
+matching IDs. Mixed results retain the scene-placement group; NPC-only results
+retain existing selection behavior without claiming new group authoring support.
 
 Offline checks passed (2026-10-07): two focused Node suites, two JavaScript syntax
 checks and actual wide/400 px Town01 checks. Query `id:004` selected exactly 12 actor
@@ -43,3 +45,24 @@ game launch or installation occurred. Private evidence:
 (`browser.json`, `readonly.json`, wide/narrow/group-review screenshots). NPC-draft
 membership is covered by the source-bound eligibility helper; this actual fixture
 contains imported actors and scenery. Gameplay remains deferred.
+
+
+## Matching Placement Authoring Handoff
+
+**Select matching placements** routes results using the current SDK actor, NPC-draft
+and static-decoration identities. Actor-only queries open **Actor group placements**
+through **Review group placements**. Scenery-only queries enable **Move scenery
+group**. Mixed queries retain **Move scene placement group**. The routing preserves
+existing source, edit-mode and proposal guards; it creates no authored command.
+Conflicting or foreign identities are refused. Actor and scenery dialog actions
+wrap to remain accessible in narrow editor layouts.
+
+Offline checks passed (2026-10-07): the focused selection Node suite, two JavaScript
+syntax checks, and actual private Town01 editor checks at 1440 and 400 px. Exact
+queries handed 11 actors, five decorations and 12 mixed placements to their existing
+Review workflows; each review was cancelled. Project document, Undo/Redo stacks
+and saved file sizes/timestamps stayed unchanged. Earlier probe timing and overly
+broad fixture-query failures remain alongside the layout evidence. No native Build,
+game launch, runtime attachment or installation occurred. Gameplay remains deferred.
+Private evidence: `local-output/sdk-20260909/hierarchy-authoring-handoff-20261007/`
+(`browser.json`, `readonly.json`, browser logs and wide/narrow review screenshots).

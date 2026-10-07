@@ -24,7 +24,7 @@ import {mountEnvironmentLayout} from '/environment-layout.js';
 import {mountEnvironmentRotationGroup} from '/environment-rotation-group.js';
 import {mountSceneSelectionSets,decodeSavedSceneSelection} from '/scene-selection-sets.js';
 import {mountScenePlacementGroup} from '/scene-placement-group.js';
-import {mergeScenePlacementSelection,invertScenePlacementSelection} from '/scene-placement-selection.js';
+import {mergeScenePlacementSelection,invertScenePlacementSelection,scenePlacementSelectionKind} from '/scene-placement-selection.js';
 import {mountWallRectangle,wallRectangleGeometry} from '/collision-rectangle.js';
 import {mountFloorRectangle,decodeFloorRectangle} from '/floor-rectangle.js';
 import {mountFloorHeights,decodeFloorHeights} from '/floor-heights.js';
@@ -1263,7 +1263,11 @@ hierarchyPlacementMatchSelect.onclick=async()=>{
     if(JSON.stringify(ids)!==JSON.stringify(hierarchyPlacementMatchIds))throw new Error('Hierarchy results changed. Search again.');
     const active=hierarchySelectedIdentity(),focus=ids.includes(active)?active:ids[0];if(entities().some(entity=>entity.id===focus)&&!await api('/api/selection',{entity_id:focus}))return;
     if(key!==resourceStateKey()||source!==state.scene_preview_source_key||query!==$('entity-search').value||!scenePreviewCurrent()||!canSelectHierarchyMatches()||sceneRepresentation!=='authored'||wallSelectMode)throw new Error('Hierarchy source or query changed. Search again.');
-    cancelViewportGesture();clearActorGroupSelection();clearEnvironmentGroupSelection();clearScenePlacementSelection();sceneResourceSelection=null;actorBoxMode=false;scenePlacementMode=true;scenePlacementBoxMode=false;scenePlacementSelection=ids;scenePlacementKey=key;
+    const kind=scenePlacementSelectionKind(ids,{actors:new Set(entities().map(entity=>entity.id)),npcs:new Set(Object.entries(state.actor_drafts??{}).filter(([,draft])=>draft.scene_id===state.scene?.id).map(([id])=>id)),decorations:new Set(staticDecorations().map(entity=>entity.entity_id))});
+    cancelViewportGesture();clearActorGroupSelection();clearEnvironmentGroupSelection();clearScenePlacementSelection();sceneResourceSelection=null;actorBoxMode=false;scenePlacementMode=false;scenePlacementBoxMode=false;
+    if(kind==='actors'){actorGroupSelection=ids;actorGroupSelectionKey=key;actorGroupRangeAnchor=focus;}
+    else if(kind==='scenery'){environmentGroupSelection=ids;environmentGroupKey=key;environmentGroupAnchor=focus;}
+    else{scenePlacementMode=true;scenePlacementSelection=ids;scenePlacementKey=key;}
     environmentSelection=ids.includes(focus)&&!entities().some(entity=>entity.id===focus)&&!state.actor_drafts?.[focus]?focus:null;npcDraftSelection=state.actor_drafts?.[focus]?focus:null;
     renderHierarchy();renderInspector();draw();notify(ids.length+' matching placements selected. Project content unchanged.');
   }catch(error){notify(error.message,true);}
