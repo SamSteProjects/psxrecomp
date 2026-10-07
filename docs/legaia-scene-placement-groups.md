@@ -1,5 +1,30 @@
 # Mixed scene placement groups
 
+## Focus selected placement groups
+
+**Focus** and the unmodified **F** shortcut frame the current mixed, actor or scenery
+selection group using its decoded mesh bounds in the current scene view. The button
+refreshes with local selection changes, including groups made entirely in the
+viewport. Its tooltip identifies group framing. Current scene geometry is required;
+framing changes the editor camera only. Source-derived display height and scale keep
+their existing uncertainty and are not confirmed live coordinates.
+
+Both entry points share one action for groups, individual actors, NPC drafts,
+scenery and selected spatial resources. F does not intercept Ctrl/Command/Alt+F or
+editing within dropdown/contenteditable controls; open dialogs and text fields keep
+their existing keyboard guards. Busy work blocks framing.
+
+Offline checks passed (2026-10-07): JavaScript syntax and the focused selection suite
+passed. The actual Town01 editor selected 19 placements, enabled Focus immediately,
+and matched its camera target/distance against independently calculated source-mesh
+bounding corners. Moving the camera and pressing F restored the same complete group
+bounds. Wide/400 px camera layouts were inspected with no page errors. Project
+metadata/history and saved file sizes/timestamps stayed unchanged. No native Build,
+game launch or installation occurred; gameplay stays deferred. Private evidence:
+`local-output/sdk-20260909/scene-group-focus-20261007/`
+(`browser.json`, `readonly.json`, camera screenshots). The initial probe exposed the
+local-selection Focus button refresh bug; its failure log/screenshot are preserved.
+
 ## Select and invert visible placements
 
 Under **Scene tools**, choose **Select visible placements** to replace the mixed

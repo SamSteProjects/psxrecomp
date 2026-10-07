@@ -965,7 +965,7 @@ function scenePlacementEligible(){return new Set([...entities().map(e=>e.id),...
 function clearScenePlacementSelection(){scenePlacementMode=false;scenePlacementBoxMode=false;scenePlacementSelection=[];scenePlacementKey=null;scenePlacementTool?.restore();}
 function updateScenePlacementSelection(){
   if((scenePlacementMode||scenePlacementSelection.length)&&(!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||scenePlacementKey!==resourceStateKey()||scenePlacementSelection.some(id=>!scenePlacementEligible().has(id))))clearScenePlacementSelection();
-  savedSceneSelections?.synchronize();scenePlacementTool?.refresh();const host=document.querySelector('#scene-placement-tools');if(!host)return;
+  savedSceneSelections?.synchronize();scenePlacementTool?.refresh();updateSceneFocusButton();const host=document.querySelector('#scene-placement-tools');if(!host)return;
   host.querySelector('[data-mixed-select]').disabled=busy||!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||!!scenePose||!!shapeDraft||!!actorGroupInspection||!!environmentGroupInspection||!!wallSelectMode||!!wallInspection||!!scenePlacementInspection;
   host.querySelector('[data-mixed-box]').disabled=host.querySelector('[data-mixed-select]').disabled||!sceneModelsReady()||pickScriptTargets||pickRuntimeNodes;
   for(const name of ['visible','invert'])host.querySelector('[data-mixed-'+name+']').disabled=host.querySelector('[data-mixed-box]').disabled;
@@ -1255,7 +1255,21 @@ function hierarchySelectedIdentity(){return selectedSceneResource()?.id??(select
 revealHierarchyButton.onclick=()=>{if(busy)return;const id=hierarchySelectedIdentity();if(!id)return;$('entity-search').value='';renderHierarchy();if(!revealHierarchyEntity($('hierarchy'),id))notify('The current selection has no available hierarchy row.',true);};
 
 $('frame-all').onclick=()=>frame();
-$('frame-selected').onclick=()=>{if(selectedSceneResource())frameSceneResource();else if(selectedNpcDraft())frameNpcDraft();else if(selectedEnvironment())frameEnvironment();else{const entity=selected();if(entity)frame(entity);}};
+function updateSceneFocusButton(){
+  const group=currentPlacementSelection().length>1;
+  $('frame-selected').disabled=busy||(group? !scenePreviewCurrent()||!sceneModelsReady():!['trigger','region'].includes(selectedSceneResource()?.type)&&!selected()&&!selectedEnvironment()&&!selectedNpcDraft());
+  $('frame-selected').title=group?'Frame selected placement group (F)':'Frame selected entity (F)';
+}
+function frameSceneSelection(){
+  if(busy)return;
+  const ids=currentPlacementSelection();
+  if(ids.length>1){
+    if(!scenePreviewCurrent()||!sceneModelsReady()){notify('Load the current scene geometry before framing the placement group.',true);return;}
+    cancelViewportGesture();frameScenePlacementGroup({targets:ids.map(entity_id=>({entity_id}))});return;
+  }
+  if(selectedSceneResource())frameSceneResource();else if(selectedNpcDraft())frameNpcDraft();else if(selectedEnvironment())frameEnvironment();else if(selected())frame(selected());
+}
+$('frame-selected').onclick=frameSceneSelection;
 $('grid-toggle').onclick=()=>{grid=!grid;$('grid-toggle').classList.toggle('active',grid);$('grid-toggle').setAttribute('aria-pressed',grid);draw();};
 $('diagnostics-button').onclick=()=>{
   $('diagnostics').replaceChildren();
@@ -1354,7 +1368,7 @@ document.addEventListener('keydown',event=>{
   if(event.target.matches('input,textarea') || document.querySelector('dialog[open]')) return;
   if((event.ctrlKey||event.metaKey) && event.key.toLowerCase()==='s'){event.preventDefault();if(!busy)api('/api/project/save',{}, {success:'Project saved.'});}
   if((event.ctrlKey||event.metaKey) && event.key.toLowerCase()==='z'){event.preventDefault();const redo=event.shiftKey;if(redo?state.history?.can_redo:state.history?.can_undo)api(redo?'/api/redo':'/api/undo',{});}
-  if(event.key.toLowerCase()==='f'){if(selectedNpcDraft())frameNpcDraft();else if(selectedEnvironment())frameEnvironment();else if(selected())frame(selected());}
+  if(event.key.toLowerCase()==='f'&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&!event.target.matches('select,[contenteditable]')&&!event.target.isContentEditable){event.preventDefault();frameSceneSelection();}
 });
 window.addEventListener('beforeunload',event=>{if(state.project?.dirty){event.preventDefault();event.returnValue='';}});
 
@@ -1378,7 +1392,7 @@ function render(){
   $('live-mode').title=state.capabilities?.live_mode?'Observe runtime state':state.runtime?.reason?.message ?? 'Runtime observation is unavailable';
   reconcileLiveFollow();renderRuntimeControls();
   document.querySelector('.preview-badge').firstChild.textContent=live?'AUTHORED SCENE · LIVE OBSERVATIONS SEPARATE':'SCENE PREVIEW';
-  $('frame-selected').disabled=!['trigger','region'].includes(selectedSceneResource()?.type)&&!selected()&&!selectedEnvironment()&&!selectedNpcDraft();
+  updateSceneFocusButton();
   $('status').textContent=state.scene?.id ? `${state.scene.name} · ${entities().length} entities · ${state.project?.dirty?'Changes not saved':'Project ready'}` : 'Ready · Create or open a project to begin';
   renderHierarchy();renderAssets();renderInspector();
   templateButton.disabled=!state.capabilities?.authored_transform_templates;
