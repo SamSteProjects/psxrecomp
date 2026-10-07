@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {decodeHistory,decodeHistoryRecord} from '../editor/command-history.js';
+const row={branch:'undo',index:0,record_key:'b'.repeat(64),recorded_target:null,recorded_owners:{entity_id:'entity://fixture'},byte_length:100};
+const report={schema_version:'legaia.command-history.v1',source_key:'a'.repeat(64),read_only:true,session_only:true,total:1,offset:0,page_size:50,records:[row],next_offset:null};
+assert.deepEqual(decodeHistory(report),report);
+for(const patch of [{source_key:'bad'},{session_only:false},{total:2},{offset:-1},{next_offset:50},{records:[row,row]}])assert.throws(()=>decodeHistory({...report,...patch}));
+for(const patch of [{branch:'unknown'},{index:true},{record_key:'bad'},{recorded_owners:[]},{byte_length:-1}])assert.throws(()=>decodeHistory({...report,records:[{...row,...patch}]}));
+const detail={schema_version:'legaia.command-history-record.v1',source_key:report.source_key,read_only:true,branch:'undo',index:0,record_key:row.record_key,record:{entity_id:'entity://fixture',before:null,after:{x:125}}};
+assert.deepEqual(decodeHistoryRecord(detail,report,row),detail.record);
+const detached=decodeHistoryRecord(detail,report,row);detached.after.x=0;assert.equal(detail.record.after.x,125);
+for(const patch of [{source_key:'c'.repeat(64)},{branch:'redo'},{index:1},{record_key:'c'.repeat(64)},{record:{before:null}}])assert.throws(()=>decodeHistoryRecord({...detail,...patch},report,row));
+console.log('Session history decoders passed');

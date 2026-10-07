@@ -952,6 +952,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/component-references.js": ("component-references.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
                  "/model-placement-users.js": ("model-placement-users.js", "text/javascript"),
+                 "/command-history.js": ("command-history.js", "text/javascript"),
                  "/preset-files.js": ("preset-files.js", "text/javascript"),
                  "/actor-preset-review.js": ("actor-preset-review.js", "text/javascript"),
                  "/preset-animation.js": ("preset-animation.js", "text/javascript"),
@@ -1054,6 +1055,19 @@ class EditorHandler(BaseHTTPRequestHandler):
                 raise ProjectError("Command body must be an object")
             with self.server.command_lock:
                 route = urlsplit(self.path).path
+                if route == '/api/command-history':
+                    if set(body) not in (set(), {'offset'}):
+                        raise ProjectError('History listing accepts an optional offset only')
+                    from .command_history import listing
+                    self._json(200, listing(self.server.project, body.get('offset', 0)))
+                    return
+                if route == '/api/command-history/inspect':
+                    if set(body) != {'source_key', 'branch', 'index', 'record_key'}:
+                        raise ProjectError('History inspection requires a current record selector only')
+                    from .command_history import inspect_record
+                    self._json(200, inspect_record(self.server.project, body['source_key'],
+                               body['branch'], body['index'], body['record_key']))
+                    return
                 if route == '/api/project-assets':
                     if body:
                         raise ProjectError('Project resource discovery accepts only an empty object')

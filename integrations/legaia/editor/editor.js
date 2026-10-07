@@ -1,3 +1,4 @@
+import {openCommandHistory} from '/command-history.js';
 import {mountSceneRuler} from '/scene-ruler.js';
 import {mountMeshSourceLibrary,navigateMeshSource} from '/mesh-source-library.js';
 import {mountNpcPresets,NPC_PRESET_SCOPE} from '/npc-presets.js';
@@ -1276,6 +1277,7 @@ const actorBatchTool=mountActorPlacementBatch({getState:()=>state,getEntities:en
     const points=[];for(const [id,proposed] of inspection.positions){const entity=entities().find(item=>item.id===id);if(!entity)continue;const original=activeScenePreview()?.entities.find(item=>item.entity_id===id)?.display_position;if(original)points.push(original);points.push(proposed);}
     if(!points.length)return;const min={},max={};for(const axis of ['x','y','z']){min[axis]=Math.min(...points.map(p=>p[axis]));max[axis]=Math.max(...points.map(p=>p[axis]));camera.target[axis]=(min[axis]+max[axis])/2;}camera.distance=Math.max(200,Math.hypot(max.x-min.x,max.y-min.y,max.z-min.z)*1.5);cameraRevision++;draw();
   }});
+$('history-button').onclick=()=>{if(!busy)openCommandHistory();};
 $('undo-button').onclick=()=>api('/api/undo',{});
 $('redo-button').onclick=()=>api('/api/redo',{});
 $('edit-mode').onclick=()=>api('/api/mode',{mode:'edit'});
