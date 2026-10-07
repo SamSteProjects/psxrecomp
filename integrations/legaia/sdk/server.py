@@ -855,6 +855,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/audio-sample-recovery.js": ("audio-sample-recovery.js", "text/javascript"),
                  "/audio-allocation-inputs.js": ("audio-allocation-inputs.js", "text/javascript"),
                  "/audio-allocation-input-contract.js": ("audio-allocation-input-contract.js", "text/javascript"),
+                 "/audio-allocation-contract.js": ("audio-allocation-contract.js", "text/javascript"),
                  '/actor-animation.js': ('actor-animation.js', 'text/javascript'),
                  "/build-review.js": ("build-review.js", "text/javascript"),
                  "/build-history.js": ("build-history.js", "text/javascript"),
