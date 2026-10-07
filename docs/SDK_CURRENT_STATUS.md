@@ -1,5 +1,34 @@
 # Current Legaia SDK status — 2026-10-07
 
+## Whole-object axis scaling with normal correction - accepted offline (2026-10-07)
+
+Model vectors now offers separate X/Y/Z percentages and an origin or Current
+bounds-center pivot for the whole object. Stored normals use inverse transpose
+with their pre-round original magnitude; exact integer comparisons round native
+words halfway away from zero. Zero/no normals are supported, uniform scaling
+keeps normals exact, and vertex/normal overflow rejects the complete proposal.
+The source-bound Review -> Current/Proposed geometry and normal comparison ->
+scene inspection/Return -> fresh Review -> Apply workflow rechecks both hashes.
+Existing model command ownership, Undo/Redo and Save/Open remain unchanged.
+
+Fourteen focused Python checks, five Node suites, two editor syntax checks and
+Python AST checks passed. Actual Town01 model 0009/object 1 scaled 18 vertices and
+11 normals by 150/75/125% around (65,-161,-4); the browser passed input/pivot
+invalidation, exact reviewed Apply, normal diagnostics, scene Return, history
+and wide/400px layout with no page errors or game launches. Independent 80-digit
+Decimal/native construction matched all bytes; only 93 selected-object XYZ bytes
+changed. Native Build `0bd70d36ac8469f7` used ordinary overlays without relocation.
+Full decoded carrier and directory/ZIP payloads matched; unrelated overlay
+hashes stayed exact. Package SHA-256:
+`12d227420b36af78fda820aa8d6c377fa551f59bc8053db834f9eb0c3c64a8d9`.
+
+See [object axis scaling](legaia-model-object-axis-scale.md) and private
+`local-output/sdk-20260909/object-axis-scale-20261007/` evidence. A readback
+harness relocation assumption was corrected against the existing package;
+its initial failure and a corrected screenshot locator failure are retained. No runtime change, game, installation, disc
+export or new full campaign ran. Manual gameplay remains deferred, development
+continues solo, and the full SDK goal stays active.
+
 ## Structured hierarchy queries and actor selection - accepted offline (2026-10-07)
 
 Hierarchy search now supports name/id/type/component/authored/visibility fields,
