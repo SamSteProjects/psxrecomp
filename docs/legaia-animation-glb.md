@@ -1,5 +1,7 @@
 # Source-bound animation GLB authoring
 
+Both actor and retained GLB editors support optional [Native and External Animation Pose Influence](legaia-animation-pose-influence.md), with separate translation and rotation weights against each current native frame after optional reference alignment. Controls participate in Review and retained source recipes. Gameplay verification remains deferred.
+
 ## Import motion from an external joint rig
 
 Load the edited GLB and its current source binding. Enter one joint node index per native object in **External rigid object mapping**, in native object order, and the zero-based skin index in **External joint rig skin**. The inventory labels joint membership and mesh instances. Choose the file animation and sampling settings, then Review, preview the native pose, Return and Apply. Changing the mapping or skin requires another Review. Both imported-actor and allocated-record dialogs support this workflow; recipes preserve `external_object_nodes` and `external_skin_index`.

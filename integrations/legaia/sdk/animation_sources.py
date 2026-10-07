@@ -38,6 +38,11 @@ def validate_record(record):
         raise ProjectError('Animation source requires a stable target identity')
     if not isinstance(binding,dict) or len(canonical(binding))>128*1024 or binding.get('scene_id')!=scene:
         raise ProjectError('Animation source binding differs from its scene or byte budget')
+    if 'external_pose_blend' in binding:
+        from importer.animation_glb import pose_blend_config
+        from importer.core import ImportError as BlendError
+        try:pose_blend_config(binding['external_pose_blend'])
+        except BlendError as error:raise ProjectError(str(error)) from error
     if 'external_pose_alignment' in binding:
         from importer.animation_glb import pose_alignment_config
         from importer.core import ImportError as AlignmentError

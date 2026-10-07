@@ -572,6 +572,13 @@ def _sample_hierarchy(order, parents, static, tracks, time):
     return poses
 
 
+def pose_blend_config(value):
+    if (not isinstance(value, dict) or set(value) != {'translation_weight','rotation_weight'}
+            or any(not _finite_number(v) or not 0 <= v <= 1 for v in value.values())):
+        raise ImportError('Pose influence requires explicit finite translation/rotation weights within 0..1')
+    return {key:float(value[key]) for key in ('translation_weight','rotation_weight')}
+
+
 def pose_alignment_config(value, frame_count=4096):
     _integer(frame_count, 1, 4096, "pose alignment output frame count")
     if (not isinstance(value, dict) or set(value) != {'mode','source_frame_index','reference_seconds'}
@@ -648,7 +655,7 @@ def _quantize_rotation(glb_q, baseline_angles):
     return [v * 16 for v in ticks], degrees
 
 
-def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animation_index: int | None = None, object_node_indices: list[int] | None = None, external_sampling: dict | None = None, external_skin_index: int | None = None, external_pose_alignment: dict | None = None) -> tuple[bytes, dict]:
+def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animation_index: int | None = None, object_node_indices: list[int] | None = None, external_sampling: dict | None = None, external_skin_index: int | None = None, external_pose_alignment: dict | None = None, external_pose_blend: dict | None = None) -> tuple[bytes, dict]:
     """Sample external poses at explicit 1..120 fps with fixed native frame count.
 
     At i/fps, the float32 representation matches glTF key storage and the SDK
@@ -662,6 +669,7 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
     if type(fps) not in (int, float) or not 1 <= fps <= 120 or not math.isfinite(fps):
         raise ImportError("Animation GLB requires an explicit rate from 1 to 120 fps")
     sampling=sampling_config(external_sampling) if external_sampling is not None else None
+    blend=pose_blend_config(external_pose_blend) if external_pose_blend is not None else None
     source = decode_animation_record(baseline)
     alignment = pose_alignment_config(external_pose_alignment, source['frame_count']) if external_pose_alignment is not None else None
     if alignment is not None and object_node_indices is None:
@@ -708,6 +716,18 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
                 delta = _rotate_vector(correction, [a-b for a,b in zip(translation, external_t)])
                 translation = [a+b for a,b in zip(native_t, delta)]
                 quaternion = _multiply_quaternions(correction, quaternion)
+            if blend is not None:
+                weight = blend['translation_weight']
+                native_t = [before_t[0], -before_t[1], before_t[2]]
+                if weight == 0:
+                    translation = native_t
+                elif weight != 1:
+                    translation = [(1-weight)*a+weight*b for a,b in zip(native_t,translation)]
+                weight = blend['rotation_weight']
+                if weight != 1:
+                    q = _source_quaternion([value//16 for value in before_r])
+                    native_q = [-q[0], q[1], -q[2], q[3]]
+                    quaternion = native_q if weight == 0 else _slerp(native_q, quaternion, weight)
             actual = [translation[0], -translation[1], translation[2]]
             if any(not -2048 <= value <= 2047 for value in actual):
                 raise ImportError("GLB translation exceeds signed twelve-bit range before quantization")
@@ -745,6 +765,9 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
         "scope": "existing-rigid-animation-channels-only", "gameplay_verified": False,
     }
     if sampling is not None:report['external_sampling']=sampling
+    if blend is not None:
+        report['external_pose_blend'] = blend
+        report['quantization']['timeline'] += '; pose influence blends each sampled/aligned frame with its current native frame before quantization; translation linear, rotation shortest-arc slerp'
     if alignment is not None:
         report['external_pose_alignment'] = alignment
         report['quantization']['timeline'] += '; pose = native_reference * inverse(external_reference) * sampled_external; reference time float32 with endpoint hold'

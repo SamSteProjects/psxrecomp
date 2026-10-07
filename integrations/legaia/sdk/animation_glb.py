@@ -119,6 +119,8 @@ def _prepare(project, entity_id: str, content: bytes, binding: dict, *, animatio
     object_nodes=binding.get('external_object_nodes')
     skin_index=binding.get('external_skin_index')
     if 'external_skin_index' in binding and (type(skin_index) is not int or not 0<=skin_index<64 or object_nodes is None):raise ProjectError('Joint rig requires a bounded selected skin and explicit object mapping')
+    blend=binding.get('external_pose_blend')
+    if 'external_pose_blend' in binding and blend is None:raise ProjectError('Pose influence cannot be null')
     alignment=binding.get('external_pose_alignment')
     if 'external_pose_alignment' in binding and (alignment is None or object_nodes is None):raise ProjectError('Pose alignment requires explicit object mapping and a nonnull reference configuration')
     sampling=binding.get('external_sampling')
@@ -128,10 +130,11 @@ def _prepare(project, entity_id: str, content: bytes, binding: dict, *, animatio
     normalized_binding.pop('external_skin_index',None)
     normalized_binding.pop('external_sampling',None)
     normalized_binding.pop('external_pose_alignment',None)
+    normalized_binding.pop('external_pose_blend',None)
     if digest(normalized_binding) != digest(snapshot['binding']):
         raise ProjectError('Animation export binding differs from the current source or ownership; export again')
     binding = snapshot['binding']
-    candidate, analysis = import_animation_glb(snapshot['effective'], content, fps=binding['clip_fps'], animation_index=animation_index,object_node_indices=object_nodes,external_sampling=sampling,external_skin_index=skin_index,external_pose_alignment=alignment)
+    candidate, analysis = import_animation_glb(snapshot['effective'], content, fps=binding['clip_fps'], animation_index=animation_index,object_node_indices=object_nodes,external_sampling=sampling,external_skin_index=skin_index,external_pose_alignment=alignment,external_pose_blend=blend)
     retail = decode_animation_record(snapshot['retail'])
     channel_owner = snapshot['channel_owner']
     before = _axes(snapshot['owners'].get(channel_owner))
@@ -189,6 +192,7 @@ def _prepare(project, entity_id: str, content: bytes, binding: dict, *, animatio
     if skin_index is not None:review_identity['external_skin_index']=skin_index
     if sampling is not None:review_identity['external_sampling']=analysis['external_sampling']
     if alignment is not None:review_identity['external_pose_alignment']=analysis['external_pose_alignment']
+    if blend is not None:review_identity['external_pose_blend']=analysis['external_pose_blend']
     report['review_key'] = digest(review_identity)
     command = (dict(type='set_animation_channels', entity_id=channel_owner, value=value) if edits else
                dict(type='clear_animation_channels', entity_id=channel_owner))

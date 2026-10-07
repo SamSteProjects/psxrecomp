@@ -1,0 +1,17 @@
+# Native and External Animation Pose Influence
+
+Imported actor clips and retained allocated clips can blend external rigid motion with the current native clip through their existing GLB editors.
+
+Enable **Blend external motion with current native clip**, then enter separate translation and rotation influences from 0 to 1. Zero keeps that native channel; one uses the existing external import behavior. Fractional translation uses linear interpolation and fractional rotation uses shortest-arc quaternion interpolation. Review, Preview, Return and Apply continue through the normal authoring workflow.
+
+Each output frame blends against its corresponding effective native frame, after optional [Native Reference Pose Alignment](legaia-animation-reference-alignment.md). This preserves current native motion according to the selected influence. It does not blend against a single reference frame. For retained clips, changing the output frame mapping changes the inherited native baseline; unchanged mappings retain existing edits. No anatomical correspondence, scale compensation, deforming native skin or gameplay timing is inferred.
+
+The optional `binding.external_pose_blend` has exactly two finite numeric fields, `translation_weight` and `rotation_weight`, each within 0..1. Explicit null, boolean, string, extra fields and values outside that range refuse. The recipe participates in Review identity and retained-source validation. Changing either control withdraws Preview/Apply; stale weights cannot authorize an Apply. Original GLB and binding recovery preserves the recipe, and normal Undo/Redo, Save/Open and project copying retain it.
+
+Blending occurs before native quantization. Zero and full influence preserve the exact corresponding native/legacy behavior. The final translation must satisfy signed twelve-bit bounds. Source-biased angle quantization, finite rigid transform and track validation, explicit ownership, immutable imports, opaque native bytes, shared-axis composition and native Build capacity checks remain. Zero influence still validates the uploaded GLB rather than bypassing malformed data.
+
+## Offline Verification
+
+Eight focused cases cover all 256 native angle bytes at zero influence, exact legacy full influence, independent per-frame fractional weights, separate channel controls, reference rotation before blending, shortest-arc wrap, signed translation ties, malformed settings, final bounds, zero-influence transform refusal and malformed retained recipes. Actual workflow and Build evidence is retained under `local-output/sdk-20260909/animation-glb-blend-20261007/`. Gameplay verification remains deferred; the full SDK goal remains active and solo.
+
+Seventy-nine focused Python cases across targeted runs and seven Node suites passed, with JS syntax and Python AST checks. Actual imported and retained workflows at 1400/400 px passed Review/Preview/Return/Apply, control invalidation, stale-weight refusal, exact original-input recovery, one-step Undo/Redo, Save/Open and copied-project reopen. Build `d5cc57b05dd61629` delivered exact composed native animation-bank readback, SHA-256 `be7a6278793366a47feeaaa6990ffa46573592e1e8346fc584a023c7cd4e3df0`. Package SHA-256: `158380b4d2420acbdfd4a03b53ece5699c92895f6fb3dcfe2049dd1beb68cb3b`. Reference data stayed unchanged, browser checks had no page errors, and owned workflow helpers terminated. No game, runtime attachment, install or disc export occurred.

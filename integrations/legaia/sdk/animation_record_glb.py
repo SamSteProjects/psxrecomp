@@ -54,6 +54,8 @@ def prepare_import(project,scene_id,record_id,source_frame_indices,expected_sour
     object_nodes=binding.get('external_object_nodes')
     skin_index=binding.get('external_skin_index')
     if 'external_skin_index' in binding and (type(skin_index) is not int or not 0<=skin_index<64 or object_nodes is None):raise ProjectError('Joint rig requires a bounded selected skin and explicit object mapping')
+    blend=binding.get('external_pose_blend')
+    if 'external_pose_blend' in binding and blend is None:raise ProjectError('Pose influence cannot be null')
     alignment=binding.get('external_pose_alignment')
     if 'external_pose_alignment' in binding and (alignment is None or object_nodes is None):raise ProjectError('Pose alignment requires explicit object mapping and a nonnull reference configuration')
     sampling=binding.get('external_sampling')
@@ -63,13 +65,14 @@ def prepare_import(project,scene_id,record_id,source_frame_indices,expected_sour
     normalized.pop('external_skin_index',None)
     normalized.pop('external_sampling',None)
     normalized.pop('external_pose_alignment',None)
+    normalized.pop('external_pose_blend',None)
     if digest(normalized)!=digest(current):
         raise ProjectError('Retained GLB binding differs from the current saved capture or scene; export again')
     # Same mapping uses current content as the source-biased angular baseline.
     # A changed mapping inherits captured frames, never guesses new opaque data.
     baseline_edits=entry['edits'] if source_frame_indices==entry['source_frame_indices'] else []
     baseline,_=allocate_animation_record(captured,entry['effective_donor_record_sha256'],source_frame_indices,baseline_edits)
-    candidate,analysis=import_animation_glb(baseline,content,fps=current['clip_fps'],animation_index=animation_index,object_node_indices=object_nodes,external_sampling=sampling,external_skin_index=skin_index,external_pose_alignment=alignment)
+    candidate,analysis=import_animation_glb(baseline,content,fps=current['clip_fps'],animation_index=animation_index,object_node_indices=object_nodes,external_sampling=sampling,external_skin_index=skin_index,external_pose_alignment=alignment,external_pose_blend=blend)
     inherited,_=allocate_animation_record(captured,entry['effective_donor_record_sha256'],source_frame_indices,[])
     desired=decode_animation_record(candidate);original=decode_animation_record(inherited);edits=[]
     for frame in desired['frames']:
@@ -90,6 +93,7 @@ def prepare_import(project,scene_id,record_id,source_frame_indices,expected_sour
     if skin_index is not None:current=dict(current,external_skin_index=skin_index)
     if sampling is not None:current=dict(current,external_sampling=analysis['external_sampling'])
     if alignment is not None:current=dict(current,external_pose_alignment=analysis['external_pose_alignment'])
+    if blend is not None:current=dict(current,external_pose_blend=analysis['external_pose_blend'])
     report=dict(schema_version='legaia.animation-record-glb-review.v1',scene_id=scene_id,record_id=record_id,
         project_source_key=expected_source_key,binding=current,glb_sha256=sha256(content).hexdigest(),
         analysis=analysis,content_review=native,content_request=native_request,
