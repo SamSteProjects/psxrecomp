@@ -21,9 +21,9 @@ def interpolate_axis(kind,first,last,index,span):
     return (rounded(first//16*span+delta*index)%256)*16
 
 
-def stage(project,scene_id,record_id,source_frame_indices,edits,object_index,start,end,expected_source_key):
+def stage(project,scene_id,record_id,source_frame_indices,edits,object_index,start,end,expected_source_key,all_objects=False):
     current=options(project,scene_id,record_id,expected_source_key);entry=current['entry']
-    if (not current['edit_available'] or not isinstance(source_frame_indices,list)
+    if (type(all_objects) is not bool or not current['edit_available'] or not isinstance(source_frame_indices,list)
             or not 2<=len(source_frame_indices)<=current['maximum_frame_count']
             or type(object_index) is not int or not 0<=object_index<entry['object_count']
             or type(start) is not int or type(end) is not int or not 0<=start<end<len(source_frame_indices)):
@@ -32,18 +32,26 @@ def stage(project,scene_id,record_id,source_frame_indices,edits,object_index,sta
     captured,_=patch_animation_channels(source[a:b],entry['donor_record_sha256'],entry['donor_edits'])
     before,_=allocate_animation_record(captured,entry['effective_donor_record_sha256'],source_frame_indices,edits)
     frames=decode_animation_record(before)['frames']
-    def pose(frame):
-        transform=frames[frame]['object_transforms'][object_index]
+    def pose(frame,obj=object_index):
+        transform=frames[frame]['object_transforms'][obj]
         return {kind:dict(zip('xyz',transform[kind])) for kind in ['translation','rotation_psx']}
-    first,last=pose(start),pose(end);result=deepcopy(edits);rows={(r['frame_index'],r['object_index']):r for r in result};poses=[]
+    selected_objects=range(entry['object_count']) if all_objects else [object_index]
+    endpoints={obj:(pose(start,obj),pose(end,obj)) for obj in selected_objects}
+    result=deepcopy(edits);rows={(r['frame_index'],r['object_index']):r for r in result};poses=[]
     for frame in range(start,end+1):
-        after={kind:{axis:interpolate_axis(kind,first[kind][axis],last[kind][axis],frame-start,end-start) for axis in 'xyz'} for kind in ['translation','rotation_psx']}
-        row=rows.get((frame,object_index))
-        if row is None:
-            row=dict(frame_index=frame,object_index=object_index);result.append(row)
-        row.update(deepcopy(after));poses.append(dict(frame_index=frame,before=pose(frame),after=after))
+        for obj in selected_objects:
+            first,last=endpoints[obj]
+            after={kind:{axis:interpolate_axis(kind,first[kind][axis],last[kind][axis],frame-start,end-start) for axis in 'xyz'} for kind in ['translation','rotation_psx']}
+            row=rows.get((frame,obj))
+            if row is None:
+                row=dict(frame_index=frame,object_index=obj);result.append(row)
+            row.update(deepcopy(after));evidence=dict(frame_index=frame,before=pose(frame,obj),after=after)
+            if all_objects:evidence['object_index']=obj
+            poses.append(evidence)
     result.sort(key=lambda r:(r['frame_index'],r['object_index']))
     _,review=prepare(project,scene_id,record_id,source_frame_indices,result,expected_source_key)
     if source_key(project)!=expected_source_key:
         raise ProjectError('Effective interpolation source changed during staging')
-    return dict(schema_version='legaia.animation-record-interpolation.v1',scene_id=scene_id,record_id=record_id,project_source_key=expected_source_key,source_frame_indices=deepcopy(source_frame_indices),before_edits=deepcopy(edits),edits=result,object_index=object_index,start=start,end=end,poses=poses,before_record_sha256=sha256(before).hexdigest(),after_record_sha256=review['candidate_record_sha256'],project_changed=False,gameplay_verified=False)
+    report=dict(schema_version='legaia.animation-record-interpolation.v1',scene_id=scene_id,record_id=record_id,project_source_key=expected_source_key,source_frame_indices=deepcopy(source_frame_indices),before_edits=deepcopy(edits),edits=result,object_index=object_index,start=start,end=end,poses=poses,before_record_sha256=sha256(before).hexdigest(),after_record_sha256=review['candidate_record_sha256'],project_changed=False,gameplay_verified=False)
+    if all_objects:report.update(schema_version='legaia.animation-record-interpolation.v2',all_objects=True,object_count=entry['object_count'])
+    return report

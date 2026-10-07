@@ -2806,7 +2806,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .animation_record_pose_copy import stage
                     self._json(200,stage(self.server.project,**body));return
                 if route=='/api/animation-record-interpolation':
-                    if set(body)!={'scene_id','record_id','source_frame_indices','edits','object_index','start','end','expected_source_key'}:
+                    if set(body)!={'scene_id','record_id','source_frame_indices','edits','object_index','start','end','expected_source_key',*(['all_objects'] if 'all_objects' in body else [])}:
                         raise ProjectError('Effective interpolation requires exact source-bound clip, draft and range fields')
                     from .animation_record_interpolation import stage
                     self._json(200,stage(self.server.project,**body));return
