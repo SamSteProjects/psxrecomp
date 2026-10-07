@@ -874,6 +874,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/floor-pattern.js": ("floor-pattern.js", "text/javascript"),
                  "/collision-rectangle.js": ("collision-rectangle.js", "text/javascript"),
                  "/model-normal-length.js": ("model-normal-length.js", "text/javascript"),
+                 "/model-object-mirror.js": ("model-object-mirror.js", "text/javascript"),
                  "/model-object-axis-scale.js": ("model-object-axis-scale.js", "text/javascript"),
                  "/model-object-angle.js": ("model-object-angle.js", "text/javascript"),
                  "/model-normal-rotation.js": ("model-normal-rotation.js", "text/javascript"),
@@ -1343,6 +1344,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body) != {'asset_id','object_index','percent','expected_sha256'} or not isinstance(body['asset_id'],str):
                         raise ProjectError('Object scale requires model, object, percent and inspected hash')
                     self.server.project.scale_model_object(body['asset_id'],body['object_index'],body['percent'],body['expected_sha256'])
+                    self._json(200,self.server.state())
+                    return
+                if route == '/api/model-object-mirror':
+                    if set(body)!={'asset_id','object_index','axis','pivot','expected_sha256','proposed_sha256'} or not isinstance(body['asset_id'],str):raise ProjectError('Object mirror requires exact model, object, axis, pivot and inspected/proposed hashes')
+                    self.server.project.mirror_model_object(body['asset_id'],body['object_index'],body['axis'],body['pivot'],body['expected_sha256'],body['proposed_sha256'])
                     self._json(200,self.server.state())
                     return
                 if route == '/api/model-object-axis-scale':

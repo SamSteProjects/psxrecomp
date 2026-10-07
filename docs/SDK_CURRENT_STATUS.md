@@ -1,5 +1,7 @@
 # Current Legaia SDK status — 2026-10-07
 
+Accepted offline milestone — 2026-10-07: [native whole-object mirror](legaia-model-object-mirror.md) now reflects source-local geometry/normals and reverses coupled native winding, UV, color and normal-reference corners through reviewed Current/Proposed receipts. Axis/pivot changes and scene Return require fresh review. Acceptance: 17 focused Python tests (24 primitive families, XYZ reflections and exact involution), four Node suites, syntax/AST checks, actual 18-vertex/11-normal Town01 editor workflow, wide/400 px visual inspection, Undo/Redo and Save/Open. An independent full-model oracle matched all 117 changed bytes; normal Build `8e2ddfdc7ce195ca` passed complete decompressed-section, directory and ZIP readback with unrelated overlays unchanged. Package SHA-256: `f0a83e84c5d40e8982435aaaa1f4f170eddc37621de194c1741d668830a56096`. The retained initial client failure came from an aliased synthetic fixture, now corrected. This milestone adds no runtime change and does not represent a fresh full regression campaign. No game, install or disc export occurred. Gameplay verification remains deferred; the full goal remains active, with implementation proceeding solo.
+
 ## Static stereo voice-gain audition - accepted offline (2026-10-07)
 
 Envelope audition now offers explicit left/right static SPU voice registers

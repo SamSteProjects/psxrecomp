@@ -1765,6 +1765,7 @@ class ProjectService:
         from importer.model_normal_rotation import rotate_object_normals
         from importer.model_object_angle import rotate_object_angle
         from importer.model_object_axis_scale import scale_object_axes
+        from importer.model_object_mirror import mirror_object
         from importer.model_normal_retarget import retarget_object_normals
         from importer.model_vertex_references import retarget_object_vertices
         from importer.assets import decode_tmd
@@ -1797,6 +1798,8 @@ class ProjectService:
             replacement = scale_shape_vertices(*args,values['indices'],values['percent'],values['pivot'])
         elif operation == 'vertex_axis_scaling' and set(values) == {'indices','percents','pivot'}:
             replacement = scale_shape_vertices_axes(*args,values['indices'],values['percents'],values['pivot'])
+        elif operation == 'object_mirror' and set(values) == {'axis','pivot'}:
+            replacement = mirror_object(*args,values['axis'],values['pivot'])
         elif operation == 'object_axis_scaling' and set(values) == {'percents','pivot'}:
             replacement = scale_object_axes(*args,values['percents'],values['pivot'])
         elif operation == 'object_rotation_angle' and set(values) == {'axis','angle_units','pivot'}:
@@ -1814,7 +1817,7 @@ class ProjectService:
         elif operation == 'vertex_references' and set(values) == {'from_index','to_index'}:
             replacement = retarget_object_vertices(*args, values['from_index'], values['to_index'])
         else:
-            raise ProjectError('Choose translation, vertex_translation, vertex_alignment, vertex_distribution, vertex_scaling, vertex_axis_scaling, vertex_rotation, vertex_rotation_angle, vertex_grid, rotation, object_rotation_angle, object_axis_scaling, scale, normal_length, normal_rotation_angle, normal_references or vertex_references with exact operation fields')
+            raise ProjectError('Choose translation, vertex_translation, vertex_alignment, vertex_distribution, vertex_scaling, vertex_axis_scaling, vertex_rotation, vertex_rotation_angle, vertex_grid, rotation, object_rotation_angle, object_axis_scaling, object_mirror, scale, normal_length, normal_rotation_angle, normal_references or vertex_references with exact operation fields')
         report = self.preview_model_file(asset_id, replacement)
         report.update(effective_sha256=hashlib.sha256(effective).hexdigest(),
                       object_index=object_index, operation=operation,
@@ -1836,11 +1839,22 @@ class ProjectService:
             import json
             report['values']=deepcopy(values)
             report['object_axis_scale_words']={key:{kind:json.loads(export_shape_json(content))['objects'][object_index][kind] for kind in ('vertices','normals')} for key,content in [('current',effective),('proposed',replacement)]}
+        if operation == 'object_mirror':
+            from importer.model_json import export_shape_json
+            import json
+            report['values']=deepcopy(values)
+            report['object_mirror_words']={key:{kind:json.loads(export_shape_json(content))['objects'][object_index][kind] for kind in ('vertices','normals')} for key,content in [('current',effective),('proposed',replacement)]}
         return replacement, report
 
     def preview_model_object(self, asset_id: str, object_index: int, operation: str,
                              values: dict, expected_sha256: str) -> dict:
         return self._prepare_model_object(asset_id, object_index, operation, values, expected_sha256)[1]
+
+    def mirror_model_object(self,asset_id,object_index,axis,pivot,expected_sha256,proposed_sha256):
+        replacement,report=self._prepare_model_object(asset_id,object_index,'object_mirror',{'axis':axis,'pivot':pivot},expected_sha256)
+        if not isinstance(proposed_sha256,str) or hashlib.sha256(replacement).hexdigest()!=proposed_sha256:
+            raise ProjectError('Object mirror proposal changed; review again')
+        if report['changes_from_current']:self.set_model_replacement(asset_id,replacement)
 
     def scale_model_object_axes(self,asset_id,object_index,percents,pivot,expected_sha256,proposed_sha256):
         replacement,report=self._prepare_model_object(asset_id,object_index,'object_axis_scaling',{'percents':percents,'pivot':pivot},expected_sha256)
