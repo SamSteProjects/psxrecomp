@@ -78,7 +78,7 @@ import {mountPresetBatch} from '/preset-batch.js';
 import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {parseHierarchyQuery,hierarchyMatches,matchingActorIds} from '/hierarchy-query.js';
 import {mountHierarchyNavigation} from '/hierarchy-navigation.js';
-import {mountHierarchyGroups,revealHierarchyEntities} from '/hierarchy-groups.js';
+import {mountHierarchyGroups,revealHierarchyEntities,matchingHierarchyPlacementIds} from '/hierarchy-groups.js';
 import {captureSceneViewHierarchy} from '/hierarchy-views.js';
 import {mountSceneToolDrawer} from '/scene-tool-drawer.js';
 import {mountSceneViews,decodeSavedSceneView,captureSceneViewVisibility,sceneViewIsolationIds,unavailableSceneViewNpcs} from '/scene-views.js';
@@ -965,7 +965,7 @@ function scenePlacementEligible(){return new Set([...entities().map(e=>e.id),...
 function clearScenePlacementSelection(){scenePlacementMode=false;scenePlacementBoxMode=false;scenePlacementSelection=[];scenePlacementKey=null;scenePlacementTool?.restore();}
 function updateScenePlacementSelection(){
   if((scenePlacementMode||scenePlacementSelection.length)&&(!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||scenePlacementKey!==resourceStateKey()||scenePlacementSelection.some(id=>!scenePlacementEligible().has(id))))clearScenePlacementSelection();
-  savedSceneSelections?.synchronize();scenePlacementTool?.refresh();updateSceneFocusButton();const host=document.querySelector('#scene-placement-tools');if(!host)return;
+  savedSceneSelections?.synchronize();scenePlacementTool?.refresh();updateSceneFocusButton();updateHierarchyPlacementMatchSelection();const host=document.querySelector('#scene-placement-tools');if(!host)return;
   host.querySelector('[data-mixed-select]').disabled=busy||!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||!!scenePose||!!shapeDraft||!!actorGroupInspection||!!environmentGroupInspection||!!wallSelectMode||!!wallInspection||!!scenePlacementInspection;
   host.querySelector('[data-mixed-box]').disabled=host.querySelector('[data-mixed-select]').disabled||!sceneModelsReady()||pickScriptTargets||pickRuntimeNodes;
   for(const name of ['visible','invert'])host.querySelector('[data-mixed-'+name+']').disabled=host.querySelector('[data-mixed-box]').disabled;
@@ -1249,6 +1249,25 @@ const hierarchyMatchSelect=document.createElement('button');hierarchyMatchSelect
 $('entity-search').maxLength=2048;$('entity-search').placeholder='Name, id:, type:, authored:…';$('entity-search').parentElement.after(hierarchyQueryStatus,hierarchyMatchSelect,hierarchyQueryHelp);
 const canSelectHierarchyMatches=()=>!busy&&canEdit()&&!actorGroupInspection&&!scenePlacementInspection&&!environmentGroupInspection&&!wallInspection&&!scenePose&&!shapeDraft;
 hierarchyMatchSelect.onclick=()=>{if(!canSelectHierarchyMatches()||hierarchyMatchKey!==resourceStateKey()||!hierarchyMatchIds.length||hierarchyMatchIds.length>128)return;try{const hidden=hiddenSceneEntities(),tokens=parseHierarchyQuery($('entity-search').value),ids=matchingActorIds(entities().map(e=>hierarchyActorRecord(e,hidden)),tokens);if(JSON.stringify(ids)!==JSON.stringify(hierarchyMatchIds))throw Error('Hierarchy results changed. Search again.');clearScenePlacementSelection();sceneResourceSelection=null;environmentSelection=null;npcDraftSelection=null;setActorGroupMembers(ids,false);renderInspector();notify(ids.length+' matching actors selected. Project content unchanged.');}catch(error){notify(error.message,true);}};
+const hierarchyPlacementMatchSelect=document.createElement('button');hierarchyPlacementMatchSelect.id='select-matching-placements';hierarchyPlacementMatchSelect.type='button';hierarchyPlacementMatchSelect.textContent='Select matching placements';hierarchyPlacementMatchSelect.disabled=true;hierarchyMatchSelect.after(hierarchyPlacementMatchSelect);
+let hierarchyPlacementMatchIds=[],hierarchyPlacementMatchKey=null;
+function updateHierarchyPlacementMatchSelection(){
+  const button=$('select-matching-placements');if(!button)return;button.disabled=true;hierarchyPlacementMatchIds=[];hierarchyPlacementMatchKey=null;
+  try{parseHierarchyQuery($('entity-search').value);const ids=matchingHierarchyPlacementIds($('hierarchy'),scenePlacementEligible());hierarchyPlacementMatchIds=ids;hierarchyPlacementMatchKey=resourceStateKey();button.title=ids.length+' matching imported actors, NPC drafts and static decorations';button.disabled=!canSelectHierarchyMatches()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||wallSelectMode||!ids.length;}
+  catch(error){button.title=error.message;}
+}
+hierarchyPlacementMatchSelect.onclick=async()=>{
+  if(hierarchyPlacementMatchSelect.disabled||busy||hierarchyPlacementMatchKey!==resourceStateKey())return;
+  try{
+    const key=resourceStateKey(),source=state.scene_preview_source_key,query=$('entity-search').value,eligible=scenePlacementEligible(),ids=mergeScenePlacementSelection([],matchingHierarchyPlacementIds($('hierarchy'),eligible),eligible);parseHierarchyQuery(query);
+    if(JSON.stringify(ids)!==JSON.stringify(hierarchyPlacementMatchIds))throw new Error('Hierarchy results changed. Search again.');
+    const active=hierarchySelectedIdentity(),focus=ids.includes(active)?active:ids[0];if(entities().some(entity=>entity.id===focus)&&!await api('/api/selection',{entity_id:focus}))return;
+    if(key!==resourceStateKey()||source!==state.scene_preview_source_key||query!==$('entity-search').value||!scenePreviewCurrent()||!canSelectHierarchyMatches()||sceneRepresentation!=='authored'||wallSelectMode)throw new Error('Hierarchy source or query changed. Search again.');
+    cancelViewportGesture();clearActorGroupSelection();clearEnvironmentGroupSelection();clearScenePlacementSelection();sceneResourceSelection=null;actorBoxMode=false;scenePlacementMode=true;scenePlacementBoxMode=false;scenePlacementSelection=ids;scenePlacementKey=key;
+    environmentSelection=ids.includes(focus)&&!entities().some(entity=>entity.id===focus)&&!state.actor_drafts?.[focus]?focus:null;npcDraftSelection=state.actor_drafts?.[focus]?focus:null;
+    renderHierarchy();renderInspector();draw();notify(ids.length+' matching placements selected. Project content unchanged.');
+  }catch(error){notify(error.message,true);}
+};
 $('entity-search').oninput=renderHierarchy;
 const revealHierarchyButton=document.createElement('button');revealHierarchyButton.id='reveal-hierarchy-selection';revealHierarchyButton.type='button';revealHierarchyButton.textContent='Reveal selection';revealHierarchyButton.title='Clear hierarchy search, expand the selected group and focus the selected row';$('entity-search').parentElement.after(revealHierarchyButton);
 function hierarchySelectedIdentity(){return selectedSceneResource()?.id??(selectedNpcDraft()?npcDraftSelection:null)??selectedEnvironment()?.entity_id??selected()?.id??null;}
@@ -1483,7 +1502,7 @@ function renderHierarchy(){
   const focusSnapshot=hierarchyNavigation.beforeRender();
   const list=$('hierarchy');list.setAttribute('aria-multiselectable','true');list.replaceChildren();
   const filter=$('entity-search').value,hidden=hiddenSceneEntities();let tokens;
-  hierarchyMatchIds=[];hierarchyMatchKey=null;hierarchyMatchSelect.disabled=true;
+  hierarchyMatchIds=[];hierarchyMatchKey=null;hierarchyMatchSelect.disabled=true;hierarchyPlacementMatchIds=[];hierarchyPlacementMatchKey=null;hierarchyPlacementMatchSelect.disabled=true;
   try{tokens=parseHierarchyQuery(filter);$('entity-search').setAttribute('aria-invalid','false');}catch(error){$('entity-search').setAttribute('aria-invalid','true');hierarchyQueryStatus.textContent=error.message;const p=document.createElement('div');p.className='empty-panel';p.textContent='Fix the hierarchy query to show results.';list.append(p);hierarchyNavigation.afterRender(focusSnapshot);return;}
   const matches=(id,name,type,components=[],authorship='unknown')=>hierarchyMatches({id,name,type,components,authored:authorship,visibility:['environment','npc-draft'].includes(type)?(hidden.has(id)?'hidden':'shown'):'unknown'},tokens);
   const actors=entities().filter(e=>hierarchyMatches(hierarchyActorRecord(e,hidden),tokens));
@@ -1517,6 +1536,7 @@ function renderHierarchy(){
     row.append(badge);row.setAttribute('aria-label',`${row.textContent} in viewport`);
   }
   const groupScope=JSON.stringify([state.project?.path,state.scene?.id]);mountHierarchyGroups(list,{state:hierarchyGroupState,scope:groupScope,filter,current:()=>groupScope===JSON.stringify([state.project?.path,state.scene?.id]),onVisibility:()=>hierarchyNavigation.afterRender(hierarchyNavigation.beforeRender())});
+  updateHierarchyPlacementMatchSelection();
   revealHierarchyButton.disabled=busy||!hierarchySelectedIdentity()&&currentPlacementSelection().length<2;revealHierarchyButton.title=currentPlacementSelection().length>1?'Clear search and reveal every selected placement; keep focus on the active member':'Clear search and reveal the active selection';
   hierarchyNavigation.afterRender(focusSnapshot);
 }

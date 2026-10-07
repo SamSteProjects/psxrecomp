@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {hierarchyGroupExpanded,revealHierarchyEntity,revealHierarchyEntities} from '../editor/hierarchy-groups.js';
+import {hierarchyGroupExpanded,revealHierarchyEntity,revealHierarchyEntities,matchingHierarchyPlacementIds} from '../editor/hierarchy-groups.js';
 const state={collapsed:new Set(['actors','script'])};
 assert.equal(hierarchyGroupExpanded('actors',state),false);assert.equal(hierarchyGroupExpanded('environment',state),true);
 assert.equal(hierarchyGroupExpanded('actors',state,'actor 0002'),true);assert.equal(hierarchyGroupExpanded('actors',state,'  '),false);
@@ -22,3 +22,10 @@ groupEvents.length=0;one.hidden=true;two.hidden=true;
 for(const ids of [[],['actor','actor'],['actor','missing'],Array(2),[null],Array.from({length:129},(_,i)=>String(i))])assert.equal(revealHierarchyEntities(groupRoot,ids),false);
 assert.equal(revealHierarchyEntities(groupRoot,['actor','scenery'],'missing'),false);two.disabled=true;assert.equal(revealHierarchyEntities(groupRoot,['actor','scenery']),false);assert.deepEqual(groupEvents,[]);assert.equal(one.hidden,true);
 console.log('Group reveal: all selected folds expand, active focus held, unrelated folds preserved, invalid/duplicate/missing/disabled/oversized requests refused before presentation changes.');
+
+const matchesRoot={querySelectorAll:()=>[{title:'actor',hidden:true},{title:'scenery',hidden:false},{title:'resource'},{title:'draft'},{title:'disabled',disabled:true}]},eligible=new Set(['actor','scenery','draft','disabled']);
+assert.deepEqual(matchingHierarchyPlacementIds(matchesRoot,eligible),['actor','draft','scenery']);
+assert.throws(()=>matchingHierarchyPlacementIds(matchesRoot,[]));assert.throws(()=>matchingHierarchyPlacementIds(matchesRoot,new Set([null])));
+assert.throws(()=>matchingHierarchyPlacementIds({querySelectorAll:()=>[{title:'actor'},{title:'actor'}]},eligible),/duplicate/);
+assert.throws(()=>matchingHierarchyPlacementIds({querySelectorAll:()=>Array.from({length:129},(_,i)=>({title:String(i)}))},new Set(Array.from({length:129},(_,i)=>String(i)))),/128/);
+console.log('Typed-query placement results: exact eligible identities, folded rows included, resources/disabled rows excluded, canonical IDs and duplicate/overflow refusal passed.');

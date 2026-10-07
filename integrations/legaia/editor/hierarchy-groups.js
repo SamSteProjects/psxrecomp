@@ -47,3 +47,15 @@ export function mountHierarchyGroups(root,{state,scope,filter='',current,onVisib
     heading.replaceWith(button);update();
   }
 }
+
+// Rows have already passed the shared typed hierarchy query. Folds are presentation.
+export function matchingHierarchyPlacementIds(root,eligible){
+  if(!(eligible instanceof Set)||[...eligible].some(id=>typeof id!=='string'||!id||id.length>1024))throw new Error('Invalid current placement eligibility.');
+  const seen=new Set(),ids=[];
+  for(const row of root.querySelectorAll('.entity-row')){
+    if(!eligible.has(row.title)||row.disabled)continue;
+    if(seen.has(row.title))throw new Error('Hierarchy has duplicate placement identities.');seen.add(row.title);ids.push(row.title);
+  }
+  if(ids.length>128)throw new Error('Select at most 128 matching placements. Narrow the query.');
+  return ids.sort();
+}
