@@ -1,3 +1,4 @@
+import {openProjectChanges} from '/project-changes.js';
 import {openCommandHistory} from '/command-history.js';
 import {mountSceneRuler} from '/scene-ruler.js';
 import {mountMeshSourceLibrary,navigateMeshSource} from '/mesh-source-library.js';
@@ -880,7 +881,7 @@ async function api(path, payload, {dialog,success}={}) {
     if(['/api/scene','/api/project/open','/api/project/new','/api/import','/api/mode'].includes(path))sceneAnimationController.stop();
     else{notify('Stop the scene animation preview before changing project or runtime state.',true);return false;}
   }
-  if(worldmapDraftPending&&['/api/undo','/api/redo','/api/project/save','/api/build','/api/scene','/api/project/open','/api/import','/api/mode','/api/project/new'].includes(path)){notify('Apply or discard the world-map landmark draft first.',true);return false;}
+  if(worldmapDraftPending&&['/api/undo','/api/redo','/api/project/save','/api/project/save-reviewed','/api/build','/api/scene','/api/project/open','/api/import','/api/mode','/api/project/new'].includes(path)){notify('Apply or discard the world-map landmark draft first.',true);return false;}
   if(liveFollow.active){
     const reason=['/api/project/new','/api/project/open','/api/import'].includes(path)?'Project changed':path==='/api/scene'?'Scene changed':path==='/api/mode'?'Mode changed':path==='/api/run/stop'?'Owned runtime stopped':path.startsWith('/api/runtime')||path==='/api/run/attach'?'Manual runtime action':null;
     if(reason)stopLiveFollow(reason);
@@ -1141,6 +1142,7 @@ async function readSceneCatalog(offset=0){
 }
 $('catalog-search').onclick=()=>readSceneCatalog();$('catalog-previous').onclick=()=>readSceneCatalog(Math.max(0,catalogOffset-16));$('catalog-next').onclick=()=>{if(catalogNext!==null)readSceneCatalog(catalogNext);};
 $('import-form').onsubmit=async event=>{event.preventDefault();$('status').textContent='Importing scene from local disc image…';await api('/api/import',{disc:$('disc-input').value,scene:$('scene-input').value},{dialog:$('import-dialog'),success:'Scene imported.'});};
+$('changes-button').onclick=()=>{if(!busy)openProjectChanges({save:(key,dialog)=>api('/api/project/save-reviewed',{source_key:key},{dialog,success:'Reviewed project changes saved.'})});};
 $('save-button').onclick=()=>api('/api/project/save',{}, {success:'Project saved.'});
 const draftsButton=document.createElement('button');draftsButton.id='npc-drafts-button';draftsButton.textContent='NPC drafts';draftsButton.onclick=()=>openNpcDrafts();$('save-button').after(draftsButton);
 const actorBoxButton=document.createElement('button');actorBoxButton.id='actor-box-select';actorBoxButton.textContent='Box select actors';actorBoxButton.title='Drag over visible actor meshes; Ctrl/Command adds to the group. Shift-drag pans.';actorBoxButton.setAttribute('aria-pressed','false');

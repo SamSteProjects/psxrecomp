@@ -953,6 +953,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
                  "/model-placement-users.js": ("model-placement-users.js", "text/javascript"),
                  "/command-history.js": ("command-history.js", "text/javascript"),
+                 "/project-changes.js": ("project-changes.js", "text/javascript"),
                  "/preset-files.js": ("preset-files.js", "text/javascript"),
                  "/actor-preset-review.js": ("actor-preset-review.js", "text/javascript"),
                  "/preset-animation.js": ("preset-animation.js", "text/javascript"),
@@ -1060,6 +1061,25 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('History listing accepts an optional offset only')
                     from .command_history import listing
                     self._json(200, listing(self.server.project, body.get('offset', 0)))
+                    return
+                if route == '/api/project/change-review':
+                    if set(body) not in (set(), {'offset'}):
+                        raise ProjectError('Project change review takes an optional offset only')
+                    from .project_changes import review
+                    self._json(200, review(self.server.project, body.get('offset', 0)))
+                    return
+                if route == '/api/project/change-inspect':
+                    if set(body) != {'source_key', 'section', 'owner_id', 'record_key'}:
+                        raise ProjectError('Project change inspection takes a current record selector only')
+                    from .project_changes import inspect
+                    self._json(200, inspect(self.server.project, **body))
+                    return
+                if route == '/api/project/save-reviewed':
+                    if set(body) != {'source_key'}:
+                        raise ProjectError('Reviewed Save takes a current change-review key only')
+                    from .project_changes import save_reviewed
+                    save_reviewed(self.server.project, body['source_key'])
+                    self._json(200, self.server.project.state())
                     return
                 if route == '/api/command-history/inspect':
                     if set(body) != {'source_key', 'branch', 'index', 'record_key'}:

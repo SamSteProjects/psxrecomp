@@ -133,6 +133,7 @@ class ProjectService:
         self.undo_stack: list[dict] = []
         self.redo_stack: list[dict] = []
         self.saved_digest: str | None = None
+        self.saved_document: dict | None = None
         self.saved_sections: dict[str, str] = {}
         self.disc_path: str | None = None
         self.mode = "edit"
@@ -259,16 +260,18 @@ class ProjectService:
                   "imports": "Imported scenes", "active_scene": "Active scene",
                   "authored": "Scene and game-data edits", "actor_templates": "Actor presets",
                   "texture_additions": "New texture slots", "texture_overrides": "Texture replacements", "model_overrides": "Model content", "audio_overrides": "Audio sequence operands", "audio_bank_overrides": "Audio bank parameters", "audio_sample_sources": "Retained WAV inputs", "audio_sample_overrides": "Native audio samples",
-                  "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "scene_views": "Saved scene views", "model_vertex_groups": "Saved model vertex groups", "script_bookmarks": "Saved script bookmarks"}
+                  "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "scene_views": "Saved scene views", "model_vertex_groups": "Saved model vertex groups", "script_bookmarks": "Saved script bookmarks",
+                  "model_sources": "Retained model inputs", "animation_sources": "Retained animation inputs"}
         return [label for key, label in labels.items()
                 if digest(document.get(key)) != self.saved_sections.get(key)]
 
     def _mark_saved(self) -> None:
         document = self._document()
         self.saved_digest = digest(document)
+        self.saved_document = deepcopy(document)
         self.saved_sections = {key: digest(document.get(key)) for key in
                                ("name", "retail_source", "imports", "active_scene",
-                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_bank_overrides", "audio_sample_sources", "audio_sample_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views", "model_vertex_groups", "script_bookmarks")}
+                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_bank_overrides", "audio_sample_sources", "audio_sample_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views", "model_vertex_groups", "script_bookmarks", "model_sources", "animation_sources")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):

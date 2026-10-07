@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {decodeProjectChanges,decodeProjectChange} from '../editor/project-changes.js';
+const row={section:'authored',owner_id:'entity://fixture',record_key:'b'.repeat(64),change:'added',saved_present:false,current_present:true};
+const report={schema_version:'legaia.project-changes.v1',read_only:true,source_key:'a'.repeat(64),saved_snapshot_present:true,saved_document_sha256:'c'.repeat(64),current_document_sha256:'d'.repeat(64),dirty:true,page_size:50,total:1,offset:0,records:[row],next_offset:null};
+assert.deepEqual(decodeProjectChanges(report),report);
+for(const patch of [{dirty:false},{current_document_sha256:report.saved_document_sha256},{source_key:'bad'},{saved_document_sha256:null},{saved_snapshot_present:false},{total:2},{offset:-1},{next_offset:50},{records:[row,row]}])assert.throws(()=>decodeProjectChanges({...report,...patch}));
+for(const patch of [{section:''},{owner_id:1},{change:'removed'},{saved_present:false,current_present:false},{record_key:'bad'}])assert.throws(()=>decodeProjectChanges({...report,records:[{...row,...patch}]}));
+const value={schema_version:'legaia.project-change-record.v1',read_only:true,source_key:report.source_key,...row,saved:null,current:{unknown:null,position:{x:125}}};
+assert.deepEqual(decodeProjectChange(value,report,row),value);const detached=decodeProjectChange(value,report,row);detached.current.position.x=0;assert.equal(value.current.position.x,125);
+for(const patch of [{source_key:'e'.repeat(64)},{owner_id:'other'},{saved:{}},{change:'modified'},{record_key:'bad'}])assert.throws(()=>decodeProjectChange({...value,...patch},report,row));
+console.log('Saved/current project change decoders passed');

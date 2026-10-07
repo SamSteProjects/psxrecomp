@@ -1,5 +1,7 @@
 # Project settings inspector
 
+Use [Review Unsaved Project Changes](legaia-project-change-review.md) to compare saved/current metadata and save a current reviewed document.
+
 For independent authoring experiments, **Copy project…** beside Settings captures
 current inputs, including unsaved edits, without saving the original. See
 [Editable project copies](legaia-project-copies.md).
