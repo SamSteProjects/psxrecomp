@@ -1,5 +1,7 @@
 # Effective retained pose interpolation
 
+The retained editor also supports [effective pose copying](legaia-animation-pose-copy.md) from one output frame across a destination range, using complete inherited and draft native axes.
+
 Open a retained project animation and choose **Edit retained content → Frame sequence tools → Stage effective pose interpolation**. Select two distinct output range endpoints and the existing rigid object. The new action reads both complete effective poses from the frozen captured donor, current frame mapping and local channel drafts, then stages all six native axes across the inclusive range. Endpoint axes do not have to be authored first. **Interpolate authored endpoint axes** retains its existing narrower axis-selection workflow.
 
 Translations interpolate on the signed twelve-bit integer grid with exact half ties choosing the larger integer. Rotations interpolate on sixteen-unit PSX steps along the shortest per-axis path, modulo 4096; an exact half-turn chooses the positive direction. The backend uses integer ratios and the client validates the same exact arithmetic. This authors rigid object-local channel values, not quaternion/skeletal interpolation, anatomical joints, actor world placement or game timing.

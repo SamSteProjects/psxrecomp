@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {decodeEffectivePoseCopy} from '../editor/animation-pose-copy.js';
+import {validateRetainedAxes} from '../editor/animation-record-edit.js';
+const pose=x=>({translation:{x,y:0,z:0},rotation_psx:{x:0,y:4080,z:0}}),source=pose(17),before=[pose(-1),source,pose(5)];
+const request={scene_id:'scene://town01',record_id:'11111111-1111-4111-8111-111111111111',source_frame_indices:[1,0,1],edits:[{frame_index:1,object_index:0,translation:{x:17}},{frame_index:2,object_index:1,rotation_psx:{z:32}}],object_index:0,source_frame_index:1,start:0,end:2,expected_source_key:'a'.repeat(64)};
+const edits=before.map((_,frame_index)=>({frame_index,object_index:0,...structuredClone(source)}));edits.push(request.edits[1]);
+const value={schema_version:'legaia.animation-record-pose-copy.v1',scene_id:request.scene_id,record_id:request.record_id,project_source_key:request.expected_source_key,source_frame_indices:request.source_frame_indices,before_edits:request.edits,edits,object_index:0,source_frame_index:1,start:0,end:2,source_pose:source,poses:before.map((p,frame_index)=>({frame_index,before:p,after:structuredClone(source)})),before_record_sha256:'b'.repeat(64),after_record_sha256:'c'.repeat(64),project_changed:false,gameplay_verified:false};
+const held=structuredClone({value,request});const result=decodeEffectivePoseCopy(value,request,2,validateRetainedAxes);assert.deepEqual(result,value);result.source_pose.translation.x=0;assert.deepEqual({value,request},held);
+let refusals=0;for(const mutate of [v=>v.source_frame_index=0,v=>v.source_pose.translation.x=18,v=>v.poses[1].before.translation.x=18,v=>v.poses[0].after.translation.x=18,v=>v.poses.pop(),v=>v.edits.pop(),v=>v.edits[2].object_index=1,v=>v.source_pose.rotation_psx.y=1,v=>v.extra=1,v=>v.project_changed=true,v=>v.project_source_key='0'.repeat(64)]){const bad=structuredClone(value);mutate(bad);assert.throws(()=>decodeEffectivePoseCopy(bad,request,2,validateRetainedAxes));refusals++;}
+console.log(JSON.stringify({effective_source_pose:true,source_inside_range:true,other_object_preserved:true,detached_receipt:true,forged_refusals:refusals}));
