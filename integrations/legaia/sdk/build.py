@@ -580,7 +580,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 continue
         if isinstance(components,dict) and 'FloorHeights' in components:
             project._validate_floor_heights(identifier,components['FloorHeights']);height_edits[identifier]=components['FloorHeights']
-            scene_edits.setdefault(identifier,{key:{} for key in ('positions','assignments','dialogues','transitions','movements','facings','flags','waits','model_selectors','branches')})
+            scene_edits.setdefault(identifier,{key:{} for key in ('positions','assignments','dialogues','transitions','movements','facings','flags','waits','effect_colors','model_selectors','branches')})
             components={k:v for k,v in components.items() if k!='FloorHeights'}
             if not components:continue
         if isinstance(components,dict) and 'FloorTiers' in components:

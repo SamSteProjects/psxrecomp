@@ -129,7 +129,7 @@ def static_model_hierarchy(doc, object_count, object_node_indices=None):
             scale = [_scale(value) for value in vector]
             if 'scale' in node: node['scale'] = [1, 1, 1]
         scales[index] = scale
-    mapping, static, parents = _nodes(normalized, object_count, object_node_indices)
+    mapping, static, parents, _rig = _nodes(normalized, object_count, object_node_indices)
     poses = {}
     for index in _hierarchy_order(mapping, parents, 1):
         translation, rotation = static[index]
