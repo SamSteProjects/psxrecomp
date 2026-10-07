@@ -36,6 +36,9 @@ def preview(project, request):
     if 'waits' in original:
         from .npc_waits import source as wait_source
         wait_source(project,identifier)
+    if 'effect_colors' in original:
+        from .npc_effect_colors import source as color_source
+        color_source(project,identifier)
     if 'model_selectors' in original:
         from .npc_model_selectors import source as selectors_source
         selectors_source(project,identifier)

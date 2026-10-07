@@ -89,6 +89,7 @@ import {mountScriptOwnerInspector} from '/script-owner-inspector.js';
 import {openNpcBuildScript} from './npc-build-script.js';
 import {openNpcDialogue} from './npc-dialogue.js';
 import {openNpcWaits} from './npc-waits.js';
+import {openNpcEffectColors} from './npc-effect-colors.js';
 import {renderEffectColorAuthoring} from './script-effect-colors.js';
 import {openNpcFacing} from './npc-facing.js';
 import {openNpcModelSelectors} from './npc-model-selectors.js';
@@ -3085,6 +3086,7 @@ function renderInspector(){
     const npcModelSelectors=document.createElement('button');npcModelSelectors.id='npc-model-selectors-button';npcModelSelectors.textContent='Edit NPC script model selectors...';npcModelSelectors.disabled=busy||!canEdit();npcModelSelectors.onclick=()=>openNpcModelSelectors({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,api});$('delete-npc-draft').before(npcModelSelectors);
     const npcFlags=document.createElement('button');npcFlags.id='npc-flags-button';npcFlags.textContent='Edit NPC script flags...';npcFlags.disabled=busy||!canEdit();npcFlags.onclick=()=>openNpcFlags({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,api});$('delete-npc-draft').before(npcFlags);
     const npcBranches=document.createElement('button');npcBranches.id='npc-branches-button';npcBranches.textContent='Edit NPC script branches...';npcBranches.disabled=busy||!canEdit();npcBranches.onclick=()=>openNpcBranches({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,api});$('delete-npc-draft').before(npcBranches);
+    const npcColors=document.createElement('button');npcColors.id='npc-effect-colors-button';npcColors.textContent='Edit NPC effect colors...';npcColors.disabled=busy||!canEdit();npcColors.onclick=()=>openNpcEffectColors({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,api});$('delete-npc-draft').before(npcColors);
     const npcWaits=document.createElement('button');npcWaits.id='npc-waits-button';npcWaits.textContent='Edit NPC wait targets...';npcWaits.disabled=busy||!canEdit();npcWaits.onclick=()=>openNpcWaits({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,api});$('delete-npc-draft').before(npcWaits);
     const npcMovement=document.createElement('button');npcMovement.id='npc-movement-button';npcMovement.textContent='Edit NPC script movement...';npcMovement.disabled=busy||!canEdit();npcMovement.onclick=()=>openNpcMovement({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,api,showTargets:showNpcMovementTargets});$('delete-npc-draft').before(npcMovement);
     const buildScript=document.createElement('button');buildScript.id='npc-build-script-button';buildScript.textContent='Inspect saved Build script...';buildScript.disabled=busy||!state.capabilities?.actor_script_preview;buildScript.onclick=()=>openNpcBuildScript({entityId:id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});$('delete-npc-draft').before(buildScript);
