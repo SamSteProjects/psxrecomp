@@ -1,5 +1,27 @@
 # Legaia SDK feature matrix
 
+## NPC script ownership Inspector - accepted offline (2026-10-06)
+
+The SDK now supplies detached NPC script-binding snapshots: exact donor identity,
+authored draft digest and eight owned-family target counts. The NPC Inspector
+uses an SDK component and ten registered script actions with capability, Edit,
+busy, selection and source guards. A vertical action stack supports the narrow
+Inspector. Asset Details exposes effect colors and restores its declared branch,
+flag and model-selector actions. Retail, Authored and saved Generated script
+inspection remain separate; no runtime binding is asserted. Other NPC forms
+retain their adapters, so the broader inspector migration remains partial.
+
+All 35 affected Python checks passed with no skips, four client suites and three
+syntax checks passed. Real Town0b editor clicks exercised eight source routes,
+donor/Build Inspector actions, Asset Details color editing and source/capability/
+busy/Edit/selection guards. Wide/400 px layouts passed with no page errors or
+game requests; document/history/navigation remained unchanged. The final vertical
+layout supersedes the retained initial clipped-action attempt. No new native
+Build or full regression campaign was needed for this metadata/UI addition.
+See [NPC script Inspector](legaia-npc-script-inspector.md) and private evidence
+`local-output/sdk-20260909/npc-script-inspector-20261007/`. Work remains solo,
+manual gameplay remains deferred and the full SDK goal remains active.
+
 ## NPC-owned script effect colors - accepted offline (2026-10-06)
 
 **Select an authored NPC -> Edit NPC effect colors** now exposes its qualified retail donor's EFFECT sub0 RGB bytes and signed intensity. Own color stages a complete typed target; unchecking restores the donor span. Retail and Current values remain separate from local input. Fresh Review verifies exact five-byte native audits and Apply stores NPC-owned edits in one history step. Invalid input blocks Review, changed drafts withdraw proposals, Discard restores Current, and source changes withdraw the controls until the dialog is reopened. No color-space, host rendering, runtime effect, actor context or scheduling semantics are inferred.

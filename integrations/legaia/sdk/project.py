@@ -3760,6 +3760,7 @@ class ProjectService:
         from .scene_selection_sets import review_key as scene_selection_review_key
         from .selection_sets import review_key as selection_review_key
         from .inspector_schema import inspector_schema
+        from .npc_script_binding import snapshots as npc_script_bindings
         document = self.imports.get(self.active_scene)
         correlation = self._current_correlation()
         entities = []
@@ -3840,6 +3841,7 @@ class ProjectService:
                 "texture_overrides": deepcopy(self.texture_overrides),
                 "texture_additions": deepcopy(self.texture_additions),
                 "actor_drafts": deepcopy(self.actor_drafts),
+                "npc_script_bindings": npc_script_bindings(self),
                 "model_overrides": deepcopy(self.model_overrides),
                 "audio_overrides": deepcopy(self.audio_overrides),
                 "audio_bank_overrides": deepcopy(self.audio_bank_overrides),

@@ -339,4 +339,36 @@ def inspector_schema():
         'details':[{'label':'Preview evidence','path':['preview','evidence']}],
         'notes':['Missing snapshot values remain unknown; authored position and donor metadata are not substituted.',
                  'A sampled pose does not establish an idle stance, runtime playback, spawning or collision.']}
+    script_actions=[
+        {'id':'edit-npc-'+suffix,'label':label,'capability':capability,'requires_edit':True,
+         'when':['draft','donor_entity_id']}
+        for suffix,label,capability in [
+            ('dialogue','Edit NPC dialogue...','actor_dialogue_authoring'),
+            ('facing','Edit NPC script facing...','actor_facing_authoring'),
+            ('model-selectors','Edit NPC script model selectors...','actor_model_selector_authoring'),
+            ('flags','Edit NPC script flags...','actor_flag_authoring'),
+            ('branches','Edit NPC script branches...','actor_branch_authoring'),
+            ('effect-colors','Edit NPC effect colors...','actor_effect_color_authoring'),
+            ('waits','Edit NPC wait targets...','actor_wait_authoring'),
+            ('movement','Edit NPC script movement...','actor_movement_authoring')]]
+    script_actions += [
+        {'id':'inspect-npc-build-script','label':'Inspect saved Build script...','capability':'actor_script_preview','when':['draft','donor_entity_id']},
+        {'id':'inspect-npc-donor-script','label':'Inspect retail donor script...','capability':'actor_script_preview','when':['draft','donor_entity_id']}]
+    from .npc_script_binding import FAMILIES
+    schema['components']['NpcDraftScriptBinding']={
+        'label':'NPC script ownership','layout':'read-only-properties',
+        'properties':[
+            {'id':'source-script','label':'Retail donor script identity','path':['scriptBinding','source_script_id'],'type':'asset-reference','state':'read-only-reference'},
+            {'id':'authored-digest','label':'Authored NPC SHA-256','path':['scriptBinding','authored_draft_sha256'],'type':'string','state':'derived'},
+            *[{'id':family,'label':'Own '+family.replace('_',' ')+' targets','path':['scriptBinding','authored_counts',family],
+               'type':'integer','state':'authored-through-command'} for family in FAMILIES]],
+        'actions':script_actions,
+        'details':[{'label':'Authored '+family.replace('_',' ')+' bindings','path':['draft',family]} for family in FAMILIES],
+        'notes':['Counts describe project-local NPC overrides; zero inherits the cloned donor span. Source instructions must be qualified in their dedicated tool.',
+                 'Retail source identity, authored metadata and saved generated script are separate. No runtime identity, execution, visibility or effect is inferred.',
+                 'Review each family before Apply. Use saved Build comparison for emitted bytes; clearing one family leaves other owned edits intact.']}
+    asset_actions=schema['components']['AssetNpcDraft']['actions']
+    asset_actions.insert(next(i for i,a in enumerate(asset_actions) if a['id']=='edit-npc-flags'),
+        {'id':'edit-npc-effect-colors','label':'Edit NPC effect colors','capability':'actor_effect_color_authoring',
+         'when':['authoredRecord','donor_entity_id']})
     return schema

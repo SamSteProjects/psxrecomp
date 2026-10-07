@@ -294,3 +294,5 @@
 #scene-placement-group-dialog .dialog-actions button{max-width:100%;white-space:normal;text-align:left}
 
 #asset-details .dialog-actions{flex-wrap:wrap}
+
+.npc-script-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}.npc-script-actions button{width:100%;white-space:normal;text-align:left}
