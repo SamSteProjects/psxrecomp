@@ -25,6 +25,8 @@ def _receipt(project,identifier,index,key,record,bank):
     receipt=project.audio_sample_sources.get(key) if isinstance(key,str) else None
     if receipt is None:raise ProjectError('Choose a retained WAV receipt registered in Current')
     validate_record(receipt)
+    if receipt['schema_version']!='legaia.audio-sample-source.v1':
+        raise ProjectError('Resized input requires native allocation authoring; fixed-size sample Apply cannot use it')
     row,_,raw=_sample(bank,record['pieces'],index)
     if (receipt['asset_id']!=identifier or receipt['sample_index']!=index or receipt['source_record']!=record
             or receipt['bank_sha256']!=_hash(bank) or receipt['source_sample_sha256']!=_hash(raw)):
@@ -79,7 +81,7 @@ def options(project,asset_id,expected_entry_sha256,sample_index,expected_authori
     effective=current[position:position+row['size_bytes']]
     from .audio_sample_sources import validate_files
     validate_files(project,project.audio_sample_sources)
-    inputs=[deepcopy(r) for r in project.audio_sample_sources.values() if r['asset_id']==asset_id and r['sample_index']==sample_index and r['source_record']==record and r['bank_sha256']==_hash(bank) and r['source_sample_sha256']==_hash(raw)]
+    inputs=[deepcopy(r) for r in project.audio_sample_sources.values() if r['schema_version']=='legaia.audio-sample-source.v1' and r['asset_id']==asset_id and r['sample_index']==sample_index and r['source_record']==record and r['bank_sha256']==_hash(bank) and r['source_sample_sha256']==_hash(raw)]
     if expected_authoring_key!=source_key(project):raise ProjectError('Sample inputs changed during inspection')
     selected=next((r for r in binding['samples'] if r['sample_index']==sample_index),None) if binding else None
     return dict(schema_version='legaia.audio-sample-authoring.v1',asset_id=asset_id,sample_index=sample_index,authoring_key=expected_authoring_key,

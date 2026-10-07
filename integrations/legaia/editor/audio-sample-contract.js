@@ -12,8 +12,8 @@ export function decodeSampleWave(v,bank,sample,sha){
  return Object.fromEntries(waveKeys.map(k=>[k,report[k]]));
 }
 const receiptKeys=['schema_version','asset_id','source_scene_id','source_record','bank_sha256','sample_index','source_sample_sha256','wav_sha256','byte_length','input_wav_rate','decoded_frames','candidate_sample_sha256'];
-export function decodeSampleReceipt(v,bank,sample,retained=true){
- if(!exact(v,retained?[...receiptKeys,'review_key','receipt_key']:receiptKeys)||v.schema_version!=='legaia.audio-sample-source.v1'||v.asset_id!==bank.asset_id||typeof v.source_scene_id!=='string'||!equal(v.source_record,bank.source_record)||v.bank_sha256!==bank.bank_sha256||v.sample_index!==sample.index||v.source_sample_sha256!==sample.source_sha256||!hash(v.wav_sha256)||!hash(v.candidate_sample_sha256)||!integer(v.byte_length,44,1048576)||!integer(v.input_wav_rate,8000,192000)||!integer(v.decoded_frames,28,114688)||v.decoded_frames%28||(retained&&(!hash(v.review_key)||!hash(v.receipt_key))))throw Error('Retained WAV identity or extent differs from the sample.');
+export function decodeSampleReceipt(v,bank,sample,retained=true,allowAllocation=false){
+ if(!exact(v,retained?[...receiptKeys,'review_key','receipt_key']:receiptKeys)||!(v.schema_version==='legaia.audio-sample-source.v1'||allowAllocation&&v.schema_version==='legaia.audio-sample-allocation-source.v1')||v.asset_id!==bank.asset_id||typeof v.source_scene_id!=='string'||!equal(v.source_record,bank.source_record)||v.bank_sha256!==bank.bank_sha256||v.sample_index!==sample.index||v.source_sample_sha256!==sample.source_sha256||!hash(v.wav_sha256)||!hash(v.candidate_sample_sha256)||!integer(v.byte_length,44,1048576)||!integer(v.input_wav_rate,8000,192000)||!integer(v.decoded_frames,28,114688)||v.decoded_frames%28||(retained&&(!hash(v.review_key)||!hash(v.receipt_key))))throw Error('Retained WAV identity or extent differs from the sample.');
  return structuredClone(v);
 }
 export function decodeSampleOptions(v,context,bank,sample){

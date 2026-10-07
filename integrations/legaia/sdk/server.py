@@ -853,6 +853,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/audio-sample-authoring.js": ("audio-sample-authoring.js", "text/javascript"),
                  "/audio-sample-contract.js": ("audio-sample-contract.js", "text/javascript"),
                  "/audio-sample-recovery.js": ("audio-sample-recovery.js", "text/javascript"),
+                 "/audio-allocation-inputs.js": ("audio-allocation-inputs.js", "text/javascript"),
+                 "/audio-allocation-input-contract.js": ("audio-allocation-input-contract.js", "text/javascript"),
                  '/actor-animation.js': ('actor-animation.js', 'text/javascript'),
                  "/build-review.js": ("build-review.js", "text/javascript"),
                  "/build-history.js": ("build-history.js", "text/javascript"),
@@ -1014,7 +1016,7 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/text-json-preview", "/api/text-json-import") else 32768
-            if urlsplit(self.path).path in ('/api/audio-sample-source-review','/api/audio-sample-source-retain'):
+            if urlsplit(self.path).path in ('/api/audio-sample-source-review','/api/audio-sample-source-retain','/api/audio-sample-allocation-source-review','/api/audio-sample-allocation-source-retain'):
                 request_limit = 2 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/model-face-addition-preview', '/api/model-face-addition'):
                 request_limit = 256 * 1024
@@ -2086,15 +2088,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                         if body.get('operation')=='apply':fields.add('receipt_key')
                     if set(body)!=fields:raise ProjectError('Native sample authoring requires exact source and reviewed fields')
                     self._json(200,(options if route.endswith('-authoring') else review)(self.server.project,**body));return
-                if route == '/api/audio-sample-source-review':
+                if route in ('/api/audio-sample-source-review','/api/audio-sample-allocation-source-review'):
                     from .audio_sample_sources import review
                     if set(body)!={'asset_id','expected_entry_sha256','expected_bank_sha256','sample_index','expected_sample_sha256','expected_authoring_key','wav_base64'}:
                         raise ProjectError('WAV source review requires exact source and input fields')
-                    self._json(200,review(self.server.project,**body));return
-                if route == '/api/audio-sample-source-retain':
+                    self._json(200,review(self.server.project,**body,allocation=route=='/api/audio-sample-allocation-source-review'));return
+                if route in ('/api/audio-sample-source-retain','/api/audio-sample-allocation-source-retain'):
                     if set(body)!={'asset_id','expected_entry_sha256','expected_bank_sha256','sample_index','expected_sample_sha256','expected_authoring_key','wav_base64','review_key'}:
                         raise ProjectError('WAV retention requires exact reviewed source and input fields')
-                    self.server.project.command(dict(type='retain_audio_sample_source',**body))
+                    self.server.project.command(dict(type='retain_audio_sample_allocation_source' if route=='/api/audio-sample-allocation-source-retain' else 'retain_audio_sample_source',**body))
                     self._json(200,self.server.state());return
                 if route in ('/api/audio-input-inspection', '/api/audio-input-download'):
                     if set(body) != {'asset_id', 'expected_source_key'}:

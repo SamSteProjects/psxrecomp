@@ -7,13 +7,16 @@ from .audio_authoring import source_key
 from .audio_bank_authoring import _source
 from importer.audio_bank import inspect_bank
 from importer.audio_sample_authoring import replace_audio_sample_wav,read_pcm_wav,MAX_WAV_BYTES
+from importer.audio_sample_allocation import allocate_audio_sample_wav
+
+ALLOCATION_SCHEMA='legaia.audio-sample-allocation-source.v1'
 
 MAX_RECEIPTS=32
 MAX_BYTES=16*1024*1024
 FIELDS={'schema_version','asset_id','source_scene_id','source_record','bank_sha256','sample_index',
         'source_sample_sha256','wav_sha256','byte_length','input_wav_rate','decoded_frames',
         'candidate_sample_sha256','review_key','receipt_key'}
-COMMANDS={'retain_audio_sample_source','remove_audio_sample_source'}
+COMMANDS={'retain_audio_sample_source','retain_audio_sample_allocation_source','remove_audio_sample_source'}
 
 def _hash(value):return isinstance(value,str) and re.fullmatch('[a-f0-9]{64}',value) is not None
 def decode_upload(value):
@@ -24,7 +27,7 @@ def decode_upload(value):
     return raw
 
 def validate_record(record):
-    if not isinstance(record,dict) or set(record)!=FIELDS or record['schema_version']!='legaia.audio-sample-source.v1':raise ProjectError('Invalid WAV input receipt fields')
+    if not isinstance(record,dict) or set(record)!=FIELDS or record['schema_version'] not in ('legaia.audio-sample-source.v1',ALLOCATION_SCHEMA):raise ProjectError('Invalid WAV input receipt fields')
     if any(not _hash(record[k]) for k in ('bank_sha256','source_sample_sha256','wav_sha256','candidate_sample_sha256','review_key','receipt_key')):raise ProjectError('Invalid WAV receipt hash')
     if not isinstance(record['asset_id'],str) or re.fullmatch(r'audio://legaia/prot/[0-9]{4}',record['asset_id']) is None:raise ProjectError('WAV receipt requires a global audio identity')
     if not isinstance(record['source_scene_id'],str) or re.fullmatch(r'scene://[A-Za-z0-9_-]+',record['source_scene_id']) is None:raise ProjectError('WAV receipt requires its imported source scene')
@@ -78,21 +81,28 @@ def validate_files(project,records):
     validate_collection(records)
     for record in records.values():read_source(project,record)
 
-def review(project,asset_id,expected_entry_sha256,expected_bank_sha256,sample_index,expected_sample_sha256,expected_authoring_key,wav_base64):
+def review(project,asset_id,expected_entry_sha256,expected_bank_sha256,sample_index,expected_sample_sha256,expected_authoring_key,wav_base64,*,allocation=False):
     if project.mode!='edit' or expected_authoring_key!=source_key(project):raise ProjectError('WAV source inputs changed or are not in Edit mode')
     raw=decode_upload(wav_base64);body,bank,record=_source(project,asset_id,expected_entry_sha256,project.active_scene)
     samples=inspect_bank(bank)['samples']
     if type(sample_index) is not int or not 0<=sample_index<len(samples):raise ProjectError('Choose a typed source sample index')
     sample=samples[sample_index]
-    candidate,audit=replace_audio_sample_wav(body,body,raw,expected_source_sha256=expected_entry_sha256,
+    if type(allocation) is not bool:raise ProjectError('Choose an explicit WAV input allocation contract')
+    writer=allocate_audio_sample_wav if allocation else replace_audio_sample_wav
+    candidate,audit=writer(body,body,raw,expected_source_sha256=expected_entry_sha256,
         expected_current_sha256=expected_entry_sha256,expected_bank_sha256=expected_bank_sha256,sample_index=sample_index,
         expected_sample_sha256=expected_sample_sha256,expected_current_sample_sha256=expected_sample_sha256)
-    at,size=audit['sample_entry_byte_offset'],sample['size_bytes']
-    binding=dict(schema_version='legaia.audio-sample-source.v1',asset_id=asset_id,source_scene_id=project.active_scene,
+    if allocation:
+        from importer.audio_bank import bank_from_entry
+        new_bank,_,_=bank_from_entry(candidate);new_row=inspect_bank(new_bank)['samples'][sample_index]
+        candidate_sample=new_bank[new_row['offset']:new_row['offset']+new_row['size_bytes']]
+    else:
+        at,size=audit['sample_entry_byte_offset'],sample['size_bytes'];candidate_sample=candidate[at:at+size]
+    binding=dict(schema_version=ALLOCATION_SCHEMA if allocation else 'legaia.audio-sample-source.v1',asset_id=asset_id,source_scene_id=project.active_scene,
         source_record=record,bank_sha256=expected_bank_sha256,sample_index=sample_index,source_sample_sha256=expected_sample_sha256,
         wav_sha256=sha256(raw).hexdigest(),byte_length=len(raw),input_wav_rate=audit['sample']['input_wav_rate'],
-        decoded_frames=audit['sample']['decoded_frames'],candidate_sample_sha256=sha256(candidate[at:at+size]).hexdigest())
-    report=dict(schema_version='legaia.audio-sample-source-review.v1',authoring_key=expected_authoring_key,
+        decoded_frames=audit['sample']['decoded_frames'],candidate_sample_sha256=sha256(candidate_sample).hexdigest())
+    report=dict(schema_version='legaia.audio-sample-allocation-source-review.v1' if allocation else 'legaia.audio-sample-source-review.v1',authoring_key=expected_authoring_key,
         binding=binding,native_audit=audit,historical_inputs=True,native_content_changed=False,project_changed=False,runtime_state='not_observed')
     report['review_key']=digest(report)
     if source_key(project)!=expected_authoring_key:raise ProjectError('WAV source context changed during review')
@@ -100,10 +110,10 @@ def review(project,asset_id,expected_entry_sha256,expected_bank_sha256,sample_in
 
 def command(project,value):
     kind=value.get('type')
-    if kind=='retain_audio_sample_source':
+    if kind in ('retain_audio_sample_source','retain_audio_sample_allocation_source'):
         args=('asset_id','expected_entry_sha256','expected_bank_sha256','sample_index','expected_sample_sha256','expected_authoring_key','wav_base64')
         if set(value)!={'type','review_key',*args}:raise ProjectError('WAV retention requires exact source and reviewed fields')
-        report=review(project,**{k:value[k] for k in args})
+        report=review(project,**{k:value[k] for k in args},allocation=kind=='retain_audio_sample_allocation_source')
         if value['review_key']!=report['review_key']:raise ProjectError('WAV input differs from reviewed bytes/source')
         record=deepcopy(report['binding']);record['review_key']=report['review_key'];record['receipt_key']=digest(record)
         before=deepcopy(project.audio_sample_sources);after=deepcopy(before);after[record['receipt_key']]=record;validate_collection(after)
