@@ -2028,6 +2028,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!=fields:raise ProjectError('WAV source recovery requires exact Current input fields')
                     function=library if route=='/api/audio-sample-sources' else download if route.endswith('-download') else review_removal
                     self._json(200,function(self.server.project,**body));return
+                if route == '/api/audio-sequence-proposed':
+                    from .audio_authoring import proposed_inspection
+                    if set(body)!={'asset_id','expected_entry_sha256','expected_authoring_key','edits','review_key'}:
+                        raise ProjectError('Proposed sequence inspection requires exact reviewed input fields')
+                    self._json(200,proposed_inspection(self.server.project,**body));return
                 if route in ('/api/audio-bank-authoring','/api/audio-bank-review'):
                     from .audio_bank_authoring import options as bank_options, review as bank_review
                     expected = ({'asset_id','expected_entry_sha256','expected_source_key'}

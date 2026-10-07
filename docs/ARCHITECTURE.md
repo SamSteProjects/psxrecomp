@@ -1,5 +1,15 @@
 # Architecture
 
+## Retail, Current and reviewed Proposed SEQ timelines (2026-10-06)
+
+**Sequence operand editor → Show sequence layers** now opens separate Retail, Current and reviewed Proposed encoded-note timelines. Note selection focuses the original event row and matching tick window; keyboard focus survives selection. Channel filters, quarter-note windows and start/release navigation use the existing bounded FIFO display policy. Local drafts never appear as Proposed. Review obtains a new native-derived report before displaying that layer; Discard withdraws it. Drafts and pending reviews guard editing-row navigation, and stale/closed dialogs release all timeline ownership.
+
+`POST /api/audio-sequence-proposed` reconstructs the exact freshly reviewed full native entry in a detached project view, preserving other bank/sample edits, then decodes its SEQ span. It binds source identity, Current entry hash, authoring key and review key; the client validates the reviewed entry/sequence hashes, canonical proposed operands, unchanged event structure and declared timing. Inspection does not Apply, write files or add history. The original source-inspector timeline remains a Retail view; the operand editor now supplies the authored layers.
+
+Three new retail-enabled backend tests passed native candidate decoding/nonmutation, a real tempo-change sequence (0268), stale/unreviewed requests and exact HTTP fields. The eight affected Python checks and three Node suites passed, including nine proposed-report rejection cases and detached report ownership. A fresh private muted headless editor proof used an existing project with bank, SEQ and WAV edits; it passed all three layers, Review/Discard nonmutation, keyboard focus, channel/window controls, immediate refresh withdrawal, dialog disposal and wide/400px layouts with no page errors. Project documents and full native entry bytes remained unchanged. Screenshots were inspected. Evidence: `local-output/sdk-20260909/sequence-layer-timeline-20261006/pass3/` (`acceptance.json`, `browser.log`, `fixture.json`, `proposed-wide.png`, `proposed-narrow.png`). The initial proof and its close-event assertion race are preserved; the final proof waits for completed disposal.
+
+This is encoded note/timing inspection, not instrument synthesis, sustain evaluation or game playback acceptance. No game launch, runtime attachment, mod installation or full-disc export occurred. Manual gameplay remains deferred; broader SDK work stays active and solo.
+
 ## Frozen Build WAV snapshot browser (2026-10-06)
 
 **Build history → Browse saved WAV inputs** discovers bounded, immediate saved input snapshot directories in identity order. Discovery marks their integrity unchecked and does not imply chronological order. Selecting **Verify saved WAV inputs** qualifies the completed artifact receipt, the selected historical input receipt, frozen manifest/inventory and every original WAV file. **Save frozen input WAV** then rechecks the selected snapshot/manifest/receipt and downloads exact bytes. Current registrations and their files are not replay authority for this historical reader.

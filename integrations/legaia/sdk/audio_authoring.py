@@ -145,6 +145,28 @@ def review(project, asset_id, expected_entry_sha256, expected_authoring_key, edi
     return report
 
 
+def proposed_inspection(project,asset_id,expected_entry_sha256,expected_authoring_key,edits,review_key):
+    """Decode the reviewed full native candidate without applying it."""
+    proposal=review(project,asset_id,expected_entry_sha256,expected_authoring_key,edits)
+    if proposal['review_key']!=review_key:
+        raise ProjectError('Proposed sequence inspection differs from its reviewed operands')
+    body,current,_,record,_=_current(project,asset_id,expected_entry_sha256)
+    view=copy(project);view.audio_overrides=deepcopy(project.audio_overrides)
+    binding=proposal['proposed_binding']
+    if binding:view.audio_overrides[asset_id]=deepcopy(binding)
+    else:view.audio_overrides.pop(asset_id,None)
+    from .audio_composition import read_entry
+    candidate=read_entry(view,asset_id,body);start,size=record['sequence_offset'],record['sequence_size_bytes']
+    decoded=_inspection(candidate[start:start+size])
+    if (_hash(current)!=proposal['native_audit']['before_entry_sha256'] or
+            _hash(candidate)!=proposal['native_audit']['after_entry_sha256'] or source_key(project)!=expected_authoring_key):
+        raise ProjectError('Proposed sequence native inputs changed during inspection')
+    return dict(schema_version='legaia.audio-sequence-proposed.v1',asset_id=asset_id,
+        authoring_key=expected_authoring_key,review_key=review_key,source_record=record,
+        before_entry_sha256=_hash(current),after_entry_sha256=_hash(candidate),
+        sequence_sha256=_hash(candidate[start:start+size]),sequence=decoded,
+        project_changed=False,runtime_state='not_observed')
+
 def command(project, value):
     kind = value.get('type')
     fields = {'type', 'asset_id', 'expected_entry_sha256', 'expected_authoring_key'}

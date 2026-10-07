@@ -20,12 +20,12 @@ export function analyzeSequenceNotes(report){
  return {policy:'same-channel-key-first-in-first-out',sustain_evaluated:false,complete_source:report.complete,decoded_ticks:report.decoded_ticks,notes,unmatched_releases:unmatchedReleases,unmatched_starts:notes.filter(n=>n.end_event===null).map(n=>n.start_event),overlap_count:overlapCount};
 }
 
-export function createAudioNoteTimeline({report,fresh,onSelect}){
+export function createAudioNoteTimeline({report,fresh,onSelect,id='audio-note-timeline',label='Source'}){
  const analysis=analyzeSequenceNotes(report),el=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;},root=el('section'),title=el('h3','Encoded note timeline'),limits=el('p','Source ticks only. Same-channel/key releases pair with the earliest open start (FIFO); overlaps are ambiguous. Dashed notes have no encoded release in this prefix. Sustain, instruments and audible duration are not evaluated.'),toolbar=el('div'),channel=el('select'),span=el('select'),back=el('button','Earlier notes'),forward=el('button','Later notes'),range=el('span'),summary=el('p'),details=el('p','Select a note to inspect its encoded source events.'),wrap=el('div'),svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
- root.id='audio-note-timeline';channel.setAttribute('aria-label','Note timeline channel');span.setAttribute('aria-label','Note timeline quarter-note window');
+ root.id=id;title.textContent=label==='Source'?'Encoded note timeline':label+' encoded note timeline';channel.setAttribute('aria-label','Note timeline channel');span.setAttribute('aria-label','Note timeline quarter-note window');
  for(const [value,label] of [['all','All note channels'],...report.channels.map(n=>[String(n),'Channel '+n])]){const o=el('option',label);o.value=value;channel.append(o);}
  for(const value of [4,8,16,32,64]){const o=el('option',value+' quarter notes');o.value=String(value);span.append(o);}span.value='16';
- Object.assign(toolbar.style,{display:'flex',flexWrap:'wrap',gap:'8px',alignItems:'center'});Object.assign(wrap.style,{overflowX:'auto',maxWidth:'100%'});svg.setAttribute('role','group');svg.setAttribute('aria-label','Encoded source notes');svg.style.minWidth='760px';svg.style.width='100%';svg.style.background='#111e20';wrap.append(svg);toolbar.append(channel,span,back,forward,range);root.append(title,limits,toolbar,summary,wrap,details);
+ Object.assign(toolbar.style,{display:'flex',flexWrap:'wrap',gap:'8px',alignItems:'center'});Object.assign(wrap.style,{overflowX:'auto',maxWidth:'100%'});svg.setAttribute('role','group');svg.setAttribute('aria-label','Encoded '+label.toLowerCase()+' notes');svg.style.minWidth='760px';svg.style.width='100%';svg.style.background='#111e20';wrap.append(svg);toolbar.append(channel,span,back,forward,range);root.append(title,limits,toolbar,summary,wrap,details);
  const startButton=el('button','Go to note start event'),releaseButton=el('button','Go to note release event'),navigation=el('div');startButton.disabled=releaseButton.disabled=true;navigation.append(startButton,releaseButton);root.append(navigation);let selectedNote=null;
  let start=0,selected=null,disposed=false;
  const active=()=>!disposed&&fresh();
@@ -44,5 +44,6 @@ export function createAudioNoteTimeline({report,fresh,onSelect}){
  };
  startButton.onclick=()=>{if(active()&&selectedNote)onSelect(selectedNote.start_event);};releaseButton.onclick=()=>{if(active()&&selectedNote?.end_event!==null&&selectedNote)onSelect(selectedNote.end_event);};
  channel.onchange=()=>{start=0;render();};span.onchange=()=>{start=0;render();};back.onclick=()=>{if(active()){start=Math.max(0,start-Number(span.value)*report.header.ppqn);render();}};forward.onclick=()=>{if(active()){start+=Number(span.value)*report.header.ppqn;render();}};render();
- return {root,analysis,dispose:()=>{disposed=true;root.remove();}};
+ const focusEvent=index=>{if(!active()||!report.events[index])return;const width=Number(span.value)*report.header.ppqn;start=Math.floor(report.events[index].ticks/width)*width;const note=analysis.notes.find(n=>n.start_event===index||n.end_event===index);selected=note?.start_event??null;render();};
+ return {root,analysis,focusEvent,dispose:()=>{disposed=true;root.remove();}};
 }
