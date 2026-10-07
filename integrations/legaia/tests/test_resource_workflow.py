@@ -93,6 +93,7 @@ class ResourceWorkflow(unittest.TestCase):
                     patch("importer.worldmap_menu.load_worldmap_asset_catalog", return_value={"assets": []}), \
                     patch("importer.animation_catalog.load_animation_asset_catalog", return_value={"assets": []}), \
                     patch("importer.script_catalog.load_script_asset_catalog", side_effect=RetailImportError("unsupported MAN layout")), \
+                    patch("importer.audio_catalog.load_audio_asset_catalog", return_value={"assets": []}), \
                     patch("importer.field_map.load_field_map_catalog", return_value={"assets": []}):
                 result = refresh_resource_catalog(project)
             self.assertEqual([row["id"] for row in result["records"]], [texture["semantic_id"]])
@@ -118,6 +119,7 @@ class ResourceWorkflow(unittest.TestCase):
                     patch("importer.worldmap_menu.load_worldmap_asset_catalog", return_value={"assets": []}), \
                     patch("importer.animation_catalog.load_animation_asset_catalog", return_value={"assets": [animation]}), \
                     patch("importer.script_catalog.load_script_asset_catalog", return_value={"assets": [script, dialogue]}), \
+                    patch("importer.audio_catalog.load_audio_asset_catalog", return_value={"assets": []}), \
                     patch("importer.field_map.load_field_map_catalog", return_value={"assets": []}):
                 result = refresh_resource_catalog(project)
             self.assertEqual(len(result["records"]), 4)

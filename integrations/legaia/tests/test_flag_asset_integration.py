@@ -35,6 +35,7 @@ class FlagAssetIntegration(unittest.TestCase):
             ('sdk.resources.import_scene', self.document),
             ('sdk.resources.source_key', 'a' * 64),
             ('importer.texture_catalog.load_texture_asset_catalog', {'assets': []}),
+            ('importer.audio_catalog.load_audio_asset_catalog', {'assets': []}),
             ('importer.animation_catalog.load_animation_asset_catalog', {'assets': []}),
             ('importer.animation_catalog.load_global_animation_asset_catalog', {'assets': []}),
             ('importer.worldmap_menu.load_worldmap_asset_catalog', {'assets': []}),

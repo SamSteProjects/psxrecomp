@@ -28,7 +28,7 @@ class TransitionResourceWorkflow(unittest.TestCase):
         stack.enter_context(patch('sdk.resources.source_key', return_value='a' * 64))
         for name in ('texture_catalog.load_texture_asset_catalog', 'animation_catalog.load_animation_asset_catalog',
                      'animation_catalog.load_global_animation_asset_catalog', 'worldmap_menu.load_worldmap_asset_catalog',
-                     'field_map.load_field_map_catalog'):
+                     'field_map.load_field_map_catalog', 'audio_catalog.load_audio_asset_catalog'):
             stack.enter_context(patch('importer.' + name, return_value={'assets': []}))
         stack.enter_context(patch('importer.script_catalog.load_script_asset_catalog', return_value=source))
         if transition_context is not None:

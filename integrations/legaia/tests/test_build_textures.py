@@ -30,7 +30,7 @@ class TextureBuildGuards(unittest.TestCase):
         source, changed = b"original TIM fixture", b"modified TIM fixture"
         identifier = "texture://fixture/1/raw/0"
         document = {"scene": {"name": "fixture"}, "actors": [], "source": {"disc_identity": "sha256:" + "a" * 64}}
-        project = SimpleNamespace(texture_additions={}, root=root, name="texture build fixture", disc_path="synthetic",
+        project = SimpleNamespace(audio_overrides={}, audio_bank_overrides={}, audio_sample_overrides={}, audio_sample_sources={}, texture_additions={}, root=root, name="texture build fixture", disc_path="synthetic",
                                   imports={"scene://fixture": document}, overrides={},
                                   texture_overrides={identifier: binding(changed)},
                                   read_texture_replacement=lambda _: changed)
