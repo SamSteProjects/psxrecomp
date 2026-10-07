@@ -1,3 +1,4 @@
+import {decodeAllocationOptions,decodeAllocationPcm} from './audio-allocation-contract.js';
 import {mountVolumeSweepPreview} from './audio-volume-sweep-preview.js';
 import {simulateVolumeRegister,renderSweepStereo} from './audio-volume-sweep.js';
 import {directVoiceVolume,renderStaticStereo} from './audio-static-stereo.js';
@@ -64,14 +65,16 @@ export function mountEnvelopeAudition(host,{bank,fresh=()=>true,available=()=>tr
    if(playback.value.startsWith('native-')){
     const entry=cached();if(!(playback.value==='native-loop'?entry?.nativeAvailable:entry?.nativeOnePassAvailable))throw Error('No source-qualified standard native ADPCM playback mode.');
     const dto=await post('/api/audio-sample-adpcm',{...base,layer:row.pcmLayer,expected_sample_sha256:entry.sampleSha},operation.signal);if(!valid())return;
-    const raw=await decodeNativeSample(dto,owned.context,bank,sample,row.pcmLayer,entry.sampleSha,owned.currentEntryHash,entry.waveform,entry.bytes,playback.value==='native-loop'?'loop':'one-pass');if(!valid())return;
+    const raw=await decodeNativeSample(dto,owned.context,bank,sample,row.pcmLayer,entry.sampleSha,owned.currentEntryHash,entry.waveform,entry.bytes,playback.value==='native-loop'?'loop':'one-pass',entry.selection??null);if(!valid())return;
     entry.adpcm=raw;status.textContent=raw.length+' verified native ADPCM bytes. Continuous predictor history is available at the explicit preview rate.';return;
    }
-   const options=decodeSampleOptions(await post('/api/audio-sample-authoring',base,operation.signal),owned.context,bank,sample);if(!valid())return;
+   const dtoOptions=await post(owned.allocated?'/api/audio-allocation-authoring':'/api/audio-sample-authoring',base,operation.signal);if(!valid())return;
+   const options=owned.allocated?decodeAllocationOptions(dtoOptions,owned.context,bank,sample):decodeSampleOptions(dtoOptions,owned.context,bank,sample);if(!valid())return;
    if(options.current_entry_sha256!==owned.currentEntryHash)throw Error('Current sample entry differs from the inspected bank.');
-   const sha=row.pcmLayer==='retail'?sample.source_sha256:options.current_sample_sha256,dto=await post('/api/audio-sample-preview',{...base,layer:row.pcmLayer,expected_sample_sha256:sha},operation.signal);if(!valid())return;
-   const decoded=await decodeSamplePcm(dto,owned.context,bank,sample,row.pcmLayer,sha);if(!valid())return;
-   if(!equal(decoded.waveform,options[row.pcmLayer]))throw Error('Sample waveform changed after qualification.');cache.set(pcmKey(row),{bytes:decoded.bytes,waveform:decoded.waveform,sampleSha:sha,loop:encodedPcmLoop(decoded.waveform,decoded.bytes.length/2),nativeAvailable:nativeLoopQualified(decoded.waveform),nativeOnePassAvailable:nativeOnePassQualified(decoded.waveform),adpcm:null});status.textContent=decoded.bytes.length/2+' verified source frames. Choose a sample rate to audition; game pitch remains unverified.';
+   const sha=row.pcmLayer==='retail'?sample.source_sha256:options.current_sample_sha256,dto=await post(owned.allocated?'/api/audio-allocation-preview':'/api/audio-sample-preview',{...base,layer:row.pcmLayer,expected_sample_sha256:sha},operation.signal);if(!valid())return;
+   const selection=owned.allocated?(row.pcmLayer==='retail'?{row:sample,position:options.current_sample_entry_byte_offset-options.current_sample.offset+sample.offset,entryHash:bank.source_record.entry_sha256,entryBytes:bank.source_record.entry_size_bytes}:{row:options.current_sample,position:options.current_sample_entry_byte_offset,entryHash:options.current_entry_sha256,entryBytes:options.current_entry_size_bytes}):null;
+   const decoded=owned.allocated?await decodeAllocationPcm(dto,owned.context,bank,sample,row.pcmLayer,sha,null,selection):await decodeSamplePcm(dto,owned.context,bank,sample,row.pcmLayer,sha);if(!valid())return;
+   if(!equal(decoded.waveform,options[row.pcmLayer]))throw Error('Sample waveform changed after qualification.');cache.set(pcmKey(row),{bytes:decoded.bytes,waveform:decoded.waveform,sampleSha:sha,selection,loop:encodedPcmLoop(decoded.waveform,decoded.bytes.length/2),nativeAvailable:nativeLoopQualified(decoded.waveform),nativeOnePassAvailable:nativeOnePassQualified(decoded.waveform),adpcm:null});status.textContent=decoded.bytes.length/2+' verified source frames. Choose a sample rate to audition; game pitch remains unverified.';
   }catch(error){if(!operation.signal.aborted&&valid()){status.textContent=error.message;onError(error);}}finally{if(config===owned&&controller===operation){controller=null;loading=false;refresh();}}
  };
  const renderedMono=()=>{const row=selected();if(playback.value.startsWith('native-')){const once=playback.value==='native-one-pass';if(pitchMode.value==='register')return renderGaussianEnvelopePitch(cached().adpcm,directPitch().pitchRegister,row.adsr1,row.adsr2,{keyOffFrame:Number(off.value)*ENVELOPE_RATE/1000},once?'one-pass':'loop');return (interpolation.value==='gaussian'?renderGaussianEnvelope:once?renderNativeOnePassEnvelope:renderNativeEnvelope)(cached().adpcm,Number(rate.value),row.adsr1,row.adsr2,{keyOffFrame:Number(off.value)*ENVELOPE_RATE/1000},once?'one-pass':'loop');}return renderEnvelopePcm(cached().bytes,Number(rate.value),row.adsr1,row.adsr2,{keyOffFrame:Number(off.value)*ENVELOPE_RATE/1000},playback.value==='encoded-loop'?cached().loop:null);};
