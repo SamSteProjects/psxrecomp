@@ -1,5 +1,19 @@
 # Testing
 
+## Persistent project input freshness — 2026-10-06
+
+Run with the local retail disc configured:
+
+```powershell
+python -m unittest test_project_assets test_project_assets_http test_project_asset_references test_project_asset_references_http test_asset_references
+node integrations/legaia/tests/test_project_assets.mjs
+node integrations/legaia/tests/test_asset_references.mjs
+```
+
+The 30 Python checks and both Node suites passed. New cases cover all newer persistent collections, future document fields, navigation-independent inventory and rejection of persisted snapshot drift while preserving transient isolation. Decoder imports precede mocked disc contexts so lazy module aliases cannot capture a test reader.
+
+Private actual-editor evidence: `local-output/sdk-20260909/project-input-freshness-20261006/pass2/`. A real native SEQ edit proves Review nonmutation, Apply invalidating both keys and withdrawing old inventory, stale reference HTTP 400, Refresh and Undo. Exact project document/native entry bytes and keys restore through Undo and Save/Open; wide/400px screenshots were inspected with no page errors. The preserved first browser attempt had an incorrect coverage-text expectation. This checkpoint needs no Build or gameplay; file integrity and gameplay remain separate acceptance layers.
+
 ## Align model vertex groups to an explicit native coordinate (2026-10-06)
 
 **Move model geometry → Selected vertex group → Plane: Source coordinate** exposes **Plane coordinate**. Enter a signed16 object-local word, then **Align group X/Y/Z** to stage the chosen coordinate on that source axis. Minimum, bounds-center and maximum planes retain their existing behavior. The local draft supports Discard, Current/Draft comparison, exact scene inspection and all-instance preview before explicit Apply. The coordinate field locks during a staged transform. Source Y remains positive down; this edits model words, not actor placement or scene/world coordinates.

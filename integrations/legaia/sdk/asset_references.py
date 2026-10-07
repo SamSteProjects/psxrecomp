@@ -3,10 +3,10 @@ from copy import deepcopy
 from .project import ProjectError,digest
 
 def source_key(project):
-    return digest(dict(project_root=str(project.root),active_scene=project.active_scene,disc_path=project.disc_path,
-                       imports={key:digest(doc) for key,doc in sorted(project.imports.items())},
-                       overrides=project.overrides,drafts=project.actor_drafts,
-                       models=project.model_overrides,textures=project.texture_overrides,texture_additions=project.texture_additions))
+    from .project_inputs import identity
+    # Scene-scoped references retain their navigation identity, while every
+    # persisted input shares the same project-wide freshness boundary.
+    return digest(dict(project_inputs=identity(project),active_scene=project.active_scene))
 
 def _trigger_script_evidence(record,source_scripts,scene,document,*,target_index=None):
     """Qualify a source gate-1 MAP row and its Retail or authored P2 target."""

@@ -1,5 +1,11 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Persistent project resource freshness — 2026-10-06
+
+Fixed incomplete asset/reference source keys that omitted newer persisted inputs. Both now share the complete saved-document identity plus project root, disc path/stat and import digests. Active scene is excluded from project inventory and included for references. All saved metadata participates conservatively; transient selection, mode, history and caches do not. Independent catalog budgets and empty-project state remain intact. This does not replace file qualification or prove runtime behavior.
+
+Acceptance: 30 retail-enabled Python tests and two Node suites passed. Actual private editor audio Review leaves keys unchanged; Apply changes both, withdraws the stale catalog, rejects old reference keys with HTTP 400 and permits a fresh Refresh. Undo and Save/Open restore exact keys/document/full native bytes. Wide/400px screenshots were inspected, with zero page errors. Evidence: `local-output/sdk-20260909/project-input-freshness-20261006/pass2/`. No native Build or game launch occurred. Manual gameplay is still deferred; solo SDK development and the full goal remain active.
+
 ## Persistent native WAV samples and shared audio delivery (2026-10-06)
 
 ## Align model vertex groups to an explicit native coordinate (2026-10-06)

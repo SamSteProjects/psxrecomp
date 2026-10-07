@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 from importer.core import ImportError as RetailImportError
+from importer import textures  # Prevent lazy decoder imports from retaining a mocked disc reader.
 from sdk.project import ProjectService,ProjectError,digest
 from sdk.asset_references import assemble,assemble_project,inspect_project,source_key
 from test_project_workflow import synthetic_scene
@@ -75,8 +76,8 @@ class ProjectAssetReferences(unittest.TestCase):
   def refresh(p):
    events.append(('decode',p.active_scene));self.assertIsNot(p.assets,self.p.assets)
    self.assertNotIn('sentinel',p.assets.resource_catalogs)
-   # A decoder's accidental metadata mutation cannot leak into the active editor.
-   p.scene_views['scratch']={'nested':[]};p.selected='changed';p.undo_stack.append({'scratch':True})
+   # Transient decoder changes cannot leak into the active editor.
+   p.selected='changed';p.undo_stack.append({'scratch':True})
    return deepcopy(self.catalogs[p.active_scene])
   mocks=self.mock_discovery(refresh=refresh,verify=verify)
   with mocks[0],mocks[1],mocks[2],mocks[3]:report=inspect_project(self.p,self.clip)
@@ -87,6 +88,13 @@ class ProjectAssetReferences(unittest.TestCase):
   self.assertEqual(self.p.assets.material_reference_catalogs,before['assets'].material_reference_catalogs)
   self.assertEqual(report['coverage']['resource_scene_id'],'scene://fixture')
  def test_source_verification_failure_precedes_any_decode_and_drift_rejects(self):
+  before=deepcopy(self.p._document())
+  def persistent_change(view):
+   view.audio_bank_overrides['fixture']={'changed':True}
+   return deepcopy(self.catalogs[view.active_scene])
+  mocks=self.mock_discovery(refresh=persistent_change)
+  with mocks[0],mocks[1],mocks[2],mocks[3],self.assertRaisesRegex(ProjectError,'source changed'):inspect_project(self.p,self.clip)
+  self.assertEqual(self.p._document(),before)
   def stale(p,d):raise ProjectError('stale source')
   mocks=self.mock_discovery(verify=stale)
   with mocks[0],mocks[1],mocks[2] as decoding,mocks[3]:

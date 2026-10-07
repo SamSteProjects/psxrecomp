@@ -1,5 +1,11 @@
 # Asset dependencies and referenced-by navigation
 
+## Complete persistent input freshness — 2026-10-06
+
+Reference source keys now share the complete persistent project-input identity used by project resources, while retaining active-scene identity. Native audio bindings, retained animation/model inputs, additions, templates, saved metadata and future persisted fields invalidate old reference views. Project root, disc path/stat and full import digests participate; transient mode, selection, history and caches do not. Reference identity remains available without an imported catalog, and inventory budgets remain independent.
+
+Refresh after authored input changes. Old keys reject; Review preserves Current identity and Undo restores it. Detached discovery rejects persisted snapshot drift. This identity is conservative metadata freshness, separate from file integrity and runtime reference reachability. Thirty retail-enabled Python tests, two Node suites and the actual audio Apply/stale-reference HTTP 400/Refresh/Undo/Save/Open workflow passed. Project documents and native bytes restored exactly; no page errors. Evidence: `local-output/sdk-20260909/project-input-freshness-20261006/pass2/`. Manual gameplay remains deferred.
+
 ## Save complete asset-reference reports — 2026-10-05
 
 Asset references now offers **Save full reference report** in Active and Project scopes.

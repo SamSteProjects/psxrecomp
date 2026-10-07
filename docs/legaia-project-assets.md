@@ -1,5 +1,11 @@
 # Imported project Asset Database
 
+## Complete persistent input freshness — 2026-10-06
+
+Project resources now include the complete saved project document in their freshness key, including native audio bindings, retained animation/model inputs, texture additions, templates and saved metadata. Future persisted fields participate automatically. Active scene navigation remains excluded; selection, mode, history and transient caches do not invalidate inventory. Project root, disc path/stat and full import digests also participate.
+
+After Apply changes saved inputs, Refresh project resources before inspecting the catalog again. Review leaves Current identity unchanged; Undo restores the prior identity. Discovery rejects persisted snapshot drift. Existing import/metadata budgets remain in force. A freshness token does not prove file integrity, runtime residency or catalog coverage. Thirty retail-enabled Python tests, two Node suites and the actual audio Apply/Refresh/Undo/Save/Open workflow passed; native bytes/document restored exactly. Evidence: `local-output/sdk-20260909/project-input-freshness-20261006/pass2/`. Gameplay remains deferred.
+
 ## NPC drafts in the central project Asset Database — 2026-10-05
 
 The SDK project inventory now registers each validated NPC draft as an explicitly

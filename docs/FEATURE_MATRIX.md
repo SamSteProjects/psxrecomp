@@ -1,5 +1,11 @@
 # Legaia SDK feature matrix
 
+## Persistent project resource freshness — 2026-10-06
+
+Implemented: a shared complete saved-document identity for project assets and references, including modern audio/animation/model inputs and future persisted fields. Inventory remains navigation independent; references remain scene sensitive. Snapshot mutation detection, catalog budgets and existing source qualification stay in force. Empty-project state remains usable. Metadata freshness is separate from file integrity and gameplay acceptance.
+
+Verified: 30 retail-enabled Python tests, two Node suites and the actual private editor audio Review/Apply → stale inventory withdrawal → HTTP 400 stale reference → Refresh → Undo workflow. Save/Open preserved exact document and native bytes; wide/400px screenshots and zero page errors passed. Evidence: `local-output/sdk-20260909/project-input-freshness-20261006/pass2/`. No Build or game run; gameplay remains deferred and the broader goal stays active.
+
 ## Persistent native WAV samples and shared audio delivery (2026-10-06)
 
 ## Align model vertex groups to an explicit native coordinate (2026-10-06)

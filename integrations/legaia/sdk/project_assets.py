@@ -5,7 +5,6 @@ scenes. Discovery retains those records separately and never changes editor
 navigation, imported evidence, authored state or the active resource caches.
 """
 from copy import copy, deepcopy
-from pathlib import Path
 import re
 
 from importer.core import ImportError as RetailImportError, validate_metadata_only
@@ -65,20 +64,12 @@ def _imports(project):
 def source_key(project) -> str:
     """Navigation-independent freshness for imported and authored project inputs."""
     imports = _imports(project)
-    disc_path = str(Path(project.disc_path).resolve()) if project.disc_path else None
-    stamp = None
-    if disc_path is not None:
-        try:
-            stat = Path(disc_path).stat()
-            stamp = [stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns]
-        except OSError:
-            pass
-    value = dict(project_path=str(project.root), disc_path=disc_path, disc_stat=stamp,
-                 imports={scene: digest(document) for scene, document in sorted(imports.items())},
-                 overrides=project.overrides, drafts=project.actor_drafts,
-                 model_overrides=project.model_overrides, texture_overrides=project.texture_overrides)
-    _budget(dict(imports=imports, authored={key: value[key] for key in
-                                          ('overrides', 'drafts', 'model_overrides', 'texture_overrides')}))
+    # Use the persistence boundary rather than a second list of authored fields.
+    # Scene navigation is deliberately excluded; saved content is conservative
+    # freshness even when a particular catalog does not currently expose it.
+    from .project_inputs import identity
+    value=identity(project)
+    _budget(dict(imports=imports,project_document=value['project_document']))
     return digest(value)
 
 

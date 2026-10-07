@@ -1,5 +1,15 @@
 # Current Legaia SDK status — 2026-10-06
 
+## Complete persistent-input freshness for project resources (2026-10-06)
+
+Project resources and asset references now fingerprint the complete saved project document instead of maintaining partial lists of authored fields. Native audio edits, retained animation/model sources, texture additions, templates and saved editor metadata invalidate old views. Future persisted fields participate automatically. Project inventory excludes active-scene navigation; scene-scoped references still include it. Selection, mode, history and transient caches remain outside this identity.
+
+The shared identity also binds project root, resolved disc path/stat and complete imported-document digests. Catalog budgets remain separate, so empty-project state and reference freshness do not depend on catalog availability. Discovery rejects changes to persisted inputs in its detached snapshot. This metadata identity does not establish file integrity, runtime residency or gameplay acceptance; existing qualification remains authoritative.
+
+All 30 focused retail-enabled Python checks and both project-assets/reference Node suites passed. The real private muted headless editor proved that Review preserves keys, native audio Apply withdraws the old inventory and changes both keys, old reference requests reject with HTTP 400, Refresh reloads and Undo restores both keys. Undo and Save/Open restored exact project documents and full native entry bytes. Wide/400px screenshots were inspected; no page errors. Evidence: `local-output/sdk-20260909/project-input-freshness-20261006/pass2/` (`proof.json`, `browser.log`, `refreshed-wide.png`, `refreshed-narrow.png`). Test decoder aliases are loaded before mocked disc readers to prevent lazy-import fixture leakage. The preserved first browser attempt used an incorrect coverage-text expectation; the corrected fresh proof passed.
+
+No native Build or gameplay verification was needed for this freshness fix. The full SDK goal remains active, development remains solo, and manual gameplay is deferred.
+
 ## Align model vertex groups to an explicit native coordinate (2026-10-06)
 
 **Move model geometry → Selected vertex group → Plane: Source coordinate** exposes **Plane coordinate**. Enter a signed16 object-local word, then **Align group X/Y/Z** to stage the chosen coordinate on that source axis. Minimum, bounds-center and maximum planes retain their existing behavior. The local draft supports Discard, Current/Draft comparison, exact scene inspection and all-instance preview before explicit Apply. The coordinate field locks during a staged transform. Source Y remains positive down; this edits model words, not actor placement or scene/world coordinates.

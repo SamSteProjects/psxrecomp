@@ -7,6 +7,8 @@ import unittest
 from unittest.mock import patch
 
 from importer.core import ImportError as RetailImportError, validate_metadata_only
+# Load decoder aliases before tests replace the pipeline context manager.
+from importer import textures
 from sdk.project import ProjectService, ProjectError, digest
 from sdk.project_assets import source_key, assemble, inspect
 from test_project_workflow import synthetic_scene
@@ -97,6 +99,20 @@ class ProjectAssetsTests(unittest.TestCase):
         del project.imports['scene://fixture']['assets']['models'][0]['source_record']['changed']
         self.disc.write_bytes(b'longer source fixture')
         self.assertNotEqual(source_key(project), key)
+
+    def test_all_persistent_collections_and_future_fields_participate_in_freshness(self):
+        project=self.project;key=source_key(project);before=deepcopy(project._document())
+        for field in ('actor_templates','scene_views','script_bookmarks','actor_selection_sets',
+                      'scene_selection_sets','model_vertex_groups','texture_additions',
+                      'animation_sources','model_sources','audio_sample_sources',
+                      'audio_sample_overrides','audio_overrides','audio_bank_overrides'):
+            previous=deepcopy(getattr(project,field));setattr(project,field,{'fixture':{'marker':field}})
+            self.assertNotEqual(source_key(project),key,field);setattr(project,field,previous)
+            self.assertEqual(source_key(project),key,field)
+        future=deepcopy(before);future['future_asset_binding']={'marker':'persisted'}
+        with patch.object(project,'_document',return_value=future):self.assertNotEqual(source_key(project),key)
+        self.assertIn('active_scene',before);self.assertEqual(project._document(),before)
+        project.mode='live';project.active_scene='scene://other';self.assertEqual(source_key(project),key)
 
     def test_deterministic_project_memberships_keep_distinct_shared_variants(self):
         before = deepcopy(self.project.imports)
@@ -211,7 +227,7 @@ class ProjectAssetsTests(unittest.TestCase):
             events.append(('decode', view.active_scene))
             self.assertIsNot(view.assets, self.project.assets)
             self.assertEqual(view.assets.records, {}); self.assertNotIn('sentinel', view.assets.resource_catalogs)
-            view.selected = 'scratch'; view.undo_stack.append({'scratch': True}); view.scene_views['scratch'] = []
+            view.selected = 'scratch'; view.undo_stack.append({'scratch': True})
             view.assets.resource_catalogs[view.active_scene] = {'scratch': True}
             return deepcopy(self.catalogs[view.active_scene])
         mocks = self.mocks(verify, refresh)
@@ -228,6 +244,13 @@ class ProjectAssetsTests(unittest.TestCase):
         with mocks[0], mocks[1], mocks[2]: self.assertEqual(inspect(self.project), report)
 
     def test_expected_availability_failures_and_stale_or_unexpected_errors(self):
+        before=deepcopy(self.project._document())
+        def persistent_drift(view):
+            view.scene_views['scratch']={'changed':True}
+            return deepcopy(self.catalogs[view.active_scene])
+        mocks=self.mocks(refresh=persistent_drift)
+        with mocks[0],mocks[1],mocks[2],self.assertRaisesRegex(ProjectError,'source changed'):inspect(self.project)
+        self.assertEqual(self.project._document(),before)
         def unavailable(view):
             if view.active_scene == 'scene://other': raise RetailImportError('Unsupported source table')
             return deepcopy(self.catalogs[view.active_scene])

@@ -1,5 +1,11 @@
 # Architecture
 
+## Shared persistent project resource identity — 2026-10-06
+
+`sdk/project_inputs.py` derives resource freshness from a fresh `_document()` with only `active_scene` removed, plus project root, resolved disc path/stat and full imported-document digests. This persistence boundary includes every saved collection and future saved fields. Transient mode, selection, history and caches are excluded. `project_assets.source_key` retains independent import validation and metadata budgets; `asset_references.source_key` adds active scene without invoking inventory availability checks. Empty-project editor state remains valid.
+
+Inventory discovery and project reference inspection compare this identity on detached snapshots before publishing. Changes to persisted snapshot metadata reject; transient decoder work remains isolated. Identity is conservative invalidation, not a decoded catalog completeness claim or file-integrity proof. Existing native/source/file qualification remains authoritative. Retail-enabled regressions and actual audio Apply/Refresh/Undo/Save/Open verification are recorded in `local-output/sdk-20260909/project-input-freshness-20261006/pass2/`.
+
 ## Align model vertex groups to an explicit native coordinate (2026-10-06)
 
 **Move model geometry → Selected vertex group → Plane: Source coordinate** exposes **Plane coordinate**. Enter a signed16 object-local word, then **Align group X/Y/Z** to stage the chosen coordinate on that source axis. Minimum, bounds-center and maximum planes retain their existing behavior. The local draft supports Discard, Current/Draft comparison, exact scene inspection and all-instance preview before explicit Apply. The coordinate field locks during a staged transform. Source Y remains positive down; this edits model words, not actor placement or scene/world coordinates.
