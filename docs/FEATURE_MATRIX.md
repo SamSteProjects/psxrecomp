@@ -1,5 +1,11 @@
 # Legaia SDK feature matrix
 
+## Current encoded bank links — 2026-10-06
+
+Implemented: the sequence operand editor connects a Current note to its latest encoded channel program change, explicitly matching tone program/key-range candidates and Current native sample spans. Complete evidence download, typed bank validation, stale withdrawal and parent disposal are included. Sparse program slots and packed pages remain distinct. Initial/runtime instrument assignments and active/unused tone selection remain unknown; this does not synthesize instruments or resolve gameplay pitch.
+
+Five retail-enabled Python checks, three Node suites and actual private editor evidence passed. Note 9/program 14/page 13 exposed two candidates; exact download, wide/400px screenshots and zero page errors passed. Document/history/saved bytes/native entry/Build input identity stayed exact. Evidence: `local-output/sdk-20260909/note-bank-links-20261006/pass2/`. No Build or game run; broader solo development remains active with gameplay deferred. See [encoded bank links](legaia-audio-note-links.md).
+
 ## Encoded channel transpose — 2026-10-06
 
 Implemented in the sequence operand editor: stage every fully paired Current note on one encoded channel with a bounded nonzero integer key shift, then Review and Apply through the existing native batch command. The draft locks competing edits and navigation; Discard and shared Undo/Redo remain available. Non-note or other-channel inspection does not prevent batch review. Key bounds, unresolved/ambiguous selected notes, changed FIFO pairing and request/canonical 256-event budgets reject. Velocities, timing, unrelated events and opaque bytes remain intact. This does not establish instruments, sustain, percussion semantics or audible gameplay pitch.

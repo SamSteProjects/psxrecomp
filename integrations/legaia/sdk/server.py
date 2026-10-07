@@ -825,6 +825,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/asset-references.js": ("asset-references.js", "text/javascript"),
                  "/audio-sequence.js": ("audio-sequence.js", "text/javascript"),
                  "/audio-sequence-authoring.js": ("audio-sequence-authoring.js", "text/javascript"),
+                 "/audio-note-links.js": ("audio-note-links.js", "text/javascript"),
                  "/audio-note-timeline.js": ("audio-note-timeline.js", "text/javascript"),
                  "/audio-note-authoring.js": ("audio-note-authoring.js", "text/javascript"),
                  "/audio-bank.js": ("audio-bank.js", "text/javascript"),
@@ -2029,6 +2030,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!=fields:raise ProjectError('WAV source recovery requires exact Current input fields')
                     function=library if route=='/api/audio-sample-sources' else download if route.endswith('-download') else review_removal
                     self._json(200,function(self.server.project,**body));return
+                if route == '/api/audio-note-links':
+                    if set(body)!={'asset_id','expected_entry_sha256','expected_source_key','expected_authoring_key','note_index'}:
+                        raise ProjectError('Note links require exact Current source and note identities')
+                    from .audio_note_links import inspect
+                    self._json(200,inspect(self.server.project,**body))
+                    return
                 if route == '/api/audio-sequence-proposed':
                     from .audio_authoring import proposed_inspection
                     if set(body)!={'asset_id','expected_entry_sha256','expected_authoring_key','edits','review_key'}:

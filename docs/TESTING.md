@@ -1,5 +1,13 @@
 # Testing
 
+## Current encoded bank link inspection — 2026-10-06
+
+`python -m unittest test_audio_note_links test_audio_sequence_proposed` passed five tests with the local retail disc and existing SDK/test import paths configured. New cases cover untouched and edited Current audio, latest same-channel program history, detached reports, stale authoring keys, invalid/non-note identities, exact HTTP fields and unchanged state. Initial testing exposed a reader call that required an authored binding; the service now uses the existing qualified Current reader for untouched entries as well.
+
+Three Node suites passed: `test_audio_note_links.mjs`, `test_audio_bank.mjs`, `test_audio_sequence_authoring.mjs`. They cover bound Current note/program/hash identities, sparse packed pages, explicit operand/key candidate matching, unresolved sample operands, unknown initial assignments/standalone banks, independent bank extent validation, detached ownership, stale withdrawal and late/closed publication. Affected Python/JS syntax and diff checks passed.
+
+Actual editor evidence: `local-output/sdk-20260909/note-bank-links-20261006/pass2/`. It verifies composed Current data (note 9, program 14, packed page 13, two candidates), full exact JSON download, parent-child disposal and wide/400px screenshots with zero page errors. Document/history/saved bytes/native full entry and Build input key remain unchanged. Initial browser evidence exposed a long-hash overflow; the repaired fresh proof passed. There was no Build or game run; this is source evidence rather than runtime instrument/playback acceptance.
+
 ## Encoded channel transpose — 2026-10-06
 
 Three Node suites passed: `test_audio_note_authoring.mjs`, `test_audio_sequence_authoring.mjs` and `test_audio_note_timeline.mjs`. Coverage includes exact start/release keys and velocities, input immutability, whole-number/key bounds, ambiguous/unmatched selected notes, intervening orphan releases, request/canonical event budgets, retail restoration and batch staging/Discard while inspecting a non-note event. Both changed editor modules passed syntax checks.

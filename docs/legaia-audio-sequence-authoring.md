@@ -1,5 +1,11 @@
 # Native SEQ operand codec groundwork
 
+## Current encoded bank links — 2026-10-06
+
+Implemented: the sequence operand editor connects a Current note to its latest encoded channel program change, explicitly matching tone program/key-range candidates and Current native sample spans. Complete evidence download, typed bank validation, stale withdrawal and parent disposal are included. Sparse program slots and packed pages remain distinct. Initial/runtime instrument assignments and active/unused tone selection remain unknown; this does not synthesize instruments or resolve gameplay pitch.
+
+Five retail-enabled Python checks, three Node suites and actual private editor evidence passed. Note 9/program 14/page 13 exposed two candidates; exact download, wide/400px screenshots and zero page errors passed. Document/history/saved bytes/native entry/Build input identity stayed exact. Evidence: `local-output/sdk-20260909/note-bank-links-20261006/pass2/`. No Build or game run; broader solo development remains active with gameplay deferred. See [encoded bank links](legaia-audio-note-links.md).
+
 ## Encoded channel transpose (2026-10-06)
 
 The sequence operand editor now provides **Transpose encoded channel**. Choose an encoded channel (0–15) and a nonzero whole-number **Transpose semitones** value (-127–127), then **Stage channel transpose**. This stages every fully paired Current note on that channel without changing Current. Review lists both start/release operands and obtains the native Proposed timeline; Apply uses the existing batch command for one history change. Discard, Undo/Redo, stale-input withdrawal and Save/Open use the shared workflow. Individual fields, pairing controls and event navigation lock while a channel draft is staged. The currently inspected event can belong to another channel or be a non-note event.

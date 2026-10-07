@@ -1,5 +1,11 @@
 # Architecture
 
+## Current encoded bank links — 2026-10-06
+
+`sdk/audio_note_links.py` qualifies the reached Current sequence note, latest prior same-channel program-change event and composed Current bank with existing retail/source/native readers. `POST /api/audio-note-links` accepts exactly asset ID, retail entry hash, resource source key, complete Current authoring key and note index. It binds Current entry/SEQ hashes and rejects changed inputs before publishing; it handles untouched and authored audio. Standalone sequence ownership yields no colocated bank rather than an invented runtime bank.
+
+`editor/audio-note-links.js` verifies the exact note/program history against qualified Current sequence metadata and validates the bank carrier/tables/sample spans through `decodeAudioBank`. Its derived candidates match explicit tone program operands and key ranges across recorded packed pages; it does not assign packed pages to sparse program slots or infer which rows are active. The parent-owned dialog/download withdraws on changed inputs and disposes on close/refresh. The pinned Andrew VAB parser supplies native field layout; candidate matching is an editor query. Runtime instrument/controller/envelope/pitch semantics remain open. Five retail-enabled Python checks, three Node suites and actual unchanged-native browser acceptance are recorded in `local-output/sdk-20260909/note-bank-links-20261006/pass2/`.
+
 ## Encoded channel transpose — 2026-10-06
 
 `editor/audio-note-authoring.js` now derives a bounded channel-wide native operand batch from qualified Current/retail authoring DTOs. It transposes both reached start and release keys for all notes on one channel, preserves velocities and reanalyzes the entire candidate to ensure FIFO pairing, unmatched events and ambiguity remain unchanged. Selected unresolved/ambiguous pairs, key overflow, more than 128 pairs or a merged canonical binding above 256 events reject. All data remains detached from Current.
