@@ -1,5 +1,11 @@
 # Architecture
 
+## Encoded channel transpose — 2026-10-06
+
+`editor/audio-note-authoring.js` now derives a bounded channel-wide native operand batch from qualified Current/retail authoring DTOs. It transposes both reached start and release keys for all notes on one channel, preserves velocities and reanalyzes the entire candidate to ensure FIFO pairing, unmatched events and ambiguity remain unchanged. Selected unresolved/ambiguous pairs, key overflow, more than 128 pairs or a merged canonical binding above 256 events reject. All data remains detached from Current.
+
+`audio-sequence-authoring.js` stages that batch in the existing Review/Proposed/Apply lifecycle. Competing individual edits/navigation lock; the selected event may be outside the batch. No new endpoint or persistence format is introduced: the existing source-qualified native serializer and command/history remain authoritative. Native full-entry and package readback plus actual browser acceptance are recorded in `local-output/sdk-20260909/channel-transpose-20261006/pass1/`. Encoded pairing is an editor policy, not runtime instrument/voice identity or gameplay acceptance.
+
 ## Shared persistent project resource identity — 2026-10-06
 
 `sdk/project_inputs.py` derives resource freshness from a fresh `_document()` with only `active_scene` removed, plus project root, resolved disc path/stat and full imported-document digests. This persistence boundary includes every saved collection and future saved fields. Transient mode, selection, history and caches are excluded. `project_assets.source_key` retains independent import validation and metadata budgets; `asset_references.source_key` adds active scene without invoking inventory availability checks. Empty-project editor state remains valid.

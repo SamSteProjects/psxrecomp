@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {qualifyNotePair,pairedNoteEdits} from '../editor/audio-note-authoring.js';
+import {qualifyNotePair,pairedNoteEdits,channelTransposeEdits} from '../editor/audio-note-authoring.js';
 const events=[],add=(kind,channel,key,velocity)=>events.push({index:events.length,offset:15+events.length*4,kind,channel,values:[key,velocity],ticks:events.length,time_seconds:events.length/480});
 add('note_on',0,60,100);add('note_on',1,62,90);add('note_off',0,60,20);add('note_on',1,62,0);
 const report={events,complete:false,decoded_ticks:4},before=structuredClone(report);
@@ -16,3 +16,22 @@ const unmatched=structuredClone(report);unmatched.events=unmatched.events.slice(
 assert.throws(()=>qualifyNotePair({events:[{index:0,kind:'note_off',channel:0,values:[60,0],ticks:0,time_seconds:0}],complete:true,decoded_ticks:0},0),/no paired start/);
 assert.deepEqual(report,before);
 console.log('Paired start/release keys, channel isolation, velocity-zero release semantics, collision/ambiguity rejection, partial prefix and source immutability passed.');
+
+const opts={current:report,retail:report,authored_edits:[]};
+assert.deepEqual(channelTransposeEdits(opts,0,2),[{event_offset:15,values:[62,100]},{event_offset:23,values:[62,20]}]);
+assert.deepEqual(channelTransposeEdits(opts,1,-2),[{event_offset:19,values:[60,90]},{event_offset:27,values:[60,0]}]);
+for(const [channel,shift] of [[-1,1],[16,1],[true,1],[0,0],[0,1.5],[0,128],[0,-127],[0,127],[2,1]])assert.throws(()=>channelTransposeEdits(opts,channel,shift));
+assert.throws(()=>channelTransposeEdits({...opts,current:unmatched},0,1),/release/);
+assert.throws(()=>channelTransposeEdits({...opts,current:overlap},0,1),/unambiguous/);
+// An unmatched destination release must not steal a transposed start.
+assert.throws(()=>channelTransposeEdits({...opts,current:orphan},0,2),/pairing/);
+const many={events:[],complete:true,decoded_ticks:1000};
+for(let i=0;i<129;i++)for(const kind of ['note_on','note_off'])many.events.push({index:many.events.length,offset:15+many.events.length*4,kind,channel:0,values:[60,kind==='note_on'?100:0],ticks:many.events.length,time_seconds:many.events.length/480});
+assert.throws(()=>channelTransposeEdits({current:many,retail:many,authored_edits:[]},0,1),/request budget/);
+const full={...opts,authored_edits:Array.from({length:255},(_,i)=>({event_offset:1000+i,values:[1]}))};
+assert.throws(()=>channelTransposeEdits(full,0,1),/binding budget/);
+const restoreOpts={current:structuredClone(report),retail:report,authored_edits:[{event_offset:15,values:[61,100]},{event_offset:23,values:[61,20]}]};
+restoreOpts.current.events[0].values[0]=restoreOpts.current.events[2].values[0]=61;
+assert.deepEqual(channelTransposeEdits(restoreOpts,0,-1),[{event_offset:15,values:[60,100]},{event_offset:23,values:[60,20]}]);
+assert.deepEqual(report,before);
+console.log('Channel transpose preserves pairs, velocities and input ownership; key bounds, partial/ambiguous notes and both event budgets reject.');

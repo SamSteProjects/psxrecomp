@@ -1,5 +1,11 @@
 # Legaia SDK feature matrix
 
+## Encoded channel transpose — 2026-10-06
+
+Implemented in the sequence operand editor: stage every fully paired Current note on one encoded channel with a bounded nonzero integer key shift, then Review and Apply through the existing native batch command. The draft locks competing edits and navigation; Discard and shared Undo/Redo remain available. Non-note or other-channel inspection does not prevent batch review. Key bounds, unresolved/ambiguous selected notes, changed FIFO pairing and request/canonical 256-event budgets reject. Velocities, timing, unrelated events and opaque bytes remain intact. This does not establish instruments, sustain, percussion semantics or audible gameplay pitch.
+
+Three Node suites and eleven retail-enabled Python tests passed. Actual private muted headless editor proof transposed 72 notes/144 event operands, passing invalid/incomplete refusal, Review/Proposed, Discard, Apply, Undo/Redo, wide/400px screenshots and zero page errors. Save/Open and independently constructed full-entry directory/ZIP bytes matched; every other saved field remained exact. Native package `c36fb9e1af0edfd0fd710225abc4d85819791b6238b42ac55296150618a30ddf`, Build `e7f77158da4fd26b` passed integrity with gameplay false. Evidence: `local-output/sdk-20260909/channel-transpose-20261006/pass1/`. No game launch or installation; the full goal remains active and solo, with gameplay deferred.
+
 ## Persistent project resource freshness — 2026-10-06
 
 Implemented: a shared complete saved-document identity for project assets and references, including modern audio/animation/model inputs and future persisted fields. Inventory remains navigation independent; references remain scene sensitive. Snapshot mutation detection, catalog budgets and existing source qualification stay in force. Empty-project state remains usable. Metadata freshness is separate from file integrity and gameplay acceptance.

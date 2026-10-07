@@ -1,5 +1,13 @@
 # Testing
 
+## Encoded channel transpose — 2026-10-06
+
+Three Node suites passed: `test_audio_note_authoring.mjs`, `test_audio_sequence_authoring.mjs` and `test_audio_note_timeline.mjs`. Coverage includes exact start/release keys and velocities, input immutability, whole-number/key bounds, ambiguous/unmatched selected notes, intervening orphan releases, request/canonical event budgets, retail restoration and batch staging/Discard while inspecting a non-note event. Both changed editor modules passed syntax checks.
+
+Eleven retail-enabled Python checks passed with `python -m unittest test_audio_authoring test_audio_sequence_authoring` (existing SDK/test paths and local disc environment). The initial command included a nonexistent separate HTTP module; the corrected run passed the actual modules, including embedded HTTP checks.
+
+Private acceptance: `local-output/sdk-20260909/channel-transpose-20261006/pass1/`. The actual editor staged 72 notes/144 operands, reviewed the exact native audit and Proposed report, discarded without mutation, then Applied and exercised Undo/Redo. Invalid/incomplete channel attempts refused; wide/400px screenshots were inspected with zero page errors. Independently constructed complete native entry bytes matched Save/Open, package directory and ZIP. All other saved document fields were exact. Build `e7f77158da4fd26b` passed integrity with gameplay false; no game run or installation occurred.
+
 ## Persistent project input freshness — 2026-10-06
 
 Run with the local retail disc configured:

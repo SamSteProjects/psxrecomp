@@ -33,6 +33,16 @@ const nodes=root=>[root,...root.children.flatMap(nodes)],button=(root,name)=>nod
 let now={...context},resolve;
 const params={record:{id:context.assetId,label:'Source audio'},getContext:()=>now,getAuthoringKey:()=>now.authoringKey,canEdit:()=>true,busy:()=>false,apply:async()=>false};
 let view=openSequenceAuthoring({...params,request:async()=>({ok:true,text:async()=>JSON.stringify(options)})});
-try{await view.ready;const fields=nodes(view.dialog).filter(n=>n.tag==='input'&&n.type==='number');assert.equal(fields.length,3);fields[1].value='61';fields[1].oninput();assert(button(view.dialog,'Apply sequence operands').disabled);const paired=nodes(view.dialog).find(n=>n.type==='checkbox');assert(!paired.disabled);paired.checked=true;paired.onchange();fields[2].value='0';fields[2].oninput();assert(button(view.dialog,'Review sequence operands').disabled);fields[2].value='100';fields[2].oninput();assert(!button(view.dialog,'Review sequence operands').disabled);now={...now,authoringKey:'f'.repeat(64)};await new Promise(done=>setTimeout(done,350));assert(button(view.dialog,'Review sequence operands').disabled);assert.equal(nodes(view.dialog).filter(n=>n.tag==='table').length,0);}finally{view.dispose();}
+try{await view.ready;const fields=nodes(view.dialog).filter(n=>n.tag==='input'&&n.type==='number');assert.equal(fields.length,5);fields[1].value='61';fields[1].oninput();assert(button(view.dialog,'Apply sequence operands').disabled);const paired=nodes(view.dialog).find(n=>n.type==='checkbox');assert(!paired.disabled);paired.checked=true;paired.onchange();fields[2].value='0';fields[2].oninput();assert(button(view.dialog,'Review sequence operands').disabled);fields[2].value='100';fields[2].oninput();assert(!button(view.dialog,'Review sequence operands').disabled);now={...now,authoringKey:'f'.repeat(64)};await new Promise(done=>setTimeout(done,350));assert(button(view.dialog,'Review sequence operands').disabled);assert.equal(nodes(view.dialog).filter(n=>n.tag==='table').length,0);}finally{view.dispose();}
 now={...context};view=openSequenceAuthoring({...params,request:()=>new Promise(done=>resolve=done)});view.dispose();resolve({ok:true,text:async()=>JSON.stringify(options)});await view.ready;assert(view.dialog.removed);assert.equal(nodes(view.dialog).filter(n=>n.tag==='table').length,0);
 console.log('Local draft cannot Apply without Review; stale state clears layers and close prevents late publication.');
+
+now={...context};view=openSequenceAuthoring({...params,selectedIndex:2,request:async()=>({ok:true,text:async()=>JSON.stringify(options)})});
+try{
+ await view.ready;const stage=button(view.dialog,'Stage channel transpose'),discard=button(view.dialog,'Discard operand draft');
+ assert(button(view.dialog,'Review sequence operands').disabled);
+ stage.onclick();assert(!button(view.dialog,'Review sequence operands').disabled);assert(button(view.dialog,'Apply sequence operands').disabled);assert(stage.disabled);assert(button(view.dialog,'Select event').disabled);assert(button(view.dialog,'Stage retail operands').disabled);
+ assert(nodes(view.dialog).some(n=>n.tag==='p'&&n.textContent.includes('1 encoded notes')));
+ discard.onclick();assert(!stage.disabled);assert(button(view.dialog,'Review sequence operands').disabled);assert.deepEqual(options.current,bare);
+}finally{view.dispose();}
+console.log('Channel drafts can review from non-note selection, lock competing navigation, and Discard restores Current eligibility.');

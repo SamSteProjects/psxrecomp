@@ -27,3 +27,30 @@ export function pairedNoteEdits(report,index,values){
   {event_offset:release.offset,values:[key,isStart?release.values[1]:values[1]]}
  ].sort((a,b)=>a.event_offset-b.event_offset);
 }
+
+// Transpose every fully paired Current note on one encoded channel atomically.
+export function channelTransposeEdits(options,channel,semitones){
+ if(!Number.isSafeInteger(channel)||channel<0||channel>15)throw Error('Choose an encoded channel from 0 through 15.');
+ if(!Number.isSafeInteger(semitones)||semitones===0||semitones< -127||semitones>127)throw Error('Choose a nonzero whole-number transpose from -127 through 127.');
+ const report=options.current,analysis=analyzeSequenceNotes(report),notes=analysis.notes.filter(n=>n.channel===channel);
+ if(!notes.length)throw Error('This channel has no encoded note starts.');
+ if(notes.some(n=>n.ambiguous||n.end_event===null))throw Error('Every channel note must have an unambiguous encoded release in the decoded prefix.');
+ if(notes.length>128)throw Error('Channel transpose exceeds the 256-event request budget.');
+ const edits=[];
+ for(const note of notes){
+  const key=note.key+semitones;
+  if(key<0||key>127)throw Error('Transpose would move an encoded note key outside 0 through 127.');
+  for(const index of [note.start_event,note.end_event]){
+   const event=report.events[index];edits.push({event_offset:event.offset,values:[key,event.values[1]]});
+  }
+ }
+ edits.sort((a,b)=>a.event_offset-b.event_offset);
+ const changed=new Map(edits.map(e=>[e.event_offset,e.values])),candidate={...report,events:report.events.map(e=>({...e,values:changed.get(e.offset)??e.values}))};
+ const pairing=a=>JSON.stringify([a.notes.map(n=>[n.start_event,n.end_event,n.ambiguous]),a.unmatched_releases,a.unmatched_starts]);
+ if(pairing(analyzeSequenceNotes(candidate))!==pairing(analysis))throw Error('Transpose would change encoded start/release pairing.');
+ const retail=new Map(options.retail.events.map(e=>[e.offset,e.values])),merged=new Map(options.authored_edits.map(e=>[e.event_offset,e.values]));
+ for(const edit of edits)merged.set(edit.event_offset,edit.values);
+ const count=[...merged].filter(([offset,values])=>JSON.stringify(values)!==JSON.stringify(retail.get(offset))).length;
+ if(count>256)throw Error('Transpose exceeds the 256-event authored binding budget.');
+ return edits;
+}
