@@ -1,0 +1,27 @@
+import {simulateVolumeRegister} from './audio-volume-sweep.js';
+export function sweepCounterEvidence(config,frame){
+ if(!config||!Number.isSafeInteger(frame)||frame<0||frame>=config.frameCount||!Array.isArray(config.registers)||config.registers.length!==2||!Array.isArray(config.initialLevels)||config.initialLevels.length!==2)throw Error('Choose an exact output frame within the sweep window.');
+ const channels=config.registers.map((raw,i)=>simulateVolumeRegister(raw,config.initialLevels[i],config.frameCount));
+ return {schema_version:'legaia.volume-sweep-counter-preview.v1',source_context:structuredClone(config.context),read_only:true,project_changed:false,runtime_state:'not_observed',counter_model:channels[0].model,clock_model:channels[0].clock,sample_rate:44100,frame_count:config.frameCount,selected_frame:frame,selected_seconds:frame/44100,channels:channels.map((c,i)=>({channel:i===0?'left':'right',register:c.raw,initial_level:c.initialLevel,initial_divider:c.initialDivider,sweep:c.sweep,selected_level:c.levels[frame],final_level:c.finalLevel,final_divider:c.finalDivider,levels:Array.from(c.levels)}))};
+}
+export function mountVolumeSweepPreview(host,{fresh=()=>true,onError=()=>{}}={}){
+ const el=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;},toggle=el('button','Inspect stereo sweep counters'),frame=el('input'),label=el('label','Sweep counter output frame'),save=el('button','Save sweep counter evidence'),canvas=el('canvas'),status=el('p'),tools=el('div');
+ frame.type='number';frame.min='0';frame.step='1';frame.value='0';frame.style.width='150px';frame.setAttribute('aria-label','Sweep counter output frame');label.append(frame);Object.assign(tools.style,{display:'flex',flexWrap:'wrap',gap:'8px',alignItems:'end'});tools.append(label,save);canvas.height=220;Object.assign(canvas.style,{width:'100%',height:'220px'});canvas.setAttribute('aria-label','Left and right signed sweep gain counters');status.setAttribute('role','status');host.append(toggle,tools,canvas,status);
+ let config=null,enabled=false,report=null,key=null;
+ const observer=typeof ResizeObserver==='function'?new ResizeObserver(()=>{if(config&&enabled)draw();}):null;
+ const clear=()=>{observer?.disconnect();config=null;key=null;report=null;enabled=false;host.hidden=tools.hidden=canvas.hidden=true;status.textContent='';save.disabled=true;};
+ function draw(){
+  if(config&&!fresh()){clear();return;}host.hidden=!config;tools.hidden=canvas.hidden=!enabled||!config;toggle.textContent=enabled?'Hide stereo sweep counters':'Inspect stereo sweep counters';save.disabled=true;
+  if(!enabled||!config){status.textContent='';return;}
+  const ctx=canvas.getContext('2d');canvas.width=Math.max(240,Math.min(720,host.clientWidth||720));ctx.clearRect(0,0,canvas.width,220);
+  try{
+   if(frame.value.trim()==='')throw Error('Choose an exact output frame within the sweep window.');report=sweepCounterEvidence(config,Number(frame.value));const left=48,right=canvas.width-12,x=i=>left+i/(config.frameCount-1||1)*(right-left),y=v=>12+(32767-v)/65535*178;
+   ctx.strokeStyle='#4a6066';ctx.beginPath();ctx.moveTo(left,12);ctx.lineTo(left,190);ctx.lineTo(right,190);ctx.moveTo(left,y(0));ctx.lineTo(right,y(0));ctx.stroke();ctx.fillStyle='#b5c9cf';ctx.font='12px sans-serif';for(const value of [32767,0,-32768])ctx.fillText(String(value),0,y(value)+4);ctx.fillText('0 ms',left,210);ctx.fillText((config.frameCount/44.1).toFixed(0)+' ms',right-55,210);
+   for(const [index,c] of report.channels.entries()){ctx.strokeStyle=index?'#f9b76c':'#66cfdb';ctx.lineWidth=1.5;ctx.beginPath();const stride=Math.ceil(config.frameCount/512);for(let i=0;i<config.frameCount;i+=stride){let lo=32767,hi=-32768;for(let j=i;j<Math.min(config.frameCount,i+stride);j++){lo=Math.min(lo,c.levels[j]);hi=Math.max(hi,c.levels[j]);}ctx.moveTo(x(i),y(hi));ctx.lineTo(x(i),y(lo));}ctx.stroke();ctx.beginPath();ctx.moveTo(x(0),y(c.levels[0]));for(let i=stride;i<config.frameCount;i+=stride)ctx.lineTo(x(i),y(c.levels[i]));ctx.lineTo(x(config.frameCount-1),y(c.final_level));ctx.stroke();}
+   ctx.strokeStyle='#ffffff';ctx.beginPath();ctx.moveTo(x(report.selected_frame),12);ctx.lineTo(x(report.selected_frame),190);ctx.stroke();status.textContent='Left teal · Right orange · output frame '+report.selected_frame+' ('+(report.selected_seconds*1000).toFixed(3)+' ms): '+report.channels.map(c=>c.channel+' '+c.selected_level).join(' / ')+'. Counter levels only; continuous active-mix preview clock. Hardware phase/sign and game mix are unverified.';save.disabled=false;
+  }catch(error){report=null;ctx.clearRect(0,0,canvas.width,220);status.textContent=error.message;}
+ }
+ toggle.onclick=()=>{if(!config||!fresh()){clear();return;}enabled=!enabled;draw();};frame.oninput=draw;
+ save.onclick=()=>{if(!config||!fresh()){clear();return;}if(!enabled||save.disabled)return;try{draw();if(!report||save.disabled)return;const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)+'\n'],{type:'application/json'})),a=el('a');a.href=url;a.download='volume-sweep-counter-evidence.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),0);}catch(error){onError(error);}};
+ clear();return {update(value){const next=value?JSON.stringify(value):null;if(next!==key){report=null;config=value?structuredClone(value):null;key=next;frame.value='0';enabled=false;}frame.max=String((config?.frameCount??1)-1);if(config)observer?.observe(host);else observer?.disconnect();draw();},clear};
+}

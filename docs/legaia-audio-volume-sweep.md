@@ -17,3 +17,5 @@ The actual private editor qualified PROT 0877 packed tones 4/0 (native Gaussian 
 Project document, history, saved bytes, native bank entry and native Build input key stayed exact; reopening matched. Current entry SHA-256 remained `2763446be4afa339ba8e6a10266e9216a96162608138e2f7f635894c37a60b40`. Evidence is private under `local-output/sdk-20260909/audio-volume-sweep-20261007/`. Initial obsolete harness fixtures and a missing compiler DLL path were corrected before fresh acceptance; no production runtime change was needed. No native Build, full regression campaign, game, installation or disc export ran. Driver/hardware audio and gameplay acceptance remain deferred.
 
 A separate read-only visual pass verified sweep controls at 1400 px and 400 px, no horizontal dialog overflow, narrow Play/Stop and unchanged project state after close/reopen. Both screenshots were inspected.
+
+The integrated [sweep counter inspector](legaia-audio-sweep-inspector.md) now provides signed graphs, exact frame inspection and complete generated curve evidence.

@@ -1,0 +1,17 @@
+# Stereo sweep counter inspector
+
+In the qualified envelope audition, enable **Stereo voice gains**, select **Recomp register sweeps**, then choose **Inspect stereo sweep counters**. The graph shows signed left (teal) and right (orange) gain counters over the same 2500 ms window as the audition. Enter an exact **Sweep counter output frame** to read both levels and the frame's time at 44.1kHz. This is a counter inspection, not a waveform or running-game voice readout.
+
+**Save sweep counter evidence** downloads every level for both channels, the selected frame, initial/final levels and divider values, register words, counter/clock model and qualified source context. The context records asset, tone, selected layer, ADSR words, sample hash, authoring/source identities, Current entry hash and optional reviewed proposal identity. The export contains generated counter numbers and metadata, not sample PCM or a bank payload. Reviewed Proposed keeps the parent audition's Current sample qualification.
+
+Signed plotting covers -32768 through 32767. Each bounded bucket shows its minimum and maximum; a joined trajectory preserves constant/frozen levels. Exported levels remain complete rather than downsampled. Exact frame inspection and downloads reject blank, fractional, negative or out-of-window values. The counter model supports at most 220500 frames; the integrated audition uses 110250.
+
+Changing registers, starting levels, tone/proposal or qualification resets the inspector. Repeated updates of the same context preserve its selected frame and open state. Playback loading/starting withdraws the inspector until qualification is available again. Source drift and disposal clear ownership; download rechecks freshness before generating evidence. Resize redraws the same qualified curves. No authoring command, persistence setting or native Build input is created.
+
+The model remains `recomp-sweep-counter-v1` with a continuous active-mix preview clock. Hardware phase/sign, global voice activity, actual register writes, instrument assignment and game mix are unverified. See [the volume sweep audition](legaia-audio-volume-sweep.md) for its native arithmetic and limits.
+
+Accepted offline on 2026-10-07: four focused Node suites, two syntax checks and server AST passed. Literal complete curves, signed/static/frozen behavior, immutable context, exact frame bounds, mounted export, same-context retention, changed-context reset and stale export refusal passed. The real private editor qualified PROT 0877 Current tone 4/0, opened the inspector, inspected frame 1000, downloaded all 220500 channel samples and refused invalid frame values. The export matched the unchanged native C sweep helper sample for sample; selected levels were left 28766 and right -11692 at 22.676 ms. Narrow Play/Stop and register-change reset passed without page errors or game-launch requests.
+
+Project document/history/saved/native bank bytes and native Build input key remained exact; reopening matched. No Save authoring command, native Build, full campaign, runtime change, game, installation or disc export ran. Private evidence is under `local-output/sdk-20260909/audio-sweep-inspector-20261007/`. Gameplay and hardware/driver acceptance remain deferred.
+
+Both wide and 400 px graph captures were inspected. The initial desktop capture clipped the graph; a fresh focused desktop capture corrected the evidence without changing production code.

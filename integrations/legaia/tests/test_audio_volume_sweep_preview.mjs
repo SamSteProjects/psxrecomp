@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {sweepCounterEvidence} from '../editor/audio-volume-sweep-preview.js';
+const config={registers:[0x8000,0x9000],initialLevels:[0,0],frameCount:4,context:{asset_id:'audio://fixture',review_key:null}},before=structuredClone(config),report=sweepCounterEvidence(config,2);
+assert.deepEqual(report.channels.map(c=>c.levels),[[14336,28672,32767,32767],[-14336,-28672,-32767,-32767]]);assert.deepEqual(report.channels.map(c=>c.selected_level),[32767,-32767]);assert.equal(report.selected_seconds,2/44100);assert.equal(report.project_changed,false);assert.equal(report.runtime_state,'not_observed');assert.deepEqual(config,before);report.source_context.asset_id='different';assert.deepEqual(config,before);
+assert.deepEqual(sweepCounterEvidence({...config,registers:[8192,24576]},0).channels.map(c=>c.levels),[[16384,16384,16384,16384],[-16384,-16384,-16384,-16384]]);
+for(const frame of [-1,4,1.5,NaN,true])assert.throws(()=>sweepCounterEvidence(config,frame));for(const patch of [{registers:[1]},{initialLevels:[1]},{frameCount:220501},{registers:[65536,0]}])assert.throws(()=>sweepCounterEvidence({...config,...patch},0));
+console.log('Complete signed curves, exact frame values, static/frozen modes, immutable source context and bounded evidence passed.');
+
+const {mountVolumeSweepPreview}=await import('../editor/audio-volume-sweep-preview.js');
+class Element{constructor(tag){this.tag=tag;this.textContent='';this.style={};this.children=[];this.value='';}append(...nodes){this.children.push(...nodes);}setAttribute(name,value){this[name]=value;}getContext(){return {clearRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},fillText(){}};}click(){downloads++;}}
+let downloads=0,blob=null,fresh=true;globalThis.document={createElement:tag=>new Element(tag)};URL.createObjectURL=value=>{blob=value;return 'blob:fixture';};URL.revokeObjectURL=()=>{};
+const host=new Element('section'),view=mountVolumeSweepPreview(host,{fresh:()=>fresh}),nodes=n=>[n,...n.children.flatMap(nodes)];view.update(config);const all=nodes(host),toggle=all.find(n=>n.tag==='button'),frame=all.find(n=>n.tag==='input'),save=all.find(n=>n.textContent==='Save sweep counter evidence'),canvas=all.find(n=>n.tag==='canvas');toggle.onclick();assert(!canvas.hidden);frame.value='2';frame.oninput();assert(!save.disabled);save.onclick();assert.equal(downloads,1);assert.deepEqual(JSON.parse(await blob.text()).channels,report.channels);
+for(const invalid of ['','-1','4','1.5']){frame.value=invalid;frame.oninput();assert(save.disabled);save.onclick();assert.equal(downloads,1);}
+frame.value='2';frame.oninput();view.update(config);assert(!canvas.hidden);assert.equal(frame.value,'2');view.update({...config,initialLevels:[1,0]});assert(canvas.hidden);assert.equal(frame.value,'0');toggle.onclick();fresh=false;save.onclick();assert(host.hidden);assert(canvas.hidden);assert.equal(downloads,1);view.clear();
+console.log('Mounted frame inspection/export, invalid frames, source reset, same-context retention and stale download withdrawal passed.');
