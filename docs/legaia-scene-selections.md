@@ -1,5 +1,47 @@
 # Saved scene placement selections
 
+## Select Model Instances
+
+Select an imported actor, authored NPC draft or static decoration in the current
+**Authored scene**, then choose **Scene tools -> Select model instances**. The action
+replaces the placement selection with all eligible current scene placements that
+share the selected row's exact SDK model asset identity. Hidden placements and
+qualified bindings without rendered geometry remain eligible. Ground and other
+nonplacement rows are excluded. This is identity matching, not mesh/texture/hash
+similarity or a claim of runtime model use.
+
+The current focus stays active. The hierarchy query is cleared and relevant folds
+are revealed. Actor-only results populate the actor group; scenery-only results
+populate the scenery group; actor/NPC or other mixed results populate the existing
+scene-placement group. **Review group placements**, **Move scenery group** and
+**Move scene placement group** retain their existing source-qualified Review/Apply
+workflows. **Focus** frames a group; **Saved scene selections** can retain the IDs.
+Selection itself creates no command, authored edit or history step.
+
+Edit mode, a current authored scene preview and a qualified selected model are
+required. Busy/held proposal tools, Retail comparison mode, missing model bindings,
+conflicting/duplicate identities, stale source or focus and more than 128 matching
+placements refuse selection. Oversized groups are never trimmed; use hierarchy
+queries to select a smaller group instead. Hidden members stay hidden until an
+explicit visibility action.
+
+Offline checks passed (2026-10-07): three focused Node suites, two JavaScript syntax
+checks and actual private Town01 editor checks at 1440 and 400 px. Five actors and
+11 scenery placements matched independent SDK preview groupings, included a hidden
+focus and reached the exact dedicated Review targets. The shared hierarchy-query
+handoff regression passed for 12 placements. A separately prepared private project
+with one SDK-created NPC also passed exact mixed actor/NPC model selection and
+Review. All reviews were cancelled. Retail comparison blocked selection. The
+prepared documents, Undo/Redo stacks and saved file sizes/timestamps stayed unchanged.
+No native Build, game launch, runtime attachment or installation occurred; the NPC
+fixture was not spawned. Gameplay remains deferred.
+
+Private evidence: `local-output/sdk-20260909/model-instance-selection-20261007/`
+and its `npc-mixed/` directory (`browser.json`, `readonly.json`, fixture receipt,
+browser logs and wide/narrow screenshots). Earlier passing pre-reveal logs remain
+preserved. These are focused editor checks, not full SDK or gameplay acceptance.
+
+
 ## Repair saved selections after NPC deletion - 2026-10-05
 
 Saved selections containing deleted NPCs now support **Replace with current

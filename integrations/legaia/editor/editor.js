@@ -24,7 +24,7 @@ import {mountEnvironmentLayout} from '/environment-layout.js';
 import {mountEnvironmentRotationGroup} from '/environment-rotation-group.js';
 import {mountSceneSelectionSets,decodeSavedSceneSelection} from '/scene-selection-sets.js';
 import {mountScenePlacementGroup} from '/scene-placement-group.js';
-import {mergeScenePlacementSelection,invertScenePlacementSelection,scenePlacementSelectionKind} from '/scene-placement-selection.js';
+import {mergeScenePlacementSelection,invertScenePlacementSelection,scenePlacementSelectionKind,matchingModelPlacementIds} from '/scene-placement-selection.js';
 import {mountWallRectangle,wallRectangleGeometry} from '/collision-rectangle.js';
 import {mountFloorRectangle,decodeFloorRectangle} from '/floor-rectangle.js';
 import {mountFloorHeights,decodeFloorHeights} from '/floor-heights.js';
@@ -468,6 +468,21 @@ for(const [id,label,sameModel] of [['hide-selected','Hide selected',false],['hid
   };
   $('frame-all').before(button);
 }
+const selectModelInstancesButton=document.createElement('button');selectModelInstancesButton.id='select-model-instances';selectModelInstancesButton.textContent='Select model instances';selectModelInstancesButton.disabled=true;$('hide-model').after(selectModelInstancesButton);
+function updateModelInstanceSelection(){
+  const button=selectModelInstancesButton;button.disabled=true;button.title='Choose a placement in the current authored scene; selects shared SDK model identities, including hidden placements';
+  if(!canSelectHierarchyMatches()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||wallSelectMode)return;
+  try{const ids=matchingModelPlacementIds(activeScenePreview().entities,visibilitySelection(),scenePlacementEligible());button.disabled=false;button.title=ids.length+' placements share the selected current SDK model identity; hidden placements are included';}catch(error){button.title=error.message;}
+}
+selectModelInstancesButton.onclick=async()=>{
+  if(selectModelInstancesButton.disabled||!canSelectHierarchyMatches()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||wallSelectMode)return;
+  try{
+    const focus=visibilitySelection(),key=resourceStateKey(),source=state.scene_preview_source_key,ids=matchingModelPlacementIds(activeScenePreview().entities,focus,scenePlacementEligible());
+    if(entities().some(entity=>entity.id===focus)&&!await api('/api/selection',{entity_id:focus}))return;
+    if(key!==resourceStateKey()||source!==state.scene_preview_source_key||focus!==visibilitySelection()||!canSelectHierarchyMatches()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||wallSelectMode||JSON.stringify(ids)!==JSON.stringify(matchingModelPlacementIds(activeScenePreview().entities,focus,scenePlacementEligible())))throw new Error('Scene model bindings or selection changed. Select again.');
+    setSourcePlacementGroup(ids,focus);$('entity-search').value='';renderHierarchy();revealHierarchyEntities($('hierarchy'),ids,focus);renderInspector();draw();notify(ids.length+' model instances selected, including hidden placements. Project content unchanged.');
+  }catch(error){notify(error.message,true);}
+};
 const sceneIsolateButton=document.createElement('button');sceneIsolateButton.id='scene-isolate-selected';sceneIsolateButton.textContent='Isolate selected';sceneIsolateButton.setAttribute('aria-pressed','false');sceneIsolateButton.title='Temporarily show the selected instances; Restore preserves manual visibility and scene layers';$('frame-all').before(sceneIsolateButton);
 const sceneFrameIsolatedButton=document.createElement('button');sceneFrameIsolatedButton.id='scene-frame-isolated';sceneFrameIsolatedButton.textContent='Frame isolated';sceneFrameIsolatedButton.title='Fit the visible isolated mesh bounds; preserve camera angles and scene visibility';sceneFrameIsolatedButton.disabled=true;sceneIsolateButton.after(sceneFrameIsolatedButton);
 sceneFrameIsolatedButton.onclick=()=>{if(busy||!sceneModelsReady())return;hiddenSceneEntities();if(!sceneIsolated||!scenePreviewCurrent())return;cancelViewportGesture();const view=sceneView();const points=sceneIsolated.ids.flatMap(id=>sceneRenderer.bounds(view.positions,id,view.hiddenEntities,view.transforms));if(!points.length)return;try{const framed=sceneFrameCamera(camera,{width,height},points);pendingEntityFrame=null;Object.assign(camera,framed);cameraRevision++;draw();}catch(error){notify(error.message,true);}};
@@ -962,10 +977,21 @@ async function moveSharedEnvironment(item,axis,worldValue){
 function selected(){return selectedSceneResource()||selectedEnvironment()||selectedNpcDraft()?null:entities().find(e=>e.id===state.selection?.entity_id);}
 function selectEnvironment(identifier){sceneResourceSelection=null;clearEnvironmentGroupSelection();clearActorGroupSelection();pendingEntityFrame=null;npcDraftSelection=null;environmentSelection=identifier;cancelViewportGesture();renderHierarchy();renderInspector();$('frame-selected').disabled=false;draw();}
 function scenePlacementEligible(){return new Set([...entities().map(e=>e.id),...Object.entries(state.actor_drafts??{}).filter(([,d])=>d.scene_id===state.scene?.id).map(([id])=>id),...staticDecorations().map(e=>e.entity_id)]);}
+function setSourcePlacementGroup(ids,focus){
+  const eligible=scenePlacementEligible();ids=mergeScenePlacementSelection([],ids,eligible);
+  if(!ids.length||!ids.includes(focus))throw new Error('The active placement must belong to the current group.');
+  const key=resourceStateKey();
+  const kind=scenePlacementSelectionKind(ids,{actors:new Set(entities().map(entity=>entity.id)),npcs:new Set(Object.entries(state.actor_drafts??{}).filter(([,draft])=>draft.scene_id===state.scene?.id).map(([id])=>id)),decorations:new Set(staticDecorations().map(entity=>entity.entity_id))});
+  cancelViewportGesture();clearActorGroupSelection();clearEnvironmentGroupSelection();clearScenePlacementSelection();sceneResourceSelection=null;actorBoxMode=false;scenePlacementMode=false;scenePlacementBoxMode=false;
+  if(kind==='actors'){actorGroupSelection=ids;actorGroupSelectionKey=key;actorGroupRangeAnchor=focus;}
+  else if(kind==='scenery'){environmentGroupSelection=ids;environmentGroupKey=key;environmentGroupAnchor=focus;}
+  else{scenePlacementMode=true;scenePlacementSelection=ids;scenePlacementKey=key;}
+  environmentSelection=ids.includes(focus)&&!entities().some(entity=>entity.id===focus)&&!state.actor_drafts?.[focus]?focus:null;npcDraftSelection=state.actor_drafts?.[focus]?focus:null;
+}
 function clearScenePlacementSelection(){scenePlacementMode=false;scenePlacementBoxMode=false;scenePlacementSelection=[];scenePlacementKey=null;scenePlacementTool?.restore();}
 function updateScenePlacementSelection(){
   if((scenePlacementMode||scenePlacementSelection.length)&&(!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||scenePlacementKey!==resourceStateKey()||scenePlacementSelection.some(id=>!scenePlacementEligible().has(id))))clearScenePlacementSelection();
-  savedSceneSelections?.synchronize();scenePlacementTool?.refresh();updateSceneFocusButton();updateHierarchyPlacementMatchSelection();const host=document.querySelector('#scene-placement-tools');if(!host)return;
+  savedSceneSelections?.synchronize();scenePlacementTool?.refresh();updateSceneFocusButton();updateHierarchyPlacementMatchSelection();updateModelInstanceSelection();const host=document.querySelector('#scene-placement-tools');if(!host)return;
   host.querySelector('[data-mixed-select]').disabled=busy||!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||!!scenePose||!!shapeDraft||!!actorGroupInspection||!!environmentGroupInspection||!!wallSelectMode||!!wallInspection||!!scenePlacementInspection;
   host.querySelector('[data-mixed-box]').disabled=host.querySelector('[data-mixed-select]').disabled||!sceneModelsReady()||pickScriptTargets||pickRuntimeNodes;
   for(const name of ['visible','invert'])host.querySelector('[data-mixed-'+name+']').disabled=host.querySelector('[data-mixed-box]').disabled;
@@ -1263,12 +1289,7 @@ hierarchyPlacementMatchSelect.onclick=async()=>{
     if(JSON.stringify(ids)!==JSON.stringify(hierarchyPlacementMatchIds))throw new Error('Hierarchy results changed. Search again.');
     const active=hierarchySelectedIdentity(),focus=ids.includes(active)?active:ids[0];if(entities().some(entity=>entity.id===focus)&&!await api('/api/selection',{entity_id:focus}))return;
     if(key!==resourceStateKey()||source!==state.scene_preview_source_key||query!==$('entity-search').value||!scenePreviewCurrent()||!canSelectHierarchyMatches()||sceneRepresentation!=='authored'||wallSelectMode)throw new Error('Hierarchy source or query changed. Search again.');
-    const kind=scenePlacementSelectionKind(ids,{actors:new Set(entities().map(entity=>entity.id)),npcs:new Set(Object.entries(state.actor_drafts??{}).filter(([,draft])=>draft.scene_id===state.scene?.id).map(([id])=>id)),decorations:new Set(staticDecorations().map(entity=>entity.entity_id))});
-    cancelViewportGesture();clearActorGroupSelection();clearEnvironmentGroupSelection();clearScenePlacementSelection();sceneResourceSelection=null;actorBoxMode=false;scenePlacementMode=false;scenePlacementBoxMode=false;
-    if(kind==='actors'){actorGroupSelection=ids;actorGroupSelectionKey=key;actorGroupRangeAnchor=focus;}
-    else if(kind==='scenery'){environmentGroupSelection=ids;environmentGroupKey=key;environmentGroupAnchor=focus;}
-    else{scenePlacementMode=true;scenePlacementSelection=ids;scenePlacementKey=key;}
-    environmentSelection=ids.includes(focus)&&!entities().some(entity=>entity.id===focus)&&!state.actor_drafts?.[focus]?focus:null;npcDraftSelection=state.actor_drafts?.[focus]?focus:null;
+    setSourcePlacementGroup(ids,focus);
     renderHierarchy();renderInspector();draw();notify(ids.length+' matching placements selected. Project content unchanged.');
   }catch(error){notify(error.message,true);}
 };

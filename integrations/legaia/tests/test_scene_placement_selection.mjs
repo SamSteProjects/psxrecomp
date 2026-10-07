@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {mergeScenePlacementSelection,invertScenePlacementSelection,scenePlacementSelectionKind} from '../editor/scene-placement-selection.js';
+import {mergeScenePlacementSelection,invertScenePlacementSelection,scenePlacementSelectionKind,matchingModelPlacementIds} from '../editor/scene-placement-selection.js';
 
 const actor='scene://town01/actors/man-p1/0012';
 const decor='environment://town01/field-map/decorations/01833';
@@ -53,3 +53,19 @@ const kinds={actors:new Set([actor,other]),npcs:new Set(['draft']),decorations:n
 assert.equal(scenePlacementSelectionKind([actor,other],kinds),'actors');assert.equal(scenePlacementSelectionKind([decor],kinds),'scenery');assert.equal(scenePlacementSelectionKind([actor,decor],kinds),'mixed');assert.equal(scenePlacementSelectionKind(['draft'],kinds),'mixed');assert.equal(scenePlacementSelectionKind([],kinds),'empty');
 assert.throws(()=>scenePlacementSelectionKind(['alien'],kinds));assert.throws(()=>scenePlacementSelectionKind([actor],{...kinds,npcs:new Set([actor])}));assert.throws(()=>scenePlacementSelectionKind([actor],{...kinds,actors:[]}));
 console.log('Placement authoring handoff: current SDK actor/scenery sets, mixed/NPC retention, empty and conflicting/foreign identity refusal passed.');
+
+const model='asset://fixture/model/one',second='asset://fixture/model/two';
+const modelRows=[{entity_id:actor,asset_id:model},{entity_id:decor,asset_id:model},{entity_id:other,asset_id:second},{entity_id:'ground',asset_id:model},{entity_id:'unbound',asset_id:null}];
+const modelBefore=structuredClone(modelRows);
+assert.deepEqual(matchingModelPlacementIds(modelRows,actor,eligible),[actor,decor].sort());
+assert.deepEqual(matchingModelPlacementIds(modelRows,decor,eligible),[actor,decor].sort());
+assert.deepEqual(matchingModelPlacementIds(modelRows,other,eligible),[other]);
+assert.deepEqual(modelRows,modelBefore);
+const draftRows=[...modelRows,{entity_id:'draft',asset_id:model}];
+assert.deepEqual(matchingModelPlacementIds(draftRows,'draft',new Set([...eligible,'draft'])),[actor,decor,'draft'].sort());
+for(const rows of [null,Array(1),[...modelRows,modelRows[0]],[{entity_id:actor,asset_id:''}],[{entity_id:actor,asset_id:42}],[{entity_id:'',asset_id:model}],Array(642).fill(modelRows[0])])assert.throws(()=>matchingModelPlacementIds(rows,actor,eligible));
+for(const focus of ['foreign','ground','unbound',null])assert.throws(()=>matchingModelPlacementIds(modelRows,focus,new Set([...eligible,'unbound'])));
+assert.throws(()=>matchingModelPlacementIds([{entity_id:actor,asset_id:null}],actor,eligible));
+assert.throws(()=>matchingModelPlacementIds(many.map(entity_id=>({entity_id,asset_id:model})),many[0],manyEligible),/at most 128/);
+assert.deepEqual(matchingModelPlacementIds(many.slice(0,128).map(entity_id=>({entity_id,asset_id:model})),many[0],manyEligible),many.slice(0,128));
+console.log('Model-instance selection: exact current model identity, actor/NPC/scenery membership, nonplacement exclusion, detached inputs and missing/duplicate/oversized refusal passed.');
