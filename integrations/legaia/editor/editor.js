@@ -79,6 +79,7 @@ import {mountHierarchyGroups,revealHierarchyEntity} from '/hierarchy-groups.js';
 import {mountSceneToolDrawer} from '/scene-tool-drawer.js';
 import {mountSceneViews,decodeSavedSceneView,captureSceneViewVisibility,sceneViewIsolationIds,unavailableSceneViewNpcs} from '/scene-views.js';
 import {sceneCameraBasis,sceneCameraPlanePoint,sceneAxisCamera,sceneFrameCamera} from '/scene-camera.js';
+import {mountSceneCameraInspector} from '/scene-camera-inspector.js';
 import {appendPresetImport,presetExportButton} from '/preset-files.js';
 import {openActorPresetReview} from '/actor-preset-review.js';
 import {ANIMATION_PRESET_SCOPE,presetScopeLabel} from '/preset-animation.js';
@@ -147,6 +148,7 @@ const format = (value) => numeric(value) ? String(Math.round(value * 1000) / 100
 let state = {project:{}, scene:null, assets:[], selection:{}, history:{}, capabilities:{}};
 let busy = false, toastTimer, lastSceneId, grid = true;
 let sceneAnimationController=null;
+let sceneCameraInspector=null;
 let sceneAnimationWriteGuard=false;
 let worldmapControls=null,worldmapGeometryControls=null,worldPlacementControls=null,worldmapDraftPending=false;
 let projectAssetControls=null;
@@ -496,6 +498,10 @@ projectionSelect.onchange=()=>{cancelViewportGesture();pendingEntityFrame=null;c
 const topViewButton=document.createElement('button');topViewButton.id='scene-top-view';topViewButton.textContent='Top (X/Z)';topViewButton.title='Orthographic top view: +X right, +Z down; camera only';$('frame-all').before(topViewButton);
 function applySceneAxis(axis){cancelViewportGesture();pendingEntityFrame=null;Object.assign(camera,sceneAxisCamera(camera,axis));projectionSelect.value='orthographic';document.querySelector('.viewport-type').textContent=axis[0].toUpperCase()+axis.slice(1)+' / Orthographic';cameraRevision++;draw();}
 topViewButton.onclick=()=>applySceneAxis('top');
+sceneCameraInspector=mountSceneCameraInspector({after:projectionSelect,getCamera:()=>camera,
+ getContext:()=>JSON.stringify([state.project?.path,state.scene?.id,sceneRequestKey(),cameraRevision]),isBusy:()=>busy,available:()=>!!state.scene?.id,
+ apply:next=>{cancelViewportGesture();pendingEntityFrame=null;Object.assign(camera,next);projectionSelect.value=camera.projection;document.querySelector('.viewport-type').textContent=camera.projection==='orthographic'?'Orthographic':'Perspective';cameraRevision++;draw();}
+});
 for(const [axis,label,title] of [['front','Front (X/Y)','Orthographic front: +X right, +Y up; camera only'],['side','Side (Z/Y)','Orthographic right side: +Z left, +Y up; camera only']]){const button=document.createElement('button');button.id='scene-'+axis+'-view';button.textContent=label;button.title=title;topViewButton.before(button);button.onclick=()=>applySceneAxis(axis);}
 const modelToggle=document.createElement('button');modelToggle.id='scene-model-toggle';modelToggle.textContent='Models';modelToggle.className='active';modelToggle.setAttribute('aria-pressed','true');modelToggle.hidden=true;$('frame-all').before(modelToggle);
 modelToggle.onclick=()=>{if(sceneError){sceneFailedKey=null;sceneKey=null;scenePreview=null;sceneError=null;modelsEnabled=true;}else modelsEnabled=!modelsEnabled;modelToggle.classList.toggle('active',modelsEnabled);modelToggle.setAttribute('aria-pressed',modelsEnabled);refreshScenePreview();draw();};
@@ -786,7 +792,7 @@ function setBusy(value) {
   if($('project-copy-button'))$('project-copy-button').disabled=value||!state.capabilities?.project_copy;
   if($('project-animation-inputs'))$('project-animation-inputs').disabled=value||!state.project?.path;
   document.querySelectorAll('#script-report [data-script-family]').forEach(button=>button.disabled=value);
-  busy=value;if($('select-matching-actors'))hierarchyMatchSelect.disabled=!canSelectHierarchyMatches()||!hierarchyMatchIds.length||hierarchyMatchKey!==resourceStateKey();npcPresetControls?.update();triggerScriptsDialog?.refresh?.();triggerGroupDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
+  busy=value;sceneCameraInspector?.update();if($('select-matching-actors'))hierarchyMatchSelect.disabled=!canSelectHierarchyMatches()||!hierarchyMatchIds.length||hierarchyMatchKey!==resourceStateKey();npcPresetControls?.update();triggerScriptsDialog?.refresh?.();triggerGroupDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);
@@ -4129,6 +4135,7 @@ function drawEnvironmentSelection(){
 }
 function scenePlacementBoxCurrent(gesture){return !busy&&scenePlacementMode&&scenePlacementBoxMode&&canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!wallSelectMode&&!wallInspection&&!pickScriptTargets&&!pickRuntimeNodes&&gesture.sourceKey===state.project_copy_source_key&&gesture.context===resourceStateKey()&&gesture.cameraRevision===cameraRevision&&gesture.width===width&&gesture.height===height;}
 function draw(){
+  sceneCameraInspector?.update();
   if(drag?.type==='environment-yaw'&&!transformGestureCurrent(drag)){cancelViewportGesture();return;}
   if(drag?.type==='scene-placement-box'&&!scenePlacementBoxCurrent(drag)){cancelViewportGesture();return;}
   if(drag?.type==='scene-placement-group-transform'&&!transformGestureCurrent(drag)){cancelViewportGesture();return;}
