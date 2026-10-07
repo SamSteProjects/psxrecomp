@@ -162,7 +162,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
             if available:nodes[identifier]['available']=True
         else:nodes[identifier]=value
         if len(nodes)>16384:raise ProjectError('Asset reference node limit exceeded')
-    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None,allocated_evidence=None,retained_evidence=None,wav_evidence=None,current_wav_evidence=None):
+    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None,allocated_evidence=None,retained_evidence=None,wav_evidence=None,current_wav_evidence=None,npc_script_evidence=None):
         if source not in nodes or target not in nodes:raise ProjectError('Asset reference has an unavailable structural endpoint')
         value=dict(source_id=source,target_id=target,kind=kind,scene_id=scene,layer=layer,runtime_binding='not_asserted')
         if pc is not None:value['pc']=pc
@@ -192,6 +192,9 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
             value['source_catalog_key']=catalog['source_key']
         if wav_evidence is not None:value['wav_input_evidence']=deepcopy(wav_evidence)
         if current_wav_evidence is not None:value['current_wav_binding_evidence']=deepcopy(current_wav_evidence)
+        if npc_script_evidence is not None:
+            value['npc_script_donor_evidence']=deepcopy(npc_script_evidence)
+            value['source_catalog_key']=catalog['source_key']
         value['id']=digest(value);edges[value['id']]=value
         if len(edges)>32768:raise ProjectError('Asset reference edge limit exceeded')
     for scene,document in sorted(project.imports.items()):
@@ -240,6 +243,20 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
                    'model_source_entity_id':row['model_source_entity_id'],'frame_count':row['frame_count'],
                    'object_count':row['object_count'],'active':row['active']}
             edge(record['id'],model,'retained_model_capture',scene,'authored',retained_evidence=proof)
+
+    # An authored clone retains a recorded retail source; it is not the
+    # generated script, and a relationship cannot establish live execution.
+    from .npc_script_references import evidence as npc_script_evidence
+    for owner,draft in sorted(project.actor_drafts.items()):
+        if draft['scene_id']!=scene:continue
+        target='script://'+draft['donor_entity_id'].removeprefix('scene://')
+        records=source_scripts.get(target,[])
+        if not records:
+            unresolved+=1;continue
+        if len(records)!=1:raise ProjectError('NPC script donor has duplicate source records')
+        proof=npc_script_evidence(draft,records[0],scene)
+        if proof is None:unresolved+=1;continue
+        edge(owner,target,'draft_script_donor',scene,'authored',npc_script_evidence=proof)
 
     # These are historical capture targets, not Current native assignments.
     audio_records={r['id']:r for r in catalog['records'] if r['kind']=='audio'}
