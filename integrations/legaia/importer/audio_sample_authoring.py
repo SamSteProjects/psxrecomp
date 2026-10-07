@@ -12,7 +12,7 @@ from .audio_bank import bank_from_entry,inspect_bank,MAX_ENTRY_BYTES
 MAX_WAV_BYTES=1048576
 def _hash(body):return sha256(body).hexdigest()
 
-def read_pcm_wav(body,expected_frames):
+def _read_pcm_wav(body):
     if (not isinstance(body,bytes) or not 44<=len(body)<=MAX_WAV_BYTES or body[:4]!=b'RIFF'
             or body[8:12]!=b'WAVE' or int.from_bytes(body[4:8],'little')!=len(body)-8):
         raise ImportError('Choose a bounded complete RIFF/WAVE PCM input')
@@ -31,8 +31,19 @@ def read_pcm_wav(body,expected_frames):
     encoding,channels,rate,byte_rate,align,bits=struct.unpack_from('<HHIIHH',fmt)
     if encoding!=1 or channels!=1 or bits!=16 or align!=2 or byte_rate!=rate*2 or not 8000<=rate<=192000:
         raise ImportError('WAV must be mono signed16 PCM with a declared 8000–192000 Hz input rate')
+    return data,rate
+
+def read_pcm_wav(body,expected_frames):
+    data,rate=_read_pcm_wav(body)
     if type(expected_frames) is not int or not 1<=expected_frames<=MAX_BLOCKS*28 or len(data)!=expected_frames*2:
         raise ImportError('WAV frame count must exactly match the qualified source sample prefix')
+    return data,rate
+
+def read_allocation_pcm_wav(body):
+    """Separate allocation contract; fixed-size callers retain exact-frame checks."""
+    data,rate=_read_pcm_wav(body)
+    if not 56<=len(data)<=MAX_BLOCKS*28*2 or len(data)%56:
+        raise ImportError('Allocated WAV needs 1–4096 complete 28-frame ADPCM blocks')
     return data,rate
 
 def _encode_block(frames,previous,older):
