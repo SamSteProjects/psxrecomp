@@ -1598,6 +1598,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self.server.project.snap_model_vertices(body['asset_id'],body['object_index'],body['indices'],body['axes'],body['spacing'],body['expected_sha256'])
                     self._json(200,self.server.state())
                     return
+                if route == '/api/model-vertices-axis-scaling':
+                    if set(body)!={'asset_id','object_index','indices','percents','pivot','expected_sha256'} or not isinstance(body['asset_id'],str):raise ProjectError('Vertex axis scaling requires model, object, indices, axis percentages, pivot and inspected hash')
+                    self.server.project.scale_model_vertices_axes(body['asset_id'],body['object_index'],body['indices'],body['percents'],body['pivot'],body['expected_sha256'])
+                    self._json(200,self.server.state())
+                    return
                 if route == '/api/model-vertices-scaling':
                     if set(body)!={'asset_id','object_index','indices','percent','pivot','expected_sha256'} or not isinstance(body['asset_id'],str):raise ProjectError('Vertex scaling requires model, object, indices, percent, pivot and inspected hash')
                     self.server.project.scale_model_vertices(body['asset_id'],body['object_index'],body['indices'],body['percent'],body['pivot'],body['expected_sha256'])

@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {vertexGroupAxisScalePreview,vertexGroupScalePreview,qualifyObjectMoveReview} from '../editor/model-vertex-move.js';
+const source={preview:{objects:[{object_index:0,vertex_start:0,vertex_count:3}],vertices:[[-4,-3,5],[3,2,10],[20,30,40]],normals:[[0,1,0]],triangles:[[0,1,2]]}};
+const before=structuredClone(source),scaled=vertexGroupAxisScalePreview(source,0,[0,1],[150,75,125],'center');
+assert.deepEqual(scaled.vertices,[[-6,-2,4],[5,1,11],[20,30,40]]);
+assert.deepEqual(scaled.normals,source.preview.normals);assert.deepEqual(scaled.triangles,source.preview.triangles);assert.deepEqual(source,before);
+assert.deepEqual(vertexGroupAxisScalePreview(source,0,[0,1],[100,100,100],'origin').vertices,source.preview.vertices);
+assert.deepEqual(vertexGroupAxisScalePreview(source,0,[0,1],[150,100,100],'origin').vertices,[[-6,-3,5],[5,2,10],[20,30,40]]);
+for(const pivot of ['origin','center'])for(const percent of [1,75,100,150,1000])assert.deepEqual(vertexGroupAxisScalePreview(source,0,[0,1],[percent,percent,percent],pivot),vertexGroupScalePreview(source,0,[0,1],percent,pivot));
+for(const percents of [150,[],[1],[1,2],[1,2,3,4],[true,100,100],['150',100,100],[0,100,100],[1001,100,100],[150.5,100,100],Array(3),null])assert.throws(()=>vertexGroupAxisScalePreview(source,0,[0,1],percents,'origin'));
+for(const indices of [[],[0,0],[true],[3]])assert.throws(()=>vertexGroupAxisScalePreview(source,0,indices,[150,75,125],'center'));
+assert.throws(()=>vertexGroupAxisScalePreview(source,0,[0,1],[150,75,125],'mean'));
+assert.throws(()=>vertexGroupAxisScalePreview({preview:{...source.preview,vertices:[[32767,0,0],[0,0,0],[0,0,0]]}},0,[0],[200,100,100],'origin'));
+const request={asset_id:'asset://fixture',object_index:0,operation:'vertex_axis_scaling',values:{indices:[0,1],percents:[150,75,125],pivot:'center'},expected_sha256:'a'.repeat(64)},expected={source_sha256:'b'.repeat(64),current_preview:source.preview,preview:scaled};
+const report={...request,source_sha256:expected.source_sha256,effective_sha256:request.expected_sha256,project_changed:false,proposed_sha256:'c'.repeat(64),current_preview:source.preview,preview:scaled};
+assert.deepEqual(qualifyObjectMoveReview(report,request,expected),report);
+for(const changes of [{operation:'vertex_scaling'},{values:{...request.values,percents:[150,75,126]}},{values:{...request.values,indices:[0]}},{project_changed:true}])assert.throws(()=>qualifyObjectMoveReview({...report,...changes},request,expected));
+console.log('Axis scale: independent words, negative/odd pivots, subset/normal/topology preservation, uniform compatibility, no-op/overflow, strict arrays and exact scene review passed.');

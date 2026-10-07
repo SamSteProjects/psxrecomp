@@ -1,5 +1,27 @@
 # Legaia SDK feature matrix
 
+## Selected vertex per-axis scaling - accepted offline (2026-10-07)
+
+The existing geometry workspace now stages independent X/Y/Z positive integer
+percentages for selected vertex groups, with origin or exact bounds-center
+pivot. Uniform remains the default and retains its exact results. Local and
+single/all-instance scene comparisons validate the same authored candidate;
+Apply, Undo/Redo, Save/Open and normal native Build retain it. Normals, topology,
+materials and Retail provenance stay fixed. Overflow rejects the whole edit.
+
+Sixteen focused Python tests, five client suites and two syntax checks passed.
+Actual Town01 vertices 0-2 at 150/75/125 percent passed staging/discard/layers,
+scene comparison/return, Apply/Undo/Redo and wide/400 px checks without page
+errors. Independent raw native-word comparison and full MAN section directory/
+ZIP readback passed; only eleven selected XYZ byte offsets changed. Build
+`f4e01a7d44332334` has package SHA-256
+`23e8b5a8b620d569cff12281790789086fdd8254d934e1e51f9104c4b038a6f3`.
+A browser-detected control assignment was corrected and the full workflow rerun.
+See [per-axis vertex scaling](legaia-model-vertex-axis-scale.md) and private
+`local-output/sdk-20260909/vertex-axis-scale-20261007/` evidence. No runtime
+change, gameplay action or full campaign; gameplay stays deferred, development
+stays solo and the full SDK goal is active.
+
 ## Whole inspected script-flow diagram - accepted offline (2026-10-07)
 
 The existing branch diagram now pages Whole inspected flow alongside Selected

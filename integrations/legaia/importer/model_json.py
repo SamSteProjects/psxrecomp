@@ -145,13 +145,23 @@ def scale_shape_vertices(original: bytes, effective: bytes, expected_sha256: str
     """Uniform selected-row scale; exact half-unit pivot and signed word rounding."""
     if type(percent) is not int or not 1 <= percent <= 1000 or pivot not in ('origin','center'):
         raise ImportError('Vertex group scale requires integer percent1..1000 and origin or center pivot')
+    return scale_shape_vertices_axes(original,effective,expected_sha256,object_index,indices,[percent]*3,pivot)
+
+
+def scale_shape_vertices_axes(original: bytes, effective: bytes, expected_sha256: str,
+                              object_index: int, indices: list[int], percents: list[int], pivot: str) -> bytes:
+    """Independent positive axis scales; preserve layout, topology and normals."""
+    if (not isinstance(percents,list) or len(percents)!=3 or
+            any(type(value) is not int or not 1 <= value <= 1000 for value in percents) or
+            pivot not in ('origin','center')):
+        raise ImportError('Vertex axis scale requires three integer percentages1..1000 and origin or center pivot')
     qualified=translate_shape_vertices(original,effective,expected_sha256,object_index,indices,[0,0,0])
     document=json.loads(export_shape_json(qualified));vertices=document['objects'][object_index]['vertices']
     twice_pivot=[0,0,0] if pivot=='origin' else [min(vertices[i][a] for i in indices)+max(vertices[i][a] for i in indices) for a in range(3)]
     for i in indices:
         scaled=[]
         for a,value in enumerate(vertices[i]):
-            numerator=twice_pivot[a]*100+(2*value-twice_pivot[a])*percent
+            numerator=twice_pivot[a]*100+(2*value-twice_pivot[a])*percents[a]
             result=((abs(numerator)+100)//200)*(-1 if numerator<0 else 1)
             if not -32768 <= result <= 32767:
                 raise ImportError('Vertex group scale exceeds signed16; nothing was applied')
