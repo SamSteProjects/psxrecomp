@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {mergeScenePlacementSelection} from '../editor/scene-placement-selection.js';
+import {mergeScenePlacementSelection,invertScenePlacementSelection} from '../editor/scene-placement-selection.js';
 
 const actor='scene://town01/actors/man-p1/0012';
 const decor='environment://town01/field-map/decorations/01833';
@@ -39,3 +39,12 @@ assert.deepEqual(before,many.slice(0,128));assert.deepEqual(overflowHits,[many[1
 assert.deepEqual(mergeScenePlacementSelection(many,[actor],new Set([...many,actor])),[actor]);
 assert.deepEqual(mergeScenePlacementSelection([],Array(129).fill(actor),eligible),[actor]);
 console.log('Scene placement selection replacement/extension, canonical deduplication, active eligibility, 128 bound and immutable atomic rejection passed.');
+
+assert.deepEqual(invertScenePlacementSelection([actor,other],[actor,decor,decor],eligible),[decor,other].sort());
+assert.deepEqual(invertScenePlacementSelection([actor],[actor],eligible),[]);
+assert.deepEqual(invertScenePlacementSelection([actor],[],eligible),[actor]);
+assert.deepEqual(invertScenePlacementSelection(many.slice(0,128),many,manyEligible),[many[128]]);
+assert.throws(()=>invertScenePlacementSelection([],many,manyEligible),/at most 128/);
+for(const [current,hits] of [[['alien'],[]],[[],['alien']],[Array(1),[]],[[],Array(1)],[null,[]],[[],null]])assert.throws(()=>invertScenePlacementSelection(current,hits,eligible));
+assert.deepEqual(current,[actor,actor]);assert.deepEqual(hits,[decor,decor]);
+console.log('Visible inversion: offscreen selections held, duplicate hits toggle once, empty/exact sets, overflow and malformed input refused without mutation.');

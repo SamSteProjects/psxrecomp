@@ -13,3 +13,11 @@ export function mergeScenePlacementSelection(current,hits,eligible,extend=false)
   if(result.length>128)throw new Error('Select at most 128 scene placements');
   return result;
 }
+
+// Toggle only rendered hits; selected placements outside the current view remain.
+export function invertScenePlacementSelection(current,hits,eligible){
+  mergeScenePlacementSelection(current,[],eligible);mergeScenePlacementSelection(hits,[],eligible);
+  const chosen=new Set(current);
+  for(const id of new Set(hits)){if(chosen.has(id))chosen.delete(id);else chosen.add(id);}
+  return mergeScenePlacementSelection([],Array.from(chosen),eligible);
+}

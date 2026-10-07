@@ -1,5 +1,39 @@
 # Mixed scene placement groups
 
+## Select and invert visible placements
+
+Under **Scene tools**, choose **Select visible placements** to replace the mixed
+placement group with eligible imported actors, NPC drafts and static decorations
+that have rendered mesh pixels in the current viewport. **Invert visible placements**
+toggles those visible hits once each and preserves selected placements outside the
+view. Repeating inversion in an active empty group restores the visible group.
+
+The tools use the same depth-tested GPU region picking and layer/hidden/isolation
+rules as box selection. They do not select through occlusion or substitute marker
+centers for mesh coverage. Selections over 128 fail without trimming or replacing the
+existing group. Project/scene/source, camera and viewport-size changes during focus
+handoff invalidate the operation. Busy operations, unresolved previews, Live mode
+and conflicting inspection tools block entry.
+
+Selection itself creates no authored command, Undo entry, native Build or game launch.
+Use the existing **Move scene placement group** Review/Current/Proposed/Apply workflow
+for supported changes, or save the group with **Saved scene selections**. Retail,
+authored and live data remain separate; this does not qualify native gameplay.
+
+
+Offline checks passed (2026-10-07): the focused Node selection suite covers
+canonical replacement/extension plus inversion, held offscreen members, duplicate
+hits, empty groups, invalid inputs and atomic 128-member refusal. Two JavaScript
+syntax checks passed. The actual Town01 editor selected 19 visible placements,
+inverted to empty, inverted back to the same group, opened the existing mixed-group
+Review and cancelled it, then cleared selection. Wide and 400 px layouts were
+inspected. Project document/history and saved file sizes/timestamps stayed unchanged;
+no native Build, game launch or installation occurred. Private evidence:
+`local-output/sdk-20260909/visible-placement-selection-20261007/`
+(`browser.json`, `readonly.json`, wide/narrow/group-review screenshots). A prior
+extended probe missed the typographic-ellipsis button label; its log/screenshot are
+preserved. The corrected final probe passed. Gameplay remains deferred.
+
 ## Whole-degree mixed placement rotation (2026-10-06)
 
 **Scene tools → Move scene placement group → Rotate positions by whole degrees in X/Z** now accepts an integer angle from -359 through 359 around a selected imported actor, NPC draft or static decoration. The existing quarter-turn choices remain available. Review, Current/Proposed viewport inspection, return to the same review and explicit Apply use the shared mixed-group workflow. Apply records one history step; Undo/Redo and Save/Open retain exact positions. An angle of zero is a no-op. This rotates placement positions; height, actor facing, scenery orientation, donor bindings and other components are held.

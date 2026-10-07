@@ -24,7 +24,7 @@ import {mountEnvironmentLayout} from '/environment-layout.js';
 import {mountEnvironmentRotationGroup} from '/environment-rotation-group.js';
 import {mountSceneSelectionSets,decodeSavedSceneSelection} from '/scene-selection-sets.js';
 import {mountScenePlacementGroup} from '/scene-placement-group.js';
-import {mergeScenePlacementSelection} from '/scene-placement-selection.js';
+import {mergeScenePlacementSelection,invertScenePlacementSelection} from '/scene-placement-selection.js';
 import {mountWallRectangle,wallRectangleGeometry} from '/collision-rectangle.js';
 import {mountFloorRectangle,decodeFloorRectangle} from '/floor-rectangle.js';
 import {mountFloorHeights,decodeFloorHeights} from '/floor-heights.js';
@@ -968,6 +968,7 @@ function updateScenePlacementSelection(){
   savedSceneSelections?.synchronize();scenePlacementTool?.refresh();const host=document.querySelector('#scene-placement-tools');if(!host)return;
   host.querySelector('[data-mixed-select]').disabled=busy||!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||!!scenePose||!!shapeDraft||!!actorGroupInspection||!!environmentGroupInspection||!!wallSelectMode||!!wallInspection||!!scenePlacementInspection;
   host.querySelector('[data-mixed-box]').disabled=host.querySelector('[data-mixed-select]').disabled||!sceneModelsReady()||pickScriptTargets||pickRuntimeNodes;
+  for(const name of ['visible','invert'])host.querySelector('[data-mixed-'+name+']').disabled=host.querySelector('[data-mixed-box]').disabled;
   if(host.querySelector('[data-mixed-box]').disabled&&!busy)scenePlacementBoxMode=false;
   host.querySelector('[data-mixed-box]').classList.toggle('active',scenePlacementBoxMode);host.querySelector('[data-mixed-box]').setAttribute('aria-pressed',String(scenePlacementBoxMode));
   host.querySelector('[data-mixed-select]').classList.toggle('active',scenePlacementMode);host.querySelector('[data-mixed-select]').setAttribute('aria-pressed',String(scenePlacementMode));host.querySelector('[data-mixed-clear]').disabled=busy||!scenePlacementSelection.length;
@@ -1120,9 +1121,25 @@ environmentRotationGroupTool=mountEnvironmentRotationGroup({host:environmentGrou
   busy:()=>busy,setBusy,api,canReview:()=>canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!scenePlacementInspection&&!wallSelectMode&&!wallInspection&&(!environmentGroupInspection||environmentGroupInspection.report.schema_version==='legaia.environment-rotation-group-review.v1'),
   onInspection:(report,layer)=>{cancelViewportGesture();if(report){environmentGroupTool?.restore();environmentLayoutTool?.restore();}environmentGroupInspection=report?{report,layer}:null;draw();},onFrame:frameEnvironmentGroup,onError:error=>notify(typeof error==='string'?error:error.message,true)});
 const scenePlacementHost=document.createElement('div');scenePlacementHost.id='scene-placement-tools';environmentGroupHost.after(scenePlacementHost);
-scenePlacementHost.innerHTML='<button type="button" data-mixed-select aria-pressed="false">Select scene placements</button><button type="button" data-mixed-box aria-pressed="false" title="Drag over visible actor, NPC draft and static scenery pixels; Ctrl/Command adds, Shift pans.">Box select placements</button><span role="status"></span><button type="button" data-mixed-clear>Clear placement group</button>';
+scenePlacementHost.innerHTML='<button type="button" data-mixed-select aria-pressed="false">Select scene placements</button><button type="button" data-mixed-box aria-pressed="false" title="Drag over visible actor, NPC draft and static scenery pixels; Ctrl/Command adds, Shift pans.">Box select placements</button><button type="button" data-mixed-visible>Select visible placements</button><button type="button" data-mixed-invert>Invert visible placements</button><span role="status"></span><button type="button" data-mixed-clear>Clear placement group</button>';
+scenePlacementHost.querySelector('[role="status"]').style.display='block';
 scenePlacementHost.querySelector('[data-mixed-select]').onclick=()=>{if(busy||scenePlacementHost.querySelector('[data-mixed-select]').disabled)return;cancelViewportGesture();if(scenePlacementMode){scenePlacementMode=false;scenePlacementBoxMode=false;}else{clearActorGroupSelection();clearEnvironmentGroupSelection();actorBoxMode=false;scenePlacementMode=true;scenePlacementKey=resourceStateKey();}renderHierarchy();draw();};
 scenePlacementHost.querySelector('[data-mixed-box]').onclick=()=>{if(busy||scenePlacementHost.querySelector('[data-mixed-box]').disabled)return;cancelViewportGesture();clearActorGroupSelection();clearEnvironmentGroupSelection();actorBoxMode=false;scenePlacementMode=true;scenePlacementBoxMode=!scenePlacementBoxMode;scenePlacementKey=resourceStateKey();renderHierarchy();draw();};
+async function selectVisibleScenePlacements(invert=false){
+  const control=scenePlacementHost.querySelector(invert?'[data-mixed-invert]':'[data-mixed-visible]');if(busy||control.disabled)return;
+  try{
+    const context=resourceStateKey(),sourceKey=state.scene_preview_source_key,revision=cameraRevision,viewWidth=width,viewHeight=height,eligible=scenePlacementEligible(),hits=sceneRenderer.pickRegion({x:0,y:0},{x:width,y:height},sceneView()).filter(id=>eligible.has(id));
+    const next=invert?invertScenePlacementSelection(scenePlacementMode?scenePlacementSelection:currentPlacementSelection(),hits,eligible):mergeScenePlacementSelection([],hits,eligible);
+    const focus=next.includes(environmentSelection)?environmentSelection:next.includes(state.selection?.entity_id)?state.selection.entity_id:next[0];
+    if(focus&&entities().some(e=>e.id===focus)){if(!await api('/api/selection',{entity_id:focus}))return;}
+    if(context!==resourceStateKey()||sourceKey!==state.scene_preview_source_key||revision!==cameraRevision||viewWidth!==width||viewHeight!==height||!scenePreviewCurrent()||!canEdit())throw new Error('Scene or camera changed. Repeat visible placement selection.');
+    cancelViewportGesture();clearActorGroupSelection();clearEnvironmentGroupSelection();clearScenePlacementSelection();actorBoxMode=false;scenePlacementMode=true;scenePlacementBoxMode=false;scenePlacementSelection=next;scenePlacementKey=resourceStateKey();
+    if(focus&&state.actor_drafts?.[focus]){environmentSelection=null;npcDraftSelection=focus;}else if(focus&&!entities().some(e=>e.id===focus)){environmentSelection=focus;npcDraftSelection=null;}else{environmentSelection=null;npcDraftSelection=null;}
+    renderHierarchy();renderInspector();draw();notify(`${hits.length} visible placements · ${next.length} selected · visible mesh pixels`);
+  }catch(error){notify(error.message,true);}
+}
+scenePlacementHost.querySelector('[data-mixed-visible]').onclick=()=>selectVisibleScenePlacements();
+scenePlacementHost.querySelector('[data-mixed-invert]').onclick=()=>selectVisibleScenePlacements(true);
 scenePlacementHost.querySelector('[data-mixed-clear]').onclick=()=>{clearScenePlacementSelection();renderHierarchy();draw();};
 scenePlacementTool=mountScenePlacementGroup({host:scenePlacementHost,getState:()=>state,getSelection:()=>scenePlacementSelection,busy:()=>busy,setBusy,api,
   canReview:()=>canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!environmentGroupInspection&&!wallSelectMode&&!wallInspection,
