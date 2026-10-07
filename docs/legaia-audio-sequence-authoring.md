@@ -1,5 +1,9 @@
 # Native SEQ operand codec groundwork
 
+## Complete Track MIDI Export — 2026-10-07
+
+Source, Retail, Current and reviewed Proposed complete tracks can now be downloaded as MIDI without applying a draft. Partial prefixes refuse; channel operands and encoded timing stay literal. See [Export Complete SEQ Tracks as MIDI](legaia-sequence-midi-export.md) for workflow, bounds and offline evidence.
+
 ## Current encoded bank links — 2026-10-06
 
 Implemented: the sequence operand editor connects a Current note to its latest encoded channel program change, explicitly matching tone program/key-range candidates and Current native sample spans. Complete evidence download, typed bank validation, stale withdrawal and parent disposal are included. Sparse program slots and packed pages remain distinct. Initial/runtime instrument assignments and active/unused tone selection remain unknown; this does not synthesize instruments or resolve gameplay pitch.
