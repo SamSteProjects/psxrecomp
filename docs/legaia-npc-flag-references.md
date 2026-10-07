@@ -60,13 +60,13 @@ Private evidence: `local-output/sdk-20260909/npc-flag-navigation-20261007/` cont
 `reports.json`, `metadata-proof.json`, `browser.json`, `focused.json`, logs and
 screenshots. Initial private harness failures are retained separately.
 
-One pre-existing limitation was exposed during the retail exercise: imported
-actor `ScriptFlags` annotations still require complete general catalog status.
-A native-qualified imported actor edit on the partial Town0b donor is rejected
-by `flag_assets` before graph assembly. That path is not relaxed by this NPC
-feature and remains a separate follow-up. The final private project uses the
-Retail donor actor and two native-qualified NPC edits; independent donor Current
-ownership is covered by the synthetic fixture.
+The retail exercise exposed a separate imported-actor limitation: Current
+`ScriptFlags` annotations required complete general catalog status even when the
+native adapter independently qualified an operand. The subsequent
+[flag qualification fix](legaia-flag-qualification.md) resolves that rejection
+without changing partial coverage. Its fresh Town0b Build independently matches
+the imported donor's Current bit 5 and both NPCs' separately owned bits 3 and 4.
+The evidence above records this earlier milestone before that fix.
 
 Gameplay verification remains deferred. Development remains solo; the full SDK
 goal remains active.

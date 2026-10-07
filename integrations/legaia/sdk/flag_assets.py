@@ -119,7 +119,7 @@ def validate_flag_asset(record):
         _reject("reference count bounds")
     seen, authored_count = set(), 0
     for ref in references:
-        if not isinstance(ref, dict) or set(ref) != _REFERENCE_FIELDS:
+        if not isinstance(ref, dict) or set(ref) not in (_REFERENCE_FIELDS,_REFERENCE_FIELDS|{'authored_qualification'}):
             _reject("reference shape")
         pc = ref['pc']
         if (not _integer(pc, 0, MAX_SOURCE_BYTES) or pc >= source['byte_length'] or pc in seen or
@@ -147,10 +147,14 @@ def validate_flag_asset(record):
         if ref['flag_operand_id'] != operand_id:
             _reject("flag operand identity")
         authored = ref['authored_index']
+        qualified='authored_qualification' in ref
+        if qualified:
+            from .flag_qualification import validate
+            validate(ref['authored_qualification'],record['owner_id'],operand_id,source['sha256'],pc,mnemonic,target,index,authored)
         if authored is not None:
             if not editable or not _integer(authored, 0, 31):
                 _reject("authored selector")
-            if (record['script_status'] != 'decoded_supported_paths' or
+            if (record['script_status'] != 'decoded_supported_paths' and not qualified or
                     bank == 'local' and (index >= 16 or authored >= 16) or
                     mnemonic == 'CFLAG_SET' and (index == 8 or authored == 8) or
                     mnemonic == 'CFLAG_CLEAR' and (index == 10 or authored == 10)):
@@ -169,7 +173,7 @@ def validate_flag_asset(record):
     return record
 
 
-def build_flag_assets(catalog, authored=None):
+def build_flag_assets(catalog, authored=None,qualifications=None):
     """Adapt an existing decoder catalog; no decoding or source reads occur here."""
     if not isinstance(catalog, dict) or not isinstance(catalog.get('assets'), list):
         _reject("catalog shape")
@@ -206,7 +210,7 @@ def build_flag_assets(catalog, authored=None):
             catalog['unavailable_script_count'] != sum(script['status'] == 'unavailable' for script in scripts)):
         _reject("catalog script coverage")
     try:
-        index = build_flag_index(catalog, authored)
+        index = build_flag_index(catalog, authored,qualifications)
     except (KeyError, TypeError, IndexError, AttributeError, RetailImportError) as exc:
         raise ProjectError("Invalid flag asset catalog: " + str(exc)) from exc
     groups = index['groups']

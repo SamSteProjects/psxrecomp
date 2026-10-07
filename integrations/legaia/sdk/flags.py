@@ -35,8 +35,11 @@ def observed_node_flags(status: dict, scene_id: str) -> dict:
             "note": "Captured node flag words only; no current value or script-owner binding is asserted."}
 
 
-def build_flag_index(catalog: dict, authored: dict | None = None) -> dict:
+def build_flag_index(catalog: dict, authored: dict | None = None, qualifications: dict | None = None) -> dict:
     authored = authored or {}
+    if qualifications is not None and (not isinstance(qualifications,dict) or set(qualifications)!=set(authored)):
+        from .project import ProjectError
+        raise ProjectError('Native flag qualifications differ from the requested authored operands')
     consumed = set()
     groups = {}
     for script in catalog["assets"]:
@@ -72,6 +75,10 @@ def build_flag_index(catalog: dict, authored: dict | None = None) -> dict:
                 if reference['mnemonic'] not in tuple(f'{bank}_{op}' for bank in ('LFLAG','GFLAG','CFLAG') for op in ('SET','CLEAR','TEST')):
                     raise ImportError('Authored flag reference is not a supported bit instruction')
                 row.update(authored_index=bit,effective_index=bit)
+                if qualifications is not None and key in qualifications:
+                    from .flag_qualification import validate
+                    row['authored_qualification']=validate(qualifications[key],groups[identity]['owner_id'],key,
+                        script['source_record']['sha256'],reference['pc'],reference['mnemonic'],target,reference['index'],bit)
                 consumed.add(key)
             groups[identity]["references"].append(row)
     if consumed != set(authored):

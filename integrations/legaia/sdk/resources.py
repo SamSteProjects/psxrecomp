@@ -98,7 +98,8 @@ def refresh_resource_catalog(project) -> dict:
                 limitations.extend(catalog.get("limitations", []))
                 if kind == 'Scripts and dialogue':
                     from .flag_assets import build_flag_assets
-                    records.extend(build_flag_assets(catalog, _flag_edits(project, project.active_scene)))
+                    qualifications={};edits=_flag_edits(project, project.active_scene,qualifications)
+                    records.extend(build_flag_assets(catalog,edits,qualifications))
                     from .transition_assets import build_transition_assets
                     records.extend(build_transition_assets(catalog, project.imports, _transition_edits(project, project.active_scene)))
             except RetailImportError as exc:
@@ -181,7 +182,7 @@ def project_flag_state_key(project) -> str:
                               if 'ScriptFlags' in parts}))
 
 
-def _flag_edits(project, scene_id):
+def _flag_edits(project, scene_id,qualifications=None):
     """Validate authored references against the source serializer before annotation."""
     requested = {}
     for owner, components in deepcopy(getattr(project, 'overrides', {})).items():
@@ -197,6 +198,12 @@ def _flag_edits(project, scene_id):
         try:
             context = load_flag_authoring_context(project.disc_path, project.imports[scene_id]['scene']['name'])
             context.patch(requested)
+            if qualifications is not None:
+                from .flag_qualification import from_target
+                owners=sorted({key.split('/flag-bit/')[0].replace('script://','scene://',1) for key in requested})
+                targets={row['semantic_id']:row for owner in owners for row in context.options(owner)['targets']}
+                if set(requested)-set(targets):raise ProjectError('Authored flag operand lacks native qualification')
+                qualifications.update({key:from_target(targets[key],values) for key,values in requested.items()})
         except RetailImportError as exc:
             raise ProjectError("Authored flag operands failed source verification: " + str(exc)) from exc
     return requested
@@ -316,7 +323,8 @@ def scene_flag_index(project) -> dict:
     with _disc_context(project.disc_path):
         _verify(project, document)
         catalog = load_script_asset_catalog(project.disc_path, document["scene"]["name"])
-        index = build_flag_index(catalog, _flag_edits(project, project.active_scene))
+        qualifications={};edits=_flag_edits(project,project.active_scene,qualifications)
+        index = build_flag_index(catalog,edits,qualifications)
     if key != source_key(project) or flag_key != scene_flag_state_key(project):
         raise ProjectError("Scene source changed during flag discovery; refresh again")
     return {**index, "source_key": key, "flag_state_key": flag_key}
@@ -338,7 +346,9 @@ def project_flag_index(project) -> dict:
             _verify(project,document)
             name = document['scene']['name']
             try:
-                index = build_flag_index(load_script_asset_catalog(project.disc_path,name), _flag_edits(project,scene_id))
+                catalog=load_script_asset_catalog(project.disc_path,name)
+                qualifications={};edits=_flag_edits(project,scene_id,qualifications)
+                index = build_flag_index(catalog,edits,qualifications)
             except RetailImportError as exc:
                 scenes.append(dict(scene_id=scene_id,scene_name=name,status='unavailable',reason=str(exc)))
                 continue

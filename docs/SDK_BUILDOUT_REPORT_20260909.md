@@ -1,5 +1,28 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Partial script flag qualification - accepted offline (2026-10-06)
+
+Imported actor Current flag edits now remain discoverable when the native flag
+adapter qualifies the specific operand but the broader catalog has partial
+script coverage. Source-bound qualification carries the exact owner, operand,
+record SHA, PC, mnemonic, context, Retail/Current bit and supported maximum.
+Asset and client validators reject missing or conflicting partial-coverage
+proofs. Existing width and context side-effect exclusions remain enforced.
+The Inspector keeps partial coverage visible; runtime values and execution
+are not inferred. Donor Current overrides and NPC clone edits stay separate.
+
+All 41 affected Python checks passed without skips, five client suites and three
+syntax checks passed. The private Town0b editor confirmed donor Current bit 5,
+NPC bits 3 and 4, Retail bit 2, source navigation and wide/400 px layouts without
+page errors or game requests. Save/Open and inspection metadata stayed exact.
+Fresh normal private Build `a08ef2394ae1b806` passed integrity/current-input
+verification; independent readback matched all three complete native records,
+including retained NPC placement, facing and color edits. No full campaign,
+game launch, install or full-disc export was performed. Gameplay stays deferred;
+development stays solo and the full SDK goal remains active.
+See [flag qualification](legaia-flag-qualification.md) and private evidence
+`local-output/sdk-20260909/partial-flag-qualification-20261007/`.
+
 ## NPC flag operand navigation - accepted offline (2026-10-06)
 
 NPC Asset references now include inherited Retail and NPC Current flag operands.

@@ -362,6 +362,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
                                  effective_index=reference['effective_index'],
                                  source_record_sha256=record['source_record']['sha256'],
                                  component_sha256=digest(component))
+                    if 'authored_qualification' in reference:binding['native_operand_qualification']=deepcopy(reference['authored_qualification'])
                     edge(target,identity,'effective_script_flag_reference',scene,'effective',reference['pc'],
                          flag_evidence=proof,flag_binding_evidence=binding)
         elif kind=='transition':

@@ -1,4 +1,5 @@
 // A group identifies encoded operands in one retail script, not a runtime variable.
+import {decodeFlagQualification} from './flag-qualification.js';
 const MAX_REFERENCES=16384, PAGE_SIZE=50;
 const integer=(value,min,max)=>Number.isSafeInteger(value)&&value>=min&&value<=max;
 const text=(value,max=8192)=>typeof value==='string'&&value.length>0&&value.length<=max;
@@ -61,7 +62,8 @@ export function decodeFlagResource(data){
     const decoded=instruction(reference),operandId=decoded.authorable?`${value.script_id}/flag-bit/${reference.pc.toString(16).padStart(4,'0')}`:null;
     if(decoded.bank!==value.bank||decoded.operation!==reference.operation||reference.flag_operand_id!==operandId||reference.context_resolution!==(value.extended_target===null?'current_script_context':'extended_target_unresolved')||reference.index_semantics!==(value.bank==='system'?'encoded_selector_not_resolved_runtime_bit':'operand_masked_to_five_bits')||reference.status!==(value.bank==='local'&&value.index>=16?'bank_width_unresolved':'encoded_reference'))fail('Flag instruction interpretation differs from its encoded reference.');
     if(reference.authored_index!==null&&(!decoded.authorable||!integer(reference.authored_index,0,31)))fail('Invalid authored flag operand annotation.');
-    if(reference.authored_index!==null&&(value.script_status!=='decoded_supported_paths'||value.bank==='local'&&(value.index>=16||reference.authored_index>=16)||reference.mnemonic==='CFLAG_SET'&&(value.index===8||reference.authored_index===8)||reference.mnemonic==='CFLAG_CLEAR'&&(value.index===10||reference.authored_index===10)))fail('Authored flag annotation exceeds verified script, width or context-selector support.');
+    const qualified=Object.hasOwn(reference,'authored_qualification');if(qualified)decodeFlagQualification(reference.authored_qualification,{owner_id:value.owner_id,operand_id:reference.flag_operand_id,source_record_sha256:source.sha256,pc:reference.pc,mnemonic:reference.mnemonic,extended_target:reference.extended_target,retail_index:reference.retail_index,authored_index:reference.authored_index});
+    if(reference.authored_index!==null&&(value.script_status!=='decoded_supported_paths'&&!qualified||value.bank==='local'&&(value.index>=16||reference.authored_index>=16)||reference.mnemonic==='CFLAG_SET'&&(value.index===8||reference.authored_index===8)||reference.mnemonic==='CFLAG_CLEAR'&&(value.index===10||reference.authored_index===10)))fail('Authored flag annotation exceeds verified script, width or context-selector support.');
     if(reference.effective_index!==(reference.authored_index??reference.retail_index))fail('Effective flag selector differs from its operand layers.');
     authored+=reference.authored_index!==null;
   }
@@ -121,7 +123,7 @@ export function openFlagResource({record,current,busy,canInspect,onInspect,onErr
   function render(){
     tbody.replaceChildren();siteButtons=[];
     for(const reference of sites.slice(page*PAGE_SIZE,(page+1)*PAGE_SIZE)){
-      const row=element('tr');for(const value of [pcLabel(reference.pc),`${reference.mnemonic}\n${reference.operation}`,String(reference.retail_index),reference.authored_index===null?'None':String(reference.authored_index),String(reference.effective_index),`${words(reference.status)}\n${words(reference.index_semantics)}\n${words(reference.context_resolution)}`])row.append(element('td',value));
+      const row=element('tr');for(const value of [pcLabel(reference.pc),`${reference.mnemonic}\n${reference.operation}`,String(reference.retail_index),reference.authored_index===null?'None':String(reference.authored_index),String(reference.effective_index),`${words(reference.status)}\n${words(reference.index_semantics)}\n${words(reference.context_resolution)}${reference.authored_qualification?'\nNative authoring operand independently qualified; script coverage unchanged.':''}`])row.append(element('td',value));
       const cell=element('td'),button=element('button',`Inspect ${pcLabel(reference.pc)}`);button.type='button';button.onclick=()=>inspect(reference.pc);cell.append(button);row.append(cell);tbody.append(row);siteButtons.push([button,reference.pc]);
     }
     pageLabel.textContent=`Sites ${page*PAGE_SIZE+1}–${Math.min((page+1)*PAGE_SIZE,sites.length)} of ${sites.length}`;update();
