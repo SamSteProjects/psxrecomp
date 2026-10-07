@@ -38,6 +38,12 @@ def validate_record(record):
         raise ProjectError('Animation source requires a stable target identity')
     if not isinstance(binding,dict) or len(canonical(binding))>128*1024 or binding.get('scene_id')!=scene:
         raise ProjectError('Animation source binding differs from its scene or byte budget')
+    if 'external_pose_alignment' in binding:
+        from importer.animation_glb import pose_alignment_config
+        from importer.core import ImportError as AlignmentError
+        if 'external_object_nodes' not in binding:raise ProjectError('Retained pose alignment requires explicit object mapping')
+        try:pose_alignment_config(binding['external_pose_alignment'])
+        except AlignmentError as error:raise ProjectError(str(error)) from error
     if 'external_sampling' in binding:
         from importer.animation_glb import sampling_config
         from importer.core import ImportError as SamplingError
@@ -64,6 +70,9 @@ def validate_record(record):
                 or binding.get('record_id')!=target or not isinstance(frames,list) or not 1<=len(frames)<=4096
                 or any(type(v) is not int or not 0<=v<65536 for v in frames)):
             raise ProjectError('Retained animation source identity or mapping changed')
+    if 'external_pose_alignment' in binding:
+        try:pose_alignment_config(binding['external_pose_alignment'],len(frames) if record['kind']=='retained' else binding.get('frame_count'))
+        except AlignmentError as error:raise ProjectError(str(error)) from error
     if digest({k:v for k,v in record.items() if k!='receipt_key'})!=record['receipt_key']:
         raise ProjectError('Animation source receipt changed')
     return deepcopy(record)

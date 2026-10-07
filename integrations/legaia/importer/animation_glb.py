@@ -572,6 +572,18 @@ def _sample_hierarchy(order, parents, static, tracks, time):
     return poses
 
 
+def pose_alignment_config(value, frame_count=4096):
+    _integer(frame_count, 1, 4096, "pose alignment output frame count")
+    if (not isinstance(value, dict) or set(value) != {'mode','source_frame_index','reference_seconds'}
+            or value.get('mode') != 'native_reference_local'):
+        raise ImportError('Pose alignment requires native_reference_local mode and explicit frame/time references')
+    frame = _integer(value['source_frame_index'], 0, frame_count-1, 'native reference frame')
+    seconds = value['reference_seconds']
+    if not _finite_number(seconds) or not 0 <= seconds <= 3600:
+        raise ImportError('External reference seconds must be finite and within 0..3600')
+    return dict(mode='native_reference_local', source_frame_index=frame, reference_seconds=float(seconds))
+
+
 def _source_quaternion(angles):
     x, y, z = [value * _TICK / 2 for value in angles]
     sx, cx, sy, cy, sz, cz = math.sin(x), math.cos(x), math.sin(y), math.cos(y), math.sin(z), math.cos(z)
@@ -636,7 +648,7 @@ def _quantize_rotation(glb_q, baseline_angles):
     return [v * 16 for v in ticks], degrees
 
 
-def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animation_index: int | None = None, object_node_indices: list[int] | None = None, external_sampling: dict | None = None, external_skin_index: int | None = None) -> tuple[bytes, dict]:
+def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animation_index: int | None = None, object_node_indices: list[int] | None = None, external_sampling: dict | None = None, external_skin_index: int | None = None, external_pose_alignment: dict | None = None) -> tuple[bytes, dict]:
     """Sample external poses at explicit 1..120 fps with fixed native frame count.
 
     At i/fps, the float32 representation matches glTF key storage and the SDK
@@ -651,6 +663,9 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
         raise ImportError("Animation GLB requires an explicit rate from 1 to 120 fps")
     sampling=sampling_config(external_sampling) if external_sampling is not None else None
     source = decode_animation_record(baseline)
+    alignment = pose_alignment_config(external_pose_alignment, source['frame_count']) if external_pose_alignment is not None else None
+    if alignment is not None and object_node_indices is None:
+        raise ImportError('Native reference pose alignment requires explicit rigid object mapping')
     if source['bone_count'] > 64:
         raise ImportError('Animation GLB source exceeds the 64 rigid-object bound')
     total = source["frame_count"] * source["bone_count"]
@@ -659,11 +674,23 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
     doc, payload = _read_glb(content)
     accessors=_Accessors(doc,payload)
     mapping, static, parents, rig = _nodes(doc, source["bone_count"], object_node_indices,skin_index=external_skin_index,accessors=accessors)
-    order = _hierarchy_order(mapping, parents, source["frame_count"])
+    order = _hierarchy_order(mapping, parents, source["frame_count"] + (1 if alignment is not None else 0))
     tracks = _tracks(doc, accessors, mapping, (3600 if sampling is not None else source["frame_count"] / fps), animation_index, hierarchy_nodes=order,ignored_joint_nodes=set(rig['joint_nodes'])-set(order) if rig else frozenset())
     mode=sampling.get('mode','clamp') if sampling is not None else 'clamp'
     interval=(dict(start_seconds=min(track[0][0] for track in tracks.values()),
                    end_seconds=max(track[0][-1] for track in tracks.values())) if tracks else None)
+    aligned_objects = {}
+    if alignment is not None:
+        reference_time = struct.unpack('<f', struct.pack('<f', alignment['reference_seconds']))[0]
+        external_reference = _sample_hierarchy(order, parents, static, tracks, reference_time)
+        for channel in source['frames'][alignment['source_frame_index']]['object_transforms']:
+            obj = channel['object_index']
+            external_t, external_q = external_reference[mapping[obj]]
+            q = _source_quaternion([value//16 for value in channel['rotation_psx']])
+            native_q = [-q[0], q[1], -q[2], q[3]]
+            correction = _multiply_quaternions(native_q, [-external_q[0], -external_q[1], -external_q[2], external_q[3]])
+            native_t = channel['translation'];native_t = [native_t[0], -native_t[1], native_t[2]]
+            aligned_objects[obj] = (native_t, external_t, correction)
     edits, maximum_translation, maximum_angle, preserved = [], 0.0, 0.0, 0
     for frame in source["frames"]:
         seconds=(frame['frame_index']/fps if mode!='clamp' else
@@ -676,6 +703,11 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
             obj, before_t, before_r = channel["object_index"], channel["translation"], channel["rotation_psx"]
             node = mapping[obj]
             translation, quaternion = poses[node]
+            if alignment is not None:
+                native_t, external_t, correction = aligned_objects[obj]
+                delta = _rotate_vector(correction, [a-b for a,b in zip(translation, external_t)])
+                translation = [a+b for a,b in zip(native_t, delta)]
+                quaternion = _multiply_quaternions(correction, quaternion)
             actual = [translation[0], -translation[1], translation[2]]
             if any(not -2048 <= value <= 2047 for value in actual):
                 raise ImportError("GLB translation exceeds signed twelve-bit range before quantization")
@@ -713,6 +745,9 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
         "scope": "existing-rigid-animation-channels-only", "gameplay_verified": False,
     }
     if sampling is not None:report['external_sampling']=sampling
+    if alignment is not None:
+        report['external_pose_alignment'] = alignment
+        report['quantization']['timeline'] += '; pose = native_reference * inverse(external_reference) * sampled_external; reference time float32 with endpoint hold'
     if mode!='clamp':
         report['external_time_range']=interval
         report['quantization']['timeline']=report['quantization']['timeline'].replace(
