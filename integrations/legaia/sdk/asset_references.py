@@ -142,12 +142,15 @@ def _reference_clip_evidence(record,model_records):
     return dict(reference_commit=REFERENCE_COMMIT,model_id=model,clip_id=clip,record_index=index,
                 frame_count=frames,channel_count=channels,source_record=deepcopy(source))
 
-def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
+def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audio_snapshot=None):
     """Adapt explicit imported/derived references; callers verify retail sources first."""
     if not isinstance(identifier,str) or not identifier or len(identifier)>1024:raise ProjectError('Invalid asset reference identity')
     nodes={};edges={};unresolved=0;memberships={};navigation={};model_records={}
-    from .audio_input_assets import inventory as wav_inventory
-    wav_inputs=wav_inventory(project)
+    from .audio_reference_snapshot import AudioReferenceSnapshot
+    own_audio_snapshot=_audio_snapshot is None
+    audio_snapshot=AudioReferenceSnapshot(project) if own_audio_snapshot else _audio_snapshot
+    audio_snapshot.check_owner(project)
+    wav_inputs=audio_snapshot.inputs()
     import_digests={scene:digest(document) for scene,document in project.imports.items()}
     def node(identifier,kind,scene,label=None,available=True):
         if not isinstance(identifier,str) or not identifier or len(identifier)>1024:raise ProjectError('Invalid asset reference identity')
@@ -252,8 +255,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             proof.update(native_asset_id=target,disc_sha256=receipt['source_record']['disc_sha256'],entry_sha256=receipt['source_record']['entry_sha256'],relationship='historical_capture_target')
             edge(target,identity,'retained_wav_sample_input',scene,'authored',wav_evidence=proof)
 
-    from .audio_input_bindings import current as current_wav_bindings
-    for proof in current_wav_bindings(project,wav_inputs):
+    for proof in audio_snapshot.bindings():
         if proof['binding_scene_id']!=scene:continue
         native_id,wav_id=proof['native_asset_id'],proof['wav_asset_id']
         native=audio_records.get(native_id)
@@ -416,7 +418,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
                 for target in material['source_ids']:
                     node(target,'texture',scene,available=target in nodes)
                     edge(model['model_id'],target,'effective_material_texture_source',scene,'effective',evidence=evidence)
-    if wav_inventory(project)!=wav_inputs:raise ProjectError('Retained WAV reference inputs changed during assembly')
+    if own_audio_snapshot:audio_snapshot.verify(project)
     if _full_graph:
         for identity,value in nodes.items():
             value['scene_ids']=sorted(memberships[identity]);value['_navigation_scene_ids']=sorted(navigation.get(identity,set()))
@@ -456,9 +458,9 @@ def _reference_limitations(rows):
     return rows
 
 
-def _project_graph(project,catalog,identifier,materials=None):
+def _project_graph(project,catalog,identifier,materials=None,*,_audio_snapshot=None):
     try:
-        graph=assemble(project,catalog,identifier,materials,_full_graph=True)
+        graph=assemble(project,catalog,identifier,materials,_full_graph=True,_audio_snapshot=_audio_snapshot)
         from .project import canonical
         if len(canonical(graph))>8*1024*1024:raise ProjectError('Asset reference scene graph exceeds8 MiB')
         return graph
@@ -483,6 +485,8 @@ def assemble_project(project,catalogs,identifier,materials_by_scene=None,scene_c
     supplied={} if scene_coverage is None else scene_coverage
     if not isinstance(supplied,dict) or set(supplied)-set(project.imports):raise ProjectError('Invalid project reference coverage')
     nodes={};edges={};memberships={};navigation={};unresolved=0;coverage=[];limitations=[]
+    from .audio_reference_snapshot import AudioReferenceSnapshot
+    audio_snapshot=AudioReferenceSnapshot(project)
     # A placeholder is only a graph adapter for imported membership, never evidence
     # that an unavailable scene has decoded resources.
     for scene in sorted(project.imports):
@@ -515,10 +519,10 @@ def assemble_project(project,catalogs,identifier,materials_by_scene=None,scene_c
         limitations.extend(scene+': '+row for row in local_limitations)
         if reason:limitations.append(scene+': Derived resources unavailable: '+reason)
         view=copy(project);view.active_scene=scene
-        graph=_project_graph(view,catalog or dict(source_key=None,records=[],limitations=[]),identifier,materials_by_scene.get(scene))
+        graph=_project_graph(view,catalog or dict(source_key=None,records=[],limitations=[]),identifier,materials_by_scene.get(scene),_audio_snapshot=audio_snapshot)
         # Imported/effective edges are repeated by every adapter; exact edge IDs
         # deduplicate them. Unresolved imported references likewise count once.
-        imported_graph=_project_graph(view,dict(source_key=None,records=[],limitations=[]),identifier)
+        imported_graph=_project_graph(view,dict(source_key=None,records=[],limitations=[]),identifier,_audio_snapshot=audio_snapshot)
         unresolved+=graph['unresolved_reference_count']-imported_graph['unresolved_reference_count']
         if scene==sorted(project.imports)[0]:unresolved+=imported_graph['unresolved_reference_count']
         for identity,value in graph['nodes'].items():
@@ -558,6 +562,7 @@ def assemble_project(project,catalogs,identifier,materials_by_scene=None,scene_c
                              'Script model pools, field trigger dispatch and live animation state are not resolved here.',*list(dict.fromkeys(limitations))])
     _reference_limitations(result['limitations'])
     if len(canonical(result))>8*1024*1024:raise ProjectError('Project reference response exceeds8 MiB')
+    audio_snapshot.verify(project)
     return deepcopy(result)
 
 
