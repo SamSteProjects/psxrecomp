@@ -2697,6 +2697,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         report=apply_import(self.server.project,**request)
                         self._json(200,dict(self.server.state(),retained_glb_report=report))
                     return
+                if route=='/api/animation-record-offset':
+                    if set(body)!={'scene_id','record_id','source_frame_indices','edits','object_index','start','end','delta','expected_source_key'}:
+                        raise ProjectError('Translation offset requires exact scene, clip, draft, range, axes and source fields')
+                    from .animation_record_offset import stage
+                    self._json(200,stage(self.server.project,**body));return
                 if route=='/api/animation-record-edit-options':
                     if set(body)!={'scene_id','record_id','expected_source_key'}:raise ProjectError('Retained editor options require exact scene, clip and source')
                     from .animation_record_edit import options
