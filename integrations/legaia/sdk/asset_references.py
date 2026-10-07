@@ -506,7 +506,7 @@ def _project_graph(project,catalog,identifier,materials=None,*,_audio_snapshot=N
         raise ProjectError('Invalid project reference decoded metadata') from error
 
 
-def assemble_project(project,catalogs,identifier,materials_by_scene=None,scene_coverage=None):
+def assemble_project(project,catalogs,identifier,materials_by_scene=None,scene_coverage=None,*,_full_graph=False):
     """Merge complete scene graphs before selecting a project-wide neighborhood."""
     from copy import copy
     from .project import canonical
@@ -599,12 +599,15 @@ def assemble_project(project,catalogs,identifier,materials_by_scene=None,scene_c
                              'Retained clips are navigable when registered in the verified scene animation catalog; their actor Inspector manages assignments.',
                              'Script model pools, field trigger dispatch and live animation state are not resolved here.',*list(dict.fromkeys(limitations))])
     _reference_limitations(result['limitations'])
-    if len(canonical(result))>8*1024*1024:raise ProjectError('Project reference response exceeds8 MiB')
+    if _full_graph:
+        result['nodes']=[nodes[key] for key in sorted(nodes)]
+        result['edges']=[edges[key] for key in sorted(edges)]
+    if len(canonical(result))>(32 if _full_graph else 8)*1024*1024:raise ProjectError('Project reference response exceeds metadata budget')
     audio_snapshot.verify(project)
     return deepcopy(result)
 
 
-def inspect_project(project,identifier):
+def inspect_project(project,identifier,*,_full_graph=False):
     """Fresh verified discovery using detached project state and private catalogs."""
     from importer.pipeline import _disc_context
     from importer.core import ImportError as RetailImportError
@@ -645,6 +648,6 @@ def inspect_project(project,identifier):
             catalogs[scene]=catalog;materials[scene]=material
     view.active_scene=active_scene
     if key!=source_key(project) or key!=source_key(view):raise ProjectError('Asset reference source changed during discovery')
-    result=assemble_project(view,catalogs,identifier,materials,coverage)
+    result=assemble_project(view,catalogs,identifier,materials,coverage,_full_graph=_full_graph)
     if key!=source_key(project):raise ProjectError('Asset reference source changed during discovery')
     return result

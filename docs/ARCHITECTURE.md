@@ -1,5 +1,28 @@
 # Architecture
 
+## Bounded project relationship tracing - accepted offline (2026-10-07)
+
+Asset references now opens a recorded project trace in either dependency or
+referenced-by direction, at1..4 hops with an explicit layer filter. One fresh
+verified graph snapshot supplies every hop and expanded neighborhood. Canonical
+first-path expansion terminates cycles; parallel/alternate arrivals remain rows.
+Depth, unavailable source and expansion stops are labelled;128 rows,32 expanded
+neighborhoods and8 MiB response limits remain explicit. Mixed layers do not
+assert a resolved Current graph or actual runtime dependency/use.
+
+Twelve focused Python checks, four Node suites and two syntax checks passed.
+Actual Town01 Actor0049 produced24 two-hop paths and four expanded neighborhoods.
+Browser checks passed reverse references, decoded-layer/depth changes, report
+withdrawal, exact full download, source-drift blocking, return to references,
+qualified target navigation and wide/400 px layout with zero page errors.
+Project/history/imports/authored state/Build inputs stayed exact through Save/Open.
+Resolved synthetic shared-array, close-event timing and narrow action-layout
+failures are retained. See [recorded project trace](legaia-asset-reference-trace.md)
+and private `local-output/sdk-20260909/reference-trace-20261007/` evidence.
+No runtime change, native Build, full campaign, game, installation or disc export
+ran. Manual gameplay remains deferred, solo development continues and the full
+SDK goal is active.
+
 ## Asset reference exploration trail - accepted offline (2026-10-07)
 
 Asset references now offers **Explore references** without closing the dialog.

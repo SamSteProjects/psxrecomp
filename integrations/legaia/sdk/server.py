@@ -827,6 +827,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-capture.js": ("script-capture.js", "text/javascript"),
                  "/animation-range.js": ("animation-range.js", "text/javascript"),
                  "/project-settings.js": ("project-settings.js", "text/javascript"),
+                 "/asset-reference-trace.js": ("asset-reference-trace.js", "text/javascript"),
                  "/asset-references.js": ("asset-references.js", "text/javascript"),
                  "/audio-sequence.js": ("audio-sequence.js", "text/javascript"),
                  "/audio-sequence-authoring.js": ("audio-sequence-authoring.js", "text/javascript"),
@@ -1776,6 +1777,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if body:raise ProjectError('Operand bundle export takes no fields')
                     from .script_operand_bundle import export_file
                     self._json(200,export_file(self.server.project))
+                    return
+                if route == '/api/asset-reference-trace':
+                    if set(body)!={'asset_id','direction','depth','layer','expected_source_key'}:raise ProjectError('Reference trace requires exact asset, direction, depth, layer and source key')
+                    from .asset_reference_trace import inspect
+                    self._json(200,inspect(self.server.project,body['asset_id'],body['direction'],body['depth'],body['layer'],body['expected_source_key']))
                     return
                 if route == '/api/asset-references':
                     if set(body) not in ({'asset_id'}, {'asset_id','scope'}):raise ProjectError('Asset references require a stable asset ID and optional scope')
