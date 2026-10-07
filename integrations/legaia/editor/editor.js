@@ -128,7 +128,7 @@ import {npcAnimationSceneTarget,npcDonorAnimationBinding,renderNpcDraftInspector
 import {openNpcScriptReset} from '/npc-script-reset.js';
 import {mountActorSelectionSets,decodeSavedActorSelection} from '/actor-selection-sets.js';
 import {mountGroupAppearance} from '/group-appearance.js';
-import {textureSceneUsage} from '/texture-usage.js';
+import {textureSceneUsage,textureMatchedPlacementIds} from '/texture-usage.js';
 import {findDecodedPath} from '/script-paths.js';
 import {mountScriptFlowOverview} from '/script-flow-overview.js';
 import {decodeTextFont,layoutGlyphRun} from '/text-font.js';
@@ -476,13 +476,19 @@ function updateModelInstanceSelection(){
   if(!canSelectHierarchyMatches()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||wallSelectMode)return;
   try{const ids=matchingModelPlacementIds(activeScenePreview().entities,visibilitySelection(),scenePlacementEligible());button.disabled=false;button.title=ids.length+' placements share the selected current SDK model identity; hidden placements are included';}catch(error){button.title=error.message;}
 }
-async function selectCurrentModelPlacementGroup(assetId,focus,current){
+async function selectCurrentPlacementGroup(ids,focus,current){
   if(!current()||!canSelectHierarchyMatches()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||wallSelectMode)return false;
-  const key=resourceStateKey(),source=state.scene_preview_source_key,ids=modelPlacementIdsForAsset(activeScenePreview().entities,assetId,scenePlacementEligible());
-  if(!ids.includes(focus))throw new Error('The active placement must belong to the current model group.');
+  ids=mergeScenePlacementSelection([],ids,scenePlacementEligible());
+  const key=resourceStateKey(),source=state.scene_preview_source_key;
+  if(!ids.includes(focus))throw new Error('The active placement must belong to the current group.');
   if(entities().some(entity=>entity.id===focus)&&!await api('/api/selection',{entity_id:focus}))return false;
-  if(!current()||key!==resourceStateKey()||source!==state.scene_preview_source_key||!canSelectHierarchyMatches()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||wallSelectMode||JSON.stringify(ids)!==JSON.stringify(modelPlacementIdsForAsset(activeScenePreview().entities,assetId,scenePlacementEligible())))throw new Error('Scene model bindings or selection changed. Select again.');
-  setSourcePlacementGroup(ids,focus);$('entity-search').value='';renderHierarchy();revealHierarchyEntities($('hierarchy'),ids,focus);renderInspector();draw();notify(ids.length+' model instances selected, including hidden placements. Project content unchanged.');return true;
+  if(!current()||key!==resourceStateKey()||source!==state.scene_preview_source_key||!canSelectHierarchyMatches()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||wallSelectMode)throw new Error('Scene sources or selection changed. Select again.');
+  setSourcePlacementGroup(ids,focus);$('entity-search').value='';renderHierarchy();revealHierarchyEntities($('hierarchy'),ids,focus);renderInspector();draw();notify(ids.length+' placements selected, including qualified hidden members. Project content unchanged.');return true;
+}
+async function selectCurrentModelPlacementGroup(assetId,focus,current){
+  if(!scenePreviewCurrent())return false;
+  const ids=modelPlacementIdsForAsset(activeScenePreview().entities,assetId,scenePlacementEligible());
+  return selectCurrentPlacementGroup(ids,focus,()=>current()&&scenePreviewCurrent()&&JSON.stringify(ids)===JSON.stringify(modelPlacementIdsForAsset(activeScenePreview().entities,assetId,scenePlacementEligible())));
 }
 selectModelInstancesButton.onclick=async()=>{
   if(selectModelInstancesButton.disabled||!scenePreviewCurrent())return;
@@ -2811,6 +2817,21 @@ function openTextureSceneUses(){
   textureUsageDialog.querySelector('button').onclick=()=>textureUsageDialog.close();
   textureUsageDialog.querySelector('[data-summary]').textContent=`${usage.representation??sceneRepresentation} scene · ${usage.matches.reduce((n,g)=>n+g.materials.length,0)} static material matches · ${usage.matching_instance_count} matching instances · ${usage.candidates.length} partial candidate geometries`;
   textureUsageDialog.querySelector('[data-coverage]').textContent=`Coverage: ${usage.textured_material_count} textured materials examined; ${usage.unresolved_material_count} unresolved materials and ${usage.unavailable_instance_count} unavailable instances. No matches means none in this decoded snapshot, not that the texture is unused in the game.`;
+  const selectMatches=document.createElement('button');selectMatches.type='button';selectMatches.dataset.selectTextureMatches='';selectMatches.textContent='Select matched placements';selectMatches.disabled=true;
+  const selectNote=document.createElement('p');selectNote.className='field-note';selectNote.textContent='Selects all qualified decoded placement matches, including hidden members; excludes partial candidates, unavailable geometry and ground. Search and pages filter the list only.';
+  textureUsageDialog.querySelector('[data-pages]').before(selectMatches,selectNote);
+  const selectionCurrent=()=>textureUsageDialog.open&&textureDialog.open&&session===textureSession&&scenePreviewCurrent()&&source===activeScenePreview()&&key===sceneRequestKey();
+  let matchedIds=[];
+  try{matchedIds=textureMatchedPlacementIds(source,session.record.id,scenePlacementEligible());selectMatches.textContent=`Select matched placements (${matchedIds.length})`;selectMatches.disabled=!matchedIds.length||!canSelectHierarchyMatches()||sceneRepresentation!=='authored'||wallSelectMode;}catch(error){selectMatches.title=error.message;}
+  selectMatches.onclick=async()=>{
+    if(selectMatches.disabled||!selectionCurrent()||!canSelectHierarchyMatches()||sceneRepresentation!=='authored'||wallSelectMode)return;
+    try{
+      const ids=textureMatchedPlacementIds(activeScenePreview(),session.record.id,scenePlacementEligible());
+      if(JSON.stringify(ids)!==JSON.stringify(matchedIds))throw new Error('Texture placement matches changed. Reopen scene texture uses.');
+      const active=visibilitySelection(),focus=ids.includes(active)?active:ids[0];selectMatches.disabled=true;
+      if(await selectCurrentPlacementGroup(ids,focus,()=>selectionCurrent()&&JSON.stringify(ids)===JSON.stringify(textureMatchedPlacementIds(activeScenePreview(),session.record.id,scenePlacementEligible())))){textureUsageDialog.close();textureDialog.close();}
+    }catch(error){notify(error.message,true);}finally{if(selectionCurrent())selectMatches.disabled=!matchedIds.length||!canSelectHierarchyMatches()||sceneRepresentation!=='authored'||wallSelectMode;}
+  };
   const list=textureUsageDialog.querySelector('[data-results]'),search=textureUsageDialog.querySelector('input'),pager=textureUsageDialog.querySelector('[data-pages]');pager.className='dialog-actions';pager.innerHTML='<button>Previous</button><span></span><button>Next</button>';let page=0;
   const rows=[...usage.matches.map(group=>({...group,matched:true})),...usage.candidates.map(group=>({...group,matched:false}))];
   const render=()=>{const query=search.value.trim().toLowerCase(),filtered=rows.filter(group=>[group.asset_id,...group.instances.map(instance=>instance.id),...group.materials.map(material=>String(material.material_index))].join(' ').toLowerCase().includes(query)),pages=Math.max(1,Math.ceil(filtered.length/20));page=Math.min(page,pages-1);pager.querySelector('span').textContent=`Page ${page+1} of ${pages} · ${filtered.length} geometries`;pager.querySelector('button').disabled=page===0;pager.querySelector('button:last-child').disabled=page+1>=pages;list.replaceChildren();

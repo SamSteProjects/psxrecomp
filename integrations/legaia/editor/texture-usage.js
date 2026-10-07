@@ -1,3 +1,4 @@
+import {mergeScenePlacementSelection} from './scene-placement-selection.js';
 import {MAX_PREVIEW_ENTITIES} from './scene-limits.js';
 // Source-address dependencies from one verified scene preview, not runtime use.
 export function textureSceneUsage(preview,textureId){
@@ -22,4 +23,21 @@ export function textureSceneUsage(preview,textureId){
     matches,candidates,textured_material_count:textured,unresolved_material_count:unresolved,
     matching_instance_count:new Set(matches.flatMap(group=>group.instances.map(instance=>instance.id))).size,
     unavailable_instance_count:preview.entities.filter(entity=>!entity.renderable).length};
+}
+
+// Only decoded address matches participate; partial candidates and nonplacements do not.
+export function textureMatchedPlacementIds(preview,textureId,eligible){
+  if(typeof textureId!=='string'||!textureId.length||textureId.length>1024)throw new Error('Choose a qualified texture source identity.');
+  const usage=textureSceneUsage(preview,textureId),seen=new Set(),geometries=new Set();
+  for(const row of preview.entities){
+    if(typeof row?.entity_id!=='string'||!row.entity_id.length||row.entity_id.length>1024||seen.has(row.entity_id))throw new Error('Texture uses have conflicting scene identities.');
+    seen.add(row.entity_id);
+  }
+  for(const row of preview.assets){
+    if(typeof row?.geometry_key!=='string'||!row.geometry_key.length||row.geometry_key.length>1024||geometries.has(row.geometry_key))throw new Error('Texture uses have conflicting geometry identities.');
+    geometries.add(row.geometry_key);
+  }
+  if(usage.matches.some(group=>typeof group.asset_id!=='string'||!group.asset_id.length||group.instances.some(row=>row.asset_id!==group.asset_id)))throw new Error('Texture matches differ from current model bindings.');
+  if(!(eligible instanceof Set))throw new Error('Texture selection requires current scene placement identities.');
+  return mergeScenePlacementSelection([],usage.matches.flatMap(group=>group.instances.filter(row=>eligible.has(row.id)).map(row=>row.id)),eligible);
 }

@@ -1,3 +1,4 @@
+import {MAX_PREVIEW_ENTITIES} from './scene-limits.js';
 // Eligibility comes from the active, source-bound scene preview.
 export function mergeScenePlacementSelection(current,hits,eligible,extend=false){
   if(!Array.isArray(current)||!Array.isArray(hits)||!(eligible instanceof Set)||typeof extend!=='boolean')throw new Error('Invalid scene placement selection input');
@@ -33,11 +34,9 @@ export function scenePlacementSelectionKind(ids,{actors,npcs,decorations}){
   return 'mixed';
 }
 
-// Mirrors the SDK preview allowance: 512 source placements + 128 NPC drafts + terrain.
-const MAX_MODEL_SELECTION_PREVIEW_ROWS=641;
 // Current SDK model bindings, including hidden/unrenderable placements, not mesh similarity.
 function currentModelRows(rows){
-  if(!Array.isArray(rows)||rows.length>MAX_MODEL_SELECTION_PREVIEW_ROWS)throw new Error('Invalid current scene model identities.');
+  if(!Array.isArray(rows)||rows.length>MAX_PREVIEW_ENTITIES)throw new Error('Invalid current scene model identities.');
   const seen=new Set();
   for(const row of rows){
     if(!row||typeof row.entity_id!=='string'||!row.entity_id.length||row.entity_id.length>1024||seen.has(row.entity_id)||row.asset_id!=null&&(typeof row.asset_id!=='string'||!row.asset_id.length||row.asset_id.length>1024))throw new Error('Invalid current scene model identities.');
