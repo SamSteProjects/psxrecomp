@@ -1,5 +1,11 @@
 # Legaia stability and release parity
 
+## Source inclusion refresh - 2026-10-06
+
+At SDK revision `6f51eaaeee47b305bc4e12b8c7a892be90043348`, all five retained runtime/precompile source hashes and all three stability fixture hashes still match the accepted October 4 evidence. This is a read-only inclusion comparison, not fresh execution or complete release/runtime equivalence. The local release reference remains recorded as `3ac7d410bf3da25f64a1e013ff8a99f7d3c694fa`; no fresh sibling source HEAD is asserted.
+
+The comparison receipt is `local-output/sdk-20260909/sdk-integrated-offline-recheck-20261006/stability-source-inclusion.json`, including both expected and actual hashes and the retained receipt hash. No source drift or missing patch was found in these inspected files. The separate SDK offline recheck at the same revision passed all 1,756 Python tests, 181 Node suites and 181 editor syntax checks with zero errors/failures/skips/partial checks; its terminal `sdk-integrated-offline-recheck-20261006/acceptance.json` also reverified these eight source/fixture hashes. That complete SDK-suite result does not broaden the runtime fixture or gameplay acceptance stated here. Cold startup, audio overflow, FMV, field/cross-scene restore performance and other manual boundaries remain open. No game launch or runtime attachment was performed.
+
 ## Focused stability recheck - 2026-10-04
 
 At SDK source `28bda1d7`, the inspected runtime/precompile source hashes still
