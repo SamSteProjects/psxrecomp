@@ -984,6 +984,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-allocation.js": ("animation-allocation.js", "text/javascript"),
                  "/animation-record-library.js": ("animation-record-library.js", "text/javascript"),
                  "/retained-animation-assets.js": ("retained-animation-assets.js", "text/javascript"),
+                 "/animation-effective-interpolation.js": ("animation-effective-interpolation.js", "text/javascript"),
                  "/animation-record-edit.js": ("animation-record-edit.js", "text/javascript"),
                  "/animation-record-glb.js": ("animation-record-glb.js", "text/javascript"),
                  "/model-glb.js": ("model-glb.js", "text/javascript"),
@@ -2776,6 +2777,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Rotation offset requires exact scene, clip, draft, range, axes and source fields')
                     from .animation_record_offset import stage_rotation
                     self._json(200,stage_rotation(self.server.project,**body));return
+                if route=='/api/animation-record-interpolation':
+                    if set(body)!={'scene_id','record_id','source_frame_indices','edits','object_index','start','end','expected_source_key'}:
+                        raise ProjectError('Effective interpolation requires exact source-bound clip, draft and range fields')
+                    from .animation_record_interpolation import stage
+                    self._json(200,stage(self.server.project,**body));return
                 if route=='/api/animation-record-edit-options':
                     if set(body)!={'scene_id','record_id','expected_source_key'}:raise ProjectError('Retained editor options require exact scene, clip and source')
                     from .animation_record_edit import options
