@@ -136,6 +136,7 @@ def package_change_kinds(edits) -> list[str]:
         'audio-SEQ-fixed-operands-only': 'native audio sequence operands',
         'audio-VAB-fixed-parameters-only': 'native audio bank parameters',
         'audio-SPU-fixed-sample-prefix-only': 'native audio samples',
+        'audio-SPU-sample-allocation': 'native audio sample allocation',
         'model-pack-topology-relocation': 'model topology and shared pack edits',
         'model-pack-content-relocation': 'model content exceeding compressed source capacity',
         'animation-bank-allocation-relocation': 'allocated animation records',
@@ -222,7 +223,9 @@ def build_report(audit) -> dict:
                         **({key:change[key] for key in ("bank_byte_offset","entry_byte_offset","byte_length","signed","slot","page","index") if key in change}
                            if change.get("scope") == "audio-VAB-fixed-parameters-only" else {}),
                         **({key:change[key] for key in ("sample_index","sample_entry_byte_offset","sample_size_bytes","decoded_frames","input_wav_rate","maximum_absolute_error","sum_squared_error","wav_sha256","receipt_key")}
-                           if change.get("scope") == "audio-SPU-fixed-sample-prefix-only" else {}),
+                           if change.get("scope") in ("audio-SPU-fixed-sample-prefix-only","audio-SPU-sample-allocation") else {}),
+                        **({key:change[key] for key in ("source_sample_entry_byte_offset","source_sample_size_bytes")}
+                           if change.get("scope") == "audio-SPU-sample-allocation" else {}),
                         **({'composition_changes': deepcopy(change['composition_changes'])}
                            if 'composition_changes' in change else {})})
     return {"schema_version": "legaia.build-report.v1", "changes": changes,
@@ -779,8 +782,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         worldmap_overlays, worldmap_changes = prepare_worldmap_overlay(project, _image, disc_hash)
         overlays.extend(worldmap_overlays)
         audit_edits.extend(worldmap_changes)
-        from .audio_composition import prepare_overlays as prepare_audio_overlays
-        audio_overlays, audio_changes = prepare_audio_overlays(project, _image, archive)
+        from .audio_composition import prepare_native as prepare_audio_native
+        audio_overlays, audio_changes, audio_requests = prepare_audio_native(project, _image, archive)
         overlays.extend(audio_overlays)
         audit_edits.extend(audio_changes)
         growth_requests, growth_audit = [], None
@@ -788,6 +791,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             from .model_growth import prepare_model_growth
             growth_requests, growth_audit = prepare_model_growth(project, archive)
         deferred_models = set(growth_audit['deferred_model_ids']) if growth_audit else set()
+        growth_requests.extend(audio_requests)
         animation_growth_audit = None
         if animation_ledgers:
             from .animation_growth import prepare_animation_growth

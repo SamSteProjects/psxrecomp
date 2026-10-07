@@ -19,8 +19,9 @@ def current(project, inputs, identifier=None):
         # Fully qualify persisted bindings; never infer usage from a receipt alone.
         retail, _, source, _ = read(project, native_id, binding)
         composed = read_entry(project, native_id, retail)
-        bank, pieces, carrier = bank_from_entry(retail)
-        if pieces != source['pieces'] or carrier != source['carrier']:
+        _, retail_pieces, retail_carrier = bank_from_entry(retail)
+        bank, pieces, carrier = bank_from_entry(composed)
+        if retail_pieces != source['pieces'] or retail_carrier != source['carrier'] or carrier!=retail_carrier:
             raise ProjectError('Current WAV sample ownership differs from retail pieces')
         scene = binding['source_scene_id']
         if scene not in project.imports:
@@ -33,7 +34,7 @@ def current(project, inputs, identifier=None):
             wav_id = PREFIX + receipt['wav_sha256']
             if wav_id not in inputs['assets'] or receipt not in inputs['receipts'][wav_id]:
                 raise ProjectError('Current native sample lacks a qualified retained WAV asset')
-            row, offset, _ = _sample(bank, source['pieces'], sample['sample_index'])
+            row, offset, _ = _sample(bank, pieces, sample['sample_index'])
             sample_hash = sha256(composed[offset:offset + row['size_bytes']]).hexdigest()
             if sample_hash != receipt['candidate_sample_sha256']:
                 raise ProjectError('Current composed sample differs from its retained WAV candidate')

@@ -76,6 +76,8 @@ def _normalise(source, edits):
 
 
 def _current(project, asset_id, entry_sha256):
+    if project.audio_sample_overrides.get(asset_id,{}).get('format')=='sample-wav-allocated-v1':
+        raise ProjectError('This bank has sample allocations; offset-aware sequence authoring is pending')
     body, sequence, record = _source(project, asset_id, entry_sha256, project.active_scene)
     binding = project.audio_overrides.get(asset_id)
     current = body

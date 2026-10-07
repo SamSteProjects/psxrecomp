@@ -2105,6 +2105,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200, inspect(self.server.project, body['asset_id'], body['expected_source_key'],
                                            include_wav=route == '/api/audio-input-download'))
                     return
+                if route in ('/api/audio-allocation-authoring','/api/audio-allocation-review','/api/audio-allocation-preview'):
+                    from .audio_sample_allocation import options,review,preview
+                    fields={'asset_id','expected_entry_sha256','sample_index','expected_authoring_key'}
+                    if route.endswith('-review'):fields.add('operation')
+                    if route.endswith('-preview'):
+                        fields.update(('layer','expected_sample_sha256'))
+                        if body.get('layer')=='proposed':fields.update(('operation','review_key'))
+                    if body.get('operation')=='apply':fields.add('receipt_key')
+                    if set(body)!=fields:raise ProjectError('Native allocation requires exact source, layer and reviewed input fields')
+                    function=preview if route.endswith('-preview') else review if route.endswith('-review') else options
+                    self._json(200,function(self.server.project,**body));return
                 if route in ('/api/audio-sample-sources','/api/audio-sample-source-download','/api/audio-sample-source-removal-review'):
                     from .audio_sample_sources import library,download,review_removal
                     fields={'expected_authoring_key'} if route=='/api/audio-sample-sources' else {'expected_authoring_key','receipt_key'}

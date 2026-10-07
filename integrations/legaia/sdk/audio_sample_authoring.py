@@ -10,7 +10,7 @@ from importer.audio_bank import inspect_bank,bank_from_entry
 from importer.audio_waveform import inspect_waveform
 from importer.audio_sample_authoring import replace_audio_sample_wav,read_pcm_wav
 
-COMMANDS={'set_audio_sample_wav','clear_audio_sample_wav'}
+COMMANDS={'set_audio_sample_wav','clear_audio_sample_wav','set_audio_sample_allocation','clear_audio_sample_allocation'}
 MAX_SAMPLES=32
 def _hash(body):return sha256(body).hexdigest()
 def _sample(bank,pieces,index):
@@ -45,6 +45,9 @@ def _candidate(project,identifier,index,key,body,bank,record,current=None):
     return candidate,audit,receipt
 
 def read(project,identifier,binding):
+    if isinstance(binding,dict) and binding.get('format')=='sample-wav-allocated-v1':
+        from .audio_sample_allocation import read as read_allocated
+        return read_allocated(project,identifier,binding)
     if (not isinstance(binding,dict) or set(binding)!={'format','source_scene_id','source_record','bank_sha256','samples'}
             or binding['format']!='sample-wav-fixed-v1' or not isinstance(binding['source_record'],dict)
             or not isinstance(binding['samples'],list) or not 1<=len(binding['samples'])<=MAX_SAMPLES):raise ProjectError('Invalid native sample WAV binding')
@@ -70,6 +73,8 @@ def validate_collection(project):
     if count>MAX_SAMPLES:raise ProjectError('Project exceeds 32 authored native samples')
 
 def _current(project,identifier,entry_hash,index):
+    if project.audio_sample_overrides.get(identifier,{}).get('format')=='sample-wav-allocated-v1':
+        raise ProjectError('This bank has sample allocations; use native allocation authoring')
     from .audio_composition import read_entry
     body,bank,record=_source(project,identifier,entry_hash,project.active_scene)
     row,position,raw=_sample(bank,record['pieces'],index);current=read_entry(project,identifier,body)
@@ -118,6 +123,9 @@ def review(project,asset_id,expected_entry_sha256,sample_index,expected_authorin
     result['review_key']=digest(result);return result
 
 def command(project,value):
+    if value.get('type') in ('set_audio_sample_allocation','clear_audio_sample_allocation'):
+        from .audio_sample_allocation import command as allocation_command
+        return allocation_command(project,value)
     kind=value.get('type');fields={'type','asset_id','expected_entry_sha256','sample_index','expected_authoring_key','review_key'}
     if kind=='set_audio_sample_wav':fields.add('receipt_key');operation='apply'
     elif kind=='clear_audio_sample_wav':operation='clear'
