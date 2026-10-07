@@ -25,15 +25,20 @@ export function decodeMeshNodeTransform(value,allowShear=false){
   for(let row=0;row<3;row++)for(let col=0;col<3;col++)if(!close([0,1,2].reduce((sum,k)=>sum+m[row*4+k]*value.normal_matrix[k][col],0),row===col?1:0))fail('Mesh normal transform differs from inverse transpose.');
   return structuredClone(value);
 }
+export function decodeMeshSkinBake(value){
+ if(!value||Object.keys(value).sort().join(',')!=='inverse_bind_accessor,joint_nodes,skin_index'||!integer(value.skin_index,63)||!(value.inverse_bind_accessor===null||integer(value.inverse_bind_accessor,65535))||!Array.isArray(value.joint_nodes)||!value.joint_nodes.length||value.joint_nodes.length>64||value.joint_nodes.some(id=>!integer(id,63))||new Set(value.joint_nodes).size!==value.joint_nodes.length)fail('Invalid static skin pose ownership.');
+ return structuredClone(value);
+}
 export function decodeMeshNodeSources(value,indices=null){
   if(value===undefined)return null;
   if(!Array.isArray(value)||!value.length||value.length>128||indices&&value.length!==indices.length)fail('Invalid static mesh source ownership.');
   const seen=new Set(),nodes=new Map();
   for(const [i,row] of value.entries()){
     const path=row?.node_path;if(path!==undefined&&(!Array.isArray(path)||path.length<2||path.length>64||path.some(id=>!integer(id,63))||new Set(path).size!==path.length||path.at(-1)!==row.node_index))fail('Invalid static mesh ancestry.');
-    if(!row||Object.keys(row).sort().join(',')!==(path?'mesh_index,mesh_primitive_index,node_index,node_path,node_transform,primitive_index':'mesh_index,mesh_primitive_index,node_index,node_transform,primitive_index')||row.primitive_index!==(indices?indices[i]:i)||!integer(row.node_index,63)||!integer(row.mesh_index,63)||!integer(row.mesh_primitive_index,127)||!row.node_transform|| !decodeMeshNodeTransform(row.node_transform,!!path))fail('Invalid mesh node/primitive source binding.');
+    if(!row||Object.keys(row).sort().join(',')!==['mesh_index','mesh_primitive_index','node_index','node_transform','primitive_index',...(path?['node_path']:[]),...(row.skin_bake!==undefined?['skin_bake']:[])].sort().join(',')||row.primitive_index!==(indices?indices[i]:i)||!integer(row.node_index,63)||!integer(row.mesh_index,63)||!integer(row.mesh_primitive_index,127)||!row.node_transform|| !decodeMeshNodeTransform(row.node_transform,!!path))fail('Invalid mesh node/primitive source binding.');
+    if(row.skin_bake!==undefined){decodeMeshSkinBake(row.skin_bake);if(!same(row.node_transform.matrix,[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]))fail('Skinned mesh node transform must be ignored.');}
     const identity=`${row.node_index}/${row.mesh_primitive_index}`;
-    if(seen.has(identity)||nodes.has(row.node_index)&&(nodes.get(row.node_index).mesh_index!==row.mesh_index||!same(nodes.get(row.node_index).node_transform,row.node_transform)||!same(nodes.get(row.node_index).node_path??null,path??null)))fail('Ambiguous mesh instance source binding.');
+    if(seen.has(identity)||nodes.has(row.node_index)&&(nodes.get(row.node_index).mesh_index!==row.mesh_index||!same(nodes.get(row.node_index).node_transform,row.node_transform)||!same(nodes.get(row.node_index).node_path??null,path??null)||!same(nodes.get(row.node_index).skin_bake??null,row.skin_bake??null)))fail('Ambiguous mesh instance source binding.');
     if(!indices){const prior=value[i-1];if(!prior||prior.node_index!==row.node_index){if(nodes.has(row.node_index)||row.mesh_primitive_index!==0)fail('Mesh roots must retain their source blocks.');}else if(row.mesh_primitive_index!==prior.mesh_primitive_index+1)fail('Mesh primitive source ordering changed.');}
     seen.add(identity);nodes.set(row.node_index,row);
   }
@@ -50,11 +55,13 @@ export function decodeMeshSceneCatalog(value,glbHash){
   decodeMeshSceneSource(value.scene_source);
   return structuredClone(value);
 }
-const staticScopeNote=inventory=>inventory.static_scope?` Static selection excludes ${inventory.static_scope.animation_count} animation ${inventory.static_scope.animation_count===1?'clip':'clips'} and ${inventory.static_scope.skin_count} skin ${inventory.static_scope.skin_count===1?'record':'records'}; their payloads are not imported.`:'';
+const staticScopeNote=inventory=>inventory.static_scope?.baked_skin_indices?` Static poses from ${inventory.static_scope.baked_skin_indices.length} skin records are baked into geometry using joint transforms and inverse binds. No skeletal animation or native skin is imported. ${inventory.static_scope.animation_count} unrelated animation clips remain excluded.`:inventory.static_scope?` Static selection excludes ${inventory.static_scope.animation_count} animation ${inventory.static_scope.animation_count===1?'clip':'clips'} and ${inventory.static_scope.skin_count} skin ${inventory.static_scope.skin_count===1?'record':'records'}; their payloads are not imported.`:'';
 export function decodeMeshStaticScope(value,sources,selection){
-  if(value===undefined)return null;
+  if(value===undefined){if(sources?.some(row=>row.skin_bake))fail('Static skin bake requires qualified scene activity scope.');return null;}
   const valid=rows=>Array.isArray(rows)&&rows.length<=64&&rows.every(n=>integer(n,63))&&new Set(rows).size===rows.length;
-  if(!value||Object.keys(value).sort().join(',')!=='animated_nodes,animation_count,selected_nodes,skin_count'||!valid(value.selected_nodes)||!valid(value.animated_nodes)||!integer(value.animation_count,64)||!integer(value.skin_count,64)||!(value.animation_count||value.skin_count)||value.animated_nodes.some((n,i)=>value.selected_nodes.includes(n)||i&&n<=value.animated_nodes[i-1])||(!value.animation_count&&value.animated_nodes.length)||(value.animation_count&&!value.animated_nodes.length))fail('Invalid selected static scene activity scope.');
+  if(!value||Object.keys(value).sort().join(',')!==['animated_nodes','animation_count','selected_nodes','skin_count',...(value.baked_skin_indices!==undefined?['baked_skin_indices']:[])].sort().join(',')||!valid(value.selected_nodes)||!valid(value.animated_nodes)||!integer(value.animation_count,64)||!integer(value.skin_count,64)||!(value.animation_count||value.skin_count)||value.animated_nodes.some((n,i)=>value.selected_nodes.includes(n)||i&&n<=value.animated_nodes[i-1])||(!value.animation_count&&value.animated_nodes.length)||(value.animation_count&&!value.animated_nodes.length))fail('Invalid selected static scene activity scope.');
+  if(value.baked_skin_indices!==undefined&&(!Array.isArray(value.baked_skin_indices)||!value.baked_skin_indices.length||value.baked_skin_indices.length>64||value.baked_skin_indices.some((n,i)=>!integer(n,value.skin_count-1)||i&&n<=value.baked_skin_indices[i-1])))fail('Invalid baked skin inventory scope.');
+  for(const row of sources??[])if(row.skin_bake&&(!value.baked_skin_indices?.includes(row.skin_bake.skin_index)||row.skin_bake.joint_nodes.some(id=>!value.selected_nodes.includes(id))))fail('Static skin joints are outside the qualified scene scope.');
   if(selection&&selection.scenes[selection.scene_index].roots.some(n=>!value.selected_nodes.includes(n)))fail('Static activity scope omits selected scene roots.');
   if((sources??[{node_index:0}]).some(row=>(row.node_path??[row.node_index]).some(n=>!value.selected_nodes.includes(n))))fail('Static activity scope omits mesh ancestry.');
   return structuredClone(value);

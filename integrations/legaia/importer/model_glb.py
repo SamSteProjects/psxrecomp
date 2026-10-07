@@ -238,18 +238,18 @@ class _Accessors:
         self.cache = {}
         self.components = 0
 
-    def read(self, index, width, label, indices=False, normalized=False):
+    def read(self, index, width, label, indices=False, normalized=False, matrix=False, unsigned=False):
         index = _integer(index, 0, len(self.accessors) - 1, f'{label} accessor')
-        key = (index, width, indices, normalized)
+        key = (index, width, indices, normalized, matrix, unsigned)
         if key in self.cache:
             return self.cache[key]
         a = _object(self.accessors[index], f'{label} accessor')
-        if a.get('type') != ('SCALAR' if width == 1 else f'VEC{width}') or a.get('normalized', False) is not normalized or (normalized and indices) or 'sparse' in a:
+        if a.get('type') != ('MAT4' if matrix and width == 16 else 'SCALAR' if width == 1 else f'VEC{width}') or a.get('normalized', False) is not normalized or (normalized and indices) or 'sparse' in a:
             raise ImportError(f'Model GLB {label} accessor type, normalization or sparse storage is unsupported')
         component = a.get('componentType')
         if normalized:
             formats = {5121: ('B', 1), 5123: ('H', 2)}
-        elif indices:
+        elif indices or unsigned:
             formats = {5121: ('B', 1), 5123: ('H', 2), 5125: ('I', 4)}
         else:
             formats = {5126: ('f', 4)}

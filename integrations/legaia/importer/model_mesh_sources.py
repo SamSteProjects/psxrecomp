@@ -2,6 +2,7 @@
 from .core import ImportError
 from .model_mesh_scene import scene_source
 from .model_mesh_transform import node_transform,compose_node_transform
+from .model_mesh_skin import skin_binding
 
 
 def _dynamic_targets(doc,node_count):
@@ -62,17 +63,19 @@ def mesh_sources(doc,scene_index=None,*,allow_empty=False,with_scope=False):
         colors[index]=2
     for index in range(len(nodes)):check(index)
     if any(root in parents for root in roots):raise ImportError('Mesh scene roots cannot also be children')
-    sources=[];selected_nodes=[]
+    sources=[];selected_nodes=[];world={};paths={};skin_nodes=[]
     def visit(node_index,path,parent=None):
         node=nodes[node_index]
         selected_nodes.append(node_index)
         if node_index in animated:
             raise ImportError(f'Selected mesh scene node {node_index} is animated; choose a static scene')
-        if any(key in node for key in ('skin','weights','extensions')):
-            raise ImportError('Mesh scene hierarchy must remain static and unskinned')
+        if any(key in node for key in ('weights','extensions')):
+            raise ImportError('Selected mesh scene morph weights and node extensions are unsupported')
         local=node_transform(node);transform=local if parent is None else compose_node_transform(parent,local)
-        path=path+[node_index]
-        if 'mesh' in node:append_mesh(node_index,path,transform)
+        path=path+[node_index];world[node_index]=transform;paths[node_index]=path
+        if 'skin' in node:
+            if 'mesh' not in node:raise ImportError('Static skin must belong to a mesh node')
+            skin_nodes.append(node_index)
         for child in children[node_index]:visit(child,path,transform)
     def append_mesh(node_index,path,transform):
         node=nodes[node_index]
@@ -88,13 +91,22 @@ def mesh_sources(doc,scene_index=None,*,allow_empty=False,with_scope=False):
                 mesh_primitive_index=primitive_index,node_transform=transform,primitive=primitive,
                 **({'node_path':path} if len(path)>1 else {})))
     for root in roots:visit(root,[])
+    bindings={index:skin_binding(doc,nodes[index],world,parents,set(selected_nodes)) for index in skin_nodes}
+    for index in selected_nodes:
+        if 'mesh' not in nodes[index]:continue
+        first=len(sources)
+        append_mesh(index,paths[index],node_transform({}) if index in bindings else world[index])
+        if index in bindings:
+            binding,joints=bindings[index]
+            for row in sources[first:]:row.update(skin_bake=binding,_skin_world=joints)
     if not sources and not allow_empty:raise ImportError('Mesh scene contains no selected static mesh sections')
-    result=(sources,len(nodes)==len(meshes)==1 and roots==[0])
+    result=(sources,not bindings and len(nodes)==len(meshes)==1 and roots==[0])
     scope=(dict(selected_nodes=selected_nodes,animated_nodes=sorted(animated),
                 animation_count=animation_count,skin_count=skin_count)
            if animation_count or skin_count else None)
+    if bindings:scope['baked_skin_indices']=sorted({value[0]['skin_index'] for value in bindings.values()})
     return (*result,scope) if with_scope else result
 
 
 def source_binding(source):
-    return {key:value for key,value in source.items() if key!='primitive'}
+    return {key:value for key,value in source.items() if key!='primitive' and not key.startswith('_')}

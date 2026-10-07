@@ -33,7 +33,7 @@ LIMITATIONS=[
     'Unlit packets import mesh colors. Textured RGB maps linear modulation to neutral 128; untextured RGB converts linear glTF colors to display-referred byte RGB. Flat donors require equal corner colors.',
     'Packet flags/materials are inherited. Missing attributes retain donor values. Vertex alpha other than 1 is not representable in baked RGB; lit packets ignore mesh colors.',
     'Other GLB display attributes, materials and images are not imported. No external resources are fetched.',
-    'Bakes each selected static scene-hierarchy mesh node TRS or affine non-sheared matrix before native coordinate rounding. Normals use inverse transpose; mirrored scales retain oriented winding. Selected animated nodes, skinning and morph targets reject; unrelated animation/skin payloads are excluded, not imported.',
+    'Bakes each selected static scene-hierarchy mesh node TRS or affine non-sheared matrix before native coordinate rounding. Normals use inverse transpose; mirrored scales retain oriented winding. Selected animated nodes and morph targets reject. Static weighted skin poses bake joint-world/inverse-bind transforms with normalized weights into geometry; no native skin, joints or skeletal animation is imported. Unselected activity remains excluded.',
     'Appends geometry; it does not replace retained faces or create native objects or packet groups. Gameplay remains unverified.',
 ]
 

@@ -39,7 +39,7 @@ class MeshStaticSelectionTests(unittest.TestCase):
             with self.assertRaisesRegex(ImportError,f'node {node} is animated'):
                 inspect_append_mesh(fixtures.glb(selected),scene_index=1)
         def selected_skin(doc):mixed(doc);doc['nodes'][0]['skin']=0
-        with self.assertRaisesRegex(ImportError,'unskinned'):
+        with self.assertRaisesRegex(ImportError,'selected static scene'):
             decode_append_mesh(fixtures.glb(selected_skin),scene_index=1)
         def skin_only(doc):mixed(doc);doc.pop('animations')
         self.assertEqual(decode_append_mesh(fixtures.glb(skin_only),scene_index=1)['static_scope']['animated_nodes'],[])

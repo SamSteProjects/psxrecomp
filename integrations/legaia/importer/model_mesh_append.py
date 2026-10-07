@@ -15,6 +15,7 @@ from .model_mesh_scene import scene_source
 from .model_mesh_sources import mesh_sources,source_binding
 from .model_mesh_orientation import mesh_source_rotation,rotation_matrix,rotate_native
 from .model_mesh_transform import transform_point,transform_normal,IDENTITY
+from .model_mesh_skin import skin_vertex_transforms
 
 
 def mesh_source_scale(value):
@@ -107,9 +108,10 @@ def _decode_mesh(doc,binary,content_hash,sources,canonical,scope,*,preserve_prim
             raise ImportError('Mesh append supports triangle lists, strips and fans without morph targets or extensions')
         attrs=primitive.get('attributes')
         if (not isinstance(attrs,dict) or 'POSITION' not in attrs
-                or not set(attrs)<=({'POSITION','NORMAL','COLOR_0','TANGENT'}|{f'TEXCOORD_{i}' for i in range(8)})):
+                or not set(attrs)<=({'POSITION','NORMAL','COLOR_0','TANGENT'}|{f'TEXCOORD_{i}' for i in range(8)}|{f'{kind}_{i}' for kind in ('JOINTS','WEIGHTS') for i in range(8)})):
             raise ImportError('Mesh append requires standard POSITION with supported display attributes only')
         positions=reader.read(attrs['POSITION'],3,'append positions');normals=None;uvs=None;colors=None
+        skin_transforms=skin_vertex_transforms(reader,source,attrs,len(positions))
         sets=[i for i in range(8) if f'TEXCOORD_{i}' in attrs]
         if sets!=list(range(len(sets))):raise ImportError('Source UV sets must be consecutive starting at TEXCOORD_0')
         uv_sources.append(dict(primitive_index=source['primitive_index'],sets=sets,first_triangle=first_triangle))
@@ -167,12 +169,19 @@ def _decode_mesh(doc,binary,content_hash,sources,canonical,scope,*,preserve_prim
         else:
             source_triangles=[(indices[0],indices[begin+1],indices[begin+2]) for begin in range(face_count)]
         for triangle in source_triangles:
+            face_transform=transform
+            if skin_transforms is not None:
+                signs={skin_transforms[index]['winding_reversed'] for index in triangle}
+                if len(signs)!=1:raise ImportError('Static skin face mixes reflected and non-reflected vertex transforms')
+                face_transform=skin_transforms[triangle[0]]
             current=[];directions=[];texture_points=[];color_points=[];source_colors=[]
             # Reflect Y and reverse winding to preserve the SDK GLB convention.
-            for index in ((triangle[0],triangle[2],triangle[1]) if transform['winding_reversed'] else triangle):
+            for index in ((triangle[0],triangle[2],triangle[1]) if face_transform['winding_reversed'] else triangle):
+                vertex_transform=skin_transforms[index] if skin_transforms is not None else transform
                 owner=(source['node_index'],attrs['POSITION'],index)
+                if skin_transforms is not None:owner+=tuple(attrs[key] for key in sorted(attrs) if key.startswith(('JOINTS_','WEIGHTS_')))
                 if owner not in owners:
-                    values=[value*source_scale for value in transform_point(transform,positions[index])];values[1]=-values[1];values=rotate_native(orientation,values);values=[value+source_offset[a] for a,value in enumerate(values)]
+                    values=[value*source_scale for value in transform_point(vertex_transform,positions[index])];values[1]=-values[1];values=rotate_native(orientation,values);values=[value+source_offset[a] for a,value in enumerate(values)]
                     quantized=[round(value) for value in values]
                     if any(not -32768<=value<=32767 for value in quantized):
                         raise ImportError('Mesh append positions exceed signed native coordinates')
@@ -186,7 +195,7 @@ def _decode_mesh(doc,binary,content_hash,sources,canonical,scope,*,preserve_prim
                     color_points.append(list(colors[index]))
                     if material_colors:source_colors.append(list(original_colors[index]) if original_colors is not None else [1,1,1,1])
                 if normals is not None:
-                    direction=transform_normal(transform,normals[index]);direction[1]=-direction[1];direction=rotate_native(orientation,direction)
+                    direction=transform_normal(vertex_transform,normals[index]);direction[1]=-direction[1];direction=rotate_native(orientation,direction)
                     length=math.hypot(*direction)
                     if length<=1e-12:raise ImportError('Mesh append requires nonzero referenced normals')
                     scaled=[value/length*4096 for value in direction]

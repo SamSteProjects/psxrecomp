@@ -1,5 +1,7 @@
 # Legaia reverse-engineering provenance
 
+2026-10-07 static external skin pose: Khronos [glTF 2.0 specification, Skins](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#skins), sections 3.7.3 and 5.28, is the primary host-format source for joint ownership, ignored skinned mesh-node transforms, inverse-bind order/identity default and paired normalized weight rules. SDK math blends joint-world × inverse-bind matrices and bakes positions/normal directions; literal position and Decimal normal oracles plus independent static-mesh/native readback qualify implementation. This is external-format evidence, not a new interpretation of retail joints or native animated skinning. Native serialization reuses the existing qualified donor/ledger path; the intended Andrew reference pin stays unchanged. See [static skin workflow and acceptance](legaia-static-skin-mesh.md).
+
 ## Emitted imported script record comparison (2026-10-06)
 
 Pinned Andrew revision `d6e64c68ede25813d35db20980da82a1a025549b`, `crates/asset/src/man_section.rs`, supplies existing partition/count/record-offset structure. The new comparison reuses this qualified SDK layout reader and instruction decoder rather than copying reference runtime code. Retail disc and actual emitted package bytes establish record identity and differences; decoded paths retain stops/opaque regions and do not prove execution. See [workflow and actual native acceptance](legaia-source-build-script.md).
