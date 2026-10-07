@@ -187,6 +187,23 @@ class _Accessors:
         self.cache = {}
         self.component_count = 0
 
+    def _span(self, descriptor, count, width, fmt, size):
+        vi = _integer(descriptor.get("bufferView"), 0, len(self.views) - 1, "buffer view index")
+        view = _object(self.views[vi], "animation buffer view")
+        if view.get("buffer") != 0 or type(view.get("buffer")) is not int:
+            raise ImportError("Animation accessor must reference embedded buffer zero")
+        # glTF 2.0 reserves byteStride/target for other buffer usages.
+        if "byteStride" in view or "target" in view:
+            raise ImportError("Animation accessor data must be tightly packed without a vertex stride")
+        start = _integer(view.get("byteOffset", 0), 0, len(self.payload), "buffer view offset")
+        length = _integer(view.get("byteLength"), 1, len(self.payload), "buffer view length")
+        relative = _integer(descriptor.get("byteOffset", 0), 0, length, "accessor byte offset")
+        byte_length = count * width * size
+        if start % size or relative % size or start + length > len(self.payload) or relative + byte_length > length:
+            raise ImportError("Animation accessor alignment or byte span is invalid")
+        return [list(value) for value in struct.iter_unpack(f"<{width}{fmt}",
+                self.payload[start + relative:start + relative + byte_length])]
+
     def read(self, index, shape):
         _integer(index, 0, len(self.rows) - 1, "accessor index")
         key = (index, shape)
@@ -194,29 +211,36 @@ class _Accessors:
             return self.cache[key]
         row = _object(self.rows[index], "animation accessor")
         if (type(row.get("componentType")) is not int or row.get("componentType") != 5126 or row.get("type") != shape or
-                row.get("normalized", False) is not False or "sparse" in row):
-            raise ImportError("Animation accessors require nonsparse FLOAT SCALAR/VEC3/VEC4 data")
+                row.get("normalized", False) is not False):
+            raise ImportError("Animation accessors require unnormalized FLOAT data of the expected shape")
         count = _integer(row.get("count"), 1, MAX_KEYS, "animation key count")
-        vi = _integer(row.get("bufferView"), 0, len(self.views) - 1, "buffer view index")
-        view = _object(self.views[vi], "animation buffer view")
-        if view.get("buffer") != 0 or type(view.get("buffer")) is not int:
-            raise ImportError("Animation accessor must reference embedded buffer zero")
-        # glTF 2.0 section 3.6.2.1 reserves byteStride for vertex attributes.
-        if "byteStride" in view or "target" in view:
-            raise ImportError("Animation accessor data must be tightly packed without a vertex stride")
-        start = _integer(view.get("byteOffset", 0), 0, len(self.payload), "buffer view offset")
-        length = _integer(view.get("byteLength"), 1, len(self.payload), "buffer view length")
-        relative = _integer(row.get("byteOffset", 0), 0, length, "accessor byte offset")
         width = {"SCALAR": 1, "VEC3": 3, "VEC4": 4, "MAT4": 16}[shape]
         if self.component_count + count * width > MAX_ANIMATION_COMPONENTS:
             raise ImportError("Animation accessors exceed the one-million-component decoding bound")
-        if start % 4 or relative % 4 or start + length > len(self.payload) or relative + count * width * 4 > length:
-            raise ImportError("Animation accessor alignment or byte span is invalid")
-        values = list(struct.iter_unpack(f"<{width}f",
-                      self.payload[start + relative:start + relative + count * width * 4]))
-        if any(not math.isfinite(v) for row_values in values for v in row_values):
+        if "bufferView" in row:
+            result = self._span(row, count, width, 'f', 4)
+        else:
+            if "byteOffset" in row:
+                raise ImportError("Animation accessor without a base buffer view cannot define byteOffset")
+            result = [[0.0] * width for _ in range(count)]
+        if any(not math.isfinite(v) for values in result for v in values):
             raise ImportError("Animation accessor contains a nonfinite component")
-        result = [list(value) for value in values]
+        if "sparse" in row:
+            sparse = _object(row['sparse'], "sparse animation accessor")
+            sparse_count = _integer(sparse.get('count'), 1, count, "sparse animation count")
+            indices = _object(sparse.get('indices'), "sparse animation indices")
+            component = indices.get('componentType')
+            if type(component) is not int or component not in (5121, 5123, 5125):
+                raise ImportError("Sparse animation indices require unsigned byte, short or int components")
+            fmt, size = {5121:('B', 1), 5123:('H', 2), 5125:('I', 4)}[component]
+            positions = [value[0] for value in self._span(indices, sparse_count, 1, fmt, size)]
+            if any(position >= count or (i and position <= positions[i-1]) for i, position in enumerate(positions)):
+                raise ImportError("Sparse animation indices must be strictly increasing and within the accessor")
+            values = self._span(_object(sparse.get('values'), "sparse animation values"), sparse_count, width, 'f', 4)
+            if any(not math.isfinite(v) for value in values for v in value):
+                raise ImportError("Sparse animation values contain a nonfinite component")
+            for position, value in zip(positions, values):
+                result[position] = value
         self.cache[key] = result
         self.component_count += count * width
         return result

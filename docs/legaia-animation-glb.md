@@ -87,10 +87,10 @@ bindings. The selected interchange rate is not verified retail cadence.
 Input is bounded to a 32 MiB GLB, 128 KiB binding JSON, 4096 source channels,
 64 rigid objects and one million decoded animation components.
 The importer validates self-contained GLB 2 chunks, tightly packed FLOAT
-animation accessors, explicit object mapping, finite TR values and strictly
+animation accessors (including [qualified sparse accessors](legaia-sparse-animation-glb.md)), explicit object mapping, finite TR values and strictly
 increasing nonnegative timestamps. STEP, LINEAR and CUBICSPLINE channels and mapped static
 node TR values are supported. Unsupported interpolation, non-rigid hierarchy,
-nonunit scale/animated matrices, ambiguous objects, external/sparse data and unsupported
+nonunit scale/animated matrices, ambiguous objects, external data and unsupported
 extensions reject. Mesh-only `KHR_materials_unlit` declarations are ignored.
 These interoperability rules follow the primary
 [glTF 2.0 specification](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html).
