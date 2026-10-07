@@ -1,5 +1,43 @@
 # VAB parameter authoring and native delivery
 
+## Offline ADSR sample audition (2026-10-06)
+
+Packed tone ADSR editing includes an envelope sample audition alongside the
+counter graph. Retail ADSR uses Retail PCM; Current and reviewed Proposed ADSR
+use Current PCM. Each layer's encoded sample operand must identify an in-range
+source table row. Sample options must match the inspected bank's complete
+Current entry hash. Existing `/api/audio-sample-authoring` and
+`/api/audio-sample-preview` routes freshly qualify the sample layer, authoring
+key, original entry/piece ownership and sample hash. The client verifies PCM SHA
+and every waveform min/max bin before publishing playback or export controls.
+No new mutation route, saved format, runtime code or native serializer is added.
+
+Select the layer, Load its sample, choose 11025, 22050, 32000, 44100 or 48000 Hz
+as a preview source rate, and choose key-off at 250, 500, 1000 or 2000 ms. Play
+and Save render a fixed 2500 ms mono window at 44100 Hz. Linear preview
+resampling multiplies the one-pass decoded source prefix by the existing native
+counter model divided by 32768; output truncates toward zero to signed16 PCM.
+The source ends once and the remaining window is silent. Playback volume starts
+at 20%; exported WAV retains full preview level. The renderer caps source PCM at
+114688 frames and generated windows at five seconds. The existing sample-only
+WAV encoder's bounds remain unchanged.
+
+Reviewed Proposed appears only after bank Review and uses its complete ADSR
+pair with Current sample bytes. Local draft controls do not become Proposed.
+Changing tone, source, review, refresh or closing the owner aborts pending loads,
+stops playback, closes the audio context and releases decoded PCM. Changing
+layer/rate/key-off stops playback before replay. Invalid or empty source sample
+operands cannot load. The UI identifies sample operands without claiming resolved
+notes, playable pitch, looping, Gaussian interpolation, driver transformations,
+volume/pan/mixer semantics or audible game equivalence.
+
+Acceptance: seven client suites, two syntax checks, actual private muted editor
+play/stop and three WAV downloads, Discard and tone-change withdrawal, unchanged
+project/history/native entry/Build key, independent WAV headers/extent and literal
+fast-attack samples, and wide/400 px layouts. Existing counter-model native oracle
+evidence remains applicable; no fresh native Build or full campaign was run.
+Private evidence: `local-output/sdk-20260909/audio-envelope-audition-20261007/`.
+
 ## Paired ADSR word authoring - accepted offline (2026-10-06)
 
 **Bank parameter editor -> Packed tone record -> adsr1 / adsr2 -> Edit ADSR word pair** stages both native u16 words together. Both words have raw inputs and structured fields, with ADSR2 bit 13 held by structured edits. Review submits the same qualified tone's ADSR1/ADSR2 in canonical order, shows both reviewed values and uses the complete reviewed pair in the counter plot. Local drafts never become Proposed before Review. Apply commits the pair through one existing bank command and one history entry; Undo/Redo, Save/Open, paired Discard and paired retail staging retain the same ownership boundary. Invalid companion words or structured fields block Review, and pending pair/raw/structured/navigation controls lock. Source changes withdraw both word controls and the preview until Refresh.
@@ -55,9 +93,9 @@ Verification on 2026-10-06: 11 retail-enabled Python workflow checks, three Node
 
 Validation: 26 regression checks and six bank/composition checks passed; two lifecycle/HTTP checks passed again after authored-asset deduplication and HTTP error cleanup. Full independent readback of fresh fixed-span and relocated native directory/ZIP packages passed with all 27 bank parameters plus sequence edits. Fixed package SHA-256: `6f0b596d9840f9e7e61dfa83a9ea153ec7e98bdc1d502f660e073e0a792e1ad1`; relocated package: `a1a47ced9b116b88bb4ad2ba030303ee16cab4bf0d2cf2926d843903d21666d2`. Imported sources and earlier authored script/animation state were preserved. Saved Build receipts stale after bank Clear and match again after Undo. The actual sequence editor accepted bank-only Current, reviewed/applied a sequence change, then cleared it while retaining all bank fields; final screenshot was inspected and no page errors occurred. Private evidence is `local-output/sdk-20260909/audio-bank-native-20261006/` (`proof.json`, `focused.log`, `browser-proof.json`, `browser.log`).
 
-The Audio Asset Database opens a Retail bank inspector with separate Retail/Current/Proposed parameter controls; the backend does not provide instrument resolution, interpreted ADSR, sample replacement, bank allocation, composition synthesis or runtime playback acceptance. Gameplay stays deferred. No game, attachment, installation or full-disc export was used.
+The Audio Asset Database opens a Retail bank inspector with separate Retail/Current/Proposed parameter controls. Current workflows include structured ADSR fields, counter previews, bounded envelope audition and fixed-span sample replacement. General instrument resolution, bank allocation, composition synthesis and runtime playback acceptance remain open. Gameplay stays deferred. No game, attachment, installation or full-disc export was used.
 
-The native VAB parameter serializer is implemented and qualified. It is **not yet connected to SDK project commands, editor editing controls or Build**. The bank inspector and source sample audition remain the available bank workflows. Development stays solo; gameplay verification remains deferred.
+Historical codec-only milestone (superseded by editor/Build delivery above): the native VAB parameter serializer was initially qualified before SDK commands and Build integration. Development stays solo; gameplay verification remains deferred.
 
 `importer/audio_bank_authoring.py` supports 27 existing scalar parameter fields:
 
@@ -84,4 +122,4 @@ Verification on 2026-10-06: all nine focused Python checks passed without skips/
 
 A separate source-qualified inventory recorded the raw ranges of all 27 fields across 202 banks, 25,856 fixed program slots and 17,264 packed tone records. All 202 qualified retail carriers use split VAB header/sample chunks; standalone/leading-contiguous delivery is covered by structural fixtures, not claimed as retail coverage. Ranges include unused slots/records and do not define runtime validity limits. Private evidence: `source-field-ranges.json` and `ranges.log` in the same directory. The bank inspector's stale limitation text was also corrected to recognize existing bounded waveform/sample audition workflows; its Node contract and a focused preservation check passed.
 
-Bank editor controls and native Build delivery are verified as recorded above. Instrument resolution, interpreted envelopes, sample replacement/allocation, synthesis and audible/runtime acceptance remain open.
+Bank editor controls, native Build delivery, fixed-span sample replacement, structured ADSR fields, counter curves and the bounded offline envelope audition are verified as recorded in the current milestones. General instrument synthesis, allocation, driver semantics and audible/runtime acceptance remain open.

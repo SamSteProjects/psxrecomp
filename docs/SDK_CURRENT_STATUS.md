@@ -1,5 +1,30 @@
 # Current Legaia SDK status — 2026-10-06
 
+## ADSR sample audition - accepted offline (2026-10-06)
+
+The bank parameter editor's tone ADSR view now offers a one-pass envelope sample
+audition for Retail, Current and Reviewed Proposed. Retail uses Retail sample
+bytes; Current and reviewed ADSR proposals use freshly qualified Current sample
+bytes, including retained WAV replacements. An in-range encoded sample operand
+selects the sample without claiming note or instrument resolution. Local
+unreviewed ADSR drafts are excluded. Choose a preview sample rate and explicit
+key-off, then Load, Play/Stop or Save a bounded mono 44.1 kHz WAV. Playback starts
+at 20% volume; WAV export uses full preview level. No looping, driver pitch,
+Gaussian filtering or game mix is inferred.
+
+Seven affected client suites and two syntax checks passed. A private muted bank
+editor auditioned and exported all three layers, checked immutable Review and
+Discard, stopped/withdrew previews on tone changes, and produced three distinct
+WAVs. Independent WAV header, extent, literal fast-attack samples and silent tail
+readback passed. Project document/history, saved content, complete Current native
+audio entry and Build input key stayed exact. Source/PCM hashes and waveform bins
+are checked through existing sample routes; stale entries, source changes and
+late responses withdraw ownership. Wide/400 px layouts passed. No native Build
+or full campaign was needed for this read-only editor feature; audible gameplay
+acceptance remains deferred, development stays solo and the SDK goal is active.
+See [bank authoring](legaia-audio-bank-authoring.md) and private evidence
+`local-output/sdk-20260909/audio-envelope-audition-20261007/`.
+
 ## Reviewed NPC script family reset - accepted offline (2026-10-06)
 
 The NPC ownership Inspector now offers eleven registered actions, including
