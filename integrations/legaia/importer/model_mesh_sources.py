@@ -3,6 +3,7 @@ from .core import ImportError
 from .model_mesh_scene import scene_source
 from .model_mesh_transform import node_transform,compose_node_transform
 from .model_mesh_skin import skin_binding
+from .model_mesh_morph import morph_binding
 
 
 def _dynamic_targets(doc,node_count):
@@ -69,8 +70,8 @@ def mesh_sources(doc,scene_index=None,*,allow_empty=False,with_scope=False):
         selected_nodes.append(node_index)
         if node_index in animated:
             raise ImportError(f'Selected mesh scene node {node_index} is animated; choose a static scene')
-        if any(key in node for key in ('weights','extensions')):
-            raise ImportError('Selected mesh scene morph weights and node extensions are unsupported')
+        if 'extensions' in node or 'weights' in node and 'mesh' not in node:
+            raise ImportError('Selected mesh node extensions or morph weights without a mesh are unsupported')
         local=node_transform(node);transform=local if parent is None else compose_node_transform(parent,local)
         path=path+[node_index];world[node_index]=transform;paths[node_index]=path
         if 'skin' in node:
@@ -81,15 +82,17 @@ def mesh_sources(doc,scene_index=None,*,allow_empty=False,with_scope=False):
         node=nodes[node_index]
         if type(node['mesh']) is not int or not 0<=node['mesh']<len(meshes):raise ImportError('Mesh scene node references an unavailable mesh')
         mesh_index=node['mesh'];mesh=meshes[mesh_index]
-        if not isinstance(mesh,dict) or any(key in mesh for key in ('weights','extensions')):
-            raise ImportError('Mesh append cannot import morph weights or mesh extensions')
+        if not isinstance(mesh,dict) or 'extensions' in mesh:
+            raise ImportError('Mesh append cannot import mesh extensions')
         primitives=mesh.get('primitives')
         if not isinstance(primitives,list) or not 1<=len(primitives)<=128 or len(sources)+len(primitives)>128:
             raise ImportError('Mesh append source sections exceed the native face budget')
+        morph=morph_binding(mesh,node)
         for primitive_index,primitive in enumerate(primitives):
             sources.append(dict(primitive_index=len(sources),node_index=node_index,mesh_index=mesh_index,
                 mesh_primitive_index=primitive_index,node_transform=transform,primitive=primitive,
-                **({'node_path':path} if len(path)>1 else {})))
+                **({'node_path':path} if len(path)>1 else {}),
+                **({'morph_bake':morph} if morph else {})))
     for root in roots:visit(root,[])
     bindings={index:skin_binding(doc,nodes[index],world,parents,set(selected_nodes)) for index in skin_nodes}
     for index in selected_nodes:
@@ -100,7 +103,7 @@ def mesh_sources(doc,scene_index=None,*,allow_empty=False,with_scope=False):
             binding,joints=bindings[index]
             for row in sources[first:]:row.update(skin_bake=binding,_skin_world=joints)
     if not sources and not allow_empty:raise ImportError('Mesh scene contains no selected static mesh sections')
-    result=(sources,not bindings and len(nodes)==len(meshes)==1 and roots==[0])
+    result=(sources,not bindings and not any('morph_bake' in row for row in sources) and len(nodes)==len(meshes)==1 and roots==[0])
     scope=(dict(selected_nodes=selected_nodes,animated_nodes=sorted(animated),
                 animation_count=animation_count,skin_count=skin_count)
            if animation_count or skin_count else None)

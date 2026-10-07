@@ -1,5 +1,7 @@
 # Deferred gameplay verification
 
+2026-10-07 deferred item: [saved GLB morph pose import](legaia-static-morph-mesh.md) has offline Review/Apply, retained-input/history, complete native model and containing-pack/ZIP acceptance. Native Build `a0687163f67dc82c` is a private test artifact; it has not been installed or launched. Later manual validation should inspect donor-compatible imported geometry, winding/lighting where supported, collision/scene behavior and transitions. No manual gameplay is required to continue other offline SDK work. Animated morph controls and native skeletal animation remain outside this milestone.
+
 ## Selected vertex plane alignment - 2026-10-05
 
 Project: `local-output/sdk-20260909/vertex-alignment-20261005/project/`.

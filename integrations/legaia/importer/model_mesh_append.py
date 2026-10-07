@@ -16,6 +16,7 @@ from .model_mesh_sources import mesh_sources,source_binding
 from .model_mesh_orientation import mesh_source_rotation,rotation_matrix,rotate_native
 from .model_mesh_transform import transform_point,transform_normal,IDENTITY
 from .model_mesh_skin import skin_vertex_transforms
+from .model_mesh_morph import bake_morph
 
 
 def mesh_source_scale(value):
@@ -104,8 +105,8 @@ def _decode_mesh(doc,binary,content_hash,sources,canonical,scope,*,preserve_prim
         if factor is not None:material_factors.append(factor)
         first_triangle=len(triangles)
         if (not isinstance(primitive,dict) or type(primitive.get('mode',4)) is not int
-                or primitive.get('mode',4) not in (4,5,6) or any(key in primitive for key in ('targets','extensions'))):
-            raise ImportError('Mesh append supports triangle lists, strips and fans without morph targets or extensions')
+                or primitive.get('mode',4) not in (4,5,6) or 'extensions' in primitive):
+            raise ImportError('Mesh append supports triangle lists, strips and fans without extensions')
         attrs=primitive.get('attributes')
         if (not isinstance(attrs,dict) or 'POSITION' not in attrs
                 or not set(attrs)<=({'POSITION','NORMAL','COLOR_0','TANGENT'}|{f'TEXCOORD_{i}' for i in range(8)}|{f'{kind}_{i}' for kind in ('JOINTS','WEIGHTS') for i in range(8)})):
@@ -136,6 +137,7 @@ def _decode_mesh(doc,binary,content_hash,sources,canonical,scope,*,preserve_prim
             elif key==f'TEXCOORD_{uv_set}':uvs=values
             elif key=='COLOR_0':colors=values
             else:ignored.add(key)
+        positions,normals,morph_owners=bake_morph(reader,source,attrs,positions,normals)
         original_colors=colors
         if material_colors:
             colors=colors if colors is not None else [[1,1,1,1] for _ in positions]
@@ -179,6 +181,7 @@ def _decode_mesh(doc,binary,content_hash,sources,canonical,scope,*,preserve_prim
             for index in ((triangle[0],triangle[2],triangle[1]) if face_transform['winding_reversed'] else triangle):
                 vertex_transform=skin_transforms[index] if skin_transforms is not None else transform
                 owner=(source['node_index'],attrs['POSITION'],index)
+                if 'morph_bake' in source:owner+=(morph_owners,)
                 if skin_transforms is not None:owner+=tuple(attrs[key] for key in sorted(attrs) if key.startswith(('JOINTS_','WEIGHTS_')))
                 if owner not in owners:
                     values=[value*source_scale for value in transform_point(vertex_transform,positions[index])];values[1]=-values[1];values=rotate_native(orientation,values);values=[value+source_offset[a] for a,value in enumerate(values)]
