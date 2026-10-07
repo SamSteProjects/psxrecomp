@@ -1,5 +1,26 @@
 # Architecture
 
+## Direct SPU pitch envelope preview - accepted offline (2026-10-07)
+
+Qualified native Gaussian loop and one-pass previews now accept a direct 14-bit
+SPU pitch register from 0 through 16383. Zero holds the source counter; 4096 is
+unity. Existing rate presets remain the default and retain exact results. The
+editor shows the effective counter rate, stops on pitch changes, rejects invalid
+input and exports explicit `pitch-<register>` WAV names. Retail, Current and
+Reviewed Proposed keep their existing qualified sample/ADSR separation. This
+preview does not infer tone tuning, instruments, note pitch or driver behavior.
+
+Nine client suites and three syntax checks passed. A fresh compiled native
+oracle matched 3,969,000 samples across 32 Retail/Current loop/one-pass cases,
+including zero and five seconds at maximum pitch. Actual PROT 0877 editor checks
+passed both modes/all layers, direct playback without a rate preset, invalid
+inputs, stop/reset/discard/close and wide/400 px layout. Six complete Proposed
+WAVs matched native source and literal envelope calculations. Project/history/
+saved bytes/native audio/Build inputs stayed exact. See [direct SPU pitch](legaia-audio-direct-pitch.md)
+and private `local-output/sdk-20260909/audio-direct-pitch-20261007/` evidence.
+No backend/runtime change, new Build, full campaign or gameplay action; manual
+listening stays deferred, development stays solo and the full SDK goal is active.
+
 ## Selected vertex per-axis scaling - accepted offline (2026-10-07)
 
 The existing geometry workspace now stages independent X/Y/Z positive integer

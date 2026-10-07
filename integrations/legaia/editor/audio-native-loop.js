@@ -6,8 +6,11 @@ import {simulateEnvelope,ENVELOPE_RATE,MAX_ENVELOPE_FRAMES} from './audio-envelo
 import {PREVIEW_RATES} from './audio-audition.js';
 const coefficients=[[0,0],[60,0],[115,-52],[98,-55],[122,-60]],integer=(v,a,b)=>Number.isSafeInteger(v)&&v>=a&&v<=b;
 export function nativeLoopQualified(wave){return Boolean(encodedPcmLoop(wave,wave.decoded_frames))&&!wave.markers.some(m=>m.encoded_shift>12)&&wave.source_size_bytes<=65536;}
-export function decodeNativeLoop(raw,frameCount){
- if(!(raw instanceof Uint8Array)||raw.length<16||raw.length>65536||!integer(frameCount,1,240001))throw Error('Native ADPCM loop requires bounded source bytes and output frames.');
+export function decodeNativeLoop(raw,frameCount){return decodeLoop(raw,frameCount,240001);}
+// Five output seconds at the maximum 14-bit SPU pitch, plus the next tap.
+export function decodeNativePitchLoop(raw,frameCount){return decodeLoop(raw,frameCount,882001);}
+function decodeLoop(raw,frameCount,budget){
+ if(!(raw instanceof Uint8Array)||raw.length<16||raw.length>65536||!integer(frameCount,1,budget))throw Error('Native ADPCM loop requires bounded source bytes and output frames.');
  let sourceFrames=0,loopStart=null,end=null;
  for(let at=0;at+16<=raw.length;at+=16){
   const header=raw[at],flags=raw[at+1];if((header>>4)>4||(header&15)>12||flags&~7)throw Error('Native ADPCM loop has unsupported predictor, shift or flag bits.');

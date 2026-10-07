@@ -1,5 +1,5 @@
 // Offline native-loop Gaussian preview; explicit rates, no driver or game mix.
-import {decodeNativeLoop,decodeNativeOnePass} from './audio-native-loop.js';
+import {decodeNativePitchLoop,decodeNativeOnePass} from './audio-native-loop.js';
 import {simulateEnvelope,ENVELOPE_RATE} from './audio-envelope.js';
 import {PREVIEW_RATES} from './audio-audition.js';
 // Exact runtime/include/spu_gauss.h table. Acceptance compares it to compiled C.
@@ -82,9 +82,16 @@ export function gaussianSample(input,index,phase){
  return ((accumulator>>15)<<16)>>16;
 }
 export function renderGaussianEnvelope(raw,rate,adsr1,adsr2,window={},mode='loop'){
+ const result=renderGaussianEnvelopePitch(raw,previewPitch(rate).pitchRegister,adsr1,adsr2,window,mode);return {...result,sourceRate:rate};
+}
+export function directPreviewPitch(pitchRegister){
+ if(!Number.isSafeInteger(pitchRegister)||pitchRegister<0||pitchRegister>0x3fff)throw Error('Choose an integer SPU pitch register0..16383.');
+ return {pitchRegister,effectiveSourceRate:pitchRegister*ENVELOPE_RATE/4096};
+}
+export function renderGaussianEnvelopePitch(raw,pitch,adsr1,adsr2,window={},mode='loop'){
  if(!['loop','one-pass'].includes(mode))throw Error('Choose native loop or one-pass mode.');
- const {pitchRegister,effectiveSourceRate}=previewPitch(rate),model=simulateEnvelope(adsr1,adsr2,window),required=Math.ceil(model.frameCount*pitchRegister/4096)+1;
- const decoded=mode==='loop'?decodeNativeLoop(raw,required):decodeNativeOnePass(raw),view=new DataView(decoded.bytes.buffer),input=Int16Array.from({length:decoded.bytes.length/2},(_,i)=>view.getInt16(i*2,true)),bytes=new Uint8Array(model.frameCount*2),output=new DataView(bytes.buffer);
+ const {pitchRegister,effectiveSourceRate}=directPreviewPitch(pitch),model=simulateEnvelope(adsr1,adsr2,window),required=Math.ceil(model.frameCount*pitchRegister/4096)+1;
+ const decoded=mode==='loop'?decodeNativePitchLoop(raw,required):decodeNativeOnePass(raw),view=new DataView(decoded.bytes.buffer),input=Int16Array.from({length:decoded.bytes.length/2},(_,i)=>view.getInt16(i*2,true)),bytes=new Uint8Array(model.frameCount*2),output=new DataView(bytes.buffer);
  let block=0,index=0,phase=0,endFrame=model.frameCount;
  for(let frame=0;frame<model.frameCount;frame++){
   if(index===28){block+=28;index=0;}
@@ -95,5 +102,5 @@ export function renderGaussianEnvelope(raw,rate,adsr1,adsr2,window={},mode='loop
   // Match the runtime: stop index stepping at a block boundary, carrying phase.
   while(phase>=4096){phase-=4096;index++;if(index>=28)break;}
  }
- return {bytes,model,sourceRate:rate,effectiveSourceRate,pitchRegister,outputRate:ENVELOPE_RATE,...(mode==='loop'?{nativeLoop:decoded.loop}:{nativeOnePass:true,endFrame}),interpolation:'native-gaussian'};
+ return {bytes,model,sourceRate:effectiveSourceRate,effectiveSourceRate,pitchRegister,outputRate:ENVELOPE_RATE,...(mode==='loop'?{nativeLoop:decoded.loop}:{nativeOnePass:true,endFrame}),interpolation:'native-gaussian'};
 }
