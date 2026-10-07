@@ -2170,6 +2170,9 @@ class ProjectService:
         if command.get('type')=='set_actor_draft_waits':
             from .npc_waits import apply
             apply(self,command);return
+        if command.get('type')=='reset_actor_draft_script':
+            from .npc_script_reset import apply
+            apply(self,command);return
         if command.get('type')=='set_actor_draft_effect_colors':
             from .npc_effect_colors import apply
             apply(self,command);return

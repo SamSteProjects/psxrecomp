@@ -18,7 +18,8 @@ export const npcScriptActionButtons={
   'edit-npc-model-selectors':'npc-model-selectors-button','edit-npc-flags':'npc-flags-button',
   'edit-npc-branches':'npc-branches-button','edit-npc-effect-colors':'npc-effect-colors-button',
   'edit-npc-waits':'npc-waits-button','edit-npc-movement':'npc-movement-button',
-  'inspect-npc-build-script':'npc-build-script-button','inspect-npc-donor-script':'npc-donor-script-button'};
+  'inspect-npc-build-script':'npc-build-script-button','inspect-npc-donor-script':'npc-donor-script-button',
+  'reset-npc-script':'npc-script-reset-button'};
 export const npcDraftActionContext=(state,id)=>JSON.stringify([state.project?.path,state.scene?.id,state.mode??state.project?.mode,state.asset_reference_source_key,state.actor_drafts?.[id]??null]);
 export function npcScriptBindingSnapshot(state,id){
   const draft=state.actor_drafts?.[id],row=state.npc_script_bindings?.[id],families=['dialogue','waits','movement','facing','flags','branches','model_selectors','effect_colors'];
@@ -30,7 +31,7 @@ export function npcScriptBindingSnapshot(state,id){
 export function mountNpcDraftScriptActions(host,{schema,snapshot,getState,busy,editable,current,handlers,onError}){
   const definition=componentDefinition(schema,'NpcDraftScriptBinding'),key=npcDraftActionContext(getState(),snapshot.entity_id);
   const registry=Object.fromEntries(definition.actions.filter(a=>Object.hasOwn(npcScriptActionButtons,a.id)&&typeof handlers[a.id]==='function').map(a=>[a.id,{
-    requiresEdit:a.id.startsWith('edit-npc-'),canRun:()=>getState().capabilities?.[a.capability]===true,
+    requiresEdit:a.id.startsWith('edit-npc-')||a.id==='reset-npc-script',canRun:()=>getState().capabilities?.[a.capability]===true,
     run:()=>handlers[a.id]()}]));
   const actions=document.createElement('div');actions.className='npc-script-actions';actions.dataset.npcScriptActions='true';
   actions.innerHTML=renderComponentActions(schema,'NpcDraftScriptBinding',snapshot,getState().capabilities,registry,editable());

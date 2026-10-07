@@ -1,5 +1,28 @@
 # Current Legaia SDK status — 2026-10-06
 
+## Reviewed NPC script family reset - accepted offline (2026-10-06)
+
+The NPC ownership Inspector now offers eleven registered actions, including
+Reset NPC-owned script edits; Asset Details exposes the same reset tool. Select
+owned script families, Review their project-field removal, and Apply in one
+history entry. Identity, placement, appearance, donor, unselected families and
+other NPCs are preserved. Empty/unknown/duplicate/unordered/unowned selections
+and stale requests are rejected. Review has explicit project metadata scope;
+native output still requires normal Build qualification.
+
+All 37 affected Python checks passed with no skips, three client suites and three
+syntax checks passed. A private Town0b editor reset waits and effect colors while
+retaining qualified facing ownership and a second NPC. Review immutability,
+changed/empty selections, Discard, Undo/Redo, Save/reload, stale withdrawal and
+wide/400 px layouts passed without page errors or game requests. Fresh compressed
+Town0b Build `52153f41fae7227a` independently read back both complete records
+exactly; integrity/current-input checks passed and document/history stayed exact.
+Package SHA-256 `5a5a2781dc466f4890f97f98830b636eb5f73eebe43b0f7cf5da7ae7efbad0f9`.
+No new streaming reset Build or full campaign was run. Gameplay remains deferred;
+development remains solo and the complete SDK goal is active.
+See [NPC script reset](legaia-npc-script-reset.md) and private evidence
+`local-output/sdk-20260909/npc-script-reset-20261007/`.
+
 ## NPC script ownership Inspector - accepted offline (2026-10-06)
 
 The SDK now supplies detached NPC script-binding snapshots: exact donor identity,

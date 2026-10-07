@@ -216,6 +216,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_dialogue_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_wait_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_effect_color_authoring"] = bool(self.project.disc_path)
+        state['capabilities']['npc_script_reset'] = bool(self.project.imports)
         state["capabilities"]["actor_movement_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_facing_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_model_selector_authoring"] = bool(self.project.disc_path)
@@ -812,6 +813,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/npc-facing.js": ("npc-facing.js", "text/javascript"),
                  "/npc-waits.js": ("npc-waits.js", "text/javascript"),
                  "/npc-effect-colors.js": ("npc-effect-colors.js", "text/javascript"),
+                 "/npc-script-reset.js": ("npc-script-reset.js", "text/javascript"),
                  "/npc-movement.js": ("npc-movement.js", "text/javascript"),
                  "/npc-appearance.js": ("npc-appearance.js", "text/javascript"),
                  "/npc-donor-script.js": ("npc-donor-script.js", "text/javascript"),
@@ -3005,6 +3007,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     proposed=self.server.scene_previews.preview(view,lambda asset,*args,**kwargs:self.server.model_preview(asset,*args,effective_shape=True,project_view=view,**kwargs),load_scene_actor_animation_catalog,load_environment_preview_catalog,terrain_preview)
                     if source_key(project)!=report['project_source_key'] or preview_source_key(project)!=scene_key:raise ProjectError('Project changed during NPC appearance scene inspection')
                     self._json(200,dict(schema_version='legaia.npc-appearance-scene.v1',review=report,scene_preview_source_key=scene_key,scene=dict(proposed,representation='authored')));return
+                if route=='/api/npc-script-reset-source':
+                    from .npc_script_reset import source
+                    if set(body)!={'entity_id'}:raise ProjectError('NPC script reset source requires identity only')
+                    self._json(200,source(self.server.project,body['entity_id']));return
+                if route=='/api/npc-script-reset-review':
+                    from .npc_script_reset import review
+                    self._json(200,review(self.server.project,body));return
                 if route=='/api/npc-effect-colors-source':
                     from .npc_effect_colors import source
                     if set(body)!={'entity_id'}:raise ProjectError('NPC effect color source requires identity only')

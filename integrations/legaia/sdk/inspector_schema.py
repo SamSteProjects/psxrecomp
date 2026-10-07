@@ -352,6 +352,7 @@ def inspector_schema():
             ('waits','Edit NPC wait targets...','actor_wait_authoring'),
             ('movement','Edit NPC script movement...','actor_movement_authoring')]]
     script_actions += [
+        {'id':'reset-npc-script','label':'Reset NPC-owned script edits...','capability':'npc_script_reset','requires_edit':True,'when':['draft','donor_entity_id']},
         {'id':'inspect-npc-build-script','label':'Inspect saved Build script...','capability':'actor_script_preview','when':['draft','donor_entity_id']},
         {'id':'inspect-npc-donor-script','label':'Inspect retail donor script...','capability':'actor_script_preview','when':['draft','donor_entity_id']}]
     from .npc_script_binding import FAMILIES
@@ -371,4 +372,5 @@ def inspector_schema():
     asset_actions.insert(next(i for i,a in enumerate(asset_actions) if a['id']=='edit-npc-flags'),
         {'id':'edit-npc-effect-colors','label':'Edit NPC effect colors','capability':'actor_effect_color_authoring',
          'when':['authoredRecord','donor_entity_id']})
+    asset_actions.append({'id':'reset-npc-script','label':'Reset NPC-owned script edits','capability':'npc_script_reset','when':['authoredRecord','donor_entity_id']})
     return schema
