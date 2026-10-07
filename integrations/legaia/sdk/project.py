@@ -1485,13 +1485,13 @@ class ProjectService:
             raise ProjectError('Object allocation identities differ from the reviewed draft')
         self._publish_model_ledger(asset_id,content,binding,expected_key,'Object allocation')
 
-    def apply_model_mesh_append(self,asset_id,content,donor_face_id,expected_sha256,expected_key,review_key,*,new_group=False,replace_group=False,replace_object=False,preserve_primitives=False,primitive_index=None,material_colors=False,scene_index=None,uv_set=0,source_scale=1,source_offset=(0,0,0),source_rotation=(0,0,0)):
+    def apply_model_mesh_append(self,asset_id,content,donor_face_id,expected_sha256,expected_key,review_key,*,new_group=False,replace_group=False,replace_object=False,preserve_primitives=False,primitive_index=None,material_colors=False,scene_index=None,uv_set=0,source_scale=1,source_offset=(0,0,0),source_rotation=(0,0,0),animation_pose=None):
         from .model_mesh_append import prepare
-        candidate,binding,report=prepare(self,asset_id,content,donor_face_id,expected_sha256,expected_key,new_group=new_group,replace_group=replace_group,replace_object=replace_object,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,source_offset=source_offset,source_rotation=source_rotation)
+        candidate,binding,report=prepare(self,asset_id,content,donor_face_id,expected_sha256,expected_key,new_group=new_group,replace_group=replace_group,replace_object=replace_object,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,source_offset=source_offset,source_rotation=source_rotation,animation_pose=animation_pose)
         if review_key!=report['review_key']:
             raise ProjectError('Mesh import differs from the reviewed geometry or donor')
         from .model_mesh_sources import attach
-        binding=attach(self,asset_id,binding,content,dict(kind='single',donor_face_id=donor_face_id,new_group=new_group,replace_group=replace_group,replace_object=replace_object,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,source_offset=list(source_offset),source_rotation=list(source_rotation)),expected_key)
+        binding=attach(self,asset_id,binding,content,dict(kind='single',donor_face_id=donor_face_id,new_group=new_group,replace_group=replace_group,replace_object=replace_object,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,source_offset=list(source_offset),source_rotation=list(source_rotation),**({"animation_pose":report["animation_pose"]} if animation_pose is not None else {})),expected_key)
         self._publish_model_ledger(asset_id,candidate,binding,expected_key,'Mesh replacement' if replace_group or replace_object else 'Mesh append')
 
     def _publish_model_ledger(self,asset_id,content,binding,expected_key,operation):

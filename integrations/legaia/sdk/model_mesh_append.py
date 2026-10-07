@@ -38,7 +38,7 @@ LIMITATIONS=[
 ]
 
 
-def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,replace_object=False,preserve_primitives=False,primitive_index=None,material_colors=False,scene_index=None,uv_set=0,source_scale=1,source_offset=(0,0,0),source_rotation=(0,0,0)):
+def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,replace_object=False,preserve_primitives=False,primitive_index=None,material_colors=False,scene_index=None,uv_set=0,source_scale=1,source_offset=(0,0,0),source_rotation=(0,0,0),animation_pose=None):
     if type(new_group) is not bool or type(replace_group) is not bool or type(replace_object) is not bool or type(preserve_primitives) is not bool or type(material_colors) is not bool:
         raise ProjectError('Mesh packet-group choice must be boolean')
     if replace_group and replace_object:
@@ -57,7 +57,7 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
     obj=objects[donor['object_index']]
     row=obj['primitives'][donor['current_primitive_index']]
     if row['corner_count']!=3:raise ProjectError('Select a native triangle donor for a triangle mesh')
-    geometry=decode_append_mesh(content,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,source_offset=source_offset,source_rotation=source_rotation)
+    geometry=decode_append_mesh(content,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,source_offset=source_offset,source_rotation=source_rotation,animation_pose=animation_pose)
     normals=[];references=[];imported_faces=0
     for directions in geometry['triangle_normals']:
         if row['normal_indices'] is None or directions is None:
@@ -203,6 +203,12 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
         report['material_colors']=True
         report['review_key']=digest(dict(base_review_key=report['review_key'],material_colors=True,material_factors=geometry['material_factors']))
         report['limitations'].append('Standard opaque baseColorFactor RGB multiplies COLOR_0 (white when missing). Only unlit native RGB packets consume these colors; lit packets ignore them. Native texture bindings remain; source images and PBR shading are not imported.')
+    if animation_pose is not None:
+        from importer.model_mesh_animation import animation_pose_config
+        report['animation_pose']=animation_pose_config(animation_pose)
+        report['review_key']=digest(dict(base_review_key=report['review_key'],animation_pose=report['animation_pose']))
+        report['limitations']=[text.replace('Selected animated nodes reject.','Selected animated nodes are sampled at the explicit clip/time.') for text in report['limitations']]
+        report['limitations'].append('The explicitly selected external clip/time is sampled into static native geometry before morph, skin and node transforms. Original GLB bytes and the pose recipe remain retained; no native skeletal or morph animation is created.')
     if source_key(project)!=expected_key:raise ProjectError('Project changed during mesh append review')
     return candidate,binding,_budget(report,64*1024*1024)
 

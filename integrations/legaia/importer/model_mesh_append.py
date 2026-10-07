@@ -33,11 +33,11 @@ def mesh_source_offset(value):
     return [float(n) for n in value]
 
 
-def inspect_append_mesh(content,*,scene_index=None,source_scale=1,source_offset=(0,0,0),source_rotation=(0,0,0)):
+def inspect_append_mesh(content,*,scene_index=None,source_scale=1,source_offset=(0,0,0),source_rotation=(0,0,0),animation_pose=None):
     """Qualify bounded sections independently; inventory is not a mesh allocation."""
     source_scale=mesh_source_scale(source_scale);source_offset=mesh_source_offset(source_offset);source_rotation=mesh_source_rotation(source_rotation)
     doc,binary=_read_glb(content);content_hash=sha256(content).hexdigest()
-    sources,canonical,scope=mesh_sources(doc,scene_index,allow_empty=True,with_scope=True)
+    sources,canonical,scope=mesh_sources(doc,scene_index,allow_empty=True,with_scope=True,binary=binary,animation_pose=animation_pose)
     selection=scene_source(doc,scene_index)
     if not sources:
         return dict(schema_version='legaia.model-mesh-file.v1',glb_sha256=content_hash,primitives=[],triangle_count=0,read_only=True,scene_source=selection,
@@ -72,10 +72,10 @@ def inspect_append_mesh(content,*,scene_index=None,source_scale=1,source_offset=
         **({'node_sources':[source_binding(row) for row in sources]} if not canonical else {}))
 
 
-def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=None, material_colors=False,scene_index=None,uv_set=0,source_scale=1,source_offset=(0,0,0),source_rotation=(0,0,0)):
+def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=None, material_colors=False,scene_index=None,uv_set=0,source_scale=1,source_offset=(0,0,0),source_rotation=(0,0,0),animation_pose=None):
     source_scale=mesh_source_scale(source_scale);source_offset=mesh_source_offset(source_offset);source_rotation=mesh_source_rotation(source_rotation)
     doc,binary=_read_glb(content)
-    sources,canonical,scope=mesh_sources(doc,scene_index,with_scope=True)
+    sources,canonical,scope=mesh_sources(doc,scene_index,with_scope=True,binary=binary,animation_pose=animation_pose)
     return _decode_mesh(doc,binary,sha256(content).hexdigest(),sources,canonical,scope,
                         preserve_primitives=preserve_primitives,primitive_index=primitive_index,
                         material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale,source_offset=source_offset,source_rotation=source_rotation)

@@ -36,7 +36,7 @@ def _dynamic_targets(doc,node_count):
     return targets,len(animations),len(skins)
 
 
-def mesh_sources(doc,scene_index=None,*,allow_empty=False,with_scope=False):
+def mesh_sources(doc,scene_index=None,*,allow_empty=False,with_scope=False,binary=None,animation_pose=None):
     nodes,meshes,scenes=(doc.get(key) for key in ('nodes','meshes','scenes'))
     if any(not isinstance(rows,list) or not 1<=len(rows)<=64 for rows in (nodes,meshes)) :
         raise ImportError('Mesh append requires bounded static mesh nodes')
@@ -64,11 +64,20 @@ def mesh_sources(doc,scene_index=None,*,allow_empty=False,with_scope=False):
         colors[index]=2
     for index in range(len(nodes)):check(index)
     if any(root in parents for root in roots):raise ImportError('Mesh scene roots cannot also be children')
+    pose_report=None
+    if animation_pose is not None:
+        selected=set()
+        def include(index):
+            selected.add(index)
+            for child in children[index]:include(child)
+        for root in roots:include(root)
+        from .model_mesh_animation import sample_mesh_document
+        doc,pose_report=sample_mesh_document(doc,binary,animation_pose,selected);nodes=doc['nodes'];meshes=doc['meshes']
     sources=[];selected_nodes=[];world={};paths={};skin_nodes=[]
     def visit(node_index,path,parent=None):
         node=nodes[node_index]
         selected_nodes.append(node_index)
-        if node_index in animated:
+        if node_index in animated and pose_report is None:
             raise ImportError(f'Selected mesh scene node {node_index} is animated; choose a static scene')
         if 'extensions' in node or 'weights' in node and 'mesh' not in node:
             raise ImportError('Selected mesh node extensions or morph weights without a mesh are unsupported')
@@ -108,6 +117,7 @@ def mesh_sources(doc,scene_index=None,*,allow_empty=False,with_scope=False):
                 animation_count=animation_count,skin_count=skin_count)
            if animation_count or skin_count else None)
     if bindings:scope['baked_skin_indices']=sorted({value[0]['skin_index'] for value in bindings.values()})
+    if pose_report:scope['sampled_animation']=pose_report
     return (*result,scope) if with_scope else result
 
 
