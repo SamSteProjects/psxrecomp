@@ -2771,6 +2771,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Translation offset requires exact scene, clip, draft, range, axes and source fields')
                     from .animation_record_offset import stage
                     self._json(200,stage(self.server.project,**body));return
+                if route=='/api/animation-record-rotation-offset':
+                    if set(body)!={'scene_id','record_id','source_frame_indices','edits','object_index','start','end','delta','expected_source_key'}:
+                        raise ProjectError('Rotation offset requires exact scene, clip, draft, range, axes and source fields')
+                    from .animation_record_offset import stage_rotation
+                    self._json(200,stage_rotation(self.server.project,**body));return
                 if route=='/api/animation-record-edit-options':
                     if set(body)!={'scene_id','record_id','expected_source_key'}:raise ProjectError('Retained editor options require exact scene, clip and source')
                     from .animation_record_edit import options
