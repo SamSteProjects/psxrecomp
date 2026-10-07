@@ -1,5 +1,7 @@
 # Deferred gameplay verification
 
+2026-10-07 deferred sparse-morph item: [sparse saved pose import](legaia-sparse-morph-mesh.md) passed offline editor, history, exact retained-input and native Build `10649de4d117f814` readback. This private artifact has not been installed/launched. Later manual geometry, winding/lighting, collision/scene and transition checks share the existing saved-pose acceptance boundary. Other offline development can continue; animated morph/native skeletal controls are not implemented by this milestone.
+
 2026-10-07 deferred item: [saved GLB morph pose import](legaia-static-morph-mesh.md) has offline Review/Apply, retained-input/history, complete native model and containing-pack/ZIP acceptance. Native Build `a0687163f67dc82c` is a private test artifact; it has not been installed or launched. Later manual validation should inspect donor-compatible imported geometry, winding/lighting where supported, collision/scene behavior and transitions. No manual gameplay is required to continue other offline SDK work. Animated morph controls and native skeletal animation remain outside this milestone.
 
 ## Selected vertex plane alignment - 2026-10-05

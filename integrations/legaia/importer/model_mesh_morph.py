@@ -1,6 +1,7 @@
-"""Bake one saved, dense glTF morph pose before skin or node transforms."""
+"""Bake one saved glTF morph pose before skin or node transforms."""
 import math
 from .core import ImportError
+from .model_mesh_sparse import morph_delta
 
 MAX_TARGETS=8
 
@@ -38,7 +39,7 @@ def bake_morph(reader,source,attrs,positions,normals):
             raise ImportError('Static morph targets require existing POSITION, NORMAL or TANGENT base attributes only')
         position_owners.append(target.get('POSITION'))
         for name,index in target.items():
-            delta=reader.read(index,3,'morph '+name)
+            delta=morph_delta(reader,index,len(positions))
             if len(delta)!=len(positions):raise ImportError('Static morph target attribute counts differ from the base mesh')
             values=positions if name=='POSITION' else normals if name=='NORMAL' else None
             # Tangents have no native packet representation; still qualify their deltas.
