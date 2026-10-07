@@ -10,3 +10,8 @@ const operation={kind:'scale',anchor_entity_id:actor,percent:50},positions=mixed
 assert.deepEqual(decodeScenePlacementLayout(layout,hash,scene,ids,operation,null,drafts),layout);
 assert.throws(()=>mixedLayoutPositions(report.targets,{kind:'reset'}));assert.throws(()=>decodeScenePlacementGroup(report,hash,scene,ids,delta,{[npc]:{...draft,scene_id:'scene://other'}}));
 console.log('Mixed NPC review source snapshots, absent Retail, native-grid layouts and forged DTO rejection pass.');
+
+
+const angleOp={kind:'rotate_angle',anchor_entity_id:actor,angle_degrees:45},anglePositions=mixedLayoutPositions(report.targets,angleOp),angleLayout={...report,schema_version:'legaia.scene-placement-layout-review.v2',delta:{x:0,z:0},operation:angleOp,targets:report.targets.map((t,i)=>({...t,proposed:anglePositions[i].position})),affected_count:2};
+assert.deepEqual(anglePositions[ids.indexOf(npc)].position,{x:64,z:512});assert.deepEqual(decodeScenePlacementLayout(angleLayout,hash,scene,ids,angleOp,null,drafts),angleLayout);
+console.log('Whole-degree actor/NPC/scenery proposal respects native grids and complete draft snapshots.');

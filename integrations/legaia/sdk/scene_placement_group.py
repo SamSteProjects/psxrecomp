@@ -70,6 +70,12 @@ def _review(project, scene, entity_ids, delta, operation=None):
                     units=(abs(n)+denominator//2)//denominator
                     proposed[a]=(-units if n<0 else units)*step
                 target['proposed']=proposed
+        elif operation['kind']=='rotate_angle':
+            from .placement_angle import rotate_position
+            anchor=next((t for t in targets if t['entity_id']==operation['anchor_entity_id']),None)
+            if anchor is None:raise ProjectError('Angle rotation anchor must be selected')
+            for target in targets:
+                target['proposed']=rotate_position(target['current'],anchor['current'],1 if target['kind']=='decoration' else 64,operation['angle_degrees'])
         elif operation['kind']=='rotate':
             anchor=next((t for t in targets if t['entity_id']==operation['anchor_entity_id']),None)
             if anchor is None:raise ProjectError('Mixed rotation anchor must be selected')
@@ -162,16 +168,18 @@ def review(project,scene,entity_ids,delta):
 
 
 def layout_review(project,scene,entity_ids,operation):
-    if not isinstance(operation,dict) or operation.get('kind') not in ('align','distribute','reset','rotate','scale','mirror'):
+    if not isinstance(operation,dict) or operation.get('kind') not in ('align','distribute','reset','rotate','rotate_angle','scale','mirror'):
         raise ProjectError('Mixed layout requires align/distribute, reset, position rotation/mirroring or native spacing scale')
     kind=operation['kind']
-    fields=({'kind','anchor_entity_id','percent'} if kind=='scale' else {'kind'} if kind=='reset' else {'kind','anchor_entity_id','quarter_turns'} if kind=='rotate'
+    fields=({'kind','anchor_entity_id','angle_degrees'} if kind=='rotate_angle' else {'kind','anchor_entity_id','percent'} if kind=='scale' else {'kind'} if kind=='reset' else {'kind','anchor_entity_id','quarter_turns'} if kind=='rotate'
             else {'kind','axis','anchor_entity_id'} if kind in ('align','mirror') else {'kind','axis'})
     if set(operation)!=fields:raise ProjectError('Mixed layout accepts exact operation fields only')
     if kind in ('align','distribute','mirror') and operation['axis'] not in ('x','z'):
         raise ProjectError('Mixed layout axis must be X/Z')
     if kind=='rotate' and (type(operation['quarter_turns']) is not int or operation['quarter_turns'] not in (-1,1,2)):
         raise ProjectError('Mixed rotation requires -1, 1 or 2 exact quarter turns')
+    if kind=='rotate_angle' and (type(operation['angle_degrees']) is not int or not -359<=operation['angle_degrees']<=359):
+        raise ProjectError('Position rotation requires whole degrees from -359 through 359')
     if kind=='scale' and (type(operation['percent']) is not int or not 1<=operation['percent']<=1000):
         raise ProjectError('Mixed scale requires an integer percentage from 1 through 1000')
     return _review(project,scene,entity_ids,{'x':0,'z':0},operation)

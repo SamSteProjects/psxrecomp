@@ -1,5 +1,11 @@
 # Testing
 
+## Whole-degree mixed placement rotation — 2026-10-06
+
+Seventeen Python tests passed: `test_placement_angle`, `test_scene_placement_group`, `test_scene_placement_group_http` and `test_scene_placement_npc`. Two Node suites passed: `test_scene_placement_group.mjs` and `test_scene_placement_npc.mjs`. Coverage includes independently expected cardinal/diagonal/native-grid/sign rounding, exact angle fields, malformed bounds/types, full proposed DTOs, no-op/history, NPC donor/unselected preservation and Save/Open. All 4,314 Python/browser vectors across -359..359, both owner precisions and signed/off-grid examples matched exactly (`local-output/sdk-20260909/mixed-placement-angle-20261006/parity.json`).
+
+Actual private editor/native proof: `local-output/sdk-20260909/mixed-placement-angle-20261006/pass2/`. It reviewed -45°, 30° and 45° around an off-grid scenery anchor, verified Current/Proposed matrices and held orientation/height, withdrew review on operation change, returned to review and Applied one exact command/history step. Wide/400px screenshots were inspected with no page errors. Undo/Redo/Save/Open, full MAP directory/ZIP readback and independent MAN position/opaque-byte checks passed. Package SHA-256 `7360e2f054a8b781fea15942bcab3400502ef6fe57c792eb7e11ea17be14d4eb`. Initial evidence is retained: its assertion assumed both axes were explicit overrides; the corrected proof checks effective inherited coordinates. No game launch or installation; gameplay acceptance remains deferred.
+
 ## Current encoded bank link inspection — 2026-10-06
 
 `python -m unittest test_audio_note_links test_audio_sequence_proposed` passed five tests with the local retail disc and existing SDK/test import paths configured. New cases cover untouched and edited Current audio, latest same-channel program history, detached reports, stale authoring keys, invalid/non-note identities, exact HTTP fields and unchanged state. Initial testing exposed a reader call that required an authored binding; the service now uses the existing qualified Current reader for untouched entries as well.

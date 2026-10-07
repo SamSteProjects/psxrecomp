@@ -1,5 +1,11 @@
 # Legaia SDK feature matrix
 
+## Whole-degree mixed placement rotation — 2026-10-06
+
+Implemented: the mixed placement group editor rotates imported actor/NPC/scenery positions by whole degrees (-359..359) around a selected anchor. Deterministic Q30 coefficients and signed half-away rounding preserve each owner's native precision; facing, height, scenery orientation and other metadata remain held. Existing Review/Current/Proposed/Apply/history/Save workflow is retained. Exact fields and native bounds reject unsupported requests; zero angle creates no history.
+
+Verified: 17 Python checks, two Node suites, 4,314 all-angle cross-language vectors and actual retail editor -45°/30°/45° workflows. Wide/400px screenshots, zero page errors, one history step, unselected/donor preservation, Save/Open and independent MAN/full MAP package readback passed. Package SHA-256 `7360e2f054a8b781fea15942bcab3400502ef6fe57c792eb7e11ea17be14d4eb`; evidence `local-output/sdk-20260909/mixed-placement-angle-20261006/pass2/`. No game run or install; gameplay stays deferred and the broad goal remains active/solo.
+
 ## Current encoded bank links — 2026-10-06
 
 Implemented: the sequence operand editor connects a Current note to its latest encoded channel program change, explicitly matching tone program/key-range candidates and Current native sample spans. Complete evidence download, typed bank validation, stale withdrawal and parent disposal are included. Sparse program slots and packed pages remain distinct. Initial/runtime instrument assignments and active/unused tone selection remain unknown; this does not synthesize instruments or resolve gameplay pitch.

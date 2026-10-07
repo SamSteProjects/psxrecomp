@@ -133,6 +133,24 @@ class ScenePlacementGroupTests(unittest.TestCase):
                 with self.assertRaisesRegex(ProjectError, 'changed while'): review(p, SCENE, MIXED, dict(x=64,z=0))
             self.assertEqual(p.overrides, {}); self.assertEqual(p.undo_stack, [])
 
+    def test_angle_rotation_review_apply_noop_and_exact_fields(self):
+        from sdk.scene_placement_group import layout_review
+        from sdk.placement_angle import rotate_position
+        with tempfile.TemporaryDirectory() as directory:
+            p=self.project(directory)
+            with patch.object(ProjectService,'_environment_source',return_value=source_map()):
+                before=deepcopy(p._document());op=dict(kind='rotate_angle',anchor_entity_id=ACTOR,angle_degrees=45)
+                r=layout_review(p,SCENE,MIXED,op);pivot=next(t['current'] for t in r['targets'] if t['entity_id']==ACTOR)
+                for t in r['targets']:self.assertEqual(t['proposed'],rotate_position(t['current'],pivot,64 if t['kind']=='actor' else 1,45))
+                self.assertEqual(p._document(),before)
+                for bad in [dict(op,angle_degrees=True),dict(op,angle_degrees=45.5),dict(op,angle_degrees=360),dict(op,quarter_turns=1)]:
+                    with self.assertRaises(ProjectError):layout_review(p,SCENE,MIXED,bad)
+                p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=r['entity_ids'],operation=op,review_key=r['review_key']))
+                self.assertEqual(len(p.undo_stack),1);p.undo();self.assertEqual(p._document(),before);p.redo();p.save();self.assertEqual(ProjectService.open(p.root)._document(),p._document())
+                zero=dict(op,angle_degrees=0);r=layout_review(p,SCENE,MIXED,zero);self.assertFalse(r['project_change']);depth=len(p.undo_stack)
+                p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=r['entity_ids'],operation=zero,review_key=r['review_key']))
+                self.assertEqual(len(p.undo_stack),depth)
+
     def test_unknown_height_components_and_descriptor_overflow(self):
         with tempfile.TemporaryDirectory() as directory:
             p = self.project(directory); source = source_map()

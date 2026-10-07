@@ -24,6 +24,15 @@ class MixedNpcPlacementTests(unittest.TestCase):
         self.assertEqual(len(p.undo_stack),depth+1);self.assertEqual(p.undo_stack[-1]['target'],'scene_placement_batch');self.assertEqual(p.actor_drafts[self.ids[0]]['position'],dict(x=320,z=576));self.assertEqual(p.actor_drafts[self.ids[1]],before[1][self.ids[1]]);self.assertEqual(p.imports,imports)
         after=deepcopy((p.overrides,p.actor_drafts));p.undo();self.assertEqual((p.overrides,p.actor_drafts),before);p.redo();self.assertEqual((p.overrides,p.actor_drafts),after)
         restored=ProjectService.open(p.save());self.assertEqual((restored.overrides,restored.actor_drafts),after)
+    def test_whole_degree_rotation_preserves_npc_donor_and_unselected_draft(self):
+        p=self.p;before=deepcopy(p.actor_drafts);depth=len(p.undo_stack)
+        op=dict(kind='rotate_angle',anchor_entity_id=ACTOR,angle_degrees=45)
+        r=layout_review(p,SCENE,[ACTOR,self.ids[0],IDS[0]],op)
+        npc=next(t for t in r['targets'] if t['entity_id']==self.ids[0]);self.assertEqual(npc['proposed'],dict(x=64,z=512))
+        apply(p,dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=r['entity_ids'],operation=op,review_key=r['review_key']))
+        self.assertEqual(len(p.undo_stack),depth+1);self.assertEqual(p.actor_drafts[self.ids[0]],dict(before[self.ids[0]],position=npc['proposed']));self.assertEqual(p.actor_drafts[self.ids[1]],before[self.ids[1]])
+        p.undo();self.assertEqual(p.actor_drafts,before);p.redo();self.assertEqual(ProjectService.open(p.save()).actor_drafts,p.actor_drafts)
+
     def test_npc_anchor_layout_and_noop_preserve_redo(self):
         p=self.p;members=[ACTOR,self.ids[0]]
         for operation in (dict(kind='align',axis='x',anchor_entity_id=self.ids[0]),dict(kind='rotate',quarter_turns=1,anchor_entity_id=self.ids[0]),dict(kind='mirror',axis='x',anchor_entity_id=self.ids[0])):

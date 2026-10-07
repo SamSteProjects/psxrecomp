@@ -1,5 +1,11 @@
 # Architecture
 
+## Deterministic whole-degree placement rotation — 2026-10-06
+
+`sdk/placement_angle.py` and `editor/placement-angle.js` implement a frozen Q30 quarter-wave table with exact quadrant symmetry. Rotation computes integer global X/Z numerators about a selected anchor and rounds half away from zero to owner precision (64 actor/NPC, 1 decoration). Input integers are bounded to ±1048576 so JavaScript arithmetic is safe; existing source/native validators impose final native bounds. All-angle cross-language vectors prove identical quantization; cardinal and signed half-step tests establish independent expected coordinates.
+
+The existing mixed layout request now accepts the separate exact operation `{kind:'rotate_angle', anchor_entity_id, angle_degrees}` with whole degrees -359..359. SDK review, complete client proposal decoding, viewport comparison and Apply all use this operation; quarter-turn paths are unchanged. No new endpoint or persistence collection is needed. Native serialization modifies placement words only; orientation/height/donor metadata remain separate. Zero angle is a no-op. This is deterministic editor layout math, not a claim about runtime rotation or collision. Evidence: `local-output/sdk-20260909/mixed-placement-angle-20261006/pass2/` and adjacent `parity.json`.
+
 ## Current encoded bank links — 2026-10-06
 
 `sdk/audio_note_links.py` qualifies the reached Current sequence note, latest prior same-channel program-change event and composed Current bank with existing retail/source/native readers. `POST /api/audio-note-links` accepts exactly asset ID, retail entry hash, resource source key, complete Current authoring key and note index. It binds Current entry/SEQ hashes and rejects changed inputs before publishing; it handles untouched and authored audio. Standalone sequence ownership yields no colocated bank rather than an invented runtime bank.
