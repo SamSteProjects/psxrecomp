@@ -298,3 +298,7 @@
 .npc-script-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}.npc-script-actions button{width:100%;white-space:normal;text-align:left}
 
 .npc-reset-choices{display:grid;gap:8px}.npc-reset-choices label{display:flex;flex-direction:row;align-items:center;gap:8px}.npc-reset-choices input{flex:none}
+
+#hierarchy-query-status{margin:6px 10px;font-size:10px;flex:none}#select-matching-actors{margin:0 10px 6px;font-size:11px;flex:none}.hierarchy-query-help{margin:0 10px 8px;font-size:11px;line-height:1.4;flex:none;max-height:110px;overflow:auto;overflow-wrap:anywhere}.hierarchy-query-help summary{cursor:pointer}.hierarchy-query-help p{margin:8px 0}
+@media(max-width:800px){.hierarchy-query-help{max-height:54px}}
+@media(max-width:800px){.workspace[data-panel="library"] .asset-panel{height:50%}}

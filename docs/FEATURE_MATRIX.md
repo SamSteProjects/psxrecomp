@@ -1,5 +1,33 @@
 # Legaia SDK feature matrix
 
+## Structured hierarchy queries and actor selection - accepted offline (2026-10-07)
+
+Hierarchy search now supports name/id/type/component/authored/visibility fields,
+AND terms, quoted phrases and exclusions. Component terms use recorded authored
+actor component names and Inspector labels. Authorship and visibility stay
+explicitly unknown for unsupported row metadata; shown/hidden follows the
+editor hidden-entity set, not runtime rendering or gameplay. Scene resources
+still use the existing Refresh scene resources action.
+
+Select matching actors rechecks the current source and exact result identities,
+then replaces the existing imported-actor group, bounded to 128 actors. Busy
+states and held inspections block selection. Existing group tools, hierarchy
+folding, Reveal selection and keyboard focus remain available. Queries do not
+change project content or history; the Asset Database keeps its original grammar.
+
+Four focused Node suites and three syntax checks passed. The actual Town01
+browser workflow verified 52 actors, quoted single-actor selection, 51-actor
+exclusion selection, authored/component queries, invalid-query blocking, explicit
+hide-state filtering, refreshed script resources, unknown resource visibility,
+Reveal/focus and wide/400 px layout with zero page errors. Save/Open preserved
+the project document, history, imports, authored state and Build inputs exactly.
+Startup busy-control wiring and compact search-help layout were corrected;
+harness catalog/panel prerequisites and earlier failures remain recorded.
+See [hierarchy query workflow](legaia-hierarchy-query.md) and private
+`local-output/sdk-20260909/hierarchy-query-20261007/` evidence. No runtime change,
+native Build, full campaign, game, installation or disc export ran. Manual
+gameplay remains deferred; development is solo and the full SDK goal stays active.
+
 ## Bounded project relationship tracing - accepted offline (2026-10-07)
 
 Asset references now opens a recorded project trace in either dependency or
