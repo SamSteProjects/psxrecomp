@@ -1,5 +1,32 @@
 # Current Legaia SDK status — 2026-10-07
 
+## Whole-object angle rotation - accepted offline (2026-10-07)
+
+The vector inspector rotates an object's vertices and stored normals together
+by a quantized arbitrary angle about source X/Y/Z. Vertices use local origin or
+Current bounds center; normals rotate about zero. Exact Q30 word arithmetic,
+source/proposal receipts, Current/Proposed comparison and fresh review after
+input changes or scene return guard one-command Apply. History and persistence
+retain existing ownership; padding/topology/materials and other objects stay exact.
+
+Twelve Python checks, four Node suites and two syntax checks passed. Actual
+Town01 model 0009 object 1 editor acceptance passed angle/pivot invalidation,
+comparison, scene return, Undo/Redo and wide/400 px layout with zero page errors.
+Independent native calculations matched 18 vertices and 11 normals at Y45 about
+center [65,-161,-4]: 27 changed rows, 51 scalar words and 77 bytes. Save/Open
+and normal Build readback passed. Build `3fdde51ebe52438e` used existing format7
+resource relocation (eight compressed bytes of growth, one PROT sector); complete
+changed pack, neighboring sections, outside-resource PROT bytes, TOC/metadata
+and directory/ZIP payloads matched. Package SHA256:
+`68a55b8590e44041dedce6581baa75d6fdbd84b332f95a9d70fe9509ea50a7f0`.
+The package feature stays disabled by default; native relocation activation and
+gameplay remain unaccepted. Pinned Andrew TMD tables corroborate vector layout;
+rotation is SDK authoring arithmetic. See [object angle rotation](legaia-model-object-angle.md)
+and private `local-output/sdk-20260909/object-angle-20261007/` evidence. Resolved
+fixture-count and fixed-overlay harness failures are retained. No runtime change,
+full campaign, game launch, installation or full-disc export occurred. Development
+stays solo; manual verification is deferred and the full goal remains active.
+
 ## Stored object normal rotation - accepted offline (2026-10-07)
 
 The model vector inspector now rotates an object's stored normals independently
