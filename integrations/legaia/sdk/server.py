@@ -818,6 +818,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/npc-appearance.js": ("npc-appearance.js", "text/javascript"),
                  "/npc-donor-script.js": ("npc-donor-script.js", "text/javascript"),
                  "/npc-draft-inspector.js": ("npc-draft-inspector.js", "text/javascript"),
+                 "/npc-flag-references.js": ("npc-flag-references.js", "text/javascript"),
                  "/npc-presets.js": ("npc-presets.js", "text/javascript"),
                  "/npc-preset-metadata.js": ("npc-preset-metadata.js", "text/javascript"),
                  "/draft-review.js": ("draft-review.js", "text/javascript"),

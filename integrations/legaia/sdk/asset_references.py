@@ -162,7 +162,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
             if available:nodes[identifier]['available']=True
         else:nodes[identifier]=value
         if len(nodes)>16384:raise ProjectError('Asset reference node limit exceeded')
-    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None,allocated_evidence=None,retained_evidence=None,wav_evidence=None,current_wav_evidence=None,npc_script_evidence=None):
+    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None,allocated_evidence=None,retained_evidence=None,wav_evidence=None,current_wav_evidence=None,npc_script_evidence=None,npc_flag_evidence=None):
         if source not in nodes or target not in nodes:raise ProjectError('Asset reference has an unavailable structural endpoint')
         value=dict(source_id=source,target_id=target,kind=kind,scene_id=scene,layer=layer,runtime_binding='not_asserted')
         if pc is not None:value['pc']=pc
@@ -194,6 +194,9 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
         if current_wav_evidence is not None:value['current_wav_binding_evidence']=deepcopy(current_wav_evidence)
         if npc_script_evidence is not None:
             value['npc_script_donor_evidence']=deepcopy(npc_script_evidence)
+            value['source_catalog_key']=catalog['source_key']
+        if npc_flag_evidence is not None:
+            value['npc_flag_operand_evidence']=deepcopy(npc_flag_evidence)
             value['source_catalog_key']=catalog['source_key']
         value['id']=digest(value);edges[value['id']]=value
         if len(edges)>32768:raise ProjectError('Asset reference edge limit exceeded')
@@ -247,6 +250,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
     # An authored clone retains a recorded retail source; it is not the
     # generated script, and a relationship cannot establish live execution.
     from .npc_script_references import evidence as npc_script_evidence
+    npc_flag_owners={};npc_flag_sites=set();npc_flag_consumed={}
     for owner,draft in sorted(project.actor_drafts.items()):
         if draft['scene_id']!=scene:continue
         target='script://'+draft['donor_entity_id'].removeprefix('scene://')
@@ -257,6 +261,11 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
         proof=npc_script_evidence(draft,records[0],scene)
         if proof is None:unresolved+=1;continue
         edge(owner,target,'draft_script_donor',scene,'authored',npc_script_evidence=proof)
+        if 'flags' in draft:
+            from .npc_flags import validate as validate_npc_flags
+            validate_npc_flags(project,draft)
+        targets={row['semantic_id']:row for row in project._flag_context(draft['donor_entity_id']).options(draft['donor_entity_id'])['targets']} if 'flags' in draft else {}
+        npc_flag_owners.setdefault(draft['donor_entity_id'],[]).append((owner,draft,proof,records[0],targets))
 
     # These are historical capture targets, not Current native assignments.
     audio_records={r['id']:r for r in catalog['records'] if r['kind']=='audio'}
@@ -340,6 +349,14 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
                 proof={key:deepcopy(record[key]) for key in ('bank','index','scope','extended_target','grouping_layer')}
                 proof.update(operation=reference['operation'],mnemonic=reference['mnemonic'])
                 edge(target,identity,'script_flag_reference',scene,'decoded',reference['pc'],flag_evidence=proof)
+                from .npc_flag_references import binding as npc_flag_binding
+                for owner,draft,donor_proof,script,targets in npc_flag_owners.get(record['owner_id'],[]):
+                    site=(owner,reference['pc'])
+                    if site in npc_flag_sites:raise ProjectError('Duplicate NPC flag instruction ownership')
+                    npc_flag_sites.add(site)
+                    binding=npc_flag_binding(draft,donor_proof,record,reference,script,targets.get(operand))
+                    if binding['authored_index'] is not None:npc_flag_consumed.setdefault(owner,set()).add(binding['operand_id'])
+                    edge(owner,identity,'npc_script_flag_operand',scene,'authored',reference['pc'],flag_evidence=proof,npc_flag_evidence=binding)
                 if authored is not None:
                     binding=dict(operand_id=operand,retail_index=reference['retail_index'],
                                  effective_index=reference['effective_index'],
@@ -435,6 +452,9 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
                 for target in material['source_ids']:
                     node(target,'texture',scene,available=target in nodes)
                     edge(model['model_id'],target,'effective_material_texture_source',scene,'effective',evidence=evidence)
+    for owners in npc_flag_owners.values():
+        for owner,draft,_,_,_ in owners:
+            unresolved+=len(set(draft.get('flags',{}).get('entries',{}))-npc_flag_consumed.get(owner,set()))
     if own_audio_snapshot:audio_snapshot.verify(project)
     if _full_graph:
         for identity,value in nodes.items():

@@ -1,4 +1,5 @@
 import {decodeCurrentWavBinding} from './audio-input-assets.js';
+import {validateNpcFlagReference,npcFlagInstructionSite,npcFlagReferenceLabel} from './npc-flag-references.js';
 const kinds=new Set(['audio','scene','actor','model','texture','animation','script','dialogue','flag','transition','collision','trigger','region','worldmap']);
 const relations=new Set(['current_native_sample_wav_binding','retained_wav_sample_input','scene_actor','scene_model_catalog','draft_donor','initial_model','effective_initial_model','actor_script_record','encoded_scene_change','script_dialogue_segment','initial_animation_binding','recorded_model_clip_binding','field_map_table_source','landmark_destination_source','static_material_texture_source']);
 relations.add('effective_initial_animation_binding');relations.add('draft_initial_animation_binding');relations.add('appearance_donor');
@@ -11,6 +12,7 @@ relations.add('effective_field_trigger_script_reference');
 relations.add('effective_material_texture_source');
 const hash=value=>typeof value==='string'&&/^[0-9a-f]{64}$/.test(value);
 relations.add('draft_script_donor');
+relations.add('npc_script_flag_operand');
 const identity=value=>typeof value==='string'&&value.length>0&&value.length<=1024;
 const canonicalScenes=(ids,minimum=1)=>Array.isArray(ids)&&ids.length>=minimum&&ids.length<=64&&ids.every(id=>identity(id)&&id.startsWith('scene://')&&id.length>8)&&new Set(ids).size===ids.length&&JSON.stringify(ids)===JSON.stringify([...ids].sort());
 const exactKeys=(value,keys)=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
@@ -51,12 +53,19 @@ export function decodeAssetReferences(value,assetId,sourceKey,scope='active'){
   if(!['active','project'].includes(scope))throw new Error('Invalid asset reference scope.');
   if(value?.schema_version!==(scope==='project'?'legaia.project-asset-references.v1':'legaia.asset-references.v1')||value.read_only!==true||value.asset_id!==assetId||value.source_key!==sourceKey||!hash(sourceKey))throw new Error('Asset references changed or have an unsupported contract. Reopen the asset.');
   if(!Array.isArray(value.nodes)||value.nodes.length>4097||!Array.isArray(value.incoming)||!Array.isArray(value.outgoing)||value.incoming.length+value.outgoing.length>4096)throw new Error('Invalid asset reference bounds.');
-  const npcDonors=new Set();
+  const npcDonors=new Set(),npcFlagSites=new Set(),npcFlagOwners=new Map();
   const nodes=new Map();for(const node of value.nodes){if(!identity(node.id)||nodes.has(node.id)||!kinds.has(node.kind)||!identity(node.scene_id)||!identity(node.label)||typeof node.available!=='boolean')throw new Error('Invalid asset reference node.');nodes.set(node.id,node);}
   if(!nodes.has(assetId))throw new Error('Missing asset reference root.');
   const edges=new Set(),transitionProofs=new Map(),transitionSites=new Set(),triggerSites=new Set(),triggerTargets=new Map(),triggerSources=new Map(),triggerBindings=new Map();for(const [direction,rows] of [['incoming',value.incoming],['outgoing',value.outgoing]])for(const edge of rows){
     if(!hash(edge.id)||edges.has(edge.id)||!nodes.has(edge.source_id)||!nodes.has(edge.target_id)||!relations.has(edge.kind)||!['imported','effective','authored','decoded'].includes(edge.layer)||edge.runtime_binding!=='not_asserted'||!hash(edge.source_import_sha256)||!identity(edge.scene_id)||direction==='incoming'&&edge.target_id!==assetId||direction==='outgoing'&&edge.source_id!==assetId||edge.layer==='decoded'&&!hash(edge.source_catalog_key)||edge.pc!==undefined&&(!Number.isSafeInteger(edge.pc)||edge.pc<0))throw new Error('Invalid asset reference edge.');
     edges.add(edge.id);
+    if(Object.hasOwn(edge,'npc_flag_operand_evidence')&&edge.kind!=='npc_script_flag_operand')throw Error('NPC flag evidence cannot assert another relationship.');
+    if(edge.kind==='npc_script_flag_operand'){
+      const proof=validateNpcFlagReference(edge,nodes),site=edge.scene_id+'|'+edge.source_id+'|flag|'+edge.pc;
+      if(npcFlagSites.has(site))throw Error('Duplicate NPC flag instruction ownership.');npcFlagSites.add(site);
+      const owner=edge.scene_id+'|'+edge.source_id+'|flag-owner',identity=JSON.stringify(proof.donor);
+      if(npcFlagOwners.has(owner)&&npcFlagOwners.get(owner)!==identity)throw Error('Conflicting NPC flag donor or authored draft ownership.');npcFlagOwners.set(owner,identity);
+    }
     if(Object.hasOwn(edge,'npc_script_donor_evidence')&&edge.kind!=='draft_script_donor')throw Error('NPC script donor evidence cannot assert another relationship.');
     if(edge.kind==='draft_script_donor'){
       const p=edge.npc_script_donor_evidence,match=/^scene:\/\/([A-Za-z0-9_-]+)\/actors\/man-p1\/([0-9]{4})$/.exec(p?.donor_entity_id??'');
@@ -98,7 +107,7 @@ export function decodeAssetReferences(value,assetId,sourceKey,scope='active'){
       if(previous&&(transitionProofKeys.some(key=>previous.transition_reference_evidence[key]!==edge.transition_reference_evidence[key])||previous.source_import_sha256!==edge.source_import_sha256||previous.source_catalog_key!==edge.source_catalog_key||previous.scene_id!==edge.scene_id))throw new Error('Transition edges disagree about their verified source.');
       transitionProofs.set(transitionId,edge);
     }
-    if(Object.hasOwn(edge,'flag_reference_evidence')&&!['script_flag_reference','effective_script_flag_reference'].includes(edge.kind))throw new Error('Flag evidence cannot assert another relationship.');
+    if(Object.hasOwn(edge,'flag_reference_evidence')&&!['script_flag_reference','effective_script_flag_reference','npc_script_flag_operand'].includes(edge.kind))throw new Error('Flag evidence cannot assert another relationship.');
     if(Object.hasOwn(edge,'flag_binding_evidence')&&edge.kind!=='effective_script_flag_reference')throw new Error('Authored flag evidence cannot assert another relationship.');
     if(['script_flag_reference','effective_script_flag_reference'].includes(edge.kind)){
       const e=edge.flag_reference_evidence,current=edge.kind==='effective_script_flag_reference';
@@ -151,6 +160,7 @@ export function decodeAssetReferences(value,assetId,sourceKey,scope='active'){
 }
 export const assetReferenceNavigationNode=(node,edge,scope='active')=>scope==='project'&&node.navigable_scene_ids.includes(edge.scene_id)?{...node,scene_id:edge.scene_id}:node;
 export function assetReferenceInstructionSite(edge,nodes,scope='active'){
+  if(edge?.kind==='npc_script_flag_operand')return npcFlagInstructionSite(edge,nodes,scope);
   const targets={script_dialogue_segment:'dialogue',script_flag_reference:'flag',effective_script_flag_reference:'flag',script_transition_reference:'transition',encoded_scene_change:'scene'};
   if(!Object.hasOwn(targets,edge?.kind)||edge.layer!==(edge.kind==='effective_script_flag_reference'?'effective':'decoded')||!boundedInteger(edge.pc,0,65535)||
     !hash(edge.source_import_sha256)||!hash(edge.source_catalog_key)||edge.runtime_binding!=='not_asserted')return null;
@@ -175,7 +185,7 @@ export function qualifyAssetReferenceInstructionSite(site,record,sourceKey){
     site.source_record_sha256!==null&&(!hash(site.source_record_sha256)||source.sha256!==site.source_record_sha256))throw new Error('Reference instruction source changed or could not be qualified. Refresh asset references.');
   return structuredClone(site);
 }
-export const assetReferenceRelationLabel=edge=>edge.kind==='draft_script_donor'?'NPC retail script donor · authored clone source · generated/live script not asserted':edge.kind==='current_native_sample_wav_binding'?`Current authored native sample ${edge.current_wav_binding_evidence.sample_index+1} / verified output bytes / runtime usage unknown`:edge.kind==='retained_wav_sample_input'?`historical WAV capture target / sample ${edge.wav_input_evidence.sample_index+1} / Current assignment unknown`:['script_flag_reference','effective_script_flag_reference'].includes(edge.kind)?`${edge.kind==='effective_script_flag_reference'?'Current authored':'Retail encoded'} ${edge.flag_reference_evidence.bank} flag operand ${edge.flag_binding_evidence?.effective_index??edge.flag_reference_evidence.index} · source group ${edge.flag_reference_evidence.index} · runtime binding unresolved`:['static_material_texture_source','effective_material_texture_source'].includes(edge.kind)?`${edge.kind==='effective_material_texture_source'?'Current':'Retail'} static material to texture address match`:edge.kind==='reference_pinned_model_clip'?`pinned model/clip association · clip ${edge.reference_clip_evidence.clip_id} · actor playback unknown`:['field_trigger_script_reference','effective_field_trigger_script_reference'].includes(edge.kind)?`${edge.kind==='effective_field_trigger_script_reference'?'Current authored':'Retail encoded'} gate-1 trigger → partition 2 source record ${edge.trigger_reference_evidence.partition_two_record_index} · activation not evaluated`:transitionRelations.has(edge.kind)?`${edge.kind==='script_transition_reference'?'source script instruction':'encoded destination source'} · reachability not evaluated`:edge.kind.replaceAll('_',' ');
+export const assetReferenceRelationLabel=edge=>edge.kind==='npc_script_flag_operand'?npcFlagReferenceLabel(edge):edge.kind==='draft_script_donor'?'NPC retail script donor · authored clone source · generated/live script not asserted':edge.kind==='current_native_sample_wav_binding'?`Current authored native sample ${edge.current_wav_binding_evidence.sample_index+1} / verified output bytes / runtime usage unknown`:edge.kind==='retained_wav_sample_input'?`historical WAV capture target / sample ${edge.wav_input_evidence.sample_index+1} / Current assignment unknown`:['script_flag_reference','effective_script_flag_reference'].includes(edge.kind)?`${edge.kind==='effective_script_flag_reference'?'Current authored':'Retail encoded'} ${edge.flag_reference_evidence.bank} flag operand ${edge.flag_binding_evidence?.effective_index??edge.flag_reference_evidence.index} · source group ${edge.flag_reference_evidence.index} · runtime binding unresolved`:['static_material_texture_source','effective_material_texture_source'].includes(edge.kind)?`${edge.kind==='effective_material_texture_source'?'Current':'Retail'} static material to texture address match`:edge.kind==='reference_pinned_model_clip'?`pinned model/clip association · clip ${edge.reference_clip_evidence.clip_id} · actor playback unknown`:['field_trigger_script_reference','effective_field_trigger_script_reference'].includes(edge.kind)?`${edge.kind==='effective_field_trigger_script_reference'?'Current authored':'Retail encoded'} gate-1 trigger → partition 2 source record ${edge.trigger_reference_evidence.partition_two_record_index} · activation not evaluated`:transitionRelations.has(edge.kind)?`${edge.kind==='script_transition_reference'?'source script instruction':'encoded destination source'} · reachability not evaluated`:edge.kind.replaceAll('_',' ');
 export function assetReferenceTriggerEvidenceLabel(edge){
   const proof=edge.trigger_reference_evidence;if(!proof)return null;
   const binding=edge.trigger_binding_evidence;
@@ -233,10 +243,11 @@ export function openAssetReferences({record,getState,busy,onNavigate,onInspectIn
         const evidence=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='Recorded provenance';pre.className='diagnostic-detail';pre.textContent=JSON.stringify(edge,null,2);evidence.append(summary,pre);row.append(button,description,evidence);section.append(row);
         const site=assetReferenceInstructionSite(edge,nodes,scope);
         if(site&&typeof onInspectInstruction==='function'){
-          const inspect=document.createElement('button');inspect.type='button';inspect.textContent='Inspect reference instruction';inspect.dataset.referenceInstruction=site.script_id;inspect.dataset.referencePc=site.pc;
+          const inspect=document.createElement('button');inspect.type='button';inspect.textContent=edge.kind==='npc_script_flag_operand'?'Inspect retail donor instruction':'Inspect reference instruction';inspect.dataset.referenceInstruction=site.script_id;inspect.dataset.referencePc=site.pc;
           inspect.title=`${site.script_id} · PC 0x${site.pc.toString(16).toUpperCase()}`;inspect.onclick=()=>navigate(site,onInspectInstruction);row.append(inspect);
         }
         if(edge.npc_script_donor_evidence){const p=edge.npc_script_donor_evidence,note=document.createElement('p');note.style.overflowWrap='anywhere';note.textContent=`Retail source: ${p.donor_entity_id} · ${p.script_status} · ${p.byte_coordinate_space} byte ${p.byte_offset}, ${p.byte_length} bytes. Source record SHA-256 ${p.source_record_sha256}. Authored NPC SHA-256 ${p.authored_draft_sha256}. Use the NPC's saved Build comparison to inspect its emitted script.`;row.append(note);}
+        if(edge.npc_flag_operand_evidence){const p=edge.npc_flag_operand_evidence,note=document.createElement('p');note.style.overflowWrap='anywhere';note.textContent=`NPC script donor ${p.donor.donor_entity_id} · ${p.donor.script_status} catalog · ${p.authored_operand_qualified?'authored operand independently qualified':'inherited source operand'} · Retail index ${p.retail_index} · NPC authored index ${p.authored_index??'none'} · NPC Current index ${p.effective_index}. Source record SHA-256 ${p.donor.source_record_sha256}; NPC draft SHA-256 ${p.donor.authored_draft_sha256}. The donor actor's authored flag edits are separate. Generated bytes and live values require their own inspection.`;row.append(note);}
         if(edge.current_wav_binding_evidence){const p=edge.current_wav_binding_evidence,note=document.createElement('p');note.textContent=`Current entry SHA-256 ${p.current_entry_sha256} / sample SHA-256 ${p.current_sample_sha256} / entry byte ${p.sample_entry_byte_offset} / ${p.sample_size_bytes} bytes / authored binding SHA-256 ${p.binding_sha256}. Native output dependency only; runtime playback is not established.`;row.append(note);}
         if(edge.wav_input_evidence){const note=document.createElement('p');note.textContent=`Historical receipt ${edge.wav_input_evidence.receipt_key} / bank SHA-256 ${edge.wav_input_evidence.bank_sha256} / source sample SHA-256 ${edge.wav_input_evidence.source_sample_sha256}. Current native assignment and runtime usage are not established.`;row.append(note);}
         if(edge.transition_reference_evidence){const note=document.createElement('p');note.textContent=assetReferenceTransitionEvidenceLabel(edge);row.append(note);}
