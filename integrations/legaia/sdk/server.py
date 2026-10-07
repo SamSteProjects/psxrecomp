@@ -825,6 +825,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/asset-references.js": ("asset-references.js", "text/javascript"),
                  "/audio-sequence.js": ("audio-sequence.js", "text/javascript"),
                  "/audio-sequence-authoring.js": ("audio-sequence-authoring.js", "text/javascript"),
+                 "/audio-input-assets.js": ("audio-input-assets.js", "text/javascript"),
                  "/audio-note-links.js": ("audio-note-links.js", "text/javascript"),
                  "/audio-note-timeline.js": ("audio-note-timeline.js", "text/javascript"),
                  "/audio-note-authoring.js": ("audio-note-authoring.js", "text/javascript"),
@@ -2025,6 +2026,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('WAV retention requires exact reviewed source and input fields')
                     self.server.project.command(dict(type='retain_audio_sample_source',**body))
                     self._json(200,self.server.state());return
+                if route in ('/api/audio-input-inspection', '/api/audio-input-download'):
+                    if set(body) != {'asset_id', 'expected_source_key'}:
+                        raise ProjectError('WAV asset inspection requires exact project source and asset identities')
+                    from .audio_input_assets import inspect
+                    self._json(200, inspect(self.server.project, body['asset_id'], body['expected_source_key'],
+                                           include_wav=route == '/api/audio-input-download'))
+                    return
                 if route in ('/api/audio-sample-sources','/api/audio-sample-source-download','/api/audio-sample-source-removal-review'):
                     from .audio_sample_sources import library,download,review_removal
                     fields={'expected_authoring_key'} if route=='/api/audio-sample-sources' else {'expected_authoring_key','receipt_key'}

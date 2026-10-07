@@ -146,6 +146,8 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
     """Adapt explicit imported/derived references; callers verify retail sources first."""
     if not isinstance(identifier,str) or not identifier or len(identifier)>1024:raise ProjectError('Invalid asset reference identity')
     nodes={};edges={};unresolved=0;memberships={};navigation={};model_records={}
+    from .audio_input_assets import inventory as wav_inventory
+    wav_inputs=wav_inventory(project)
     import_digests={scene:digest(document) for scene,document in project.imports.items()}
     def node(identifier,kind,scene,label=None,available=True):
         if not isinstance(identifier,str) or not identifier or len(identifier)>1024:raise ProjectError('Invalid asset reference identity')
@@ -157,7 +159,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             if available:nodes[identifier]['available']=True
         else:nodes[identifier]=value
         if len(nodes)>16384:raise ProjectError('Asset reference node limit exceeded')
-    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None,allocated_evidence=None,retained_evidence=None):
+    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None,allocated_evidence=None,retained_evidence=None,wav_evidence=None):
         if source not in nodes or target not in nodes:raise ProjectError('Asset reference has an unavailable structural endpoint')
         value=dict(source_id=source,target_id=target,kind=kind,scene_id=scene,layer=layer,runtime_binding='not_asserted')
         if pc is not None:value['pc']=pc
@@ -185,6 +187,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
         if retained_evidence is not None:
             value['retained_capture_evidence']=deepcopy(retained_evidence)
             value['source_catalog_key']=catalog['source_key']
+        if wav_evidence is not None:value['wav_input_evidence']=deepcopy(wav_evidence)
         value['id']=digest(value);edges[value['id']]=value
         if len(edges)>32768:raise ProjectError('Asset reference edge limit exceeded')
     for scene,document in sorted(project.imports.items()):
@@ -233,6 +236,20 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
                    'model_source_entity_id':row['model_source_entity_id'],'frame_count':row['frame_count'],
                    'object_count':row['object_count'],'active':row['active']}
             edge(record['id'],model,'retained_model_capture',scene,'authored',retained_evidence=proof)
+
+    # These are historical capture targets, not Current native assignments.
+    audio_records={r['id']:r for r in catalog['records'] if r['kind']=='audio'}
+    for identity,rows in wav_inputs['receipts'].items():
+        for receipt in rows:
+            if receipt['source_scene_id']!=scene:continue
+            target=receipt['asset_id'];native=audio_records.get(target)
+            if native is not None and native.get('source_record',{}).get('sha256')!=receipt['source_record']['entry_sha256']:
+                raise ProjectError('Historical WAV target differs from its qualified native catalog entry')
+            node(identity,'audio',scene,wav_inputs['assets'][identity]['name'])
+            node(target,'audio',scene,'Historical capture target '+target,available=native is not None)
+            proof={key:deepcopy(receipt[key]) for key in ('receipt_key','wav_sha256','sample_index','source_scene_id','bank_sha256','source_sample_sha256')}
+            proof.update(native_asset_id=target,disc_sha256=receipt['source_record']['disc_sha256'],entry_sha256=receipt['source_record']['entry_sha256'],relationship='historical_capture_target')
+            edge(target,identity,'retained_wav_sample_input',scene,'authored',wav_evidence=proof)
 
     from .allocated_animation_references import bindings as allocated_bindings
     for retained in allocated_bindings(project,scene) if catalog.get('source_key') else []:
@@ -387,6 +404,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
                 for target in material['source_ids']:
                     node(target,'texture',scene,available=target in nodes)
                     edge(model['model_id'],target,'effective_material_texture_source',scene,'effective',evidence=evidence)
+    if wav_inventory(project)!=wav_inputs:raise ProjectError('Retained WAV reference inputs changed during assembly')
     if _full_graph:
         for identity,value in nodes.items():
             value['scene_ids']=sorted(memberships[identity]);value['_navigation_scene_ids']=sorted(navigation.get(identity,set()))

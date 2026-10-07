@@ -170,6 +170,8 @@ def assemble(project, catalogs, coverage=None) -> dict:
             id=identifier, kind='actor', layer='authored', draft=True, name=draft['name'],
             scene_id=draft['scene_id'], donor_entity_id=draft['donor_entity_id'], authored=deepcopy(draft),
             model_reference=deepcopy(draft_models.get(identifier))))
+    from .audio_input_assets import inventory as audio_input_inventory
+    audio_inputs = audio_input_inventory(project)
     indexed, scenes, membership_count = {}, [], 0
     for scene, document in sorted(imports.items()):
         import_hash = digest(document)
@@ -226,6 +228,8 @@ def assemble(project, catalogs, coverage=None) -> dict:
                 add(record, catalog['source_key'])
         for record in drafts.get(scene, []):
             add(record, base_kind='actor', authored=True)
+        for record in audio_inputs['records_by_scene'].get(scene, []):
+            add(record, base_kind='audio')
         for identifier, variant in sorted(local.items()):
             indexed[identifier]['variants'].append(variant)
             indexed[identifier]['scene_ids'].append(scene)
@@ -244,7 +248,7 @@ def assemble(project, catalogs, coverage=None) -> dict:
                   limitations=list(LIMITATIONS))
     _metadata(result)
     _budget(result)
-    if key != source_key(project):
+    if key != source_key(project) or audio_input_inventory(project) != audio_inputs:
         raise ProjectError('Project Asset Database source changed during assembly')
     return deepcopy(result)
 
