@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
-const code=await readFile(new URL('../editor/build-history.js',import.meta.url),'utf8');
-const {decodeBuildHistory,decodeBuildVerification,decodeBuildVerificationForEntry}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+import {decodeBuildHistory,decodeBuildVerification,decodeBuildVerificationForEntry} from '../editor/build-history.js';
 const id='a'.repeat(16),hash='b'.repeat(64),value={builds:[{id,status:'completed',gameplay_verified:false,integrity:'not_checked',matches_current_inputs:true,archive_sha256:hash,source_disc_sha256:hash,build_kind:'retail',change_count:0,archive_path:'private.psxmod'}],truncated:false,coverage:'project_Builds_only_identity_order'};
 const detached=decodeBuildHistory(value);detached.builds[0].id='c'.repeat(16);assert.equal(value.builds[0].id,id);
 for(const mutate of [v=>v.builds[0].gameplay_verified=true,v=>v.builds[0].integrity='verified',v=>v.builds.push(v.builds[0]),v=>v.coverage='newest',v=>v.builds[0].id='../escape',v=>v.builds[0].matches_current_inputs=null]){const v=structuredClone(value);mutate(v);assert.throws(()=>decodeBuildHistory(v));}

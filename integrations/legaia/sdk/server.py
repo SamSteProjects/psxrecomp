@@ -837,6 +837,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/actor-animation.js': ('actor-animation.js', 'text/javascript'),
                  "/build-review.js": ("build-review.js", "text/javascript"),
                  "/build-history.js": ("build-history.js", "text/javascript"),
+                 "/build-wav-inputs.js": ("build-wav-inputs.js", "text/javascript"),
                  "/asset-build-history.js": ("asset-build-history.js", "text/javascript"),
                  "/project-copy.js": ("project-copy.js", "text/javascript"),
                  "/scene-selection-sets.js": ("scene-selection-sets.js", "text/javascript"),
@@ -1867,6 +1868,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                         result=verify_build(self.server.project,body['id'])
                     self._json(200,result)
                     return
+                if route in ('/api/builds/wav-snapshots','/api/builds/wav-inputs','/api/builds/wav-download'):
+                    from .build_wav_inputs import snapshots,inputs,download
+                    fields={'id','expected_archive_sha256','expected_project_key'}
+                    if route!='/api/builds/wav-snapshots':fields.add('input_key')
+                    if route=='/api/builds/wav-download':fields.update(('expected_manifest_key','receipt_key'))
+                    if set(body)!=fields:raise ProjectError('Build WAV recovery requires exact recorded input and freshness fields')
+                    function=snapshots if route.endswith('-snapshots') else inputs if route.endswith('-inputs') else download
+                    self._json(200,function(self.server.project,**body));return
                 if route == '/api/builds/compare':
                     if set(body)!={'left_id','right_id'}:raise ProjectError('Build comparison requires two saved identities only')
                     from .build_compare import compare_builds

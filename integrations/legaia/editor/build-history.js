@@ -1,3 +1,4 @@
+import {openBuildWavs} from './build-wav-inputs.js';
 const hash=value=>typeof value==='string'&&/^[0-9a-f]{64}$/.test(value);
 export function decodeBuildHistory(value){
   if(!Array.isArray(value?.builds)||value.builds.length>256||typeof value.truncated!=='boolean'||value.coverage!=='project_Builds_only_identity_order')throw new Error('Invalid saved Build history');
@@ -35,6 +36,7 @@ export function mountBuildHistory({after,getState,busy,setBusy}){
     const title=document.createElement('h2');title.textContent='Saved Builds';const status=document.createElement('p');status.setAttribute('role','status');status.textContent='Loading saved completion receipts…';
     const list=document.createElement('div');list.style.maxHeight='60vh';list.style.overflow='auto';const close=document.createElement('button');close.textContent='Close';close.onclick=()=>dialog.close();const controller=new AbortController();
     dialog.append(title,status,list,close);document.body.append(dialog);dialog.showModal();dialog.addEventListener('close',()=>{controller.abort();dialog.remove();});
+    let wavRecovery=null;dialog.addEventListener('close',()=>wavRecovery?.dispose());
     const context=()=>dialog.open&&getState().project.path===root&&getState().build_review_source_key===key;
     const request=async(route,body)=>{
       if(!context())throw new Error('Project inputs changed. Reopen Build history.');
@@ -82,7 +84,7 @@ export function mountBuildHistory({after,getState,busy,setBusy}){
             if(verified.report.changes.length>256){const note=document.createElement('p');note.textContent='First 256 changes shown; the saved audit retains the full report.';report.append(note);}
           }catch(error){if(context())outcome.textContent=`Verification failed: ${error.message}`;}finally{check.disabled=false;setBusy(false);}
         };
-        section.append(check,outcome,report);list.append(section);
+        const wav=document.createElement('button');wav.textContent='Browse saved WAV inputs';wav.onclick=()=>{if(busy()||!context())return;wavRecovery?.dispose();wavRecovery=openBuildWavs({entry:item,key,fresh:context});};section.append(check,wav,outcome,report);list.append(section);
       }
     }catch(error){if(dialog.open)status.textContent=`Could not load saved Builds: ${error.message}`;}finally{setBusy(false);}
   };

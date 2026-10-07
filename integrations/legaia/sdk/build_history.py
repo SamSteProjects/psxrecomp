@@ -42,7 +42,7 @@ def _metadata(path):
     return value, data
 
 
-def _load(project, identifier):
+def _load(project, identifier, *, use_current=True):
     receipt, _ = _metadata(_path(project, identifier, 'build-receipt.json'))
     if (receipt.get('schema_version') != 'legaia.build-receipt.v1'
             or any(not _hash(receipt.get(k)) for k in ('authored_state_key','audit_sha256','manifest_sha256','archive_sha256','source_disc_sha256'))
@@ -66,7 +66,7 @@ def _load(project, identifier):
     # O(1) lookup of a retained current-input receipt; never scan nested folders.
     current = authored_state_key(project)
     candidate = _path(project,identifier,'input-receipts/'+current+'.json')
-    if candidate.exists():
+    if use_current and candidate.exists():
         recorded, _ = _metadata(candidate)
         if (recorded.get('authored_state_key')!=current or
                 {k:v for k,v in recorded.items() if k!='authored_state_key'} !=
