@@ -1,5 +1,26 @@
 # Legaia SDK feature matrix
 
+## Whole inspected script-flow diagram - accepted offline (2026-10-07)
+
+The existing branch diagram now pages Whole inspected flow alongside Selected
+neighborhood. All reached decoded boundaries in qualified Retail or Current/
+Reviewed Proposed reports are navigable, 24 per page. Decoded off-page targets
+open their graph page; unknown targets and display omissions stay explicit.
+Current/Proposed edge colors, keyboard inspection and existing source/draft
+qualification remain intact. Unvisited rows remain in the source overview;
+conditions and gameplay execution are not evaluated.
+
+Four affected client suites and syntax passed. Actual Town01 Actor 0010's
+156-boundary Retail flow passed seven-page navigation and refresh while its
+unresolved source correctly kept Current unavailable. Qualified Actor 0002
+passed Current/Reviewed Proposed edge comparison and discard. Off-page/keyboard
+navigation, close, wide/400 px layouts and exact unchanged SDK document/history/
+saved bytes/Build inputs passed. No backend, serializer or runtime code changed;
+no new Build, full campaign or gameplay action was required. Development stays
+solo, gameplay stays deferred and the full SDK goal remains active. See
+[whole inspected flow](legaia-script-whole-flow.md) and private evidence
+`local-output/sdk-20260909/script-whole-flow-20261007/`.
+
 ## Native one-pass envelope sample preview - accepted offline (2026-10-07)
 
 Complete standard-shift ADPCM samples with END without REPEAT now offer Native
