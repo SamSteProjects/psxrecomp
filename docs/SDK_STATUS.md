@@ -1,5 +1,27 @@
 # Legaia SDK status — 2026-10-07
 
+## Native one-pass envelope sample preview - accepted offline (2026-10-07)
+
+Complete standard-shift ADPCM samples with END without REPEAT now offer Native
+ADPCM one pass in the bank editor, with linear or native Gaussian interpolation.
+The terminating block plays, then the native END mute forces source output to
+silence; opaque filler is excluded. Native loop/one-pass availability stays
+separate, with explicit source byte loading, layer/hash qualification, first-pass
+PCM comparison, bounded WAVs and existing stop/disposal guards.
+
+Seventeen focused Python tests, eight client suites and three syntax checks
+passed. Compiled native decoding/Gaussian/end-mute output matched all 1102500
+checked samples across Retail/Current and five rates. Actual source sample 1,
+tone page 13 / record 2, passed all three editor layers, nine WAVs, mode/rate
+stops, discard/close and wide/400 px layouts. Complete Proposed WAVs matched
+independent native interpolation/mute plus the accepted literal envelope.
+Project/history/files, Build inputs and the native audio entry stayed exact.
+No runtime change, new mod Build, full campaign or gameplay action occurred.
+Complete voice scheduling, instrument/driver semantics and audible gameplay
+remain open. Development stays solo and the full SDK goal stays active. See
+[native one-pass preview](legaia-audio-native-one-pass.md) and private evidence
+`local-output/sdk-20260909/audio-native-one-pass-20261007/`.
+
 ## Native Gaussian envelope sample preview - accepted offline (2026-10-07)
 
 The bank editor now offers Native Gaussian preview for source-qualified native

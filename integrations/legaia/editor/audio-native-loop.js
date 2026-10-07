@@ -28,13 +28,13 @@ export function decodeNativeLoop(raw,frameCount){
  }
  return {bytes,sourceFrames,loop:{startFrame:loopStart/16*28,endFrame:sourceFrames},wraps};
 }
-export async function decodeNativeSample(value,context,bank,sample,layer,sha,currentEntryHash,waveform,pcm){
+export async function decodeNativeSample(value,context,bank,sample,layer,sha,currentEntryHash,waveform,pcm,mode='loop'){
  const keys=['schema_version','asset_id','sample_index','authoring_key','layer','source_record','current_entry_sha256','sample_sha256','waveform','format','adpcm_base64','project_changed','runtime_state'];
  if(!exact(value,keys)||value.schema_version!=='legaia.audio-sample-adpcm.v1'||value.asset_id!==context.assetId||value.sample_index!==sample.index||value.authoring_key!==context.authoringKey||!['retail','current'].includes(layer)||value.layer!==layer||!equal(value.source_record,bank.source_record)||!hash(currentEntryHash)||value.current_entry_sha256!==currentEntryHash||value.sample_sha256!==sha||value.format!=='psx-spu-adpcm-blocks'||typeof value.adpcm_base64!=='string'||value.adpcm_base64.length>87384||value.project_changed!==false||value.runtime_state!=='not_observed')throw Error('Native ADPCM preview differs from its selected source layer.');
- const wave=decodeSampleWave(value.waveform,bank,sample,sha);if(!equal(wave,waveform)||!nativeLoopQualified(wave)||!(pcm instanceof Uint8Array)||pcm.length!==wave.decoded_frames*2||!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value.adpcm_base64))throw Error('Native ADPCM loop differs from its qualified waveform.');
+ const wave=decodeSampleWave(value.waveform,bank,sample,sha);if(!equal(wave,waveform)||!['loop','one-pass'].includes(mode)||!(mode==='loop'?nativeLoopQualified(wave):nativeOnePassQualified(wave))||!(pcm instanceof Uint8Array)||pcm.length!==wave.decoded_frames*2||!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value.adpcm_base64))throw Error('Native ADPCM loop differs from its qualified waveform.');
  const text=atob(value.adpcm_base64);if(text.length!==wave.source_size_bytes||btoa(text)!==value.adpcm_base64)throw Error('Native ADPCM extent differs from its complete source sample.');
  const raw=Uint8Array.from(text,c=>c.charCodeAt(0)),digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',raw)),b=>b.toString(16).padStart(2,'0')).join('');if(digest!==sha)throw Error('Native ADPCM byte hash differs from the qualified sample.');
- const decoded=decodeNativeLoop(raw,wave.decoded_frames);if(!equal(decoded.loop,encodedPcmLoop(wave,wave.decoded_frames))||decoded.bytes.some((b,i)=>b!==pcm[i]))throw Error('Native ADPCM first pass differs from the verified PCM prefix.');
+ const decoded=mode==='loop'?decodeNativeLoop(raw,wave.decoded_frames):decodeNativeOnePass(raw);if(mode==='loop'&&!equal(decoded.loop,encodedPcmLoop(wave,wave.decoded_frames))||decoded.bytes.length!==pcm.length||decoded.bytes.some((b,i)=>b!==pcm[i]))throw Error('Native ADPCM first pass differs from the verified PCM prefix.');
  return raw;
 }
 export function renderNativeEnvelope(raw,rate,adsr1,adsr2,window={}){
@@ -47,4 +47,33 @@ export function renderNativeEnvelope(raw,rate,adsr1,adsr2,window={}){
   output.setInt16(i*2,Math.trunc((a+(b-a)*fraction)*model.levels[i]/32768),true);
  }
  return {bytes,model,sourceRate:rate,outputRate:ENVELOPE_RATE,nativeLoop:decoded.loop};
+}
+
+export function nativeOnePassQualified(wave){
+ return wave?.termination?.reason==='encoded-end'&&wave.source_size_bytes>=16&&wave.source_size_bytes<=65536&&Boolean(wave.markers?.length)&&Boolean(wave.markers.at(-1).flags&1)&&!(wave.markers.at(-1).flags&2)&&!wave.markers.some(m=>m.encoded_shift>12);
+}
+export function decodeNativeOnePass(raw){
+ if(!(raw instanceof Uint8Array)||raw.length<16||raw.length>65536)throw Error('Native one-pass requires bounded source bytes.');
+ const words=[];let previous=0,older=0,ended=false;
+ for(let at=0;at+16<=raw.length;at+=16){
+  const header=raw[at],flags=raw[at+1];if((header>>4)>4||(header&15)>12||flags&~7)throw Error('Native one-pass has unsupported predictor, shift or flags.');
+  const [first,second]=coefficients[header>>4],shift=header&15;
+  for(let b=at+2;b<at+16;b++)for(const nibble of [raw[b]&15,raw[b]>>4]){
+   const signed=nibble<8?nibble:nibble-16,value=Math.max(-32768,Math.min(32767,(signed<<(12-shift))+((previous*first+older*second+32)>>6)));
+   words.push(value);older=previous;previous=value;
+  }
+  if(flags&1){if(flags&2)throw Error('Native one-pass requires END without REPEAT.');ended=true;break;}
+ }
+ if(!ended)throw Error('Native one-pass has no complete encoded END.');
+ const bytes=new Uint8Array(words.length*2),view=new DataView(bytes.buffer);words.forEach((v,i)=>view.setInt16(i*2,v,true));return {bytes,sourceFrames:words.length,consumedBytes:words.length/28*16};
+}
+export function renderNativeOnePassEnvelope(raw,rate,adsr1,adsr2,window={}){
+ if(!PREVIEW_RATES.includes(rate))throw Error('Choose an explicit supported native one-pass preview rate.');
+ const decoded=decodeNativeOnePass(raw),model=simulateEnvelope(adsr1,adsr2,window),input=new DataView(decoded.bytes.buffer),bytes=new Uint8Array(model.frameCount*2),output=new DataView(bytes.buffer);let endFrame=model.frameCount;
+ for(let frame=0;frame<model.frameCount;frame++){
+  const numerator=frame*rate,at=Math.floor(numerator/ENVELOPE_RATE);if(at>=decoded.sourceFrames){endFrame=frame;break;}
+  const fraction=(numerator%ENVELOPE_RATE)/ENVELOPE_RATE,a=input.getInt16(at*2,true),b=input.getInt16(Math.min(at+1,decoded.sourceFrames-1)*2,true);
+  output.setInt16(frame*2,Math.trunc((a+(b-a)*fraction)*model.levels[frame]/32768),true);
+ }
+ return {bytes,model,sourceRate:rate,outputRate:ENVELOPE_RATE,nativeOnePass:true,endFrame};
 }

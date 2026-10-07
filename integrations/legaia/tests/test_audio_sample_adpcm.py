@@ -33,10 +33,19 @@ class NativeSample(TestCase):
         for layer in ['proposed','live',None]:
             with self.assertRaises(ProjectError):self.request(layer)
         with self.assertRaises(ProjectError):self.request(raw=b'forged')
-        for raw in [block(0x0d,7),block(0,1),block(0,3),block(0,4),block(0,8),block(0x50,7),block(0,7)*4097,b'']:
+        for raw in [block(0x0d,7),block(0,3),block(0,4),block(0,8),block(0x50,7),block(0,7)*4097,b'']:
             with patch('sdk.audio_sample_adpcm._current',return_value=(raw,raw,b'',self.record,{'size_bytes':len(raw)},0,raw,None)):
                 with self.assertRaises(ProjectError):self.request(raw=raw)
 
     def test_source_change_during_qualification_rejects(self):
         self.source.side_effect=[self.key,'c'*64]
         with self.assertRaises(ProjectError):self.request()
+
+    def test_nonrepeat_end_accepts_complete_source_and_retains_opaque_tail(self):
+        raw=block(0,0,0x81)+block(0x20,1,0x37)+b'opaque tail'
+        with patch('sdk.audio_sample_adpcm._current',return_value=(raw,raw,b'',self.record,{'size_bytes':len(raw)},0,raw,None)):
+            report=self.request(raw=raw)
+        self.assertEqual(base64.b64decode(report['adpcm_base64']),raw)
+        self.assertEqual(report['waveform']['decoded_frames'],56)
+        self.assertEqual(report['waveform']['termination']['reason'],'encoded-end')
+        self.assertEqual(report['waveform']['remaining_bytes'],11)

@@ -16,9 +16,9 @@ def preview(project,asset_id,expected_entry_sha256,sample_index,expected_authori
         raise ProjectError('Native ADPCM sample extent or selected layer hash changed')
     wave=inspect_waveform(selected)
     starts=[m for m in wave['markers'] if m['flags']&4]
-    if (wave['termination']['reason']!='encoded-end' or not starts or not wave['markers'][-1]['flags']&2
+    if (wave['termination']['reason']!='encoded-end' or (wave['markers'][-1]['flags']&2 and not starts)
             or any(m['encoded_shift']>12 for m in wave['markers'])):
-        raise ProjectError('Native ADPCM audition requires a complete explicit loop with standard shifts')
+        raise ProjectError('Native ADPCM audition requires a complete standard-shift sample; repeats require an explicit loop start')
     if expected_authoring_key!=source_key(project):
         raise ProjectError('Native ADPCM inputs changed during source qualification')
     return dict(schema_version='legaia.audio-sample-adpcm.v1',asset_id=asset_id,sample_index=sample_index,
