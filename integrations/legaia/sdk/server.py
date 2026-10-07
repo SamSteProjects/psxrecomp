@@ -904,6 +904,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-mesh-settings.js": ("model-mesh-settings.js", "text/javascript"),
                  "/mesh-scene-scope.js": ("mesh-scene-scope.js", "text/javascript"),
                  "/mesh-animation-catalog.js": ("mesh-animation-catalog.js", "text/javascript"),
+                 "/mesh-pose-timeline.js": ("mesh-pose-timeline.js", "text/javascript"),
                  "/model-mesh-batch.js": ("model-mesh-batch.js", "text/javascript"),
                  "/model-preview-frame.js": ("model-preview-frame.js", "text/javascript"),
                  "/model-mesh-sources.js": ("model-mesh-sources.js", "text/javascript"),
