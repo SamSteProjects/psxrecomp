@@ -879,6 +879,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-object-mirror.js": ("model-object-mirror.js", "text/javascript"),
                  "/model-object-axis-scale.js": ("model-object-axis-scale.js", "text/javascript"),
                  "/model-object-angle.js": ("model-object-angle.js", "text/javascript"),
+                 "/scene-ruler.js": ("scene-ruler.js", "text/javascript"),
                  "/model-normal-rebuild.js": ("model-normal-rebuild.js", "text/javascript"),
                  "/model-normal-rotation.js": ("model-normal-rotation.js", "text/javascript"),
                  "/model-normal-users.js": ("model-normal-users.js", "text/javascript"),

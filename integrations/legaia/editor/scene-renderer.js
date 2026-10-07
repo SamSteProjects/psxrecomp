@@ -1,3 +1,4 @@
+import {nearestSceneVertex} from './scene-ruler.js';
 // SDK geometry only: no retail format, address, pose or scale interpretation.
 import {sourceNormalMatrix,qualifySourceNormals} from './source-normal-view.js';
 const IDENTITY=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
@@ -383,6 +384,13 @@ export class SceneRenderer {
     const id=this.pick(x,y,view);if(id===null)return null;
     const instance=this.instances.find(i=>i.entity_id===id),triangle=this.pickTriangle(x,y,view,id);
     return triangle===null?null:{entity_id:id,geometry_key:instance.geometry_key,triangle_index:triangle};
+  }
+
+  pickSurfaceVertex(x,y,view){
+    const hit=this.pickSurface(x,y,view);if(!hit)return null;
+    const instance=this.instances.find(i=>i.entity_id===hit.entity_id&&i.geometry_key===hit.geometry_key),asset=this.scene?.assets.find(a=>a.geometry_key===hit.geometry_key),mesh=this.meshes.get(hit.geometry_key);
+    if(!instance||!asset?.preview||!mesh)return null;
+    return nearestSceneVertex({...hit,asset_id:asset.asset_id,decoded_pose:asset.preview.posed===true},asset.preview.vertices,mesh.triangles[hit.triangle_index],this.matrix(instance,view.positions,view.transforms),point=>this.projectPoint(point,view),{x,y});
   }
 
   pick(x,y,view){

@@ -309,3 +309,5 @@
 .asset-comparison-row{min-width:0;padding:.5rem 0;border-bottom:1px solid var(--line,#364b49)}
 .asset-comparison-row strong{display:block;overflow-wrap:anywhere;white-space:normal}
 .asset-comparison-row pre{white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%}
+
+.scene-ruler-tools{padding:10px;border:1px solid var(--border,#39554f);background:var(--panel,#172321);font-size:12px;max-height:220px;overflow:auto;min-width:0}.scene-ruler-tools[hidden]{display:none}.ruler-actions{display:flex;flex-wrap:wrap;gap:6px}.scene-ruler-tools p{margin:8px 0}.scene-ruler-tools pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px}
