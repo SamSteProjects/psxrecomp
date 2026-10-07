@@ -1,5 +1,7 @@
 # Native SEQ operand codec groundwork
 
+Selected event navigation now synchronizes exact tick markers and current details across Retail/Current/Proposed note timelines. Source event-table selection also focuses its timeline. See [Reveal Selected Sequence Events in Note Timelines](legaia-sequence-event-focus.md).
+
 ## Complete Track MIDI Export — 2026-10-07
 
 Source, Retail, Current and reviewed Proposed complete tracks can now be downloaded as MIDI without applying a draft. Partial prefixes refuse; channel operands and encoded timing stay literal. See [Export Complete SEQ Tracks as MIDI](legaia-sequence-midi-export.md) for workflow, bounds and offline evidence.
