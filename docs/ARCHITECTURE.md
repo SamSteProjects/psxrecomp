@@ -1,5 +1,17 @@
 # Architecture
 
+## Align model vertex groups to an explicit native coordinate (2026-10-06)
+
+**Move model geometry → Selected vertex group → Plane: Source coordinate** exposes **Plane coordinate**. Enter a signed16 object-local word, then **Align group X/Y/Z** to stage the chosen coordinate on that source axis. Minimum, bounds-center and maximum planes retain their existing behavior. The local draft supports Discard, Current/Draft comparison, exact scene inspection and all-instance preview before explicit Apply. The coordinate field locks during a staged transform. Source Y remains positive down; this edits model words, not actor placement or scene/world coordinates.
+
+The existing `vertex_alignment` request and Apply endpoint retain exact fields: `anchor` now accepts either `min`/`center`/`max` or an integer from -32768 through 32767. Boolean, float, null, numeric-string and out-of-range anchors reject; blank/fractional/out-of-range UI input cannot stage a draft. Only the selected axis of 1–4096 unique, owned Current object rows changes. Source qualification, ownership, fixed layout, opaque words, normals and topology use the existing native serializer. A coordinate already occupied by every selected row is a no-op with no new history.
+
+Five focused Python alignment checks passed explicit extrema/zero coordinates, independent candidate bytes, malformed requests, stale hashes, atomic refusal, no-op/history and existing bounds-plane/allocated-row behavior. Three Node suites passed vertex movement/review contracts, custom coordinate bounds, grid and connectivity regressions. A fresh private muted headless editor proof passed invalid-input refusal, staging/Discard, exact scene proposal values, Current/Proposed and all-instance preview/return, Apply, no-op and Undo/Redo with no unhandled page errors; wide/400px screenshots were inspected. Expected refusal notifications came from the deliberately invalid inputs. Save/Open retained exact native model bytes, and other authored state remained unchanged.
+
+Independent expected-model construction and full containing LZS-section readback matched package directory and ZIP. Native package SHA-256 `301ca75e55dccd77010d9bed088b623d2f6007a99f39f1c85e925da841491728`, Build `40ed615acb36a58c` passed integrity verification with gameplay acceptance false. Evidence: `local-output/sdk-20260909/vertex-coordinate-plane-20261006/pass1/` (`proof.json`, `browser-proof.json`, `browser.log`, `draft-wide.png`, `draft-narrow.png`, `scene.png`). The initial test fixture selected an already occupied zero plane; it was corrected to a distinct coordinate to test a real history change.
+
+No game launch, attachment, mod installation or full-disc export occurred. Native appearance and placement acceptance remain deferred; the full SDK goal stays active and development remains solo.
+
 ## Paired encoded-note key authoring (2026-10-06)
 
 The sequence operand editor now offers **Keep paired encoded note keys together** for an unambiguous Current note start/release. Changing the key reviews both reached event operands and Apply commits one history change. Release-side selection preserves the start velocity; velocity-zero note-on releases must stay zero, and paired starts must remain positive. The existing raw event editor remains available. Review lists both byte offsets/values and the Proposed timeline is decoded from the complete native candidate.

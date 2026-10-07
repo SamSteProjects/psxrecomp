@@ -12,6 +12,29 @@ from sdk import model_vector_allocation
 from test_model_primitive_workflow import ASSET,http_server,face_edit
 
 class VertexAlignmentTests(unittest.TestCase):
+    def test_explicit_coordinate_preserves_other_words_and_is_atomic(self):
+        h,p=self.fixture();h.apply([face_edit(h.source)]);current=h.effective();before=h.snapshot()
+        for axis in ('x','y','z'):
+            for target in (-32768,0,32767):
+                values=dict(indices=[0,1],axis=axis,anchor=target);candidate,report=p._prepare_model_object(ASSET,0,'vertex_alignment',values,sha256(current).hexdigest())
+                doc=json.loads(export_shape_json(current));a=('x','y','z').index(axis)
+                for i in (0,1):doc['objects'][0]['vertices'][i][a]=target
+                self.assertEqual(candidate,import_shape_json(current,sha256(current).hexdigest(),json.dumps(doc).encode())[0]);self.assertEqual(report['values'],values);self.assertEqual(h.snapshot(),before)
+        for target in (-32769,32768,True,0.0,'0',None):
+            with self.assertRaises((ProjectError,RetailImportError)):p.align_model_vertices(ASSET,0,[0,1],'y',target,sha256(current).hexdigest())
+            self.assertEqual(h.snapshot(),before)
+        p.align_model_vertices(ASSET,0,[0,1],'y',-123,sha256(current).hexdigest());aligned=h.effective();after=h.snapshot();p.align_model_vertices(ASSET,0,[0,1],'y',-123,sha256(aligned).hexdigest());self.assertEqual(h.snapshot(),after);p.undo();self.assertEqual(h.effective(),current);p.redo();self.assertEqual(h.effective(),aligned)
+
+    def test_explicit_coordinate_http_review_and_apply(self):
+        h,p=self.fixture();before=h.snapshot();body=dict(asset_id=ASSET,object_index=0,indices=[0,1],axis='z',anchor=-123,expected_sha256=sha256(h.source).hexdigest())
+        with http_server(p) as (server,post),patch.object(server,'model_preview',side_effect=lambda asset,prepared=None,**kwargs:prepared):
+            request=dict(asset_id=ASSET,object_index=0,operation='vertex_alignment',values={k:body[k] for k in ('indices','axis','anchor')},expected_sha256=body['expected_sha256'])
+            status,report=post('/api/model-object-preview',request);self.assertEqual(status,200);self.assertEqual(report['values']['anchor'],-123);self.assertEqual(h.snapshot(),before)
+            for anchor in (True,1.0,-32769,32768,None):
+                self.assertEqual(post('/api/model-vertices-alignment',dict(body,anchor=anchor))[0],400);self.assertEqual(h.snapshot(),before)
+            with patch.object(server,'state',return_value={'applied':True}):self.assertEqual(post('/api/model-vertices-alignment',body)[0],200)
+            self.assertEqual(post('/api/model-vertices-alignment',body)[0],400)
+
     def fixture(self):
         h=fixtures.ModelPrimitiveProjectWorkflow();h.setUp();self.addCleanup(h.doCleanups);return h,h.project
     def test_candidate_axes_planes_rounding_content_history_and_noop(self):
