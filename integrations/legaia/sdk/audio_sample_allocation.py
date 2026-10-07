@@ -11,7 +11,7 @@ from importer.audio_sample_authoring import replace_sample_wav
 from importer.audio_sample_allocation import allocate_sample_wav,repack_audio_samples
 
 FORMAT='sample-wav-allocated-v1'
-COMMANDS={'set_audio_sample_allocation','clear_audio_sample_allocation'}
+COMMANDS={'set_audio_sample_allocation','set_audio_sample_current_size','clear_audio_sample_allocation'}
 def _hash(body):return sha256(body).hexdigest()
 
 def selected(entry,index):
@@ -95,16 +95,18 @@ def options(project,asset_id,expected_entry_sha256,sample_index,expected_authori
 
 def review(project,asset_id,expected_entry_sha256,sample_index,expected_authoring_key,operation,receipt_key=None):
     if project.mode!='edit' or expected_authoring_key!=source_key(project):raise ProjectError('Allocation inputs changed or are not in Edit mode')
-    if operation not in ('apply','clear') or operation=='clear' and receipt_key is not None:raise ProjectError('Choose explicit allocation Apply or Retail restoration')
+    if operation not in ('apply','apply-current-size','clear') or operation=='clear' and receipt_key is not None:raise ProjectError('Choose explicit allocation Apply, Current-size write or Retail restoration')
     body,bank,record=_source(project,asset_id,expected_entry_sha256,project.active_scene);source,_,raw=selected(body,sample_index)
     from .audio_composition import read_entry
     current=read_entry(project,asset_id,body);before_row,before_at,prior=selected(current,sample_index)
     binding=project.audio_sample_overrides.get(asset_id);merged={r['sample_index']:deepcopy(r) for r in binding['samples']} if binding else {}
-    if operation=='apply':
+    if operation in ('apply','apply-current-size'):
         r,wav=_receipt(project,asset_id,sample_index,receipt_key,record,bank)
         if r['schema_version']!=ALLOCATION_SCHEMA:raise ProjectError('Allocation Apply needs a typed retained allocation input')
         encoded,_=allocate_sample_wav(raw,raw,wav,expected_source_sha256=_hash(raw),expected_current_sha256=_hash(raw))
         if _hash(encoded)!=r['candidate_sample_sha256']:raise ProjectError('Retained allocation candidate changed')
+        if operation=='apply-current-size' and len(encoded)!=len(prior):
+            raise ProjectError('Current-size write requires the exact Current sample extent')
         if encoded==raw:merged.pop(sample_index,None)
         else:merged[sample_index]=dict(sample_index=sample_index,receipt_key=receipt_key)
     else:merged.pop(sample_index,None)
@@ -115,13 +117,20 @@ def review(project,asset_id,expected_entry_sha256,sample_index,expected_authorin
     from .audio_sample_authoring import validate_collection
     validate_collection(view);candidate=read_entry(view,asset_id,body);after_row,after_at,proposed=selected(candidate,sample_index)
     if source_key(project)!=expected_authoring_key:raise ProjectError('Allocation inputs changed during review')
-    result=dict(schema_version='legaia.audio-allocation-review.v1',asset_id=asset_id,sample_index=sample_index,operation=operation,
+    held={}
+    if operation=='apply-current-size':
+        outside=current[:before_at]+current[before_at+len(prior):]
+        if (len(candidate)!=len(current) or after_at!=before_at or len(proposed)!=len(prior)
+                or candidate[:after_at]+candidate[after_at+len(proposed):]!=outside):
+            raise ProjectError('Current-size write changed layout or bytes outside its selected sample')
+        held['held_outside_sample_sha256']=_hash(outside)
+    result=dict(schema_version='legaia.audio-allocation-review.v2' if held else 'legaia.audio-allocation-review.v1',asset_id=asset_id,sample_index=sample_index,operation=operation,
         authoring_key=expected_authoring_key,source_record=record,source_sample=source,current_sample=before_row,proposed_sample=after_row,
         before_entry_sha256=_hash(current),after_entry_sha256=_hash(candidate),before_entry_size_bytes=len(current),after_entry_size_bytes=len(candidate),
         before_sample_entry_byte_offset=before_at,after_sample_entry_byte_offset=after_at,
         before_sample_sha256=_hash(prior),proposed_sample_sha256=_hash(proposed),proposed_binding=after,
         no_change=after==binding and candidate==current,native_content_changed=candidate!=current,
-        project_changed=False,runtime_state='not_observed')
+        **held,project_changed=False,runtime_state='not_observed')
     result['review_key']=digest(result);return result
 
 def preview(project,asset_id,expected_entry_sha256,sample_index,expected_authoring_key,layer,expected_sample_sha256,
@@ -154,6 +163,7 @@ def preview(project,asset_id,expected_entry_sha256,sample_index,expected_authori
 def command(project,value):
     fields={'type','asset_id','expected_entry_sha256','sample_index','expected_authoring_key','review_key'}
     if value.get('type')=='set_audio_sample_allocation':fields.add('receipt_key');operation='apply'
+    elif value.get('type')=='set_audio_sample_current_size':fields.add('receipt_key');operation='apply-current-size'
     elif value.get('type')=='clear_audio_sample_allocation':operation='clear'
     else:raise ProjectError('Unsupported allocation command')
     if set(value)!=fields:raise ProjectError('Allocation command needs exact reviewed source and input fields')

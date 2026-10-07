@@ -2113,7 +2113,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if route.endswith('-preview'):
                         fields.update(('layer','expected_sample_sha256'))
                         if body.get('layer')=='proposed':fields.update(('operation','review_key'))
-                    if body.get('operation')=='apply':fields.add('receipt_key')
+                    if body.get('operation') in ('apply','apply-current-size'):fields.add('receipt_key')
                     if set(body)!=fields:raise ProjectError('Native allocation requires exact source, layer and reviewed input fields')
                     function=preview if route.endswith('-preview') else review if route.endswith('-review') else options
                     self._json(200,function(self.server.project,**body));return

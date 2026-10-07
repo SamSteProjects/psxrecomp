@@ -4,7 +4,7 @@ The bank parameter Inspector can now audition Retail, Current and reviewed Propo
 
 Native ADPCM preview returns explicit v2 layout fields for allocated carriers. The client checks those fields against the independently qualified selected layer, verifies the raw sample hash and extent, and compares its first decoded pass with verified PCM before enabling native playback. Fixed carriers retain their exact v1 contract. Existing bounded PCM, encoded-loop, native one-pass/loop, interpolation and stereo preview arithmetic is unchanged. Sample rate remains an explicit user choice. Stale context, disposal and late responses withdraw playback.
 
-This lane is read-only. It does not remove the fixed-size sample writer's allocation guard. Writing into a resized Current sample still needs a separate contract; source extents cannot be substituted for Current extents. Native driver/SPU capacity, residency, actual pitch/instrument assignment, audible parity, hardware and gameplay remain unverified.
+This lane is read-only. It does not remove the fixed-size sample writer's allocation guard. [Current-size sample writing](legaia-audio-current-size.md) now provides a separate qualified write contract; source extents cannot be substituted for Current extents. Native driver/SPU capacity, residency, actual pitch/instrument assignment, audible parity, hardware and gameplay remain unverified.
 
 ## Focused verification — 2026-10-07
 

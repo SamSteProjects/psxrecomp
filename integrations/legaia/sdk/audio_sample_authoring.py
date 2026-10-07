@@ -10,7 +10,7 @@ from importer.audio_bank import inspect_bank,bank_from_entry
 from importer.audio_waveform import inspect_waveform
 from importer.audio_sample_authoring import replace_audio_sample_wav,read_pcm_wav
 
-COMMANDS={'set_audio_sample_wav','clear_audio_sample_wav','set_audio_sample_allocation','clear_audio_sample_allocation'}
+COMMANDS={'set_audio_sample_wav','clear_audio_sample_wav','set_audio_sample_allocation','set_audio_sample_current_size','clear_audio_sample_allocation'}
 MAX_SAMPLES=32
 def _hash(body):return sha256(body).hexdigest()
 def _sample(bank,pieces,index):
@@ -123,7 +123,7 @@ def review(project,asset_id,expected_entry_sha256,sample_index,expected_authorin
     result['review_key']=digest(result);return result
 
 def command(project,value):
-    if value.get('type') in ('set_audio_sample_allocation','clear_audio_sample_allocation'):
+    if value.get('type') in ('set_audio_sample_allocation','set_audio_sample_current_size','clear_audio_sample_allocation'):
         from .audio_sample_allocation import command as allocation_command
         return allocation_command(project,value)
     kind=value.get('type');fields={'type','asset_id','expected_entry_sha256','sample_index','expected_authoring_key','review_key'}
