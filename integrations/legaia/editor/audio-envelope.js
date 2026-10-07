@@ -3,7 +3,7 @@
 export const ENVELOPE_RATE=44100,MAX_ENVELOPE_FRAMES=220500;
 const integer=(v,max)=>Number.isSafeInteger(v)&&v>=0&&v<=max;
 const names=['Attack','Decay','Sustain','Release','Off'];
-function delta(zs,speed,exponential,decrease,invert,current){
+export function spuCounterDelta(zs,speed,exponential,decrease,invert,current){
  let increment=7-(speed&3),divider=32768;
  if(invert)increment=~increment;
  if(speed<44)increment<<=(47-speed)>>2;
@@ -24,7 +24,7 @@ export function simulateEnvelope(adsr1,adsr2,{keyOffFrame=22050,frameCount=11025
    const decrease=phase===1||phase===3||phase===2&&!!(adsr2&16384);
    const exponential=phase===0?!!(adsr1&32768):phase===1?true:phase===2?!!(adsr2&32768):!!(adsr2&32);
    const speed=[attack,decay,sustain,release][phase],zeroSpeed=phase===0||phase===2?127:124;
-   const [increment,advance]=delta(zeroSpeed,speed,exponential,decrease,decrease,level);
+   const [increment,advance]=spuCounterDelta(zeroSpeed,speed,exponential,decrease,decrease,level);
    divider+=advance;
    if(divider&32768){const previous=level;divider=0;level=(level+increment)&65535;
     if(phase===0){if(((previous^level)&level)&32768)level=32767;}
