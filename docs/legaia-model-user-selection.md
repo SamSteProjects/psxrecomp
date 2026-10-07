@@ -1,4 +1,45 @@
-# Select a model's effective actor users
+# Select Model Users from Asset Details
+
+## Select Current Scene Placements
+
+Open a model's **Details** in the Asset Database and choose **Select current scene
+placements (N)**. The count comes from the active authored scene's SDK model
+bindings. Imported actors, authored NPC drafts and static decorations sharing the
+exact model asset identity participate, including hidden placements and qualified
+bindings without rendered geometry. Ground and nonplacement resources do not.
+
+The action closes Asset Details, clears the hierarchy query, reveals the group and
+retains the active placement when it is a member. Otherwise the first canonical
+member becomes active. Actor-only, scenery-only and mixed results use the same
+selection handoff and existing Review/Apply tools as **Select model instances**.
+The existing **Select effective actor users** action remains available separately;
+it navigates imported source memberships. Neither initial nor current editor
+bindings establish script-driven runtime model use.
+
+This action operates only in the active authored scene; it does not navigate to
+other scenes or scan proprietary files from the UI. Fresh Asset Details, project,
+scene and preview source identities bind dispatch. Busy/held inspection states,
+changed sources or membership, disposed/pending actions, Retail comparison mode,
+unused models and results over 128 refuse selection. Groups are never trimmed.
+Selection creates no authored command or history step. Existing saved selections
+can retain the IDs separately.
+
+Offline checks passed (2026-10-07): three Node suites, three affected JavaScript
+syntax checks and server AST validation. The real private Town01 editor passed
+Asset Details -> exact group -> existing Review -> Cancel at 1440 and 400 px for
+four imported actors, 11 static decorations and six actor/NPC members. The separate
+effective actor-user action remained available. Unused model and Retail refusals,
+module HTTP serving and the viewport selection regression passed. The prepared
+project document, Undo/Redo history and saved file sizes/timestamps stayed unchanged;
+the fixture NPC was not spawned. Screenshots were inspected. No native Build, game
+launch, runtime attachment or installation occurred; gameplay stays deferred.
+
+Private evidence: `local-output/sdk-20260909/model-asset-placement-selection-20261007/`
+(`browser.json`, `readonly.json`, fixture receipt, browser logs and wide/narrow
+Asset Details/Review screenshots). The first missing static-route registration and
+later probe URL/mobile-tab errors remain in preserved attempt logs. These are
+focused editor checks, not complete SDK or gameplay acceptance.
+
 
 Open a model's **Details** button in the Asset Database. The existing Used by
 list distinguishes imported and effective assignments and authored NPC drafts.

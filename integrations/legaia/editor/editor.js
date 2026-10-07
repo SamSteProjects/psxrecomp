@@ -24,7 +24,7 @@ import {mountEnvironmentLayout} from '/environment-layout.js';
 import {mountEnvironmentRotationGroup} from '/environment-rotation-group.js';
 import {mountSceneSelectionSets,decodeSavedSceneSelection} from '/scene-selection-sets.js';
 import {mountScenePlacementGroup} from '/scene-placement-group.js';
-import {mergeScenePlacementSelection,invertScenePlacementSelection,scenePlacementSelectionKind,matchingModelPlacementIds} from '/scene-placement-selection.js';
+import {mergeScenePlacementSelection,invertScenePlacementSelection,scenePlacementSelectionKind,matchingModelPlacementIds,modelPlacementIdsForAsset} from '/scene-placement-selection.js';
 import {mountWallRectangle,wallRectangleGeometry} from '/collision-rectangle.js';
 import {mountFloorRectangle,decodeFloorRectangle} from '/floor-rectangle.js';
 import {mountFloorHeights,decodeFloorHeights} from '/floor-heights.js';
@@ -78,6 +78,7 @@ import {mountPresetBatch} from '/preset-batch.js';
 import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {parseHierarchyQuery,hierarchyMatches,matchingActorIds} from '/hierarchy-query.js';
 import {mountHierarchyNavigation} from '/hierarchy-navigation.js';
+import {mountModelPlacementUsers} from '/model-placement-users.js';
 import {mountHierarchyGroups,revealHierarchyEntities,matchingHierarchyPlacementIds} from '/hierarchy-groups.js';
 import {captureSceneViewHierarchy} from '/hierarchy-views.js';
 import {mountSceneToolDrawer} from '/scene-tool-drawer.js';
@@ -149,6 +150,7 @@ const $ = (id) => document.getElementById(id);
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const numeric = (value) => typeof value === 'number' && Number.isFinite(value);
 const format = (value) => numeric(value) ? String(Math.round(value * 1000) / 1000) : 'Unknown';
+let modelAssetPlacementSelection=null;
 let state = {project:{}, scene:null, assets:[], selection:{}, history:{}, capabilities:{}};
 let busy = false, toastTimer, lastSceneId, grid = true;
 let sceneAnimationController=null;
@@ -474,14 +476,17 @@ function updateModelInstanceSelection(){
   if(!canSelectHierarchyMatches()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||wallSelectMode)return;
   try{const ids=matchingModelPlacementIds(activeScenePreview().entities,visibilitySelection(),scenePlacementEligible());button.disabled=false;button.title=ids.length+' placements share the selected current SDK model identity; hidden placements are included';}catch(error){button.title=error.message;}
 }
+async function selectCurrentModelPlacementGroup(assetId,focus,current){
+  if(!current()||!canSelectHierarchyMatches()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||wallSelectMode)return false;
+  const key=resourceStateKey(),source=state.scene_preview_source_key,ids=modelPlacementIdsForAsset(activeScenePreview().entities,assetId,scenePlacementEligible());
+  if(!ids.includes(focus))throw new Error('The active placement must belong to the current model group.');
+  if(entities().some(entity=>entity.id===focus)&&!await api('/api/selection',{entity_id:focus}))return false;
+  if(!current()||key!==resourceStateKey()||source!==state.scene_preview_source_key||!canSelectHierarchyMatches()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||wallSelectMode||JSON.stringify(ids)!==JSON.stringify(modelPlacementIdsForAsset(activeScenePreview().entities,assetId,scenePlacementEligible())))throw new Error('Scene model bindings or selection changed. Select again.');
+  setSourcePlacementGroup(ids,focus);$('entity-search').value='';renderHierarchy();revealHierarchyEntities($('hierarchy'),ids,focus);renderInspector();draw();notify(ids.length+' model instances selected, including hidden placements. Project content unchanged.');return true;
+}
 selectModelInstancesButton.onclick=async()=>{
-  if(selectModelInstancesButton.disabled||!canSelectHierarchyMatches()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||wallSelectMode)return;
-  try{
-    const focus=visibilitySelection(),key=resourceStateKey(),source=state.scene_preview_source_key,ids=matchingModelPlacementIds(activeScenePreview().entities,focus,scenePlacementEligible());
-    if(entities().some(entity=>entity.id===focus)&&!await api('/api/selection',{entity_id:focus}))return;
-    if(key!==resourceStateKey()||source!==state.scene_preview_source_key||focus!==visibilitySelection()||!canSelectHierarchyMatches()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||wallSelectMode||JSON.stringify(ids)!==JSON.stringify(matchingModelPlacementIds(activeScenePreview().entities,focus,scenePlacementEligible())))throw new Error('Scene model bindings or selection changed. Select again.');
-    setSourcePlacementGroup(ids,focus);$('entity-search').value='';renderHierarchy();revealHierarchyEntities($('hierarchy'),ids,focus);renderInspector();draw();notify(ids.length+' model instances selected, including hidden placements. Project content unchanged.');
-  }catch(error){notify(error.message,true);}
+  if(selectModelInstancesButton.disabled||!scenePreviewCurrent())return;
+  try{const focus=visibilitySelection(),assetId=activeScenePreview().entities.find(row=>row.entity_id===focus)?.asset_id;await selectCurrentModelPlacementGroup(assetId,focus,()=>focus===visibilitySelection());}catch(error){notify(error.message,true);}
 };
 const sceneIsolateButton=document.createElement('button');sceneIsolateButton.id='scene-isolate-selected';sceneIsolateButton.textContent='Isolate selected';sceneIsolateButton.setAttribute('aria-pressed','false');sceneIsolateButton.title='Temporarily show the selected instances; Restore preserves manual visibility and scene layers';$('frame-all').before(sceneIsolateButton);
 const sceneFrameIsolatedButton=document.createElement('button');sceneFrameIsolatedButton.id='scene-frame-isolated';sceneFrameIsolatedButton.textContent='Frame isolated';sceneFrameIsolatedButton.title='Fit the visible isolated mesh bounds; preserve camera angles and scene visibility';sceneFrameIsolatedButton.disabled=true;sceneIsolateButton.after(sceneFrameIsolatedButton);
@@ -991,7 +996,7 @@ function setSourcePlacementGroup(ids,focus){
 function clearScenePlacementSelection(){scenePlacementMode=false;scenePlacementBoxMode=false;scenePlacementSelection=[];scenePlacementKey=null;scenePlacementTool?.restore();}
 function updateScenePlacementSelection(){
   if((scenePlacementMode||scenePlacementSelection.length)&&(!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||scenePlacementKey!==resourceStateKey()||scenePlacementSelection.some(id=>!scenePlacementEligible().has(id))))clearScenePlacementSelection();
-  savedSceneSelections?.synchronize();scenePlacementTool?.refresh();updateSceneFocusButton();updateHierarchyPlacementMatchSelection();updateModelInstanceSelection();const host=document.querySelector('#scene-placement-tools');if(!host)return;
+  savedSceneSelections?.synchronize();scenePlacementTool?.refresh();updateSceneFocusButton();updateHierarchyPlacementMatchSelection();updateModelInstanceSelection();modelAssetPlacementSelection?.synchronize();const host=document.querySelector('#scene-placement-tools');if(!host)return;
   host.querySelector('[data-mixed-select]').disabled=busy||!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||!!scenePose||!!shapeDraft||!!actorGroupInspection||!!environmentGroupInspection||!!wallSelectMode||!!wallInspection||!!scenePlacementInspection;
   host.querySelector('[data-mixed-box]').disabled=host.querySelector('[data-mixed-select]').disabled||!sceneModelsReady()||pickScriptTargets||pickRuntimeNodes;
   for(const name of ['visible','invert'])host.querySelector('[data-mixed-'+name+']').disabled=host.querySelector('[data-mixed-box]').disabled;
@@ -1572,7 +1577,7 @@ $('assets').before(assetTools);
 const assetScope=document.createElement('details');assetScope.className='asset-scope';assetScope.innerHTML='<summary>Catalog scope</summary><p>Choose active scene resources or explicitly refresh imported project resources. Coverage and source memberships distinguish supported imported metadata from runtime state.</p>';$('assets').after(assetScope);
 mountScriptOperandBundle({after:assetTools,getState:()=>state,context:()=>JSON.stringify([resourceStateKey(),state.project?.mode,state.authored_assets]),canEdit:canEditDialogue,busy:()=>busy,setBusy,api,onError:error=>notify(error.message,true)});
 const assetMetadataPin=createAssetMetadataPin();
-const assetDetails=document.createElement('dialog');assetDetails.id='asset-details';document.body.append(assetDetails);
+const assetDetails=document.createElement('dialog');assetDetails.id='asset-details';document.body.append(assetDetails);assetDetails.addEventListener('close',()=>{if(assetDetails.open)return;modelAssetPlacementSelection?.dispose();modelAssetPlacementSelection=null;});
 let assetPage=0,assetPages=1,assetPageSignature=null;
 const assetPager=document.createElement('div');assetPager.className='dialog-actions';assetPager.dataset.assetPages='';assetPager.style.flexWrap='wrap';
 const assetPrevious=document.createElement('button'),assetNext=document.createElement('button'),assetPageStatus=document.createElement('span');
@@ -1819,6 +1824,7 @@ function initialAssetUsage(record,modelReferences){
   return [...references.values()];
 }
 function showAssetDetails(record,lookup=()=>assetRecords()){
+  modelAssetPlacementSelection?.dispose();modelAssetPlacementSelection=null;
   const isAuthored=!!record.authoredRecord,inspectorId=assetInspectorDefinition(state.inspector_schema,record);
   assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${inspectorId?'':property('Stable ID',record.id)+property('Record type',record.type)+property(record.data?.scope?.startsWith('global-')?'Source scope':'Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='model'?'Inspect authored model':record.type==='script'?'Open script workspace':record.type==='scene'?'Open scene':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
   const exportContext=resourceStateKey(),exportSnapshot=JSON.stringify(record);
@@ -1828,6 +1834,9 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
   try{mountAssetMetadataComparison(evidence,{record,getState:()=>state,current:exportCurrent,busy:()=>busy,pin:assetMetadataPin,onError:error=>notify(error.message,true)});}catch(error){const note=document.createElement('p');note.className='field-note';note.textContent=error.message;evidence.append(note);}
   $('asset-source-data').parentElement.before(evidence);
   if(record.type!=='template'&&state.build_review_source_key){const button=document.createElement('button');button.textContent='Inspect saved Build records...';button.dataset.assetBuildHistory='';button.onclick=()=>{if(busy||!exportCurrent())return;assetDetails.close();openAssetBuildHistory({record,getState:()=>state,current:()=>exportContext===resourceStateKey()&&JSON.stringify(lookup().find(item=>item.id===record.id))===exportSnapshot,busy:()=>busy,setBusy,onError:error=>notify(error.message,true)});};evidence.append(button);}
+  if(record.type==='model')modelAssetPlacementSelection=mountModelPlacementUsers(evidence,{assetId:record.id,current:exportCurrent,busy:()=>busy,
+    getContext:()=>canSelectHierarchyMatches()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!wallSelectMode?{projectPath:state.project.path,sceneId:state.scene.id,sourceKey:state.scene_preview_source_key,projectSourceKey:state.project_copy_source_key,rows:activeScenePreview().entities,eligible:scenePlacementEligible()}:null,
+    onSelect:async(ids,current)=>{const active=visibilitySelection(),focus=ids.includes(active)?active:ids[0];if(await selectCurrentModelPlacementGroup(record.id,focus,current)&&current())assetDetails.close();},onError:error=>notify(error.message,true)});
   const source=isAuthored?(record.authoredRecord.source_record ?? record.data?.source_record ?? record.data?.components?.RetailMetadata ?? {note:'No additional imported provenance is attached to this authored record.'}):record.data;
   $('asset-source-data').textContent=JSON.stringify(source,null,2);
   if(record.projectMembership){
@@ -1951,7 +1960,7 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
     }
     $('asset-authored-data').before(actions);
   }
-  $('close-asset-details').onclick=()=>assetDetails.close();assetDetails.showModal();
+  $('close-asset-details').onclick=()=>assetDetails.close();assetDetails.showModal();modelAssetPlacementSelection?.synchronize();
 }
 function projectAssetContext(){return state.capabilities?.project_assets?{projectPath:state.project.path,sourceKey:state.project_assets_source_key,scenes:(state.scenes??[]).map(({id,name})=>({id,name})),activeSceneId:state.scene?.id??null}:null;}
 async function resolveProjectAsset(record){

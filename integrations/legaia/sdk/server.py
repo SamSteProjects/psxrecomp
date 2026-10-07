@@ -951,6 +951,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-owner-inspector.js": ("script-owner-inspector.js", "text/javascript"),
                  "/component-references.js": ("component-references.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
+                 "/model-placement-users.js": ("model-placement-users.js", "text/javascript"),
                  "/preset-files.js": ("preset-files.js", "text/javascript"),
                  "/actor-preset-review.js": ("actor-preset-review.js", "text/javascript"),
                  "/preset-animation.js": ("preset-animation.js", "text/javascript"),

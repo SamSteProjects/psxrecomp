@@ -36,14 +36,26 @@ export function scenePlacementSelectionKind(ids,{actors,npcs,decorations}){
 // Mirrors the SDK preview allowance: 512 source placements + 128 NPC drafts + terrain.
 const MAX_MODEL_SELECTION_PREVIEW_ROWS=641;
 // Current SDK model bindings, including hidden/unrenderable placements, not mesh similarity.
-export function matchingModelPlacementIds(rows,focus,eligible){
-  if(!Array.isArray(rows)||rows.length>MAX_MODEL_SELECTION_PREVIEW_ROWS||!(eligible instanceof Set)||!eligible.has(focus))throw new Error('Choose a current scene placement with a model binding.');
+function currentModelRows(rows){
+  if(!Array.isArray(rows)||rows.length>MAX_MODEL_SELECTION_PREVIEW_ROWS)throw new Error('Invalid current scene model identities.');
   const seen=new Set();
   for(const row of rows){
     if(!row||typeof row.entity_id!=='string'||!row.entity_id.length||row.entity_id.length>1024||seen.has(row.entity_id)||row.asset_id!=null&&(typeof row.asset_id!=='string'||!row.asset_id.length||row.asset_id.length>1024))throw new Error('Invalid current scene model identities.');
     seen.add(row.entity_id);
   }
+  return rows;
+}
+function idsForModel(rows,model,eligible){
+  if(typeof model!=='string'||!model.length||model.length>1024||!(eligible instanceof Set))throw new Error('Choose a qualified SDK model identity.');
+  return mergeScenePlacementSelection([],rows.filter(row=>row.asset_id===model&&eligible.has(row.entity_id)).map(row=>row.entity_id),eligible);
+}
+export function modelPlacementIdsForAsset(rows,model,eligible){
+  return idsForModel(currentModelRows(rows),model,eligible);
+}
+export function matchingModelPlacementIds(rows,focus,eligible){
+  if(!(eligible instanceof Set)||!eligible.has(focus))throw new Error('Choose a current scene placement with a model binding.');
+  currentModelRows(rows);
   const model=rows.find(row=>row.entity_id===focus)?.asset_id;
   if(typeof model!=='string'||!model.length)throw new Error('The selected placement has no qualified model binding.');
-  return mergeScenePlacementSelection([],rows.filter(row=>row.asset_id===model&&eligible.has(row.entity_id)).map(row=>row.entity_id),eligible);
+  return idsForModel(rows,model,eligible);
 }
