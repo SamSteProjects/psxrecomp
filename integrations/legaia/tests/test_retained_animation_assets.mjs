@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const code=await readFile(new URL('../editor/retained-animation-assets.js',import.meta.url),'utf8');
-const {decodeRetainedAnimationAsset,qualifyRetainedAnimationPreview,retainedAnimationEditContext,retainedAnimationAssignmentContext,retainedAnimationAssignedActors,retainedAnimationAssignedTarget,openRetainedAnimationAsset}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const {decodeRetainedAnimationAsset,qualifyRetainedAnimationPreview,retainedAnimationEditContext,retainedAnimationAssignmentContext,retainedAnimationAssignmentTargets,retainedAnimationAssignedActors,retainedAnimationAssignedTarget,openRetainedAnimationAsset}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 const uuid='12345678-1234-4123-8123-123456789abc',id=`animation://fixture/authored-record/${uuid}`,actor='scene://fixture/actors/man-p1/0001',model='asset://legaia/models/global-special/00f0',hash='a'.repeat(64);
 const row={record_id:uuid,animation_id:id,entity_id:actor,channel_owner_entity_id:actor,model_source_entity_id:actor,donor_asset_id:model,donor_animation_id:'animation://fixture/scene-anm/0001',record_sha256:hash,frame_count:2,object_count:1,active:false,runtime_assigned:false,assigned_actor_ids:[]};
 const value={semantic_id:id,asset_kind:'animation',scope:'authored-retained',authored_animation_record:true,frame_count:2,bone_count:1,model_asset_id:model,retained_record:row,source_record:{source_kind:'authored_animation_record',record_id:uuid,record_sha256:hash,ledger_sha256:hash,donor_record_sha256:hash,donor_animation_id:row.donor_animation_id}};
@@ -50,12 +50,12 @@ dialog=openRetainedAnimationAsset({...options,onLifecycle:context=>{result=conte
 await find(dialog,'Manage retained lifecycle').onclick();assert.equal(dialog.removed,true);assert.equal(result.assetId,id);assert.equal(result.row.record_id,uuid);assert.equal(result.row.active,false);
 dialog=openRetainedAnimationAsset(options);assert.equal(find(dialog,'Manage retained lifecycle').hidden,true);dialog.close();
 console.log('Retained asset lifecycle action reuses the qualified captured-record handoff.');
-current.capabilities.actor_animation_assignment=true;const target=actor.replace('0001','0002');
+current.capabilities.actor_animation_assignment=true;const target=actor.replace('0001','0002');current.scene.entities=[{id:target,name:'Compatible actor',components:{ActorAppearance:{effective:{asset_id:model}}}}];
 assert.equal(retainedAnimationAssignmentContext(active,current,target).targetEntityId,target);
 assert.throws(()=>retainedAnimationAssignmentContext(value,current,target),/active retained clip/);
-for(const invalid of [null,'scene://other/actors/man-p1/0002','npc://fixture/0002'])assert.throws(()=>retainedAnimationAssignmentContext(active,current,invalid),/Select an imported actor/);
-result=null;dialog=openRetainedAnimationAsset({...options,record:{id,data:active},onAssign:context=>{result=context;},getAssignmentTarget:()=>target});await find(dialog,'Assign to selected actor').onclick();assert.equal(result.targetEntityId,target);assert.equal(result.entityId,actor);assert.equal(dialog.removed,true);
-dialog=openRetainedAnimationAsset({...options,onAssign:()=>{}});assert.equal(find(dialog,'Assign to selected actor').hidden,true);dialog.close();
+for(const invalid of [null,'scene://other/actors/man-p1/0002','npc://fixture/0002'])assert.throws(()=>retainedAnimationAssignmentContext(active,current,invalid),/Choose a compatible imported actor/);
+result=null;dialog=openRetainedAnimationAsset({...options,record:{id,data:active},onAssign:context=>{result=context;},getAssignmentTarget:()=>target});await find(dialog,'Review assignment to actor').onclick();assert.equal(result.targetEntityId,target);assert.equal(result.entityId,actor);assert.equal(dialog.removed,true);
+dialog=openRetainedAnimationAsset({...options,onAssign:()=>{}});assert.equal(find(dialog,'Review assignment to actor').hidden,true);dialog.close();
 current.capabilities.actor_animation_assignment=false;assert.throws(()=>retainedAnimationAssignmentContext(active,current,target),/assignment capability/);
 console.log('Retained asset assignment: explicit distinct target, active clip, scene and capability guards passed.');
 
@@ -66,3 +66,16 @@ assert.throws(()=>retainedAnimationAssignedActors(value,actorState),/differ/);
 current=actorState;result=null;dialog=openRetainedAnimationAsset({...options,record:{id,data:active},onActor:target=>{result=target;}});action=find(dialog,'Select assigned actor');assert.equal(action.disabled,false);pending=true;await action.onclick();assert.equal(result,null);assert.match(errors.pop(),/current operation/);pending=false;current.scene.entities[0].components.ActorAllocatedAnimation.authored.record_sha256='b'.repeat(64);await action.onclick();assert.equal(result,null);assert.match(errors.pop(),/differ/);dialog.close();
 current=structuredClone(actorState);current.scene.entities[0].components.ActorAllocatedAnimation.authored.record_sha256=hash;dialog=openRetainedAnimationAsset({...options,record:{id,data:active},onActor:target=>{result=target;}});await find(dialog,'Select assigned actor').onclick();assert.equal(result,actor);assert.equal(dialog.removed,true);assert.deepEqual(errors,[]);
 console.log('Retained assignment user navigation: complete current authored/effective witnesses, duplicate/missing/forged users, busy/stale guards and readonly actor handoff passed.');
+
+current=structuredClone({...state,project:{mode:'edit',path:'fixture'},capabilities:{actor_animation_authoring:true,actor_animation_assignment:true}});
+current.scene.entities=[{id:actor,name:'Capture',components:{ActorAppearance:{effective:{asset_id:model}}}},{id:target,name:'<script>Target</script>',components:{ActorAppearance:{effective:{asset_id:model}}}},{id:actor.replace('0001','0003'),components:{ActorAppearance:{effective:{asset_id:'asset://other'}}}}];
+current.scene.entities.push({id:'npc://fixture/draft',components:{ActorAppearance:{effective:{asset_id:model}}}});
+assert.deepEqual(retainedAnimationAssignmentTargets(active,current).map(row=>row.id),[actor,target]);
+for(const mutate of [s=>s.scene.entities.push(structuredClone(s.scene.entities[0])),s=>s.scene.entities=null,s=>s.project.mode='live',s=>s.scene.id='scene://other']){const bad=structuredClone(current);mutate(bad);assert.throws(()=>retainedAnimationAssignmentTargets(active,bad));}
+const collect=(node,tag)=>[...(node.tag===tag?[node]:[]),...node.children.flatMap(child=>collect(child,tag))];
+result=null;dialog=openRetainedAnimationAsset({...options,record:{id,data:active},onAssign:context=>{result=context;}});
+const picker=collect(dialog,'select')[0];action=find(dialog,'Review assignment to actor');assert.equal(picker.value,'');assert.equal(action.disabled,true);
+picker.value=target;picker.onchange();assert.equal(action.disabled,false);await action.onclick();assert.equal(result.targetEntityId,target);assert.equal(dialog.removed,true);
+result=null;dialog=openRetainedAnimationAsset({...options,record:{id,data:active},onAssign:context=>{result=context;},getAssignmentTarget:()=>target});
+const stalePicker=collect(dialog,'select')[0];assert.equal(stalePicker.value,target);current.scene.entities[1].components.ActorAppearance.effective.asset_id='asset://other';await find(dialog,'Review assignment to actor').onclick();assert.equal(result,null);assert.match(errors.pop(),/compatible imported actor/);stalePicker.onchange();assert.equal(stalePicker.value,'');assert.equal(find(dialog,'Review assignment to actor').disabled,true);dialog.close();
+console.log('Compatible assignment picker: exact effective model, explicit choice, independent hierarchy target, missing target refusal, duplicate/source/mode guards passed.');

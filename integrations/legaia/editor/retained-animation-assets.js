@@ -26,10 +26,21 @@ export function retainedAnimationEditContext(record,state){
   const row=structuredClone(data.retained_record);delete row.assigned_actor_ids;
   return {assetId:data.semantic_id,entityId:row.entity_id,row};
 }
-export function retainedAnimationAssignmentContext(record,state,targetEntityId){
-  const context=retainedAnimationEditContext(record,state),scene=state.scene.id;
+export function retainedAnimationAssignmentTargets(record,state){
+  const data=decodeRetainedAnimationAsset(record),context=retainedAnimationEditContext(data,state),scene=state.scene.id;
   if(!context.row.active||state.capabilities?.actor_animation_assignment!==true)throw new Error('Initial assignment requires an active retained clip and assignment capability.');
-  if(typeof targetEntityId!=='string'||!new RegExp('^'+scene+'/actors/man-p1/[0-9]{4}$').test(targetEntityId))throw new Error('Select an imported actor in the current scene before assigning this clip.');
+  if(!Array.isArray(state.scene.entities)||state.scene.entities.length>4096)throw new Error('Assignment targets require current scene entities.');
+  const seen=new Set(),rows=[],actor=new RegExp('^'+scene+'/actors/man-p1/[0-9]{4}$');
+  for(const entity of state.scene.entities){
+    if(!entity||typeof entity.id!=='string'||seen.has(entity.id))throw new Error('Assignment targets have invalid or duplicate scene entities.');seen.add(entity.id);
+    if(actor.test(entity.id)&&entity.components?.ActorAppearance?.effective?.asset_id===data.model_asset_id)rows.push({id:entity.id,label:typeof entity.name==='string'&&entity.name.length>0&&entity.name.length<=256?entity.name:entity.id});
+  }
+  return rows.sort((a,b)=>a.id.localeCompare(b.id));
+}
+export function retainedAnimationAssignmentContext(record,state,targetEntityId){
+  const context=retainedAnimationEditContext(record,state);
+  if(!context.row.active||state.capabilities?.actor_animation_assignment!==true)throw new Error('Initial assignment requires an active retained clip and assignment capability.');
+  if(!retainedAnimationAssignmentTargets(record,state).some(row=>row.id===targetEntityId))throw new Error('Choose a compatible imported actor in the current scene before assigning this clip.');
   return {...context,targetEntityId};
 }
 export function retainedAnimationAssignedActors(record,state){
@@ -71,8 +82,17 @@ export function openRetainedAnimationAsset({record,getState,busy,onPreview,onMod
   glb.onclick=async()=>{try{guard();const context=retainedAnimationEditContext(data,getState());dialog.close();await onGlb(context);}catch(e){if(dialog.open)status.textContent=e.message;onError(e);}};
   const lifecycle=add('button','Manage retained lifecycle',actions);lifecycle.hidden=typeof onLifecycle!=='function'||initial.project?.mode!=='edit'||initial.capabilities?.actor_animation_authoring!==true;
   lifecycle.onclick=async()=>{try{guard();const context=retainedAnimationEditContext(data,getState());dialog.close();await onLifecycle(context);}catch(e){if(dialog.open)status.textContent=e.message;onError(e);}};
-  const assign=add('button','Assign to selected actor',actions);assign.hidden=typeof onAssign!=='function'||!data.retained_record.active||initial.project?.mode!=='edit'||initial.capabilities?.actor_animation_assignment!==true||initial.capabilities?.actor_animation_authoring!==true;
-  assign.onclick=async()=>{try{guard();const context=retainedAnimationAssignmentContext(data,getState(),getAssignmentTarget());dialog.close();await onAssign(context);}catch(e){if(dialog.open)status.textContent=e.message;onError(e);}};
+  const targets=add('section'),targetLabel=add('label','Initial assignment target',targets),targetChoice=add('select',undefined,targetLabel);targetChoice.setAttribute('aria-label','Retained clip assignment target');
+  const targetNote=add('p','Only current imported actors with the captured model are listed. Review checks native channel ownership and competing assignments; runtime playback is not inferred.',targets);
+  const assign=add('button','Review assignment to actor',actions);assign.hidden=typeof onAssign!=='function'||!data.retained_record.active||initial.project?.mode!=='edit'||initial.capabilities?.actor_animation_assignment!==true||initial.capabilities?.actor_animation_authoring!==true;
+  assign.onclick=async()=>{try{guard();const context=retainedAnimationAssignmentContext(data,getState(),targetChoice.value);dialog.close();await onAssign(context);}catch(e){if(dialog.open)status.textContent=e.message;onError(e);}};
+  targets.hidden=assign.hidden;
+  function refreshTargets(preferred=targetChoice.value){
+    targetChoice.disabled=assign.disabled=true;
+    try{const rows=retainedAnimationAssignmentTargets(data,getState());targetChoice.replaceChildren();const placeholder=add('option','Choose a compatible actor',targetChoice);placeholder.value='';for(const row of rows){const option=add('option',row.label+' | '+row.id,targetChoice);option.value=row.id;}targetChoice.value=rows.some(row=>row.id===preferred)?preferred:'';targetChoice.disabled=pending||busy()||!current()||assign.hidden||rows.length===0;assign.disabled=targetChoice.disabled||!targetChoice.value;targetNote.textContent=rows.length?rows.length+' compatible imported actor'+(rows.length===1?'':'s')+'. Review checks native ownership and competing assignments; runtime playback is not inferred.':'No current imported actors use the captured model. Model retargeting is unsupported.';}
+    catch(e){targetChoice.replaceChildren();targetChoice.value='';targetNote.textContent=e.message;}
+  }
+  targetChoice.onchange=()=>refreshTargets();
   const users=add('section');add('h3','Authored initial assignment users',users);
   const usersNote=add('p','These actors reference this retained clip for their authored initial selection. Script changes and runtime playback are not inferred.',users);
   const usersLabel=add('label','Assigned actor',users),usersChoice=add('select',undefined,usersLabel);usersChoice.setAttribute('aria-label','Retained clip assigned actor');
@@ -89,9 +109,9 @@ export function openRetainedAnimationAsset({record,getState,busy,onPreview,onMod
   const guard=()=>{if(!current())throw new Error('Project source changed. Reopen the retained clip.');if(busy()||pending)throw new Error('Finish the current operation before inspecting this clip.');};
   model.onclick=async()=>{try{guard();dialog.close();await onModel(data.model_asset_id);}catch(e){onError(e);}};
   owner.onclick=async()=>{try{guard();dialog.close();await onActor(data.retained_record.entity_id);}catch(e){onError(e);}};
-  preview.onclick=async()=>{try{guard();pending=true;preview.disabled=model.disabled=owner.disabled=edit.disabled=glb.disabled=lifecycle.disabled=assign.disabled=usersChoice.disabled=selectUser.disabled=true;controller=new AbortController();status.textContent='Verifying retained clip and current model geometry...';
+  preview.onclick=async()=>{try{guard();pending=true;preview.disabled=model.disabled=owner.disabled=edit.disabled=glb.disabled=lifecycle.disabled=assign.disabled=targetChoice.disabled=usersChoice.disabled=selectUser.disabled=true;controller=new AbortController();status.textContent='Verifying retained clip and current model geometry...';
     const response=await fetch('/api/retained-animation-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:data.semantic_id,expected_source_key:key}),signal:controller.signal});const value=await response.json();
     if(!current()){if(dialog.open)status.textContent='Project source changed. Reopen the retained clip.';return;}if(!response.ok||value.error)throw new Error(value.error||'Retained clip preview failed.');qualifyRetainedAnimationPreview(value,data);dialog.close();await onPreview(data,value);
-  }catch(e){if(e.name!=='AbortError'&&dialog.open){status.textContent=e.message;onError(e);}}finally{pending=false;if(dialog.open){preview.disabled=model.disabled=owner.disabled=edit.disabled=glb.disabled=lifecycle.disabled=assign.disabled=!current();refreshUsers();}}};
-  dialog.addEventListener('close',()=>{controller?.abort();dialog.remove();});document.body.append(dialog);dialog.showModal();refreshUsers();return dialog;
+  }catch(e){if(e.name!=='AbortError'&&dialog.open){status.textContent=e.message;onError(e);}}finally{pending=false;if(dialog.open){preview.disabled=model.disabled=owner.disabled=edit.disabled=glb.disabled=lifecycle.disabled=assign.disabled=!current();refreshUsers();refreshTargets();}}};
+  dialog.addEventListener('close',()=>{controller?.abort();dialog.remove();});document.body.append(dialog);dialog.showModal();refreshUsers();if(!assign.hidden)refreshTargets(getAssignmentTarget());return dialog;
 }

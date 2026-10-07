@@ -129,23 +129,28 @@ and relocation readback plus ZIP/SHA integrity checks. Restoration screenshot in
 No game launched or installed. Evidence:
 `local-output/sdk-20260909/retained-asset-lifecycle-20261005/proof.json`.
 
-## Assign to the selected actor
+## Choose an assignment target
 
-Select an imported actor in the Hierarchy or viewport, then open an active retained
-animation asset. Choose Assign to selected actor. Verify the target actor ID in the
-assignment dialog before Review initial assignment. A different capture actor is
+Open an active retained animation asset. Choose an actor under **Initial assignment
+target**, then click **Review assignment to actor**. The picker lists current imported
+actors whose effective model exactly matches the captured model. A compatible
+Hierarchy selection is offered initially; otherwise choose explicitly. Verify the
+target actor ID in the assignment dialog before **Review initial assignment**. A different capture actor is
 allowed only when the native service proves the exact captured model/channel binding;
 unsupported retargeting remains blocked. This action does not select the capture actor.
 
 Preview reviewed assignment shows the target's proposed initial pose without applying
 it. Close the viewer to return to Review, then Apply reviewed change. The retained
-UUID/capture/ledger stay unchanged while the selected target gets its authored initial
+UUID/capture/ledger stay unchanged while the chosen target gets its authored initial
 assignment. Asset references refresh automatically. Save project to persist, or use
 Undo/Redo. Clear is available through the actor's existing Inspector workflow.
 
-Retired clips have no assignment action. Missing or non-imported actor selection,
-Live mode, missing capability and stale source block entry. The assignment view is
-bound to its explicit target selection and invalidates if that target changes. It
+Retired clips have no assignment action. Missing or incompatible targets, Live mode,
+missing capability and stale source block entry. A missing chosen target clears the
+picker without choosing another actor. Review rechecks the native model/channel
+binding and competing assignments. Asset-driven assignment follows its explicit
+target independently of the Hierarchy selection; project/scene/source changes still
+invalidate Review. It
 exposes no retirement/restoration, Clear, content editing or GLB replacement actions.
 Scripts may later select other clips; runtime timing, looping and gameplay suitability
 remain unverified. Normal Build re-resolves the current native selector.
@@ -185,3 +190,25 @@ were exercised with unchanged project/history/files. Gameplay verification stays
 The retained Inspector wraps its action row and constrains its width/scroll area. All
 seven asset actions remain reachable at 540px. The initial overflowing-action browser
 attempt is preserved alongside the corrected proof.
+
+## Compatible target picker validation (2026-10-07)
+
+Offline checks passed for choosing an assignment target inside the retained clip
+Inspector. Four retail-enabled Python cases (zero skips), two Node suites and three
+JavaScript syntax checks passed. Actual Town01 editor checks at wide and 400 px widths
+exercised target choice, Review, proposed pose, Return, Apply and Save. Actor 0012 was
+assigned while actor 0001 remained selected in the Hierarchy. One command, Undo/Redo,
+unchanged retail imports and retained ledger, and complete Save/Open equality passed.
+
+Normal private Build `7dc4be632d6aafee` combined the retained edited clip and assignment.
+Independent readback matched the complete animation bank and the single native MAN
+selector byte for actor 0012. All 1231 neighboring physical spans, four other scene
+streams, every package directory/ZIP file and completion hashes matched. Package SHA256:
+`53f484b400be450080bdf6e18401e942c2063ec80a4cd3f405ced858f9b366a4`.
+Build inputs remained unchanged. No game ran or package was installed; timing, scripts,
+looping and gameplay remain unverified. The complete SDK goal stays active.
+
+Private evidence: `local-output/sdk-20260909/retained-clip-target-picker-20261007/`,
+including `distinct-target/browser.json`, `persistence.json`, `build-readback.json` and
+wide/narrow/proposed-pose screenshots. The initial readback helper assumed a standalone
+MAN asset; the final helper verifies the embedded MAN inside the relocation pack.
