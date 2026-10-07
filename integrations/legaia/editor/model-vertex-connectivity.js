@@ -13,7 +13,7 @@ export function invertVertexGroup(preview,index,indices){
   for(let i=0;i<object.vertex_count;i++)if(!selected.has(i)){if(result.length===4096)fail('Inverted group exceeds 4096 vertices; selection was retained.');result.push(i);}
   return result;
 }
-export function linkedVertexGroup(preview,index,indices){
+function topology(preview,index,indices){
   const object=owner(preview,index,indices);
   if(!Array.isArray(preview.triangles)||preview.triangles.length>262144||!integer(object.triangle_start,0,preview.triangles.length)||!integer(object.triangle_count,0,preview.triangles.length-object.triangle_start))fail('Current object triangle ranges are unavailable or exceed selection bounds.');
   const adjacency=new Map(),start=object.vertex_start,end=start+object.vertex_count;
@@ -21,7 +21,25 @@ export function linkedVertexGroup(preview,index,indices){
     const triangle=preview.triangles[i];if(!Array.isArray(triangle)||triangle.length!==3||triangle.some(v=>!integer(v,start,end-1)))fail('Current triangle references escape the selected object; selection was retained.');
     const local=triangle.map(v=>v-start);for(const vertex of local){if(!adjacency.has(vertex))adjacency.set(vertex,new Set());for(const neighbor of local)adjacency.get(vertex).add(neighbor);}
   }
-  const selected=new Set(indices),queue=indices.slice();
+  return adjacency;
+}
+export function linkedVertexGroup(preview,index,indices){
+  const adjacency=topology(preview,index,indices),selected=new Set(indices),queue=indices.slice();
   for(let head=0;head<queue.length;head++)for(const neighbor of adjacency.get(queue[head])??[]){if(selected.has(neighbor))continue;if(selected.size===4096)fail('Connected group exceeds 4096 vertices; selection was retained.');selected.add(neighbor);queue.push(neighbor);}
   return [...selected].sort((a,b)=>a-b);
+}
+export function growVertexGroup(preview,index,indices){
+  const adjacency=topology(preview,index,indices),selected=new Set(indices);
+  // Only the original seeds contribute neighbors: this is exactly one ring.
+  for(const vertex of indices)for(const neighbor of adjacency.get(vertex)??[]){
+    if(selected.has(neighbor))continue;
+    if(selected.size===4096)fail('Grown group exceeds 4096 vertices; selection was retained.');
+    selected.add(neighbor);
+  }
+  return [...selected].sort((a,b)=>a-b);
+}
+export function shrinkVertexGroup(preview,index,indices){
+  const adjacency=topology(preview,index,indices),selected=new Set(indices);
+  // Erode only a selected/unselected boundary, not an open mesh edge or position.
+  return indices.filter(vertex=>[...adjacency.get(vertex)??[]].every(neighbor=>selected.has(neighbor))).sort((a,b)=>a-b);
 }

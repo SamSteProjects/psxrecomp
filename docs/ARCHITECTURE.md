@@ -1,5 +1,25 @@
 # Architecture
 
+## Grow and shrink Current vertex groups - accepted offline (2026-10-07)
+
+Move model geometry now offers Grow group and Shrink group. Grow adds exactly one
+neighbor ring from the selected object's Current preview triangles. Shrink removes
+selected vertices with an unselected neighbor; complete components and isolated
+vertices remain selected. Empty erosion retains the previous group with an
+explanation. Coincident coordinates and shared normals are not links. Object,
+source, dirty-draft and 4096-vertex guards remain enforced.
+
+Five affected client suites and two syntax checks passed. Actual Town01 selection
+grew from one vertex to seven, then fourteen; shrinking the first ring produced
+[0,2]. Local actions left SDK state exact, geometry drafts locked both tools, and
+one-step group Save/Recall, Undo/Redo and Save/Open preserved exact indices.
+Wide/400 px layouts were inspected. Current model bytes stayed exact, and normal
+private native packages before/after saving the group were independently hashed
+and byte-identical. No full campaign or gameplay actions were performed.
+Development stays solo; gameplay verification remains deferred and the goal
+stays active. See [vertex selection rings](legaia-model-vertex-rings.md) and
+`local-output/sdk-20260909/vertex-selection-rings-20261007/`.
+
 ## Native ADPCM loop audition - accepted offline (2026-10-07)
 
 The envelope sample audition now offers Native ADPCM loop, carrying both integer

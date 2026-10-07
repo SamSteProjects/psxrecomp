@@ -13,3 +13,6 @@ Focused Node checks cover disconnected/coincident rows, multiple seeds, object-l
 An actual Town01 Current model workflow expands a seed, checks repeat/no-op, inverts `[0,2]`, confirms local actions do not change SDK state, verifies geometry-draft locks, saves the exact group and recalls it. Group Undo/Redo and Save/Open preserve the indices. Wide/narrow layouts were inspected. Model/imported/authored geometry remains exact. Native package Builds before and after saving the group are byte-identical, SHA256 `c171e5e2a8a1e5a2c4c65595785f3b8a17e050e3e10ced471522e07663c6ee9d`; the Current model SHA256 stays `7508d0da0666dfc7c76901db77b414849ec009710aa05304f4da913f9667cdfe`.
 
 Private evidence: `local-output/sdk-20260909/vertex-connectivity-20261006/`. No game, runtime attachment, installation or full-disc export ran; gameplay verification remains deferred. No serializer or authoring endpoint was added.
+
+The later [vertex selection rings](legaia-model-vertex-rings.md) workflow adds
+Grow group and Shrink group for one-ring expansion and selection-boundary erosion.
