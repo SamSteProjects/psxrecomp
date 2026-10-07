@@ -988,6 +988,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-glb-alignment.js": ("animation-glb-alignment.js", "text/javascript"),
                  "/animation-glb-blend.js": ("animation-glb-blend.js", "text/javascript"),
                  "/animation-channel-graph.js": ("animation-channel-graph.js", "text/javascript"),
+                 "/animation-channel-authoring.js": ("animation-channel-authoring.js", "text/javascript"),
                  "/animation-sources.js": ("animation-sources.js", "text/javascript"),
                  "/mesh-source-library.js": ("mesh-source-library.js", "text/javascript"),
                  "/model-source-library.js": ("model-source-library.js", "text/javascript"),

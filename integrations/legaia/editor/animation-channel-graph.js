@@ -20,7 +20,7 @@ export function channelGraphFrame(clientX,left,width,start,end){
   const x=(clientX-left)/width*640,t=Math.max(0,Math.min(1,(x-64)/556));
   return Math.round(start+t*(end-start));
 }
-export function createAnimationChannelGraph(host,{onFrame,onObject}){
+export function createAnimationChannelGraph(host,{onFrame,onObject,onEdit=null,editAvailability=()=>({available:false,reason:"No native authoring target."})}){
   const el=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
   const section=el('details'),heading=el('summary','Inspect native animation channels');section.append(heading);
   const note=el('p','Encoded object-local channels · PSX Y points down. Rotation uses 0–4080 PSX units in steps of 16; 4096 is one turn. Frame indices are zero based. Stepped lines connect stored samples; timing and in-game interpolation are not inferred. The plot scrolls horizontally on narrow windows. Click the plot or use Left/Right, Home/End to inspect that frame.');
@@ -28,14 +28,14 @@ export function createAnimationChannelGraph(host,{onFrame,onObject}){
   const makeSelect=(label,aria,options)=>{const l=el('label',label),s=el('select');l.style.cssText='display:flex;flex-direction:column;align-items:stretch;flex:1 1 140px;min-width:0';s.style.cssText='width:100%;max-width:none;flex:none';s.setAttribute('aria-label',aria);for(const [value,text] of options){const o=el('option',text);o.value=value;s.append(o);}l.append(s);controls.append(l);return s;};
   const object=makeSelect('Rigid object','Channel graph rigid object',[]),kind=makeSelect('Channels','Channel graph kind',[['translation','Translation XYZ'],['rotation_psx','Rotation XYZ']]),size=makeSelect('Frame window','Channel graph frame window',[16,32,64,128].map(n=>[String(n),String(n)]));size.value='64';
   const earlier=el('button','Earlier channel frames'),later=el('button','Later channel frames');for(const b of [earlier,later]){b.type='button';controls.append(b);}
-  const status=el('p'),readout=el('p'),error=el('p');error.setAttribute('role','alert');error.className='dialog-error';
+  const edit=el('button','Edit inspected native channel');edit.type='button';edit.hidden=onEdit===null;controls.append(edit);const editNote=el('p');editNote.hidden=onEdit===null;const status=el('p'),readout=el('p'),error=el('p');error.setAttribute('role','alert');error.className='dialog-error';
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 640 220');svg.style.cssText='width:100%;min-width:560px;display:block;touch-action:manipulation';svg.setAttribute('tabindex','0');svg.setAttribute('role','group');svg.setAttribute('aria-label','Native channel graph. Left and Right select frames; Home and End select window endpoints.');
-  const plot=el('div');plot.style.cssText='width:100%;max-width:100%;overflow-x:auto';plot.append(svg);section.append(note,controls,status,plot,readout,error);host.append(section);
+  const plot=el('div');plot.style.cssText='width:100%;max-width:100%;overflow-x:auto';plot.append(svg);section.append(note,controls,editNote,status,plot,readout,error);host.append(section);
   let frames=[],values=[],selected=0,start=0,window=null;
   const colors=['#ff8b8b','#8beba2','#90caff'];
   const svgEl=(tag,attrs,text)=>{const n=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,String(v));if(text!==undefined)n.textContent=text;svg.append(n);return n;};
   function render(){
-    svg.replaceChildren();readout.textContent='';earlier.disabled=later.disabled=true;
+    svg.replaceChildren();readout.textContent='';earlier.disabled=later.disabled=true;const availability=editAvailability({frame:selected,object:Number(object.value)});edit.disabled=!values.length||availability.available!==true;editNote.textContent=edit.disabled?availability.reason:'Open the saved native channel editor at this frame/object. The current source is verified again; opening applies no edit.';
     if(!values.length){status.textContent='Decoded native channel samples unavailable for this preview.';return;}
     window=channelGraphWindow(values,start,Number(size.value));const {end,min,max,rows}=window,span=max-min||1;
     const x=f=>64+556*(f-start)/Math.max(1,end-start),y=v=>180-140*(v-min)/span;
@@ -55,6 +55,7 @@ export function createAnimationChannelGraph(host,{onFrame,onObject}){
   function choose(index){if(!values.length)return;onFrame(index);}
   svg.onclick=e=>{if(!window||!values.length)return;const r=svg.getBoundingClientRect();choose(channelGraphFrame(e.clientX,r.left,r.width,window.start,window.end));};
   svg.onkeydown=e=>{if(!values.length)return;const index={ArrowLeft:Math.max(0,selected-1),ArrowRight:Math.min(values.length-1,selected+1),Home:window.start,End:window.end}[e.key];if(index!==undefined){e.preventDefault();e.stopPropagation();choose(index);}};
+  edit.onclick=async()=>{if(edit.disabled||onEdit===null)return;try{await onEdit({frame:selected,object:Number(object.value)});}catch(e){error.textContent=e.message;}};
   object.onchange=()=>{refresh();onObject(Number(object.value));};kind.onchange=refresh;size.onchange=()=>{start=Math.floor(selected/Number(size.value))*Number(size.value);render();};
   earlier.onclick=()=>{start=Math.max(0,start-Number(size.value));render();};later.onclick=()=>{start=Math.min(values.length-1,start+Number(size.value));render();};
   return {load(model){frames=model?.frames??[];selected=start=0;object.replaceChildren();const count=frames[0]?.object_transforms?.length??0;for(let i=0;i<Math.min(count,1024);i++){const o=el('option',`Object ${i}`);o.value=String(i);object.append(o);}section.hidden=!frames.length;object.disabled=kind.disabled=size.disabled=!count;refresh();},frame,setObject(index){if(integer(index,0,frames[0]?.object_transforms?.length-1)){object.value=String(index);refresh();}}};

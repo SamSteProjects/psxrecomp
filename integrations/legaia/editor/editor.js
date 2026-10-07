@@ -1,3 +1,4 @@
+import {animationChannelAuthoringTarget,validateImportedChannelHandoff,validateRetainedChannelHandoff} from '/animation-channel-authoring.js';
 import {createAnimationChannelGraph} from '/animation-channel-graph.js';
 import {openProjectChanges} from '/project-changes.js';
 import {openCommandHistory} from '/command-history.js';
@@ -3449,10 +3450,10 @@ async function inspectRetainedAnimationGlb(entity,row,assetId=null){
       $('model-dialog').addEventListener('close',()=>{if(model===data&&scenePose?.preview!==data)returnToEditor();},{once:true});}
   });
 }
-async function inspectRetainedAnimationContent(entity,row,assetId=null){
+async function inspectRetainedAnimationContent(entity,row,assetId=null,initialChannel=null){
   if(busy||state.project.mode!=='edit')return;
   retainedAnimationEditor?.dispose();retainedAnimationEntityId=entity.id;retainedAnimationAssetId=assetId;
-  retainedAnimationEditor=await openRetainedAnimationEditor({row,
+  retainedAnimationEditor=await openRetainedAnimationEditor({row,initialChannel,
     getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key}),
     busy:()=>busy,setBusy,onError:error=>notify(error.message??String(error),true),
     onApplied:next=>{state=next;render();notify('Retained clip and actor references updated. Save project to persist.');
@@ -3526,7 +3527,7 @@ async function openAnimationChannels(entity,initialChannel=null){
   try{
     const response=await fetch('/api/animation-authoring-options',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id})});
     const result=await response.json();if(!response.ok||result.error)throw new Error(result.error||'Could not load animation channels');if(!current())return;
-    const binding=result.binding,edits=result.authored?.edits??[];
+    const binding=result.binding,edits=result.authored?.edits??[];validateImportedChannelHandoff(initialChannel,binding);
     animationEditDialog.innerHTML=`<h2>Edit imported animation channels</h2><p>${escapeHTML(binding.semantic_id)}</p><p>Imported actors sharing this clip: ${escapeHTML((result.shared_actor_ids??[]).join(", "))}</p><p>Edits apply to the imported clip. Blank axes remove this actor’s contribution; other shared-clip edits still apply. Build patches the shared scene clip within its original compressed capacity. Other actors using that clip are affected. Conflicting overrides or edits that need relocation are rejected. In-game playback has not yet been verified.</p><form><label>Frame (zero based)<input name="frame" type="number" min="0" max="${binding.frame_count-1}" step="1" value="0" required></label><label>Rigid object (zero based)<input name="object" type="number" min="0" max="${binding.bone_count-1}" step="1" value="0" required></label><div class="animation-channel-fields"></div><p class="dialog-error" role="alert"></p><button type="submit">Apply channel override</button><button type="button" class="clear-animation">Clear this actor’s channel edits</button><button type="button" class="close-animation">Close</button></form>`;
     const form=animationEditDialog.querySelector('form'),fields=form.querySelector('.animation-channel-fields'),error=form.querySelector('[role="alert"]');
     const glbEditorButton=document.createElement('button');glbEditorButton.type='button';glbEditorButton.textContent='Edit animation through GLB';glbEditorButton.dataset.animationEdit='true';
@@ -5156,7 +5157,23 @@ $('shape-upload').onclick=()=>readShapeFile();
 $('shape-file-preview').onclick=()=>readShapeFile(true);
 function modelObject(){return $('model-object').value==='all' && model?.frames?.length?{vertex_start:0,vertex_count:model.vertices.length,triangle_start:0,triangle_count:model.triangles.length}:model?.objects[Number($('model-object').value)];}
 function frameVertices(){return model?.frames?.[animationFrame]?.vertices ?? model?.vertices ?? [];}
-const animationChannelGraph=createAnimationChannelGraph($('animation-controls'),{onFrame:index=>{stopAnimation();setAnimationFrame(index);},onObject:index=>{$('model-object').value=String(index);fitModelObject();}});
+function graphAuthoringTarget(channel){
+  if(state.project?.mode!=='edit'||modelSceneContext!==sceneRequestKey()||!state.capabilities?.actor_animation_authoring||state.selection?.entity_id!==modelEntityId)throw new Error('Open the current selected actor in Edit mode before authoring channels.');
+  return animationChannelAuthoringTarget(model,modelEntityId,channel.frame,channel.object);
+}
+const animationChannelGraph=createAnimationChannelGraph($('animation-controls'),{
+  onFrame:index=>{stopAnimation();setAnimationFrame(index);},onObject:index=>{$('model-object').value=String(index);fitModelObject();},
+  editAvailability:channel=>{try{graphAuthoringTarget(channel);return {available:true};}catch(e){return {available:false,reason:e.message};}},
+  onEdit:async channel=>{
+    if(busy)return;const target=graphAuthoringTarget(channel),preview=model,key=sceneRequestKey(),entity=entities().find(e=>e.id===modelEntityId);if(!entity)throw new Error('Source actor is no longer available.');
+    if(target.kind==='retained'){
+      setBusy(true);let library;try{const response=await fetch('/api/animation-record-library',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scene_id:state.scene.id,expected_source_key:state.scene_preview_source_key})});library=await response.json();if(!response.ok||library.error)throw new Error(library.error||'Could not verify retained clip');}finally{setBusy(false);}
+      if(model!==preview||key!==sceneRequestKey()||!$('model-dialog').open)throw new Error('Preview changed while verifying the saved clip.');graphAuthoringTarget(channel);
+      const row=validateRetainedChannelHandoff(target,library,{sceneId:state.scene.id,sourceKey:state.scene_preview_source_key});
+      animationRecordLibrary?.dispose();model=null;modelFileReturn=null;$('model-dialog').close();await inspectRetainedAnimationContent(entity,row,null,target.initial);
+    }else{$('model-dialog').close();await openAnimationChannels(entity,target.initial);}
+  }
+});
 function configureAnimation(clipId){
   animationChannelGraph.load(model);
   const support=model.animation_support ?? {},clips=support.clips ?? [],frames=model.frames ?? [];

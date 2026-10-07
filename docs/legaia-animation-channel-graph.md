@@ -1,5 +1,7 @@
 # Native Animation Channel Graph
 
+Use **Edit inspected native channel** to open the source-qualified [Imported or Retained Channel Editor](legaia-animation-channel-authoring.md) at the current graph frame/object.
+
 Open an animated model preview and expand **Inspect native animation channels**. Choose a rigid object, translation or rotation XYZ, and a 16/32/64/128-frame window. Earlier/Later moves the visible window without changing the inspected pose. Each axis has a distinct color and a literal native value readout.
 
 Click the graph to choose the nearest displayed integer frame. Left/Right steps through the clip; Home/End selects the visible window endpoints. The graph and existing frame slider/transport share the current preview frame. Graph object selection also selects and frames that model object; choosing a supported object in the model selector updates the graph. The animated assembly view can show all supported objects while the graph inspects one rigid channel.
