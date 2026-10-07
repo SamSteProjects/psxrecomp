@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
-const code=await readFile(new URL('../editor/asset-references.js',import.meta.url),'utf8');
-const {decodeAssetReferences,filterAssetReferences}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const {decodeAssetReferences,filterAssetReferences}=await import('../editor/asset-references.js');
 const hash='a'.repeat(64),scene='scene://fixture',owner=scene+'/actors/man-p1/0001',record='12345678-1234-4123-8123-123456789abc';
 const clip=`animation://fixture/authored-record/${record}`,model='asset://legaia/models/global-special/00f0';
 const proof={record_id:record,record_sha256:hash,ledger_sha256:hash,bank_sha256:hash,model_id:model,model_source_entity_id:owner,channel_owner_entity_id:owner,native_record_index:254,native_animation_id:255,frame_count:512,object_count:64};

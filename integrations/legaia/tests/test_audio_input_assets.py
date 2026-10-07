@@ -192,6 +192,56 @@ class RetailAudioInputAssets(unittest.TestCase):
     tearDown = _base.tearDown
     args = _base.args
 
+    def test_current_native_binding_is_separate_from_historical_receipt_and_clears(self):
+        from sdk.audio_sample_sources import review as retain_review
+        from sdk.audio_sample_authoring import review as sample_review
+        from sdk.audio_authoring import source_key as authoring_key
+        from sdk.audio_composition import read_entry
+        from sdk.asset_references import assemble as graph
+        from sdk.resources import refresh_resource_catalog
+        args,content=self.args()
+        retained=retain_review(self.project,**args)
+        self.project.command(dict(type='retain_audio_sample_source',**args,review_key=retained['review_key']))
+        receipt=next(iter(self.project.audio_sample_sources.values()))
+        identifier=PREFIX+sha256(content).hexdigest()
+        metadata=inspect(self.project,identifier,source_key(self.project))
+        self.assertEqual(metadata['current_bindings'],[])
+        apply=dict(asset_id=self.identifier,expected_entry_sha256=self.entry_hash,sample_index=0,
+                   expected_authoring_key=authoring_key(self.project),receipt_key=receipt['receipt_key'])
+        proposal=sample_review(self.project,operation='apply',**apply)
+        self.project.command(dict(type='set_audio_sample_wav',**apply,review_key=proposal['review_key']))
+        before=deepcopy((self.project._document(),self.project.undo_stack,self.project.redo_stack))
+        report=inspect(self.project,identifier,source_key(self.project))
+        binding=report['current_bindings'][0]
+        current=read_entry(self.project,self.identifier)
+        at,size=binding['sample_entry_byte_offset'],binding['sample_size_bytes']
+        self.assertEqual(binding['current_entry_sha256'],sha256(current).hexdigest())
+        self.assertEqual(binding['current_sample_sha256'],sha256(current[at:at+size]).hexdigest())
+        self.assertEqual(binding['current_sample_sha256'],receipt['candidate_sample_sha256'])
+        self.assertEqual(binding['binding_scene_id'],self.project.active_scene)
+        self.assertEqual(binding['capture_scene_id'],receipt['source_scene_id'])
+        self.assertEqual(binding['binding_sha256'],digest(self.project.audio_sample_overrides[self.identifier]))
+        refs=graph(self.project,refresh_resource_catalog(self.project),identifier)
+        self.assertEqual({e['kind'] for e in refs['incoming']},{'retained_wav_sample_input','current_native_sample_wav_binding'})
+        effective=next(e for e in refs['incoming'] if e['kind']=='current_native_sample_wav_binding')
+        self.assertEqual(effective['layer'],'effective')
+        self.assertEqual(effective['current_wav_binding_evidence'],binding)
+        self.assertEqual(effective['runtime_binding'],'not_asserted')
+        self.assertEqual((self.project._document(),self.project.undo_stack,self.project.redo_stack),before)
+        self.project.save()
+        reopened=ProjectService.open(self.project.root)
+        self.assertEqual(inspect(reopened,identifier,source_key(reopened))['current_bindings'],[binding])
+        clear=dict(asset_id=self.identifier,expected_entry_sha256=self.entry_hash,sample_index=0,
+                   expected_authoring_key=authoring_key(self.project))
+        proposal=sample_review(self.project,operation='clear',**clear)
+        self.project.command(dict(type='clear_audio_sample_wav',**clear,review_key=proposal['review_key']))
+        self.assertEqual(inspect(self.project,identifier,source_key(self.project))['current_bindings'],[])
+        self.assertEqual(len(inspect(self.project,identifier,source_key(self.project))['receipts']),1)
+        self.project.undo()
+        self.assertEqual(inspect(self.project,identifier,source_key(self.project))['current_bindings'],[binding])
+        self.project.redo()
+        self.assertEqual(inspect(self.project,identifier,source_key(self.project))['current_bindings'],[])
+
     def test_retained_retail_wav_is_qualified_readonly_asset_and_recovers_exact_input(self):
         from sdk.audio_sample_sources import review
         from sdk.audio_authoring import source_key as authoring_key

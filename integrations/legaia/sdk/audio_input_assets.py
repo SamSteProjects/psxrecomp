@@ -58,9 +58,12 @@ def inspect(project, identifier, expected_source_key, *, include_wav=False):
     snapshot = inventory(project)
     if identifier not in snapshot['assets']:
         raise ProjectError('WAV asset has no retained receipt in Current')
-    result = dict(schema_version='legaia.audio-input-inspection.v1', asset_id=identifier,
+    from .audio_input_bindings import current
+    qualified_bindings = current(project, snapshot, identifier)
+    result = dict(schema_version='legaia.audio-input-inspection.v2', asset_id=identifier,
         source_key=expected_source_key, project_path=str(project.root),
         record=deepcopy(snapshot['assets'][identifier]), receipts=deepcopy(snapshot['receipts'][identifier]),
+        current_bindings=qualified_bindings,
         historical_inputs=True, read_only=True, project_changed=False,
         runtime_binding='not_asserted', gameplay_verified=False)
     if include_wav:
