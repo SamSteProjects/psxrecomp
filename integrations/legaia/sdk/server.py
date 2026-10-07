@@ -832,6 +832,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/audio-bank.js": ("audio-bank.js", "text/javascript"),
                  "/audio-bank-authoring.js": ("audio-bank-authoring.js", "text/javascript"),
                  "/audio-adsr.js": ("audio-adsr.js", "text/javascript"),
+                 "/audio-envelope.js": ("audio-envelope.js", "text/javascript"),
                  "/audio-waveform.js": ("audio-waveform.js", "text/javascript"),
                  "/audio-waveform-contract.js": ("audio-waveform-contract.js", "text/javascript"),
                  "/audio-audition.js": ("audio-audition.js", "text/javascript"),

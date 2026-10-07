@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';import {simulateEnvelope,mountEnvelopePreview,MAX_ENVELOPE_FRAMES} from '../editor/audio-envelope.js';
+const fast=simulateEnvelope(15,0,{keyOffFrame:100,frameCount:200});assert.equal(fast.levels.length,200);assert(fast.levels[0]>0);assert.equal(fast.endLevel,0);assert.equal(fast.endPhase,'Off');
+const frozen=simulateEnvelope(0x7f00,0,{keyOffFrame:100,frameCount:200});assert(frozen.levels.every(n=>n===0));assert.equal(frozen.phases[99],0);assert.equal(frozen.phases[100],4);
+const held=simulateEnvelope(15,31,{keyOffFrame:100,frameCount:200});assert.equal(held.endPhase,'Release');assert.equal(held.levels[99],held.levels[199]);assert(held.endLevel>0);
+const zero=simulateEnvelope(65535,65535,{keyOffFrame:0,frameCount:1});assert.equal(zero.endLevel,0);
+const max=simulateEnvelope(0x80ff,0x5fcf,{keyOffFrame:MAX_ENVELOPE_FRAMES-1,frameCount:MAX_ENVELOPE_FRAMES});assert.equal(max.levels.length,MAX_ENVELOPE_FRAMES);
+for(const args of [[true,0,{}],[0,65536,{}],[0,0,{frameCount:0}],[0,0,{frameCount:MAX_ENVELOPE_FRAMES+1}],[0,0,{keyOffFrame:-1}],[0,0,{keyOffFrame:1,frameCount:1}],[0,0,{frameCount:1.5}],[0,0,{keyOffFrame:true}]])assert.throws(()=>simulateEnvelope(...args));
+class Element{constructor(tag,text){this.tag=tag;this.textContent=text??'';this.style={};this.children=[];this.value='';}append(...nodes){this.children.push(...nodes);}setAttribute(){}getContext(){return {clearRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},fillText(){}};}}
+globalThis.document={createElement:t=>new Element(t)};let fresh=true;const host=new Element('section'),view=mountEnvelopePreview(host,{fresh:()=>fresh}),nodes=root=>[root,...root.children.flatMap(nodes)];
+view.update([{label:'Current',color:'blue',adsr1:15,adsr2:31}]);assert.equal(host.hidden,false);nodes(host).find(n=>n.tag==='button').onclick();assert(nodes(host).some(n=>n.textContent.includes('Release / counter')));assert.equal(nodes(host).find(n=>n.tag==='canvas').hidden,false);fresh=false;nodes(host).find(n=>n.tag==='select').onchange();assert.equal(host.hidden,true);assert.equal(nodes(host).find(n=>n.tag==='canvas').hidden,true);view.clear();
+console.log('Bounded SPU counter model, zero-time release, frozen rates, phases, invalid windows and stale chart withdrawal passed.');
