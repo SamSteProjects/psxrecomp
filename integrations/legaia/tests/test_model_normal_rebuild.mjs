@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {rebuildNormalWords,qualifyNormalRebuild} from '../editor/model-normal-rebuild.js';
+const v=[[0,0,0],[10,0,0],[0,10,0],[10,10,0]],n=[[123,456,789],[4,5,6],[7,8,9],[10,11,12]],f={corner_count:4,gouraud:true,vertices:[0,1,2,3],normal_indices:[0,1,2,3]};
+assert.deepEqual(rebuildNormalWords(v,n,[f],'winding'),Array.from({length:4},()=>[0,0,4096]));
+assert.deepEqual(rebuildNormalWords(v,n,[{...f,gouraud:false,normal_indices:[0]}],'reverse'),[[0,0,-4096],...n.slice(1)]);
+const weighted=[{corner_count:3,gouraud:true,vertices:[0,1,2],normal_indices:[0,0,0]},{corner_count:3,gouraud:false,vertices:[0,3,1],normal_indices:[0]}];
+assert.deepEqual(rebuildNormalWords([[0,0,0],[2,0,0],[0,2,0],[0,0,1]],n,weighted,'winding'),[[0,1832,3664],...n.slice(1)]);
+for(const args of [[v,n,[],'winding'],[v,n,[f],'bad'],[v,n,[{...f,normal_indices:[0,1,2,99]}],'winding'],[v,n,[{...f,vertices:[0,0,2,3]}],'winding'],[v,n,[{...f,vertices:[0,1,2]}],'winding']])assert.throws(()=>rebuildNormalWords(...args));
+const face={corner_count:3,gouraud:false,vertices:[0,1,2],normal_indices:[0]};assert.throws(()=>rebuildNormalWords(v,n,[face,{...face,vertices:[0,2,1]}],'winding'),/Cancelling/);
+const obj={vertices:v,normals:n},values={direction:'winding'},report={object_index:0,values,normal_rebuild_faces:[f],normal_rebuild_words:{current:n,proposed:Array.from({length:4},()=>[0,0,4096])},preview:{vertices:v,triangles:[[0,1,2],[1,3,2]]},current_preview:{vertices:v,triangles:[[0,1,2],[1,3,2]]},changes_from_current:[{kind:'normal',object_index:0}]};
+qualifyNormalRebuild(report,obj,values);
+for(const change of [{values:{direction:'reverse'}},{normal_rebuild_words:{current:n,proposed:n}},{changes_from_current:[{kind:'vertex',object_index:0}]},{changes_from_current:[{kind:'normal',object_index:1}]},{preview:{vertices:[[9,9,9]],triangles:report.preview.triangles}}])assert.throws(()=>qualifyNormalRebuild({...report,...change},obj,values));
+assert.deepEqual(n,[[123,456,789],[4,5,6],[7,8,9],[10,11,12]]);
+console.log('Exact area-weighted rebuild, quad sharing, refusals and review qualification passed.');

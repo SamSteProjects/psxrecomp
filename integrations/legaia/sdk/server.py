@@ -879,6 +879,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-object-mirror.js": ("model-object-mirror.js", "text/javascript"),
                  "/model-object-axis-scale.js": ("model-object-axis-scale.js", "text/javascript"),
                  "/model-object-angle.js": ("model-object-angle.js", "text/javascript"),
+                 "/model-normal-rebuild.js": ("model-normal-rebuild.js", "text/javascript"),
                  "/model-normal-rotation.js": ("model-normal-rotation.js", "text/javascript"),
                  "/model-normal-users.js": ("model-normal-users.js", "text/javascript"),
                  "/normal-retarget.js": ("normal-retarget.js", "text/javascript"),
@@ -1367,6 +1368,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route == '/api/model-object-normal-angle':
                     if set(body)!={'asset_id','object_index','axis','angle_units','expected_sha256','proposed_sha256'} or not isinstance(body['asset_id'],str):raise ProjectError('Normal rotation requires model, object, axis, angle and exact inspected/proposed hashes')
                     self.server.project.rotate_model_normals_angle(body['asset_id'],body['object_index'],body['axis'],body['angle_units'],body['expected_sha256'],body['proposed_sha256'])
+                    self._json(200,self.server.state())
+                    return
+                if route == '/api/model-object-normal-rebuild':
+                    if set(body)!={'asset_id','object_index','direction','expected_sha256','proposed_sha256'} or not isinstance(body['asset_id'],str):raise ProjectError('Normal rebuild requires model, object, direction and exact inspected/proposed hashes')
+                    self.server.project.rebuild_model_normals(body['asset_id'],body['object_index'],body['direction'],body['expected_sha256'],body['proposed_sha256'])
                     self._json(200,self.server.state())
                     return
                 if route == '/api/model-object-normal-length':

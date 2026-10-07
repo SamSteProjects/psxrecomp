@@ -1763,6 +1763,7 @@ class ProjectService:
         from importer.model_vertex_grid import snap_shape_vertices
         from importer.model_normal_length import rescale_object_normals
         from importer.model_normal_rotation import rotate_object_normals
+        from importer.model_normal_rebuild import rebuild_object_normals
         from importer.model_object_angle import rotate_object_angle
         from importer.model_object_axis_scale import scale_object_axes
         from importer.model_object_mirror import mirror_object
@@ -1810,6 +1811,8 @@ class ProjectService:
             replacement = scale_shape_object(*args, values['percent'])
         elif operation == 'normal_rotation_angle' and set(values) == {'axis','angle_units'}:
             replacement = rotate_object_normals(*args,values['axis'],values['angle_units'])
+        elif operation == 'normal_rebuild' and set(values) == {'direction'}:
+            replacement = rebuild_object_normals(*args,values['direction'])
         elif operation == 'normal_length' and set(values) == {'length'}:
             replacement = rescale_object_normals(*args, values['length'])
         elif operation == 'normal_references' and set(values) == {'from_index','to_index'}:
@@ -1817,13 +1820,20 @@ class ProjectService:
         elif operation == 'vertex_references' and set(values) == {'from_index','to_index'}:
             replacement = retarget_object_vertices(*args, values['from_index'], values['to_index'])
         else:
-            raise ProjectError('Choose translation, vertex_translation, vertex_alignment, vertex_distribution, vertex_scaling, vertex_axis_scaling, vertex_rotation, vertex_rotation_angle, vertex_grid, rotation, object_rotation_angle, object_axis_scaling, object_mirror, scale, normal_length, normal_rotation_angle, normal_references or vertex_references with exact operation fields')
+            raise ProjectError('Choose translation, vertex_translation, vertex_alignment, vertex_distribution, vertex_scaling, vertex_axis_scaling, vertex_rotation, vertex_rotation_angle, vertex_grid, rotation, object_rotation_angle, object_axis_scaling, object_mirror, scale, normal_length, normal_rebuild, normal_rotation_angle, normal_references or vertex_references with exact operation fields')
         report = self.preview_model_file(asset_id, replacement)
         report.update(effective_sha256=hashlib.sha256(effective).hexdigest(),
                       object_index=object_index, operation=operation,
                       preview=decode_tmd(replacement), current_preview=decode_tmd(effective))
         if operation in ('vertex_translation','vertex_alignment','vertex_distribution','vertex_scaling','vertex_axis_scaling','vertex_rotation','vertex_rotation_angle','vertex_grid'):
             report['values'] = deepcopy(values)
+        if operation == 'normal_rebuild':
+            from importer.model_json import export_shape_json
+            from importer.model_primitives import inspect_model_primitives
+            import json
+            report['values']=deepcopy(values)
+            report['normal_rebuild_words']={key:json.loads(export_shape_json(content))['objects'][object_index]['normals'] for key,content in [('current',effective),('proposed',replacement)]}
+            report['normal_rebuild_faces']=inspect_model_primitives(effective,include_normal_references=True)['objects'][object_index]['primitives']
         if operation == 'normal_rotation_angle':
             from importer.model_json import export_shape_json
             import json
@@ -1872,6 +1882,12 @@ class ProjectService:
         replacement,report=self._prepare_model_object(asset_id,object_index,'normal_rotation_angle',{'axis':axis,'angle_units':angle_units},expected_sha256)
         if not isinstance(proposed_sha256,str) or hashlib.sha256(replacement).hexdigest()!=proposed_sha256:
             raise ProjectError('Normal rotation proposal changed; review again')
+        if report['changes_from_current']:self.set_model_replacement(asset_id,replacement)
+
+    def rebuild_model_normals(self,asset_id,object_index,direction,expected_sha256,proposed_sha256):
+        replacement,report=self._prepare_model_object(asset_id,object_index,'normal_rebuild',{'direction':direction},expected_sha256)
+        if not isinstance(proposed_sha256,str) or hashlib.sha256(replacement).hexdigest()!=proposed_sha256:
+            raise ProjectError('Normal rebuild proposal changed; review again')
         if report['changes_from_current']:self.set_model_replacement(asset_id,replacement)
 
     def rescale_model_normals(self, asset_id: str, object_index: int, length: int,
