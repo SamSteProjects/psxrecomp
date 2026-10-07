@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {qualifyNotePair,pairedNoteEdits} from '../editor/audio-note-authoring.js';
+const events=[],add=(kind,channel,key,velocity)=>events.push({index:events.length,offset:15+events.length*4,kind,channel,values:[key,velocity],ticks:events.length,time_seconds:events.length/480});
+add('note_on',0,60,100);add('note_on',1,62,90);add('note_off',0,60,20);add('note_on',1,62,0);
+const report={events,complete:false,decoded_ticks:4},before=structuredClone(report);
+assert.equal(qualifyNotePair(report,0).end_event,2);
+assert.deepEqual(pairedNoteEdits(report,0,[62,110]),[{event_offset:15,values:[62,110]},{event_offset:23,values:[62,20]}]);
+assert.deepEqual(pairedNoteEdits(report,2,[61,30]),[{event_offset:15,values:[61,100]},{event_offset:23,values:[61,30]}]);
+assert.deepEqual(pairedNoteEdits(report,3,[63,0]),[{event_offset:19,values:[63,90]},{event_offset:27,values:[63,0]}]);
+assert.throws(()=>pairedNoteEdits(report,3,[63,1]));assert.throws(()=>pairedNoteEdits(report,0,[61,0]));
+for(const values of [[128,1],[-1,1],[true,1],[61,NaN],[61,1,2]])assert.throws(()=>pairedNoteEdits(report,0,values));
+const collision=structuredClone(report);collision.events[1].channel=collision.events[3].channel=0;assert.throws(()=>pairedNoteEdits(collision,0,[62,100]),/overlaps/);
+const orphan=structuredClone(report);Object.assign(orphan.events[1],{kind:'note_off',channel:0});assert.throws(()=>pairedNoteEdits(orphan,0,[62,100]),/intervening/);
+const overlap=structuredClone(collision);overlap.events[1].values[0]=overlap.events[3].values[0]=60;assert.throws(()=>qualifyNotePair(overlap,0),/ambiguous/);
+const unmatched=structuredClone(report);unmatched.events=unmatched.events.slice(0,2);assert.throws(()=>qualifyNotePair(unmatched,0),/no release/);
+assert.throws(()=>qualifyNotePair({events:[{index:0,kind:'note_off',channel:0,values:[60,0],ticks:0,time_seconds:0}],complete:true,decoded_ticks:0},0),/no paired start/);
+assert.deepEqual(report,before);
+console.log('Paired start/release keys, channel isolation, velocity-zero release semantics, collision/ambiguity rejection, partial prefix and source immutability passed.');
