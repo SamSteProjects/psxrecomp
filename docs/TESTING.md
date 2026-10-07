@@ -1,5 +1,15 @@
 # Testing
 
+## Original WAV recovery and reviewed registration removal (2026-10-06)
+
+The sample editor now provides **Save retained input WAV**, **Review input removal** and **Remove reviewed input** for the selected Current receipt. Original-input recovery is separate from decoded preview WAV export. It freshly verifies Current ownership and exact file bytes, independently checks RIFF/chunk extents and mono signed16 PCM frame/rate fields, and downloads the original bytes without normalization. Unknown bounded chunks and their padding remain intact.
+
+Removal uses the existing reviewed command/history service. Review and Discard preserve registration and native data; Remove commits one metadata history entry while keeping the WAV file on disk. The native-bound selected receipt cannot be removed until its native binding is cleared. Removal proposals lock input selection and competing drafts; malformed/stale responses or mismatched hashes fail recovery. Save/Open and Undo continue to validate retained files. These controls recover Current registrations; browsing frozen historical Build WAV sidecars still needs editor integration.
+
+Six focused Node suites passed: recovery RIFF/hash/removal contracts, sample editor contracts/lifecycle, source bank, bank authoring, sequence authoring and source audition. Unreviewed removal is disabled; active native input removal is disabled. A fresh muted headless editor run passed exact original WAV download, unchanged state after download/review/discard, reviewed unused-input removal, Undo, preserved native bank/sequence/sample bindings, and wide/400px layouts with no page errors. Screenshots were inspected. The original file remained exact on disk, and the restored registrations/native entry survived Save/Open. The first browser run used an incorrect Undo-button wait after undoing its only command; the corrected fresh run passed. Private evidence: `local-output/sdk-20260909/audio-sample-recovery-20261006/pass2/` (`proof.json`, `browser.log`, `recovered.wav`, `wide.png`, `narrow.png`) and the preserved initial log.
+
+No new native asset family or runtime behavior was introduced, and no native Build was run for this UI recovery checkpoint. Gameplay verification remains deferred. No game launch, runtime attachment, mod installation or full-disc export occurred. The broader SDK goal remains active and work stays solo.
+
 ## Native sample import and waveform editor (2026-10-06)
 
 The Audio Asset Database bank inspector now exposes `Source sample spans` → `Edit sample N`. Its separate editor shows Retail, Current and reviewed Proposed waveform layers. Mono PCM WAV upload has local draft, source review and explicit retention; retention preserves input bytes without applying native data. Existing qualified receipts can then be reviewed for native Apply. Reviewed retail restoration clears only the selected sample. Discard, no-op handling, refresh and shared project history keep these steps distinct.
