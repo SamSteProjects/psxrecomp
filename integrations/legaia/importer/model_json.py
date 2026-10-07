@@ -244,3 +244,24 @@ def import_shape_json(source: bytes, source_sha256: str, content: bytes):
                     raise ImportError('Model shape vectors require three signed 16-bit integers')
                 struct.pack_into('<3h', changed, 12 + offset + n * 8, *vector)
     return replace_model_shape(source, source_sha256, bytes(changed))
+
+
+def rotate_shape_vertices_angle(original: bytes,effective: bytes,expected_sha256: str,
+                                object_index: int,indices: list[int],axis: str,angle_units: int,pivot: str)->bytes:
+    """Rotate selected native words using deterministic source-angle editing math."""
+    if axis not in ('x','y','z') or type(angle_units) is not int or not 0<=angle_units<=4095 or pivot not in ('origin','center'):
+        raise ImportError('Vertex angle rotation requires X/Y/Z, 0..4095 angle units and origin or center pivot')
+    from rotation_math import Q30,sin_cos_q30,round_half_away
+    qualified=translate_shape_vertices(original,effective,expected_sha256,object_index,indices,[0,0,0])
+    document=json.loads(export_shape_json(qualified));vertices=document['objects'][object_index]['vertices']
+    pivot2=[0,0,0] if pivot=='origin' else [min(vertices[i][a] for i in indices)+max(vertices[i][a] for i in indices) for a in range(3)]
+    sine,cosine=sin_cos_q30(angle_units)
+    for i in indices:
+        x,y,z=[2*v-pivot2[a] for a,v in enumerate(vertices[i])]
+        rotated=(x*Q30,y*cosine-z*sine,z*cosine+y*sine) if axis=='x' else (x*cosine+z*sine,y*Q30,z*cosine-x*sine) if axis=='y' else (x*cosine-y*sine,y*cosine+x*sine,z*Q30)
+        values=[round_half_away(n+pivot2[a]*Q30,2*Q30) for a,n in enumerate(rotated)]
+        if any(not -32768<=v<=32767 for v in values):
+            raise ImportError('Vertex angle rotation exceeds signed16; nothing was applied')
+        vertices[i]=values
+    replacement=import_shape_json(effective,expected_sha256,json.dumps(document).encode())[0]
+    return replace_model_content(original,sha256(original).hexdigest(),replacement,allow_normal_references=True)[0]

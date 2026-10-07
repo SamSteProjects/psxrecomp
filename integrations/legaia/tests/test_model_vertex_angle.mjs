@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {vertexGroupAnglePreview,vertexGroupRotatePreview} from '../editor/model-vertex-move.js';
+const source={preview:{objects:[{object_index:0,vertex_start:0,vertex_count:3}],vertices:[[1000,0,0],[-4,0,1],[3,1,2]],triangles:[[0,1,2]],normals:[[0,4096,0]]}},before=structuredClone(source);
+assert.deepEqual(vertexGroupAnglePreview(source,0,[0],'y',512,'origin').vertices[0],[707,0,-707]);
+for(const axis of ['x','y','z'])for(const pivot of ['origin','center'])for(const [turn,angle] of [[-1,3072],[1,1024],[2,2048]])assert.deepEqual(vertexGroupAnglePreview(source,0,[1,2],axis,angle,pivot),vertexGroupRotatePreview(source,0,[1,2],axis,turn,pivot));
+const result=vertexGroupAnglePreview(source,0,[0,1],'z',555,'center');assert.deepEqual(result.vertices[2],source.preview.vertices[2]);assert.deepEqual(result.normals,source.preview.normals);assert.deepEqual(result.triangles,source.preview.triangles);assert.deepEqual(source,before);
+assert.deepEqual(vertexGroupAnglePreview(source,0,[0,1],'y',0,'center').vertices,source.preview.vertices);
+for(const angle of [-1,4096,true,512.5,NaN])assert.throws(()=>vertexGroupAnglePreview(source,0,[0],'y',angle,'origin'));
+for(const indices of [[],[0,0],[true],[3]])assert.throws(()=>vertexGroupAnglePreview(source,0,indices,'y',512,'origin'));
+const large=structuredClone(source);large.preview.vertices[0]=[32767,0,32767];assert.throws(()=>vertexGroupAnglePreview(large,0,[0],'y',512,'origin'));assert.deepEqual(source,before);
+console.log('Exact cardinal compatibility, literal45-degree native words, Q31 pivot rounding, immutable normals/topology, zero angles, bounds and source index guards passed.');

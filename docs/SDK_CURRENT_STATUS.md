@@ -1,5 +1,25 @@
 # Current Legaia SDK status — 2026-10-07
 
+## Custom-angle vertex group rotation - accepted offline (2026-10-07)
+
+Move model geometry now supports custom X/Y/Z rotation of selected vertex
+indices, with origin or bounds-center pivot and angles quantized to 1/4096 turn.
+Shared deterministic Q30 math and one final signed-word rounding keep browser
+and native previews aligned. Existing quarter turns stay exact. Normals,
+topology, opaque bytes and unselected rows remain fixed; explicit Apply,
+source qualification, no-op history and atomic overflow guards remain enforced.
+
+Fourteen focused Python tests, five client suites and two client syntax checks
+passed. Actual Town01 45-degree staging, layers, single/all-instance scene
+inspection, return/restore, Apply, Undo/Redo and Save/Open passed. Independent
+native-word trigonometry matched the result; the complete containing section
+matched normal Build directory and ZIP readback, with only selected XYZ bytes
+changed. The first browser attempt found a scene-caption error, now repaired.
+No gameplay or full campaign was performed. Development stays solo, manual
+verification remains deferred and the full goal stays active. See
+[custom-angle vertex rotation](legaia-model-vertex-angle.md) and private evidence
+`local-output/sdk-20260909/vertex-angle-rotation-20261007/`.
+
 ## Grow and shrink Current vertex groups - accepted offline (2026-10-07)
 
 Move model geometry now offers Grow group and Shrink group. Grow adds exactly one
