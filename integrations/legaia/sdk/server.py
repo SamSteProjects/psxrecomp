@@ -841,6 +841,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/audio-envelope-audition.js": ("audio-envelope-audition.js", "text/javascript"),
                  "/audio-pcm-loop.js": ("audio-pcm-loop.js", "text/javascript"),
                  "/audio-native-loop.js": ("audio-native-loop.js", "text/javascript"),
+                 "/audio-native-gaussian.js": ("audio-native-gaussian.js", "text/javascript"),
                  "/audio-waveform.js": ("audio-waveform.js", "text/javascript"),
                  "/audio-waveform-contract.js": ("audio-waveform-contract.js", "text/javascript"),
                  "/audio-audition.js": ("audio-audition.js", "text/javascript"),

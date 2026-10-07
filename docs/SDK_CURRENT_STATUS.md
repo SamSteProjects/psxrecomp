@@ -1,5 +1,26 @@
 # Current Legaia SDK status — 2026-10-07
 
+## Native Gaussian envelope sample preview - accepted offline (2026-10-07)
+
+The bank editor now offers Native Gaussian preview for source-qualified native
+ADPCM loops, alongside the default linear preview. Exact recomp table/arithmetic,
+continuous decoded/predictor history and the fractional pitch counter preserve
+block/loop boundaries. Explicit user rates quantize to a pitch register; the
+editor shows the effective rate. Layers, source guards, bounded WAV export,
+selection-change stop and disposal remain enforced.
+
+The compiled unchanged native functions matched 81920 tap checks and all
+1102500 source/Gaussian samples at five rates. Seven focused client suites and
+two syntax checks passed, including exact Web Audio buffers and ownership guards.
+Actual Retail/Current/Reviewed Proposed auditions, six Gaussian WAVs, independent
+complete Proposed readback and wide/400 px layouts passed. Project/history/files,
+Build inputs and the complete native audio entry stayed exact. No native runtime
+source, new mod Build, full campaign or gameplay action was involved. Driver
+pitch, complete voice scheduling/mixing and audible gameplay remain open.
+Development stays solo, gameplay stays deferred and the full goal remains active.
+See [native Gaussian preview](legaia-audio-native-gaussian.md) and private evidence
+`local-output/sdk-20260909/audio-native-gaussian-20261007/`.
+
 ## Custom-angle vertex group rotation - accepted offline (2026-10-07)
 
 Move model geometry now supports custom X/Y/Z rotation of selected vertex
