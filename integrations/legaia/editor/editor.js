@@ -4051,9 +4051,9 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
     if(focusBookmark){const note=document.createElement('p');note.className='focused-script-bookmark';note.setAttribute('role','status');note.textContent=`Verified bookmark: ${focusBookmark.name} · ${scriptOffset(focusInstruction)} ${focusBookmark.mnemonic} · Original source boundary`; $('script-report').prepend(note);}
     if(state.capabilities?.saved_script_bookmarks){
       const owner=scriptEntity.id,key=resourceStateKey(),accepted=report;
-      scriptBookmarkControls=mountScriptBookmarks($('script-report'),{owner,report,getRows:()=>state.script_bookmarks??[],getSelected:()=>instructionNavigation.selected(),select:instructionNavigation.select,
+      scriptBookmarkControls=mountScriptBookmarks($('script-report'),{owner,report,getState:()=>state,getRows:()=>state.script_bookmarks??[],getSelected:()=>instructionNavigation.selected(),select:instructionNavigation.select,
         current:()=>scriptDialog.open&&key===resourceStateKey()&&scriptEntity?.id===owner&&scriptReport===accepted,busy:()=>busy,editable:()=>!sceneAnimationController?.active()&&state.project?.mode==='edit',draftPending:()=>scriptDrafts.size>0,
-        command:body=>api('/api/command',body),reopen:pc=>openActorScript(scriptEntity,true,null,null,pc),onError:error=>notify(error.message,true)});
+        command:body=>api('/api/command',body),reopen:(pc,bookmark=null)=>openActorScript(scriptEntity,true,null,null,pc,null,bookmark),selectedBookmarkId:focusBookmark?.id??null,onError:error=>notify(error.message,true)});
     }
     if(state.capabilities?.system_selector_authoring){
       const owner=scriptEntity.id,accepted=report;

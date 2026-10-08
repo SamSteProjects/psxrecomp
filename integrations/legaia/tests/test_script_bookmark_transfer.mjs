@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {exportScriptBookmark,importScriptBookmark,SCRIPT_BOOKMARK_TRANSFER_BYTES} from '../editor/script-bookmark-transfer.js';
+const owner='scene://town01/actors/man-p1/0011',sha='a'.repeat(64),row={id:'bookmark://12345678-1234-1234-1234-123456789abc',name:'Greeting 🐾',scene_id:'scene://town01',import_sha256:'b'.repeat(64),owner_id:owner,pc:10,source_record_sha256:sha,mnemonic:'WAIT',review_key:'current'};
+const state={scene:{id:'scene://town01'},actor_selection_source_key:row.import_sha256,script_bookmarks:[row]},report={read_only:true,record:{sha256:sha},instructions:[{pc:10,mnemonic:'WAIT'}],dialogues:[]};
+const original=structuredClone({state,report}),value=exportScriptBookmark(row,state,owner,report);
+assert.equal(value.editor_metadata_only,true);assert.equal(value.source_bookmark.review_key,undefined);
+assert.deepEqual(importScriptBookmark(value,state,owner,report,' Copy 🐾 '),{type:'create_script_bookmark',owner_id:owner,pc:10,source_record_sha256:sha,name:'Copy 🐾'});
+assert.equal(importScriptBookmark(value,state,owner,report,'🐾'.repeat(80)).name.length,160);
+for(const changed of [{scene_id:'scene://other'},{import_sha256:'c'.repeat(64)},{owner_id:'other'},{source_record_sha256:'c'.repeat(64)},{pc:11},{pc:true},{mnemonic:'RETURN'},{id:'invalid'},{extra:1},{name:'\ud800'}])assert.throws(()=>importScriptBookmark({...value,source_bookmark:{...value.source_bookmark,...changed}},state,owner,report,'Copy'));
+for(const changed of [{schema_version:'other'},{editor_metadata_only:false},{extra:1}])assert.throws(()=>importScriptBookmark({...value,...changed},state,owner,report,'Copy'));
+for(const invalid of ['greeting 🐾','', '🐾'.repeat(81),'\ud800','bad\nname','\nName'])assert.throws(()=>importScriptBookmark(value,state,owner,report,invalid));
+assert.throws(()=>importScriptBookmark(value,state,owner,{...report,read_only:false},'Copy'));
+assert.throws(()=>importScriptBookmark(value,state,owner,{...report,dialogues:[{pc:10}]},'Copy'));
+assert.throws(()=>importScriptBookmark({...value,source_bookmark:{...value.source_bookmark,name:'x'.repeat(SCRIPT_BOOKMARK_TRANSFER_BYTES)}},state,owner,report,'Copy'),/64 KiB/);
+assert.throws(()=>exportScriptBookmark({...row,name:'Forged'},state,owner,report));
+assert.throws(()=>exportScriptBookmark(row,{...state,script_bookmarks:[]},owner,report));
+value.source_bookmark.name='Detached';assert.equal(row.name,'Greeting 🐾');assert.deepEqual({state,report},original);
+console.log('Bookmark transfer verifies source, unique boundaries, names and detached metadata.');

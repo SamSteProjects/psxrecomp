@@ -996,6 +996,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/inspector-component-filter.js": ("inspector-component-filter.js", "text/javascript"),
                  "/inspector-sections.js": ("inspector-sections.js", "text/javascript"),
                  "/script-bookmarks.js": ("script-bookmarks.js", "text/javascript"),
+                 "/script-bookmark-source.js": ("script-bookmark-source.js", "text/javascript"),
+                 "/script-bookmark-transfer.js": ("script-bookmark-transfer.js", "text/javascript"),
                  "/project-script-bookmarks.js": ("project-script-bookmarks.js", "text/javascript"),
                  "/script-inspector-navigation.js": ("script-inspector-navigation.js", "text/javascript"),
                  "/script-component-reset.js": ("script-component-reset.js", "text/javascript"),
