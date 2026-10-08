@@ -2183,6 +2183,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!=fields:raise ProjectError('WAV source recovery requires exact Current input fields')
                     function=library if route=='/api/audio-sample-sources' else download if route.endswith('-download') else review_removal
                     self._json(200,function(self.server.project,**body));return
+                if route == '/api/audio-sequence-midi-review':
+                    if set(body)!={'asset_id','expected_entry_sha256','expected_authoring_key','midi_base64'}:
+                        raise ProjectError('MIDI Review requires exact native source, freshness and upload fields')
+                    from .audio_sequence_midi import review
+                    self._json(200,review(self.server.project,**body));return
                 if route == '/api/audio-note-links':
                     if set(body)!={'asset_id','expected_entry_sha256','expected_source_key','expected_authoring_key','note_index'}:
                         raise ProjectError('Note links require exact Current source and note identities')
