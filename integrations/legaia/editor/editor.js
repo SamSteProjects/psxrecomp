@@ -514,7 +514,9 @@ for(const [id,label,sameModel] of [['hide-selected','Hide selected',false],['hid
   $('frame-all').before(button);
 }
 const selectModelInstancesButton=document.createElement('button');selectModelInstancesButton.id='select-model-instances';selectModelInstancesButton.textContent='Select model instances';selectModelInstancesButton.disabled=true;$('hide-model').after(selectModelInstancesButton);
+function updateAssetPlacementActions(){document.querySelectorAll('[data-asset-placement-action]').forEach(button=>button.refreshPlacementAction?.());}
 function updateModelInstanceSelection(){
+  updateAssetPlacementActions();
   const button=selectModelInstancesButton;button.disabled=true;button.title='Choose a placement in the current authored scene; selects shared SDK model identities, including hidden placements';
   if(!canSelectHierarchyMatches()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||wallSelectMode)return;
   try{const ids=matchingModelPlacementIds(activeScenePreview().entities,visibilitySelection(),scenePlacementEligible());button.disabled=false;button.title=ids.length+' placements share the selected current SDK model identity; hidden placements are included';}catch(error){button.title=error.message;}
@@ -868,7 +870,7 @@ function setBusy(value) {
   busy=value;sceneCameraInspector?.update();if($('select-matching-actors'))hierarchyMatchSelect.disabled=!canSelectHierarchyMatches()||!hierarchyMatchIds.length||hierarchyMatchKey!==resourceStateKey();npcPresetControls?.update();triggerScriptsDialog?.refresh?.();triggerGroupDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
-  document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);
+  document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);updateAssetPlacementActions();
   assetNavigation?.afterRender(assetFocus);
   assetPrevious.disabled=value||assetPage===0;assetNext.disabled=value||assetPage>=assetPages-1;
   document.querySelectorAll('.model-preview-button').forEach(button=>button.disabled=value||((button.dataset.animationEdit==='true'||button.dataset.inspectorEdit==='true')&&state.project?.mode!=='edit'));
@@ -1593,7 +1595,7 @@ async function refreshScenePreview(){
     if(controller.signal.aborted||sceneRequestKey()!==key||state.scene?.id!==expectedScene)return;
     if(data.project_source_key!==state.scene_preview_source_key||data.representation!==sceneRepresentation||data.scene_id!==expectedScene)throw new Error('Scene preview source changed while loading; retry models.');
     if(!Array.isArray(data.position_to_display)||data.position_to_display.length!==16||!data.position_to_display.every(numeric))throw new Error('SDK did not provide a valid scene display conversion.');
-    clearScenePose(false);const failures=sceneRenderer.load(data);if(!data.entities.some(e=>e.entity_id===environmentSelection))environmentSelection=null;scenePreview=data;sceneProjectPath=state.project?.path;sceneLoadedId=data.scene_id;sceneKey=key;sceneFailedKey=null;scenePendingKey=null;
+    clearScenePose(false);const failures=sceneRenderer.load(data);if(!data.entities.some(e=>e.entity_id===environmentSelection))environmentSelection=null;scenePreview=data;sceneProjectPath=state.project?.path;sceneLoadedId=data.scene_id;sceneKey=key;sceneFailedKey=null;scenePendingKey=null;updateAssetPlacementActions();
     if(failures.length)notify(`${failures.length} model assets could not be rendered; their placement markers remain available.`,true);
     renderHierarchy();renderInspector();
     const waiting=pendingEntityFrame;pendingEntityFrame=null;
@@ -2173,10 +2175,20 @@ function renderAssets(){
     const row=document.createElement('div');row.className='asset-result';row.dataset.assetKey=record.id;
     const card=document.createElement('button');card.className='asset-card';card.dataset.assetAction='open';card.title=record.id;card.innerHTML=`<strong>${escapeHTML(record.label)}${(record.authoredRecord||record.data?.authored_animation_record)?'<span class="asset-authored-badge">Authored</span>':''}</strong><small>${escapeHTML(record.type)} · ${escapeHTML(record.authoredRecord?.source_scene ?? record.source)}</small>${record.authoredRecord?`<span class="asset-change-summary">${escapeHTML(record.changes.join(' · ') || 'Authored project settings')}</span>`:''}<code>${escapeHTML(record.id)}</code>`;
     card.disabled=busy;card.onclick=()=>activateAsset(record);
-    const info=document.createElement('button');info.className='asset-info';info.dataset.assetAction='details';info.textContent='ⓘ';info.title='View stable ID, source and provenance';info.setAttribute('aria-label',`Details for ${record.label}`);info.disabled=busy;info.onclick=()=>showAssetDetails(record);row.append(card,info);list.append(row);
+    const info=document.createElement('button');info.className='asset-info';info.dataset.assetAction='details';info.textContent='ⓘ';info.title='View stable ID, source and provenance';info.setAttribute('aria-label',`Details for ${record.label}`);info.disabled=busy;info.onclick=()=>showAssetDetails(record);row.append(card,info);
+    if(record.type==='model'){
+      row.style.display='grid';row.style.gridTemplateColumns='minmax(0,1fr) 28px';
+      const action=document.createElement('button');action.type='button';action.dataset.assetAction='placements';action.dataset.assetPlacementAction=record.id;action.style.cssText='grid-column:1 / -1;white-space:normal;text-align:left';action.setAttribute('aria-label','Select editable instances of '+record.id);
+      const key=resourceStateKey(),snapshot=JSON.stringify(record),current=()=>key===resourceStateKey()&&record.sceneId===state.scene?.id&&JSON.stringify(assetRecords().find(row=>row.id===record.id))===snapshot;
+      const members=()=>{if(!current()||!canSelectHierarchyMatches()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||wallSelectMode)throw Error('Use the current authored scene with a qualified model source.');return modelPlacementIdsForAsset(activeScenePreview().entities,record.id,scenePlacementEligible());};
+      action.refreshPlacementAction=()=>{action.disabled=true;action.textContent='Select editable instances';try{const ids=members();action.textContent=`Select editable instances (${ids.length})`;action.disabled=!ids.length;action.title='Includes qualified hidden placements; excludes unsupported source cells and runtime-only objects.';}catch(error){action.title=error.message;}};
+      action.onclick=async()=>{if(action.disabled)return;try{const ids=members(),focus=ids.includes(visibilitySelection())?visibilitySelection():ids[0];if(await selectCurrentModelPlacementGroup(record.id,focus,current)){frameSceneSelection();document.querySelector('.workspace-tabs [data-panel="inspector"]').click();}}catch(error){notify(error.message,true);}};
+      row.append(action);
+    }
+    list.append(row);
   }
   if(!filtered.length){const p=document.createElement('p');p.className='field-note';p.textContent=searchError??(category==='authored'?(records.some(record=>record.authoredRecord)?'No matching authored assets. Try an actor, texture, scene or change description.':'No authored assets yet. Edit an actor, replace a texture or capture a transform template; project edits appear here across scenes.'):projectScope&&!projectAssetControls.sourceReport()?'Use Refresh project resources to verify the imported project inventory.':['audio','texture','animation','script','dialogue','flag','transition','collision','trigger','region'].includes(category)&&!resourceKey&&!projectScope?(state.capabilities?.resource_catalog?'Use Refresh scene resources to verify and load this category.':'Resource catalogs are unavailable in this service.'):records.length?'No matching records. Try a stable ID, model type, scene name or source term.':'Import a scene to populate the catalog.');list.append(p);}
-  assetNavigation.afterRender(assetFocus);
+  updateAssetPlacementActions();assetNavigation.afterRender(assetFocus);
 }
 const fieldDialog=document.createElement('dialog');fieldDialog.id='field-map-dialog';document.body.append(fieldDialog);
 const fieldToggle=document.createElement('button');fieldToggle.id='field-map-toggle';fieldToggle.textContent='Base collision';fieldToggle.hidden=true;fieldToggle.setAttribute('aria-pressed','false');$('grid-toggle').after(fieldToggle);
