@@ -39,13 +39,32 @@ export function captureSceneViewVisibility(hidden,isolated,state){
   return decodeSceneViewVisibility({hidden_entity_ids,...binding,map_sha256:environment?state.scene_view_map_sha256:null},state);
 }
 
+export const SCENE_VIEW_TRANSFER_BYTES=8*1024*1024;
+const transferName=value=>{if(typeof value!=='string'||!value.trim()||value.trim().length>80||/[\u0000-\u001f\u007f\ud800-\udfff]/u.test(value))throw Error('Scene view name requires 1–80 characters without controls.');return value.trim();};
+export function exportSceneView(value,state){
+  if(!value||!/^view:\/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value.id)||!state.scene_views?.some(row=>row.id===value.id&&row.review_key===value.review_key&&JSON.stringify(row)===JSON.stringify(value)))throw Error('Choose a current saved scene view.');
+  if(!/^scene:\/\/[a-z0-9]{1,12}$/.test(value.scene_id)||!/^([a-f0-9]{64})$/.test(value.import_sha256))throw Error('Scene view transfer needs an imported scene identity.');
+  const source_view={id:value.id,name:transferName(value.name),scene_id:value.scene_id,import_sha256:value.import_sha256,display:decodeSavedSceneView(value,state)};
+  const transfer={schema_version:'legaia.scene-view-transfer.v1',editor_metadata_only:true,source_view};
+  if(new TextEncoder().encode(JSON.stringify(transfer,null,2)).length>SCENE_VIEW_TRANSFER_BYTES)throw Error('Scene view transfer exceeds 8 MiB.');return structuredClone(transfer);
+}
+export function importSceneView(value,state,name){
+  const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).sort().join('|')===keys.sort().join('|');
+  if(!exact(value,['schema_version','editor_metadata_only','source_view'])||value.schema_version!=='legaia.scene-view-transfer.v1'||value.editor_metadata_only!==true||!exact(value.source_view,['id','name','scene_id','import_sha256','display'])||!/^view:\/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value.source_view.id))throw Error('Choose a supported editor scene-view transfer.');
+  if(new TextEncoder().encode(JSON.stringify(value)).length>SCENE_VIEW_TRANSFER_BYTES)throw Error('Scene view transfer exceeds 8 MiB.');
+  if(!/^scene:\/\/[a-z0-9]{1,12}$/.test(value.source_view.scene_id)||!/^([a-f0-9]{64})$/.test(value.source_view.import_sha256))throw Error('Scene view transfer needs an imported scene identity.');
+  transferName(value.source_view.name);const display=decodeSavedSceneView(value.source_view,state),selected=transferName(name);
+  if(state.scene_views?.some(row=>row.scene_id===state.scene.id&&row.name.toLowerCase()===selected.toLowerCase()))throw Error('Choose a distinct saved view name in this scene.');
+  return {type:'create_scene_view',scene_id:state.scene.id,import_sha256:state.scene_view_source_key,name:selected,display};
+}
 export function mountSceneViews({after,getState,getDisplay,isBusy,canEdit,canRecall,api,recall}){
   const button=document.createElement('button');button.id='scene-views-button';after.after(button);
   const dialog=document.createElement('dialog');dialog.id='scene-views-dialog';document.body.append(dialog);
-  let context=null,signature=null,revision=0;
+  let context=null,signature=null,revision=0,transfer=null,reading=false;
+  dialog.addEventListener('close',()=>{revision++;transfer=null;reading=false;update();});
   const chosen=()=>getState().scene_views?.find(row=>row.id===dialog.querySelector('[data-saved-views]')?.value);
   function update(){
-    const state=getState(),busy=isBusy(),value=chosen();button.textContent=`Saved scene views (${state.scene_views?.length??0})`;button.disabled=busy||!canRecall()||!state.scene?.id;
+    const state=getState(),busy=isBusy()||reading,value=chosen();button.textContent=`Saved scene views (${state.scene_views?.length??0})`;button.disabled=busy||!canRecall()||!state.scene?.id;
     if(!dialog.open)return;
     const ok=canEdit()&&state.project.path===context;
     dialog.querySelectorAll('input,select,button').forEach(control=>{if(!control.matches('[data-close]'))control.disabled=busy||!ok;});
@@ -55,6 +74,9 @@ export function mountSceneViews({after,getState,getDisplay,isBusy,canEdit,canRec
     dialog.querySelector('[data-rename]').disabled=busy||!ok||!value||!dialog.querySelector('[data-name]').value.trim();
     dialog.querySelector('[data-update]').disabled=busy||!ok||!value||value.scene_id!==state.scene.id;
     dialog.querySelector('[data-delete]').disabled=busy||!ok||!value;
+    dialog.querySelector('[data-export-view]').disabled=busy||!value||value.scene_id!==state.scene.id||value.import_sha256!==state.scene_view_source_key;
+    let importOk=false;try{if(transfer)importSceneView(transfer,state,dialog.querySelector('[data-import-name]').value);importOk=!!transfer;}catch{}
+    dialog.querySelector('[data-import-view]').disabled=busy||!ok||!importOk;
     dialog.querySelector('[data-current-group]').textContent='Stores camera, representation, scene layers, grid, hierarchy search/group folds and source-bound hidden/isolation instances. Visibility supports imported actors, NPC drafts in Authored scene, static decorations and ground. Model filters are unsupported.'+(missing.length?` Recall unavailable: ${missing.length} saved NPC draft(s) are missing from this scene. Restore them with Undo when available, or replace/delete the view.`:'');
   }
   function list(preferred=null){
@@ -74,8 +96,14 @@ export function mountSceneViews({after,getState,getDisplay,isBusy,canEdit,canRec
     update();
   }
   button.onclick=async()=>{
-    if(button.disabled||!await api('/api/state',undefined))return;context=getState().project.path;signature=null;revision++;
-    dialog.innerHTML='<h2>Saved scene views</h2><p>Save the camera and hierarchy inspection state for later. Recall changes the editor display; it does not edit actors or control the game.</p><p data-current-group></p><label>New view name<input data-new-name maxlength="80" aria-label="New scene view name"></label><button type="button" data-create>Save current view</button><hr><label>Saved view<select data-saved-views aria-label="Saved scene view"></select></label><label>View name<input data-name maxlength="80" aria-label="Scene view name"></label><div class="dialog-actions"><button type="button" data-recall>Recall scene view</button><button type="button" data-rename>Rename view</button><button type="button" data-update>Replace with current view</button><button type="button" data-delete>Delete view</button></div><details><summary>Saved camera, hierarchy, layers and visibility</summary><pre data-members class="diagnostic-detail"></pre></details><p data-error class="dialog-error" role="alert"></p><button type="button" data-close>Close saved views</button>';
+    if(button.disabled||!await api('/api/state',undefined))return;context=getState().project.path;signature=null;revision++;transfer=null;reading=false;
+    dialog.innerHTML='<h2>Saved scene views</h2><p>Save the camera and hierarchy inspection state for later. Recall changes the editor display; it does not edit actors or control the game.</p><p data-current-group></p><label>New view name<input data-new-name maxlength="80" aria-label="New scene view name"></label><button type="button" data-create>Save current view</button><hr><label>Saved view<select data-saved-views aria-label="Saved scene view"></select></label><label>View name<input data-name maxlength="80" aria-label="Scene view name"></label><div class="dialog-actions"><button type="button" data-recall>Recall scene view</button><button type="button" data-rename>Rename view</button><button type="button" data-update>Replace with current view</button><button type="button" data-delete>Delete view</button></div><details><summary>Saved camera, hierarchy, layers and visibility</summary><pre data-members class="diagnostic-detail"></pre></details><hr><h3>Transfer an editor view</h3><p>Export camera, hierarchy, layers and visibility as metadata. Import creates a new saved view for this exact scene source; native game data stays intact.</p><button type="button" data-export-view>Export selected view JSON</button><label>Scene view JSON<input type="file" accept=".json,application/json" data-import-file aria-label="Import scene view JSON"></label><label>Imported view name<input maxlength="80" data-import-name aria-label="Imported scene view name"></label><button type="button" data-import-view>Import as new saved view</button><details><summary>Imported view metadata</summary><pre data-import-preview class="diagnostic-detail"></pre></details><p data-error class="dialog-error" role="alert"></p><button type="button" data-close>Close saved views</button>';
+    const transferContext=()=>JSON.stringify([getState().project.path,getState().scene?.id,getState().scene_view_source_key]);
+    dialog.querySelector('[data-export-view]').onclick=()=>{try{if(isBusy()||reading||context!==getState().project.path)return;const value=exportSceneView(chosen(),getState()),url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='scene-view-'+getState().scene.id.slice(8)+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(error){dialog.querySelector('[data-error]').textContent=error.message;}};
+    dialog.querySelector('[data-import-file]').onchange=async()=>{
+      const file=dialog.querySelector('[data-import-file]').files?.[0],token=++revision,key=transferContext();transfer=null;dialog.querySelector('[data-import-preview]').textContent='';if(!file){update();return;}
+      reading=true;update();try{if(file.size>SCENE_VIEW_TRANSFER_BYTES)throw Error('Scene view transfer exceeds 8 MiB.');const text=await file.text();if(!dialog.open||token!==revision||key!==transferContext())return;const value=JSON.parse(text),state=getState();let name=String(value.source_view?.name??'').slice(0,70)+' Copy',number=2;while(state.scene_views?.some(row=>row.scene_id===state.scene.id&&row.name.toLowerCase()===name.toLowerCase()))name=String(value.source_view?.name??'').slice(0,70)+' Copy '+number++;const command=importSceneView(value,state,name);transfer=structuredClone(value);dialog.querySelector('[data-import-name]').value=command.name;dialog.querySelector('[data-import-preview]').textContent=JSON.stringify(transfer,null,2);dialog.querySelector('[data-error]').textContent='';}catch(error){if(dialog.open&&token===revision)dialog.querySelector('[data-error]').textContent=error.message;}finally{if(token===revision){reading=false;update();}}};
+    dialog.querySelector('[data-import-view]').onclick=async()=>{try{if(isBusy()||reading||!canEdit()||context!==getState().project.path||!transfer)return;const payload=importSceneView(transfer,getState(),dialog.querySelector('[data-import-name]').value),before=new Set((getState().scene_views??[]).map(row=>row.id));if(await api('/api/command',payload,{success:'Imported editor view saved. Save project to persist.'})){transfer=null;dialog.querySelector('[data-import-file]').value='';dialog.querySelector('[data-import-preview]').textContent='';const copied=(getState().scene_views??[]).filter(row=>!before.has(row.id)&&row.scene_id===payload.scene_id&&row.import_sha256===payload.import_sha256&&row.name===payload.name);if(copied.length!==1)throw Error('View imported; select its new identity in the saved view list.');list(copied[0].id);}update();}catch(error){dialog.querySelector('[data-error]').textContent=error.message;}};
     dialog.querySelector('[data-close]').onclick=()=>dialog.close();dialog.querySelector('[data-saved-views]').onchange=show;
     for(const input of dialog.querySelectorAll('input'))input.oninput=update;
     dialog.querySelector('[data-create]').onclick=async()=>{
