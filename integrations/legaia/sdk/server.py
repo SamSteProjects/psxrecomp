@@ -181,6 +181,7 @@ class EditorServer(ThreadingHTTPServer):
             state["scene_preview_source_key"] = None
         state["capabilities"]["scene_preview"] = bool(state["scene_preview_source_key"])
         state["capabilities"]["actor_position_preview"] = bool(state["scene_preview_source_key"] and self.project.mode == "edit")
+        state["capabilities"]["npc_creation_preview"] = state["capabilities"]["actor_position_preview"]
         for asset in state["assets"] + state["active_scene_assets"]:
             asset["animation_support"] = animation_capabilities(asset)
         from importer.scene_animation import actor_animation_capabilities
@@ -1002,6 +1003,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/npc-creation-selection.js": ("npc-creation-selection.js", "text/javascript"),
                  "/npc-ground-placement.js": ("npc-ground-placement.js", "text/javascript"),
                  "/scene-ground-position.js": ("scene-ground-position.js", "text/javascript"),
+                 "/npc-creation-preview.js": ("npc-creation-preview.js", "text/javascript"),
                  "/model-placement-users.js": ("model-placement-users.js", "text/javascript"),
                  "/animation-placement-users.js": ("animation-placement-users.js", "text/javascript"),
                  "/animation-contributions.js": ("animation-contributions.js", "text/javascript"),
@@ -3384,6 +3386,24 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Scene animation requires an explicit representation and current source key')
                     self._json(200, self.server.scene_animation_preview(body['representation'], body['source_key']))
                     return
+                if route in ('/api/npc-creation-review','/api/npc-creation-scene'):
+                    from .npc_creation_preview import review,proposal_view,qualify_instances
+                    from .project_copy import source_key as project_key
+                    from .scene_preview import source_key as creation_scene_key
+                    from importer.scene_animation import load_scene_actor_animation_catalog
+                    from importer.environment import load_environment_preview_catalog
+                    from .terrain_preview import terrain_preview
+                    project=self.server.project;fields={'donor_entity_id','name','position','project_source_key'}
+                    if set(body)!=(fields if route.endswith('-review') else fields|{'review_key'}):raise ProjectError('NPC creation preview requires exact reviewed fields')
+                    report=review(project,{key:body[key] for key in fields})
+                    if route.endswith('-review'):
+                        self._json(200,report);return
+                    if body['review_key']!=report['review_key']:raise ProjectError('NPC creation review changed before scene projection')
+                    def creation_document(view):
+                        return self.server.scene_previews.preview(view,lambda asset,*args,**kwargs:self.server.model_preview(asset,*args,effective_shape=True,project_view=view,**kwargs),load_scene_actor_animation_catalog,load_environment_preview_catalog,terrain_preview)
+                    current=creation_document(project);proposed=creation_document(proposal_view(project,report));result=qualify_instances(current,proposed,report)
+                    if project_key(project)!=report['project_source_key'] or creation_scene_key(project)!=report['scene_preview_source_key']:raise ProjectError('Project changed during NPC creation scene projection')
+                    self._json(200,result);return
                 if route in ('/api/actor-position-review','/api/actor-position-scene'):
                     from .actor_position_preview import review,proposal_view,qualify_instances
                     from .project_copy import source_key as project_key
