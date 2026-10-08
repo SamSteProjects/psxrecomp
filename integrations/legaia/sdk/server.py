@@ -830,6 +830,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/npc-script-reset.js": ("npc-script-reset.js", "text/javascript"),
                  "/npc-movement.js": ("npc-movement.js", "text/javascript"),
                  "/npc-appearance.js": ("npc-appearance.js", "text/javascript"),
+                 "/npc-current-script.js": ("npc-current-script.js", "text/javascript"),
                  "/npc-donor-script.js": ("npc-donor-script.js", "text/javascript"),
                  "/npc-draft-inspector.js": ("npc-draft-inspector.js", "text/javascript"),
                  "/npc-flag-references.js": ("npc-flag-references.js", "text/javascript"),
@@ -3263,6 +3264,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'entity_id'} or not isinstance(body['entity_id'],str):raise ProjectError('NPC donor script accepts only an authored entity identity')
                     from .npc_donor_script import inspect as inspect_npc_donor_script
                     self._json(200,inspect_npc_donor_script(self.server.project,body['entity_id']));return
+                if route=='/api/npc-current-script':
+                    if set(body)!={'entity_id'} or not isinstance(body['entity_id'],str):raise ProjectError('Current NPC script accepts only an authored entity identity')
+                    from .npc_current_script import inspect as inspect_npc_current_script
+                    self._json(200,inspect_npc_current_script(self.server.project,body['entity_id']));return
                 if route == "/api/actor-script":
                     if set(body) != {"entity_id"} or not isinstance(body["entity_id"], str) or not body["entity_id"]:
                         raise ProjectError("Script inspection accepts only an imported entity_id; bytes, addresses and paths are not accepted")

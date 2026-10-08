@@ -18,6 +18,7 @@ export const npcScriptActionButtons={
   'edit-npc-model-selectors':'npc-model-selectors-button','edit-npc-flags':'npc-flags-button',
   'edit-npc-system-flags':'npc-system-flags-button','edit-npc-branches':'npc-branches-button','edit-npc-effect-colors':'npc-effect-colors-button',
   'edit-npc-waits':'npc-waits-button','edit-npc-movement':'npc-movement-button',
+  'inspect-npc-current-script':'npc-current-script-button',
   'inspect-npc-build-script':'npc-build-script-button','inspect-npc-donor-script':'npc-donor-script-button',
   'reset-npc-script':'npc-script-reset-button'};
 export const npcDraftActionContext=(state,id)=>JSON.stringify([state.project?.path,state.scene?.id,state.mode??state.project?.mode,state.asset_reference_source_key,state.actor_drafts?.[id]??null]);

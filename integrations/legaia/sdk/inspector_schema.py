@@ -309,6 +309,8 @@ def inspector_schema():
                     'when':['authoredRecord','donor_entity_id']},
                    {'id':'inspect-npc-build-script','label':'Inspect saved Build script','capability':'actor_script_preview',
                     'when':['authoredRecord','donor_entity_id']},
+                   {'id':'inspect-npc-current-script','label':'Inspect Current NPC script','capability':'actor_script_preview',
+                    'when':['authoredRecord','donor_entity_id']},
                    {'id':'inspect-npc-donor-script','label':'Inspect retail donor script','capability':'actor_script_preview',
                     'when':['authoredRecord','donor_entity_id']},
                    {'id':'inspect-npc-donor-model','label':'Inspect recorded donor model','capability':'model_preview',
@@ -362,6 +364,7 @@ def inspector_schema():
     script_actions += [
         {'id':'reset-npc-script','label':'Reset NPC-owned script edits...','capability':'npc_script_reset','requires_edit':True,'when':['draft','donor_entity_id']},
         {'id':'inspect-npc-build-script','label':'Inspect saved Build script...','capability':'actor_script_preview','when':['draft','donor_entity_id']},
+        {'id':'inspect-npc-current-script','label':'Inspect Current NPC script...','capability':'actor_script_preview','when':['draft','donor_entity_id']},
         {'id':'inspect-npc-donor-script','label':'Inspect retail donor script...','capability':'actor_script_preview','when':['draft','donor_entity_id']}]
     from .npc_script_binding import FAMILIES
     schema['components']['NpcDraftScriptBinding']={
