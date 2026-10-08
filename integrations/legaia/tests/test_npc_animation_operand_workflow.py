@@ -48,7 +48,9 @@ class NpcAnimationOperandWorkflow(unittest.TestCase):
             proposal=review(p,request)
             p.command(dict(command,review_key=proposal['review_key']))
             self.assertEqual(saved,(p._document(),p.undo_stack))
-            with self.assertRaises(ProjectError):p.command(dict(type='create_npc_preset',entity_id=identity,name='Must refuse omission'))
+            p.command(dict(type='create_npc_preset',entity_id=identity,name='Must retain arguments'))
+            self.assertEqual(next(iter(p.actor_templates.values()))['components']['NpcDraft']['animation_operands'],p.actor_drafts[identity]['animation_operands'])
+            p.undo()
             with http_server(p) as (server,post):
                 server.RequestHandlerClass.log_message=lambda *args:None
                 self.assertEqual(post('/api/npc-animation-operands-source',dict(entity_id=identity))[0],200)
