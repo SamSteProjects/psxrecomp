@@ -21,9 +21,9 @@ class Node{constructor(tag){this.tagName=tag;this.children=[];this.style={};this
 const tree=n=>[n,...n.children.flatMap(tree)],action=(c,k)=>tree(c.dialog).find(n=>n.dataset.action===k);
 const old={document:globalThis.document,fetch:globalThis.fetch};globalThis.document={body:new Node('body'),createElement:t=>new Node(t)};
 try{
-  let context={...initial},busy=false,applied=0,returned,calls=[],delay=null;
+  let context={...initial},busy=false,applied=0,returned,lastChange,calls=[],delay=null;
   globalThis.fetch=async(path,settings)=>{const body=JSON.parse(settings.body);calls.push({path,body});if(delay&&path===delay.path)return delay.promise;return {ok:true,json:async()=>path.endsWith('duplicate-review')?duplicateReport():path.endsWith('-library')?library():path.endsWith('-pose')?pose():path.endsWith('-preview')?review(body):{project:{mode:'edit'}}};};
-  const settings={entityId:entity,getContext:()=>context,busy:()=>busy,setBusy:v=>busy=v,onApplied:()=>applied++,onPosePreview:async(_,callbacks)=>{returned=callbacks.returnToEditor;return true;}};
+  const settings={entityId:entity,getContext:()=>context,busy:()=>busy,setBusy:v=>busy=v,onApplied:(_,change)=>{applied++;lastChange=change;},onPosePreview:async(_,callbacks)=>{returned=callbacks.returnToEditor;return true;}};
   await assert.rejects(openAnimationRecordLibrary({...settings,retainedRecord:{...row(),entity_id:entity.replace('0011','0012')}}),/owner differs/);
   let control=await openAnimationRecordLibrary(settings);await control.ready;assert.equal(action(control,'apply').disabled,true);
   assert.equal(await action(control,'review').onclick(),true);assert.equal(calls.at(-1).body.active,false);assert.equal(action(control,'apply').disabled,false);
@@ -33,7 +33,7 @@ try{
   context={...initial};control=await openAnimationRecordLibrary(settings);await control.ready;let resolve;delay={path:'/api/animation-record-activation-preview',promise:new Promise(done=>resolve=done)};const late=action(control,'review').onclick();control.dispose();resolve({ok:true,json:async()=>review(request)});assert.equal(await late,false);assert.equal(applied,1);assert.equal(busy,false);
   delay=null;control=await openAnimationRecordLibrary(settings);await control.ready;
   assert.equal(await action(control,'duplicate').onclick(),true);assert.equal(calls.at(-1).path,'/api/animation-record-duplicate-review');assert.equal(action(control,'apply').disabled,false);
-  assert.equal(await action(control,'apply').onclick(),true);assert.equal(calls.at(-1).path,'/api/animation-record-duplicate');assert.equal(applied,2);
+  assert.equal(await action(control,'apply').onclick(),true);assert.equal(calls.at(-1).path,'/api/animation-record-duplicate');assert.equal(applied,2);assert.equal(lastChange.kind,'duplicate');assert.deepEqual(lastChange.request,duplicateRequest);assert.deepEqual(lastChange.review,duplicateReport());assert.equal(lastChange.review.duplicate_entry.record_id,'22222222-2222-4222-8222-222222222222');
   applied=1;
   delay=null;control=await openAnimationRecordLibrary({...settings,retainedRecord:row()});assert.equal(await control.ready,true);
   assert.equal(tree(control.dialog).find(n=>n.tagName==='h2').textContent,'Retained clip lifecycle');
