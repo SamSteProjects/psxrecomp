@@ -106,7 +106,7 @@ import {mountSceneGroundPosition,decodeGroundPositionPreview,nativePositionEntry
 import {mountNpcCreationPreview} from '/npc-creation-preview.js';
 import {mountNpcCreationBuildReview} from '/npc-creation-build-review.js';
 import {mountNpcGroundPlacement} from '/npc-ground-placement.js';
-import {captureNpcCreation,createdNpcSelection} from '/npc-creation-selection.js';
+import {captureNpcCreation,createdNpcSelection,captureNpcPresetCreation,createdNpcPresetSelection} from '/npc-creation-selection.js';
 import {modelUsageContext,effectiveModelUsers,validateModelUserSelection,retailModelDonors} from '/model-user-selection.js';
 import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,renderComponentDetails,renderComponentActions,bindComponentActions} from '/component-inspector.js';
 import {mountInspectorComponentFilter} from '/inspector-component-filter.js';
@@ -3261,6 +3261,10 @@ function renderTemplates(){
   $('close-templates').onclick=()=>templateDialog.close();
   appendPresetImport({container:templateDialog,getState:()=>state,canEdit,isBusy:()=>busy,setBusy,api});
   npcPresetControls=mountNpcPresets({container:templateDialog,getState:()=>state,getSelection:()=>npcDraftSelection,canEdit,isBusy:()=>busy,setBusy,api,
+    canChoosePosition:()=>!sceneRuler?.picking()&&!transitionArrivalOverlay&&!npcArrivalOverlay&&canMeasureScene(),
+    choosePosition:(resume,current)=>{npcGroundPlacement.begin(resume,{current,returnLabel:'Return to NPC preset',note:'Choose a visible source-ground corner within 24 pixels. Only native X/Z will be copied into the preset form; height is not authored.'});document.querySelector('.workspace-tabs [data-panel="viewport"]').click();},
+    captureCreation:report=>captureNpcPresetCreation(state,report),
+    onCreated:capture=>{try{const id=createdNpcPresetSelection(state,capture);selectNpcDraft(id);frameNpcDraft();revealHierarchyButton.click();document.querySelector('.workspace-tabs [data-panel="inspector"]').click();}catch(error){notify(error.message,true);}},
     canInspectScene:()=>sceneModelsReady()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection,getScenePreview:()=>scenePreview,
     inspectScene:(proposed,report,returnToReview,isCurrent)=>{
       cancelViewportGesture();const failures=sceneRenderer.load(structuredClone(proposed));if(failures.length){sceneRenderer.load(structuredClone(scenePreview));throw new Error(failures.join('; '));}
