@@ -1026,6 +1026,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-effect-colors.js": ("script-effect-colors.js", "text/javascript"),
                  "/script-animation-operands.js": ("script-animation-operands.js", "text/javascript"),
                  "/scene-catalog.js": ("scene-catalog.js", "text/javascript"),
+                 "/model-resolution.js": ("model-resolution.js", "text/javascript"),
                  "/script-branches.js": ("script-branches.js", "text/javascript"),
                  "/system-flag-selectors.js": ("system-flag-selectors.js", "text/javascript"),
                  "/source-build-script.js": ("source-build-script.js", "text/javascript"),
@@ -1241,6 +1242,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .script_branches import snapshot, review
                     self._json(200, snapshot(self.server.project, body['entity']) if route == '/api/script-branches' else review(self.server.project, body['entity'], body['branch_id'], body['value'])[0])
                     return
+                if route == '/api/model-resolution':
+                    if set(body)!={'scene_id','expected_source_key'} or any(not isinstance(value,str) or len(value)>512 for value in body.values()):raise ProjectError('Model resolution requires exact scene and current source key')
+                    from .model_resolution import inspect as inspect_model_resolution
+                    self._json(200,inspect_model_resolution(self.server.project,body['scene_id'],body['expected_source_key']));return
                 if route == '/api/scene-catalog':
                     if set(body) != {'disc', 'offset', 'prefix'} or not isinstance(body['disc'], str) or not body['disc'].strip() or type(body['offset']) is not int or not 0 <= body['offset'] <= 65536 or not isinstance(body['prefix'], str) or len(body['prefix']) > 64:
                         raise ProjectError('Scene catalog requires a disc path, bounded integer offset and name prefix')
