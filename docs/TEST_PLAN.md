@@ -1,5 +1,9 @@
 # Legaia SDK validation plan
 
+## System Selector Writer Foundation (2026-10-07)
+
+Twelve focused Python checks passed across `test_system_flag_authoring`, `test_script_system_flags` and existing `test_flag_authoring`, with private Retail evidence enabled. All4096 selector values per operation, TEST byte/edge preservation, exact MAN readback, immutable source, ownership/aliasing, appended records and no-op candidate refusal are covered. SDK component, Review/Apply, persistence, editor and Build integration remain pending; no authoring UI capability is exposed. See [foundation and next integration gates](legaia-system-flag-authoring.md).
+
 ## Hypothetical System Flags (2026-10-07)
 
 Focused offline checks passed: 13 Python tests with private Retail helper evidence, seven Node suites and three JS syntax checks. All 4096 normal selectors, partial Unknown state, both encoded TEST edges, exact Back, v3 replay/legacy refusal and malformed/source guards are covered. Actual Town01 actor0010 selector326 browser checks passed Unknown/set/clear, PC49/20, Back and freshly qualified Save/reopen/replay. Wide/400 px captures inspected; complete project/history/files/native key unchanged. Earlier harness readiness failures retained. No native Build or game ran. See [scope and remaining native/story limits](legaia-script-system-flags.md).
