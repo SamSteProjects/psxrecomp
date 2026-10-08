@@ -127,6 +127,7 @@ class ProjectService:
         self.animation_sources: dict[str, dict] = {}
         self.model_sources: dict[str, dict] = {}
         self.audio_sample_sources: dict[str, dict] = {}
+        self.audio_midi_sources: dict[str, dict] = {}
         self.audio_sample_overrides: dict[str, dict] = {}
         self.active_scene: str | None = None
         self.selected: str | None = None
@@ -218,6 +219,7 @@ class ProjectService:
                 **({"animation_sources": deepcopy(self.animation_sources)} if self.animation_sources else {}),
                 **({"model_sources": deepcopy(self.model_sources)} if self.model_sources else {}),
                 **({"audio_sample_sources": deepcopy(self.audio_sample_sources)} if self.audio_sample_sources else {}),
+                **({"audio_midi_sources": deepcopy(self.audio_midi_sources)} if self.audio_midi_sources else {}),
                 **({"audio_sample_overrides": deepcopy(self.audio_sample_overrides)} if self.audio_sample_overrides else {}),
                 **({"audio_overrides": deepcopy(self.audio_overrides)} if self.audio_overrides else {}),
                 **({"audio_bank_overrides": deepcopy(self.audio_bank_overrides)} if self.audio_bank_overrides else {}),
@@ -259,7 +261,7 @@ class ProjectService:
         labels = {"name": "Project name", "retail_source": "Retail source",
                   "imports": "Imported scenes", "active_scene": "Active scene",
                   "authored": "Scene and game-data edits", "actor_templates": "Actor presets",
-                  "texture_additions": "New texture slots", "texture_overrides": "Texture replacements", "model_overrides": "Model content", "audio_overrides": "Audio sequence operands", "audio_bank_overrides": "Audio bank parameters", "audio_sample_sources": "Retained WAV inputs", "audio_sample_overrides": "Native audio samples",
+                  "texture_additions": "New texture slots", "texture_overrides": "Texture replacements", "model_overrides": "Model content", "audio_overrides": "Audio sequence operands", "audio_bank_overrides": "Audio bank parameters", "audio_sample_sources": "Retained WAV inputs", "audio_midi_sources": "Retained MIDI inputs", "audio_sample_overrides": "Native audio samples",
                   "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "scene_views": "Saved scene views", "model_vertex_groups": "Saved model vertex groups", "script_bookmarks": "Saved script bookmarks",
                   "model_sources": "Retained model inputs", "animation_sources": "Retained animation inputs"}
         return [label for key, label in labels.items()
@@ -271,7 +273,7 @@ class ProjectService:
         self.saved_document = deepcopy(document)
         self.saved_sections = {key: digest(document.get(key)) for key in
                                ("name", "retail_source", "imports", "active_scene",
-                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_bank_overrides", "audio_sample_sources", "audio_sample_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views", "model_vertex_groups", "script_bookmarks", "model_sources", "animation_sources")}
+                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_bank_overrides", "audio_sample_sources", "audio_midi_sources", "audio_sample_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views", "model_vertex_groups", "script_bookmarks", "model_sources", "animation_sources")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):
@@ -2018,6 +2020,9 @@ class ProjectService:
         if isinstance(command.get("type"),str) and command["type"] in sample_commands:
             sample_command(self,command)
             return
+        from .audio_midi_sources import COMMANDS as midi_commands, command as midi_command
+        if isinstance(command.get('type'),str) and command['type'] in midi_commands:
+            midi_command(self,command);return
         from .audio_sample_sources import COMMANDS as wav_commands, command as wav_command
         if isinstance(command.get("type"),str) and command["type"] in wav_commands:
             wav_command(self,command)
@@ -3071,6 +3076,11 @@ class ProjectService:
             else:view.audio_sample_overrides[entry['asset_id']]=deepcopy(entry[field])
             validate_collection(view);self.audio_sample_overrides=view.audio_sample_overrides
             source.pop();target.append(entry);return
+        if source[-1].get('target') == 'audio_midi_sources':
+            entry=source[-1];value=deepcopy(entry[field])
+            from .audio_midi_sources import validate_files
+            validate_files(self,value);self.audio_midi_sources=value
+            source.pop();target.append(entry);return
         if source[-1].get('target') == 'audio_sample_sources':
             entry=source[-1];value=deepcopy(entry[field])
             from .audio_sample_sources import validate_files
@@ -3186,6 +3196,8 @@ class ProjectService:
         validate_model_sources(self,self.model_sources)
         from .audio_sample_sources import validate_files as validate_wav_sources
         validate_wav_sources(self,self.audio_sample_sources)
+        from .audio_midi_sources import validate_files as validate_midi_sources
+        validate_midi_sources(self,self.audio_midi_sources)
         document = self._document()
         path = self.root / "project.legaia.json"
         atomic_write(path, canonical(document))
@@ -3441,6 +3453,9 @@ class ProjectService:
             result.set_scene(raw["active_scene"])
         result.undo_stack.clear()
         result.redo_stack.clear()
+        from .audio_midi_sources import validate_files as midi_files
+        result.audio_midi_sources=deepcopy(raw.get("audio_midi_sources",{}))
+        midi_files(result,result.audio_midi_sources)
         result._mark_saved()
         return result
 
@@ -3938,6 +3953,7 @@ class ProjectService:
                 "audio_overrides": deepcopy(self.audio_overrides),
                 "audio_bank_overrides": deepcopy(self.audio_bank_overrides),
                 "audio_sample_sources": deepcopy(self.audio_sample_sources),
+                "audio_midi_sources": deepcopy(self.audio_midi_sources),
                 "audio_sample_overrides": deepcopy(self.audio_sample_overrides),
                 "authored_assets": self.authored_assets(),
                 "history": {"can_undo": bool(self.undo_stack), "can_redo": bool(self.redo_stack)},
