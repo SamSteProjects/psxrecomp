@@ -21,7 +21,7 @@ class MetadataNameSafety(unittest.TestCase):
  def test_scalar_unicode_bounds_and_controls(self):
   self.assertEqual(metadata_name('  道路 🐾  ','Name'),'道路 🐾')
   self.assertEqual(metadata_name('🐾'*80,'Name'),'🐾'*80)
-  for value in [None,False,'','  ','🐾'*81,'bad\x00name','bad\nname','bad\x7fname','\ud800','\udfff','\ud83d\udc3e']:
+  for value in [None,False,'','  ','🐾'*81,'bad\x00name','bad\nname','bad\x7fname','\nName','Name\t','\ud800','\udfff','\ud83d\udc3e']:
    with self.subTest(value=repr(value)),self.assertRaises(ProjectError):metadata_name(value,'Name')
  def test_command_and_persisted_names_across_navigation_metadata(self):
   for family in ['actor_selection_sets','scene_selection_sets','scene_views','script_bookmarks']:
@@ -51,5 +51,63 @@ class MetadataNameSafety(unittest.TestCase):
      for invalid in ['\ud800','bad\nname']:
       document=deepcopy(p._document());document[family][row['id']]['name']=invalid;path=Path(directory)/'invalid-name.json';path.write_text(json.dumps(document,ensure_ascii=True),encoding='utf-8')
       with self.assertRaises(ProjectError):ProjectService.open(path)
+
+ def test_draft_and_template_names_reject_before_history_and_persist(self):
+  with tempfile.TemporaryDirectory() as directory:
+   p=ActorPlacementBatchTests().project(directory)
+   p.command(dict(type='set_transform',entity_id=A,position=dict(x=192)))
+   draft_create=dict(type='create_actor_draft',donor_entity_id=A,position=dict(x=128,z=256))
+   template_create=dict(type='create_actor_template',entity_id=A)
+   for create in [draft_create,template_create]:
+    before=deepcopy((p._document(),p.undo_stack,p.redo_stack))
+    for name in ['\ud800','\udfff','bad\nname','bad\x7fname','\nName','Name\t']:
+     with self.assertRaises(ProjectError):p.command({**create,'name':name})
+     self.assertEqual((p._document(),p.undo_stack,p.redo_stack),before)
+   p.command({**draft_create,'name':'  道路 🐾  '})
+   draft_id=next(iter(p.actor_drafts))
+   before=deepcopy((p._document(),p.undo_stack,p.redo_stack))
+   for name in ['\ud800','bad\nname','\nName','Name\t']:
+    with self.assertRaises(ProjectError):p.command(dict(type='create_npc_preset',entity_id=draft_id,name=name))
+    self.assertEqual((p._document(),p.undo_stack,p.redo_stack),before)
+   p.command({**template_create,'name':' 道路 🐾 '})
+   template_id=next(iter(p.actor_templates))
+   for command in [dict(type='rename_actor_draft',entity_id=draft_id),dict(type='duplicate_actor_draft',entity_id=draft_id),dict(type='rename_actor_template',template_id=template_id)]:
+    before=deepcopy((p._document(),p.undo_stack,p.redo_stack))
+    for name in ['\ud800','bad\x00name','bad\nname','\nName','Name\t']:
+     with self.assertRaises(ProjectError):p.command({**command,'name':name})
+     self.assertEqual((p._document(),p.undo_stack,p.redo_stack),before)
+   for command,name in [(dict(type='rename_actor_draft',entity_id=draft_id),'🐾'*120),(dict(type='rename_actor_template',template_id=template_id),'🐾'*80)]:
+    p.command({**command,'name':name});after=deepcopy(p._document());p.undo();p.redo();self.assertEqual(p._document(),after)
+   opened=ProjectService.open(p.save())
+   self.assertEqual(opened.actor_drafts,p.actor_drafts);self.assertEqual(opened.actor_templates,p.actor_templates)
+   for field,identifier in [('actor_drafts',draft_id),('actor_templates',template_id)]:
+    document=deepcopy(p._document());document[field][identifier]['name']='\ud800'
+    path=Path(directory)/'invalid-name.json';path.write_text(json.dumps(document,ensure_ascii=True),encoding='utf-8')
+    with self.assertRaises(ProjectError):ProjectService.open(path)
+
+ def test_save_guard_preserves_files_for_bypassed_name_mutation(self):
+  for family in ['draft','template','header']:
+   with self.subTest(family=family),tempfile.TemporaryDirectory() as directory:
+    p=ActorPlacementBatchTests().project(directory)
+    p.command(dict(type='create_actor_draft',donor_entity_id=A,position=dict(x=128,z=256),name='Safe NPC'))
+    p.command(dict(type='set_transform',entity_id=A,position=dict(x=192)))
+    p.command(dict(type='create_actor_template',entity_id=A,name='Safe Template'));p.save()
+    files={str(path.relative_to(p.root)):path.read_bytes() for path in p.root.rglob('*') if path.is_file()}
+    if family=='header':p.name='\ud800'
+    else:next(iter((p.actor_drafts if family=='draft' else p.actor_templates).values()))['name']='\ud800'
+    before=deepcopy((p._document(),p.undo_stack,p.redo_stack))
+    with self.assertRaises(ProjectError):p.save()
+    self.assertEqual((p._document(),p.undo_stack,p.redo_stack),before)
+    self.assertEqual({str(path.relative_to(p.root)):path.read_bytes() for path in p.root.rglob('*') if path.is_file()},files)
+
+ def test_project_header_constructor_and_open_unicode_safety(self):
+  with tempfile.TemporaryDirectory() as directory:
+   for name in ['\ud800','bad\nname','\nName','Name\t','🐾'*129]:
+    with self.assertRaises(ProjectError):ProjectService(Path(directory),name)
+   p=ProjectService(Path(directory),'🐾'*128);self.assertEqual(ProjectService.open(p.save()).name,p.name)
+   p.name='  Existing padded name  ';self.assertEqual(ProjectService.open(p.save()).name,p.name)
+   document=p._document();document['name']='\ud800'
+   path=Path(directory)/'invalid-name.json';path.write_text(json.dumps(document,ensure_ascii=True),encoding='utf-8')
+   with self.assertRaises(ProjectError):ProjectService.open(path)
 
 if __name__=='__main__':unittest.main()

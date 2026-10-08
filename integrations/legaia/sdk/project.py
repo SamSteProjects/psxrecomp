@@ -117,6 +117,7 @@ class ProjectService:
                                   "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts"})
 
     def __init__(self, root: Path, name: str = "Legaia project") -> None:
+        self._validate_project_name(name)
         self.root = root.resolve()
         self.name = name
         self.imports: dict[str, dict] = {}
@@ -2920,6 +2921,13 @@ class ProjectService:
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or abs(value) > 32767:
                 raise ProjectError("Authored coordinates must be finite numbers between -32767 and 32767")
 
+    @staticmethod
+    def _validate_project_name(name) -> None:
+        from .metadata_text import metadata_name
+        if not isinstance(name, str) or len(name) > 128:
+            raise ProjectError("Project name must contain 1 to 128 characters")
+        metadata_name(name, 'Project name', 128)
+
     def _validate_template(self, identifier: str, template: dict) -> None:
         if not isinstance(identifier, str) or not identifier.startswith("template://"):
             raise ProjectError("Invalid authored template identity")
@@ -2935,6 +2943,8 @@ class ProjectService:
         name = template["name"]
         if not isinstance(name, str) or name != name.strip() or not 1 <= len(name) <= 80:
             raise ProjectError("Template name must contain 1 to 80 characters")
+        from .metadata_text import metadata_name
+        metadata_name(name, 'Template name')
         if template['scope']=='npc-draft-preset-v1':
             from .npc_presets import validate
             validate(self,identifier,template)
@@ -2993,6 +3003,8 @@ class ProjectService:
             name = command.get("name")
             if not isinstance(name, str):
                 raise ProjectError("Template name must be a string")
+            from .metadata_text import metadata_name
+            name = metadata_name(name, 'Template name')
             if len(self.actor_templates) >= 128:
                 raise ProjectError("Project supports at most 128 authored actor templates")
             if any(value["name"].casefold() == name.strip().casefold() for value in self.actor_templates.values()):
@@ -3040,7 +3052,8 @@ class ProjectService:
             name = command.get("name")
             if not isinstance(name, str):
                 raise ProjectError("Template name must be a string")
-            name = name.strip()
+            from .metadata_text import metadata_name
+            name = metadata_name(name, 'Template name')
             if any(key != identifier and value["name"].casefold() == name.casefold()
                    for key, value in self.actor_templates.items()):
                 raise ProjectError("An authored template already uses that name")
@@ -3088,6 +3101,8 @@ class ProjectService:
             raise ProjectError('Invalid actor draft fields')
         if not isinstance(draft['name'],str) or not draft['name'].strip() or len(draft['name']) > 120:
             raise ProjectError('Actor draft name must contain 1 through 120 characters')
+        from .metadata_text import metadata_name
+        metadata_name(draft['name'], 'Actor draft name', 120)
         document = self.imports.get(draft['scene_id'])
         if not document or not any(a['semantic_id']==draft['donor_entity_id'] for a in document['actors']):
             raise ProjectError('Actor draft donor must belong to its imported scene')
@@ -3235,6 +3250,11 @@ class ProjectService:
         self._apply_history(self.redo_stack, self.undo_stack, "after")
 
     def save(self) -> Path:
+        self._validate_project_name(self.name)
+        for identifier, draft in self.actor_drafts.items():
+            self._validate_actor_draft(identifier, draft)
+        for identifier, template in self.actor_templates.items():
+            self._validate_template(identifier, template)
         from .animation_labels import validate_collection as validate_labels
         validate_labels(self)
         from .sequence_replacement_authoring import validate_collection as validate_replacements

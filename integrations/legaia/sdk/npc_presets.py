@@ -60,7 +60,8 @@ def capture(project,command):
         from .npc_appearance import source as appearance_source
         appearance_source(project,command['entity_id'])
     if draft['scene_id']!=project.active_scene or not isinstance(command['name'],str):raise ProjectError('NPC capture requires the active scene and a preset name')
-    name=command['name'].strip()
+    from .metadata_text import metadata_name
+    name=metadata_name(command['name'], 'Template name')
     if any(row['name'].casefold()==name.casefold() for row in project.actor_templates.values()):raise ProjectError('A preset already uses that name')
     identifier='template://'+str(uuid.uuid4());document=project.imports[draft['scene_id']]
     value=dict(id=identifier,name=name,scope=SCOPE,source=dict(scene_id=draft['scene_id'],entity_id=draft['donor_entity_id'],capture_draft_id=command['entity_id'],disc_identity=document['source']['disc_identity'],import_sha256=digest(document)),
