@@ -1,5 +1,13 @@
 # System Flag Selector Authoring Foundation
 
+## NPC-Owned Native Foundation (2026-10-08)
+
+Offline checks passed — 2026-10-08: [NPC System Selector Native Foundation](legaia-system-flag-authoring.md) adds independent two-byte selectors in source-qualified appended NPC records. Complete MAN equality, separate clone values, operation/TEST-edge preservation, no-op preimages and allocation/type refusal passed. Fifteen focused Python checks passed with Retail enabled and no skips; a Town01 actor0011 donor clone changes selector326 to4095 while every other candidate byte stays exact. Evidence: `local-output/sdk-20260909/npc-system-selectors-20261008/`. Project Review/Apply, persistence, branch composition, Build wiring and dedicated NPC editor controls remain pending for this new ownership family. No game or runtime attachment ran; full goal active, solo work continues.
+
+`npc_system_flags.patch_allocated_system_flags` uses the shared final-record ownership guard and independent source system-selector writer. Full two-byte spans are reserved even for no-op requests. Source selectors, operations, normal dispatch and TEST continuations must match the donor before patching. Only allocated clones change; original owners and other clones retain their candidate bytes. Audit receipts bind source/candidate/result hashes, donor and draft identities, source/final offsets and exact selector preimages/postimages. Extended addressing remains unsupported. The encoded range is not a native bank-capacity claim.
+
+The real Town01 clone compares the entire MAN with literal `71 46` to `7F FF` replacement. Synthetic SET/CLEAR/TEST cases compare complete MANs with independent boundary-value replacements and a second unmodified clone. Tests refuse no-op preimage/opcode/branch changes, foreign IDs, duplicate drafts, Retail-target allocations, forged extents, invalid types/ranges and stopped/extended source paths. No UI, package, or gameplay claim is made for this new NPC writer; the existing imported-owner workflows below remain separately qualified.
+
 ## Package Delivery (2026-10-08)
 
 Normal compressed Build now enters MAN composition for selector-only edits. The earlier package checkpoint included a branch edit, which entered the same path and concealed this omission. Streaming NPC preparation now recognizes typed actor/P2 `ScriptSystemFlags`, independently validates the Retail source before rebased serialization, retains two-byte audit receipts and supplies the approved selector baseline to branch composition. Donor clones continue to inherit Retail selectors; NPC-owned system-selector authoring remains unsupported.
