@@ -1,5 +1,7 @@
 # Streaming scene SDK coverage
 
+2026-10-08: [Raw Streaming Animation Argument Delivery](legaia-animation-script-operands.md) now has actual Rikuroa fixed-span and NPC-growth Build readback. Complete literal MAN, carrier tail and original unrelated indexed payload preservation passed; native model/frame/tween clone arguments are independently retained. Package and copied-fixture artifact checks passed. Argument encoding is qualified; clip identity, runtime scheduling and gameplay remain unverified.
+
 Verified offline against the user-owned USA disc on 2026-09-12. These results
 describe source import and reference previews, not gameplay acceptance.
 
