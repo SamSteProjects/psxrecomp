@@ -864,6 +864,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/npc-flag-references.js": ("npc-flag-references.js", "text/javascript"),
                  "/flag-qualification.js": ("flag-qualification.js", "text/javascript"),
                  "/npc-presets.js": ("npc-presets.js", "text/javascript"),
+                 "/npc-preset-build-review.js": ("npc-preset-build-review.js", "text/javascript"),
                  "/npc-preset-metadata.js": ("npc-preset-metadata.js", "text/javascript"),
                  "/draft-review.js": ("draft-review.js", "text/javascript"),
                  "/script-operand-bundle.js": ("script-operand-bundle.js", "text/javascript"),
@@ -1981,6 +1982,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     return
                 if route == '/api/npc-creation-build-review':
                     from .npc_creation_build_review import review
+                    self._json(200,review(self.server.project,body))
+                    return
+                if route == '/api/npc-preset-build-review':
+                    from .npc_preset_build_review import review
                     self._json(200,review(self.server.project,body))
                     return
                 if route == '/api/build-review':
