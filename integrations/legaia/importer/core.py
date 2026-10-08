@@ -576,7 +576,7 @@ TMD_OBJECT_SIZE = 28
 TMD_VECTOR_SIZE = 8
 
 
-def _tmd_extent(data: bytes, offset: int) -> tuple[int, int] | None:
+def _tmd_extent(data: bytes, offset: int, *, minimum_vertices: int = 3) -> tuple[int, int] | None:
     """Return `(byte extent, object count)` for a structurally bounded TMD."""
     if offset < 0 or offset + TMD_HEADER_SIZE > len(data) or _u32(data, offset) != TMD_MAGIC:
         return None
@@ -609,7 +609,7 @@ def _tmd_extent(data: bytes, offset: int) -> tuple[int, int] | None:
             return None
         extent = max(extent, vert_end, normal_end, prim_end)
         total_vertices += n_vert
-    if total_vertices < 4:
+    if total_vertices < minimum_vertices:
         return None
     return extent, object_count
 
@@ -619,7 +619,9 @@ def scan_tmds(data: bytes) -> tuple[tuple[int, int, int], ...]:
     for offset in range(0, max(len(data) - 3, 0), 4):
         if _u32(data, offset) != TMD_MAGIC:
             continue
-        parsed = _tmd_extent(data, offset)
+        # Incidental magic hits keep the reference scanner's four-vertex
+        # plausibility filter. Explicit native slots can own a single triangle.
+        parsed = _tmd_extent(data, offset, minimum_vertices=4)
         if parsed is not None:
             hits.append((offset, parsed[0], parsed[1]))
     return tuple(hits)

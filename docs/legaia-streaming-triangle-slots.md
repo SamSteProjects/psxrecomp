@@ -1,0 +1,15 @@
+# Explicit Native Triangle Model Slots
+
+Taiku full scene import previously refused `streaming scene TMD slot 0 is invalid; cannot compress slot numbering`. Its first three explicitly indexed slots each contain a bounded 100-byte TMD with one object, three vertices and one supported triangle. The importer had applied the incidental magic scanner's four-vertex plausibility filter to native slot ownership.
+
+Structural TMD extent qualification now admits three vertices. Incidental word-aligned `scan_tmds` discovery still requires four vertices. Canonical slot directories, resource boundaries, vector bounds, object limits, unique pool ownership and malformed-slot refusal remain. Streaming import, explicit global slots, size-prefixed streams and pack-growth qualification share the structural reader. Slots are never dropped or renumbered; a malformed member still refuses the whole pool.
+
+Retail USA disc evidence establishes Taiku PROT entry 372, descriptor 1, decoded pack size 288,788 bytes, 126 scene slots and first-slot offsets 508, 608 and 708. All three decode to three vertices and triangle `[0, 2, 1]`. Identity and source offsets remain structural; no object name, pose, runtime activation or gameplay behavior is inferred.
+
+Pinned Andrew reference `d6e64c68ede25813d35db20980da82a1a025549b` distinguishes the same layers: `crates/asset/src/tmd_scan.rs` explicitly applies its four-vertex plausibility filter after parsing, while `crates/tmd/src/lib.rs` bounds and reads native vertex arrays independently. Reference blobs are `90c25d3fef70908455db0efb2201ddedeb269607` and `3f1a302f4fbe2419cc0c0bd99f7173a51b66a43a`. No reference code or runtime dependency was imported.
+
+Twelve focused Python cases passed: explicit triangle decoding versus conservative scanning, malformed slot refusal, existing asset decoder and pack growth, and real Taiku deterministic import, complete slot order, Save/Open and native argument Build. Build `f681f556ef945b5f`, package SHA-256 `5564615aa8642251189f6f18cd975f217d40ed412c3544c68d1936c76bf2fac3`, preserved the complete model carrier and independently matched all 126 slot payloads against verified Retail sources. Saved package artifacts verified; Build did not change the Project document, undo/redo or imports. Two AST checks passed. An initial test harness assumed a nonexistent direct Build ID field; it was corrected to the saved audit directory identity before the passing rerun.
+
+Actual private Taiku editor checks opened all three native slots with exact triangle geometry and zero page errors. Wide/400 px captures were inspected; Project/history/imports stayed unchanged, saved/reopened with zero Redo and owned helpers closed. Initial helper import-path and asynchronous Close-event race assumptions were corrected before the passing rerun.
+
+Private evidence: `local-output/sdk-20260909/streaming-tmd-20261008/discovery.json`, `import.json`, `workflow.json`, `checks.json` and `browser/`. These offline checks do not establish gameplay acceptance. No game, runtime attachment, native recompilation, installation or disc export ran. Full SDK goal remains active; manual gameplay is deferred.
