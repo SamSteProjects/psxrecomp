@@ -135,7 +135,7 @@ export async function openAnimationRecordLibrary({entityId,getContext,assignment
     status.textContent=`Reviewed independent duplicate ${report.duplicate_entry.record_id} · identical native content · not applied. Source clip and actor assignments stay intact. The new clip is active and unassigned; edit or assign it after Apply.`;return true;
   });};
   apply.onclick=()=>{const captured=held;if(!captured||captured.row!==selected())return false;return run('apply',async(signal,valid)=>{
-    try{const next=await post(captured.kind==='assignment'?'/api/allocated-animation-assignment':captured.kind==='duplicate'?'/api/animation-record-duplicate':'/api/animation-record-activation',{...captured.request,review_key:captured.report.review_key},signal);if(!valid()||captured!==held)return false;if(!object(next?.project)||next.project.mode!=='edit')fail('Change returned invalid project state.');held=null;await onApplied(next);dispose();return true;}
+    try{const next=await post(captured.kind==='assignment'?'/api/allocated-animation-assignment':captured.kind==='duplicate'?'/api/animation-record-duplicate':'/api/animation-record-activation',{...captured.request,review_key:captured.report.review_key},signal);if(!valid()||captured!==held)return false;if(!object(next?.project)||next.project.mode!=='edit')fail('Change returned invalid project state.');held=null;await onApplied(next,structuredClone({kind:captured.kind,request:captured.request,review:captured.report}));dispose();return true;}
     catch(e){if(valid()){held=null;status.textContent='Change failed. Review again.';}throw e;}
   });};
   function reviewAssignment(clear){

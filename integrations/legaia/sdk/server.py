@@ -1068,6 +1068,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/actor-animation-glb-target.js": ("actor-animation-glb-target.js", "text/javascript"),
                  "/animation-allocation.js": ("animation-allocation.js", "text/javascript"),
                  "/animation-record-library.js": ("animation-record-library.js", "text/javascript"),
+                 "/animation-copy-selection.js": ("animation-copy-selection.js", "text/javascript"),
                  "/retained-animation-assets.js": ("retained-animation-assets.js", "text/javascript"),
                  "/animation-effective-interpolation.js": ("animation-effective-interpolation.js", "text/javascript"),
                  "/animation-pose-copy.js": ("animation-pose-copy.js", "text/javascript"),

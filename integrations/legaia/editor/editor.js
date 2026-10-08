@@ -1,3 +1,4 @@
+import {copiedAnimationAsset} from '/animation-copy-selection.js';
 import {decodeSceneCatalog} from '/scene-catalog.js';
 import {openCatalogScenePreview} from '/catalog-scene-preview.js';
 import {openModelResolution} from '/model-resolution.js';
@@ -3647,7 +3648,8 @@ async function inspectAssignedAnimationDuplicate(entity){
   catch(error){notify(error.message,true);return;}finally{setBusy(false);}
   animationRecordLibrary?.dispose();animationRecordEntityId=entity.id;animationRecordAssetId=null;
   try{animationRecordLibrary=await openAnimationRecordLibrary({entityId:entity.id,retainedRecord:row,duplicateOnly:true,assignment:entity.components.ActorAllocatedAnimation.authored,getContext,busy:()=>busy,setBusy,onError:error=>notify(error.message,true),
-    onApplied:next=>{state=next;render();notify('Assigned clip duplicated. Original assignment retained; the new clip is active and unassigned. Save project to persist.');}});}catch(error){notify(error.message,true);}
+    onApplied:async(next,change)=>{state=next;render();notify('Assigned clip duplicated. Original assignment retained; the new clip is active and unassigned. Save project to persist.');const context=getContext(),key=resourceStateKey();
+      try{await refreshResources();if(JSON.stringify(context)!==JSON.stringify(getContext())||key!==resourceStateKey()||resourceKey!==key||busy)throw Error('Copy created; source changed before opening it. Select the new clip in the asset database.');if(change.kind!=='duplicate')throw Error('Copy handoff returned an unrelated change.');const record=copiedAnimationAsset(assetRecords(true),change.review,state);openAnimationResource(record);}catch(error){notify(error.message,true);}}});}catch(error){notify(error.message,true);}
 }
 async function inspectAnimationAllocation(entity){
   if(busy||state.project.mode!=='edit')return;
