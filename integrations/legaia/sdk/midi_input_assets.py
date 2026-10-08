@@ -31,9 +31,11 @@ def inspect(project,asset_id,expected_source_key,*,include_midi=False):
     if source_key(project)!=expected_source_key:raise ProjectError('Project MIDI asset sources changed')
     snapshot=inventory(project)
     if asset_id not in snapshot['assets']:raise ProjectError('MIDI asset has no registered Current receipt')
-    result=dict(schema_version='legaia.midi-input-inspection.v1',asset_id=asset_id,source_key=expected_source_key,
+    from .midi_current_matches import compare
+    comparisons=compare(project,snapshot['receipts'][asset_id])
+    result=dict(schema_version='legaia.midi-input-inspection.v2',asset_id=asset_id,source_key=expected_source_key,
         project_path=str(project.root),record=snapshot['assets'][asset_id],receipts=snapshot['receipts'][asset_id],
-        historical_inputs=True,read_only=True,project_changed=False,current_binding='not_asserted',runtime_binding='not_asserted',gameplay_verified=False)
+        current_comparisons=comparisons,historical_inputs=True,read_only=True,project_changed=False,current_binding='not_asserted',runtime_binding='not_asserted',gameplay_verified=False)
     if include_midi:result['midi_base64']=base64.b64encode(read_source(project,result['receipts'][0])).decode('ascii')
     if inventory(project)!=snapshot or source_key(project)!=expected_source_key:raise ProjectError('MIDI sources changed during asset inspection')
     return deepcopy(result)

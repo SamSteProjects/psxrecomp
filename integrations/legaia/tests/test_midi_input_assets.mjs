@@ -14,3 +14,9 @@ for(const b of ['!',midi_base64.slice(4),Buffer.alloc(result.bytes.length).toStr
 console.log('Fresh MIDI asset DTO, exact download/hash, ownership/claim/path/duplicate/refusal and detached metadata passed');
 
 assert.deepEqual(Object.keys(assetInspectorRegistry({type:'audio',data:report.record},()=>{})),['inspect-midi-input']);
+
+if(report.schema_version==='legaia.midi-input-inspection.v2'){
+ for(const mutate of [r=>r.current_comparisons=[],r=>r.current_comparisons.push(r.current_comparisons[0]),r=>r.current_comparisons[0].receipt_key='f'.repeat(64),r=>r.current_comparisons[0].matches_candidate=!r.current_comparisons[0].matches_candidate,r=>r.current_comparisons[0].input_usage='verified',r=>r.current_comparisons[0].current_sequence_offset=-1,r=>r.current_comparisons[0].sequence_size_bytes++,r=>r.current_comparisons[0].candidate_sequence_sha256='f'.repeat(64),r=>r.current_comparisons[0].capture_scene_id='scene://other',r=>r.current_comparisons[0].current_entry_sha256='bad']){const bad=structuredClone(report);mutate(bad);assert.throws(()=>decodeMidiInput(bad,c));}
+ const legacy=structuredClone(report);legacy.schema_version='legaia.midi-input-inspection.v1';delete legacy.current_comparisons;decodeMidiInput(legacy,c);
+ console.log('Current content comparison ownership, equality, extents, claims and legacy DTO passed');
+}
