@@ -151,6 +151,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
     audio_snapshot=AudioReferenceSnapshot(project) if own_audio_snapshot else _audio_snapshot
     audio_snapshot.check_owner(project)
     wav_inputs=audio_snapshot.inputs()
+    midi_inputs=audio_snapshot.midi_inputs()
     import_digests={scene:digest(document) for scene,document in project.imports.items()}
     def node(identifier,kind,scene,label=None,available=True):
         if not isinstance(identifier,str) or not identifier or len(identifier)>1024:raise ProjectError('Invalid asset reference identity')
@@ -162,7 +163,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
             if available:nodes[identifier]['available']=True
         else:nodes[identifier]=value
         if len(nodes)>16384:raise ProjectError('Asset reference node limit exceeded')
-    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None,allocated_evidence=None,retained_evidence=None,wav_evidence=None,current_wav_evidence=None,npc_script_evidence=None,npc_flag_evidence=None):
+    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None,allocated_evidence=None,retained_evidence=None,wav_evidence=None,current_wav_evidence=None,npc_script_evidence=None,npc_flag_evidence=None,midi_evidence=None):
         if source not in nodes or target not in nodes:raise ProjectError('Asset reference has an unavailable structural endpoint')
         value=dict(source_id=source,target_id=target,kind=kind,scene_id=scene,layer=layer,runtime_binding='not_asserted')
         if pc is not None:value['pc']=pc
@@ -190,6 +191,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
         if retained_evidence is not None:
             value['retained_capture_evidence']=deepcopy(retained_evidence)
             value['source_catalog_key']=catalog['source_key']
+        if midi_evidence is not None:value['midi_input_evidence']=deepcopy(midi_evidence)
         if wav_evidence is not None:value['wav_input_evidence']=deepcopy(wav_evidence)
         if current_wav_evidence is not None:value['current_wav_binding_evidence']=deepcopy(current_wav_evidence)
         if npc_script_evidence is not None:
@@ -280,6 +282,18 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
             proof={key:deepcopy(receipt[key]) for key in ('receipt_key','wav_sha256','sample_index','source_scene_id','bank_sha256','source_sample_sha256')}
             proof.update(native_asset_id=target,disc_sha256=receipt['source_record']['disc_sha256'],entry_sha256=receipt['source_record']['entry_sha256'],relationship='historical_capture_target')
             edge(target,identity,'retained_wav_sample_input',scene,'authored',wav_evidence=proof)
+
+    for identity,rows in midi_inputs['receipts'].items():
+        for receipt in rows:
+            if receipt['source_scene_id']!=scene:continue
+            target=receipt['asset_id'];native=audio_records.get(target)
+            if native is not None and native.get('source_record',{}).get('sha256')!=receipt['source_record']['entry_sha256']:
+                raise ProjectError('Historical MIDI target differs from its qualified native catalog entry')
+            node(identity,'audio',scene,midi_inputs['assets'][identity]['name'])
+            node(target,'audio',scene,'Historical capture target '+target,available=native is not None)
+            proof={key:deepcopy(receipt[key]) for key in ('receipt_key','midi_sha256','source_scene_id','candidate_sequence_sha256')}
+            proof.update(native_asset_id=target,disc_sha256=receipt['source_record']['disc_sha256'],entry_sha256=receipt['source_record']['entry_sha256'],sequence_sha256=receipt['source_record']['sequence_sha256'],relationship='historical_capture_target',input_usage='not_asserted')
+            edge(target,identity,'retained_midi_sequence_input',scene,'authored',midi_evidence=proof)
 
     for proof in audio_snapshot.bindings():
         if proof['binding_scene_id']!=scene:continue

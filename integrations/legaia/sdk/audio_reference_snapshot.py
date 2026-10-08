@@ -1,7 +1,7 @@
-"""Request-local WAV dependency proofs shared by reference scene adapters.
+"""Request-local retained audio dependency proofs shared by reference scene adapters.
 
 Native composition runs once per request. Publication still rechecks saved
-project identity, every retained WAV's bytes and each original native carrier.
+project identity, retained WAV/MIDI bytes and qualified native ownership.
 This snapshot is private assembly state, never a persisted or HTTP input.
 """
 from copy import deepcopy
@@ -17,6 +17,8 @@ class AudioReferenceSnapshot:
         from .audio_input_bindings import current
         self._key = source_key(project)
         self._inputs = inventory(project)
+        from .midi_input_assets import inventory as midi_inventory
+        self._midi_inputs = midi_inventory(project)
         self._bindings = current(project, self._inputs)
         self._sources = {}
         for proof in self._bindings:
@@ -28,10 +30,13 @@ class AudioReferenceSnapshot:
     def check_owner(self, project):
         from .project_assets import source_key
         if source_key(project) != self._key:
-            raise ProjectError('WAV reference project changed during assembly')
+            raise ProjectError('Audio reference project changed during assembly')
 
     def inputs(self):
         return deepcopy(self._inputs)
+
+    def midi_inputs(self):
+        return deepcopy(self._midi_inputs)
 
     def bindings(self):
         return deepcopy(self._bindings)
@@ -42,6 +47,9 @@ class AudioReferenceSnapshot:
         self.check_owner(project)
         if inventory(project) != self._inputs:
             raise ProjectError('Retained WAV reference inputs changed during assembly')
+        from .midi_input_assets import inventory as midi_inventory
+        if midi_inventory(project) != self._midi_inputs:
+            raise ProjectError('Retained MIDI reference inputs changed during assembly')
         for native, binding in self._sources.items():
             record = binding['source_record']
             body, bank, actual = _source(project, native, record['entry_sha256'], binding['source_scene_id'])
