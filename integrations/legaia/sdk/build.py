@@ -970,7 +970,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             if allocated:
                 baseline=carrier.payload
                 changed,changes=baseline,[]
-            if scene_id in height_edits or raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["waits"] or edits["effect_colors"] or edits["model_selectors"] or edits["branches"]:
+            if scene_id in height_edits or raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["system_flags"] or edits["waits"] or edits["effect_colors"] or edits["model_selectors"] or edits["branches"]:
                 baseline = carrier.payload
                 changed, changes = baseline, []
             if edits["assignments"]:
@@ -1001,7 +1001,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 from .allocated_animation_build import patch_assignments
                 changed,allocated_changes=patch_assignments(project,scene_id,allocated,baseline,changed)
                 changes.extend(allocated_changes)
-            if allocated or scene_id in height_edits or raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["waits"] or edits["effect_colors"] or edits["model_selectors"] or edits["branches"]:
+            if allocated or scene_id in height_edits or raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["system_flags"] or edits["waits"] or edits["effect_colors"] or edits["model_selectors"] or edits["branches"]:
                 changed, position_changes = patch_man_positions(changed, scene, edits["positions"])
                 changes.extend(position_changes)
                 if edits["dialogues"]:
