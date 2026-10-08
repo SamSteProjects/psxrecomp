@@ -1026,6 +1026,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-effect-colors.js": ("script-effect-colors.js", "text/javascript"),
                  "/script-animation-operands.js": ("script-animation-operands.js", "text/javascript"),
                  "/scene-catalog.js": ("scene-catalog.js", "text/javascript"),
+                 "/catalog-scene-preview.js": ("catalog-scene-preview.js", "text/javascript"),
                  "/model-resolution.js": ("model-resolution.js", "text/javascript"),
                  "/script-branches.js": ("script-branches.js", "text/javascript"),
                  "/system-flag-selectors.js": ("system-flag-selectors.js", "text/javascript"),
@@ -1242,6 +1243,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .script_branches import snapshot, review
                     self._json(200, snapshot(self.server.project, body['entity']) if route == '/api/script-branches' else review(self.server.project, body['entity'], body['branch_id'], body['value'])[0])
                     return
+                if route == '/api/catalog-scene-preview':
+                    if set(body)!={'disc','scene','expected_project_key'} or any(not isinstance(value,str) or not value or len(value)>4096 for value in body.values()):raise ProjectError('Scene preview requires disc, scene and current Project key')
+                    from .catalog_scene_preview import preview as preview_catalog_scene
+                    self._json(200,preview_catalog_scene(self.server.project,body['disc'],body['scene'],body['expected_project_key'],lambda view,asset,*args,**kwargs:self.server.model_preview(asset,*args,project_view=view,**kwargs)));return
                 if route == '/api/model-resolution':
                     if set(body)!={'scene_id','expected_source_key'} or any(not isinstance(value,str) or len(value)>512 for value in body.values()):raise ProjectError('Model resolution requires exact scene and current source key')
                     from .model_resolution import inspect as inspect_model_resolution
