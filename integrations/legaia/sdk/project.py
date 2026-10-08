@@ -127,6 +127,7 @@ class ProjectService:
         self.scene_selection_sets: dict[str, dict] = {}
         self.model_vertex_groups: dict[str, dict] = {}
         self.scene_views: dict[str, dict] = {}
+        self.animation_labels: dict[str, dict] = {}
         self.script_bookmarks: dict[str, dict] = {}
         self.actor_drafts: dict[str, dict] = {}
         self.texture_overrides: dict[str, dict] = {}
@@ -220,6 +221,7 @@ class ProjectService:
                 "active_scene": self.active_scene, "authored": deepcopy(self.overrides),
                 "actor_templates": deepcopy(self.actor_templates),
                 **({"scene_views": deepcopy(self.scene_views)} if self.scene_views else {}),
+                **({"animation_labels": deepcopy(self.animation_labels)} if self.animation_labels else {}),
                 **({"script_bookmarks": deepcopy(self.script_bookmarks)} if self.script_bookmarks else {}),
                 **({"actor_selection_sets": deepcopy(self.actor_selection_sets)} if self.actor_selection_sets else {}),
                 **({"scene_selection_sets": deepcopy(self.scene_selection_sets)} if self.scene_selection_sets else {}),
@@ -274,7 +276,7 @@ class ProjectService:
                   "imports": "Imported scenes", "active_scene": "Active scene",
                   "authored": "Scene and game-data edits", "actor_templates": "Actor presets",
                   "texture_additions": "New texture slots", "texture_overrides": "Texture replacements", "model_overrides": "Model content", "audio_sequence_replacements": "Audio sequence replacements", "audio_overrides": "Audio sequence operands", "audio_bank_overrides": "Audio bank parameters", "audio_sample_sources": "Retained WAV inputs", "audio_midi_sources": "Retained MIDI inputs", "audio_sample_overrides": "Native audio samples",
-                  "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "scene_views": "Saved scene views", "model_vertex_groups": "Saved model vertex groups", "script_bookmarks": "Saved script bookmarks",
+                  "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "scene_views": "Saved scene views", "animation_labels": "Animation display names", "model_vertex_groups": "Saved model vertex groups", "script_bookmarks": "Saved script bookmarks",
                   "model_sources": "Retained model inputs", "animation_sources": "Retained animation inputs"}
         return [label for key, label in labels.items()
                 if digest(document.get(key)) != self.saved_sections.get(key)]
@@ -285,7 +287,7 @@ class ProjectService:
         self.saved_document = deepcopy(document)
         self.saved_sections = {key: digest(document.get(key)) for key in
                                ("name", "retail_source", "imports", "active_scene",
-                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_sequence_replacements", "audio_bank_overrides", "audio_sample_sources", "audio_midi_sources", "audio_sample_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views", "model_vertex_groups", "script_bookmarks", "model_sources", "animation_sources")}
+                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_sequence_replacements", "audio_bank_overrides", "audio_sample_sources", "audio_midi_sources", "audio_sample_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views", "animation_labels", "model_vertex_groups", "script_bookmarks", "model_sources", "animation_sources")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):
@@ -328,6 +330,8 @@ class ProjectService:
                 raise ProjectError('Imported evidence changed under saved scene selections or their history; resolve selections before reimport')
             if any(v['scene_id']==scene_id for v in self.model_vertex_groups.values()) or any(e.get('target')=='model_vertex_groups' and e.get('scene_id')==scene_id for e in self.undo_stack+self.redo_stack):
                 raise ProjectError('Imported evidence changed under saved model vertex groups or their history')
+            if any(v['scene_id']==scene_id for v in self.animation_labels.values()) or any(e.get('target')=='animation_labels' and e.get('scene_id')==scene_id for e in self.undo_stack+self.redo_stack):
+                raise ProjectError('Imported evidence changed under animation names or their history')
             if any(v['scene_id']==scene_id for v in self.script_bookmarks.values()) or any(e.get('target')=='script_bookmarks' and e.get('scene_id')==scene_id for e in self.undo_stack+self.redo_stack):
                 raise ProjectError('Imported evidence changed under script bookmarks or their history; resolve bookmarks before reimport')
             if any(value['scene_id'] == scene_id for value in self.scene_views.values()) or any(entry.get('target') == 'scene_views' and entry.get('scene_id') == scene_id for entry in self.undo_stack + self.redo_stack):
@@ -2132,6 +2136,10 @@ class ProjectService:
             from .preset_batch import apply
             apply(self, command)
             return
+        from .animation_labels import COMMANDS as label_commands, command as label_command
+        if isinstance(command.get('type'),str) and command['type'] in label_commands:
+            label_command(self,command)
+            return
         from .script_bookmarks import COMMANDS as bookmark_commands, command as bookmark_command
         if isinstance(command.get('type'),str) and command['type'] in bookmark_commands:
             bookmark_command(self,command)
@@ -3195,7 +3203,9 @@ class ProjectService:
                     collection[identifier] = components
             target.append(entry)
             return
-        if entry.get('target') == 'script_bookmarks':
+        if entry.get('target') == 'animation_labels':
+            collection, identifier = self.animation_labels, entry['asset_id']
+        elif entry.get('target') == 'script_bookmarks':
             collection, identifier = self.script_bookmarks, entry['bookmark_id']
         elif entry.get('target') == 'model_vertex_groups':
             collection, identifier = self.model_vertex_groups, entry['group_id']
@@ -3225,6 +3235,8 @@ class ProjectService:
         self._apply_history(self.redo_stack, self.undo_stack, "after")
 
     def save(self) -> Path:
+        from .animation_labels import validate_collection as validate_labels
+        validate_labels(self)
         from .sequence_replacement_authoring import validate_collection as validate_replacements
         validate_replacements(self)
         from .audio_authoring import validate_collection as validate_audio
@@ -3530,6 +3542,9 @@ class ProjectService:
         result.audio_sequence_replacements=deepcopy(raw.get('audio_sequence_replacements',{}))
         from .sequence_replacement_authoring import validate_collection as validate_replacements
         validate_replacements(result)
+        from .animation_labels import validate_collection as validate_labels
+        result.animation_labels=deepcopy(raw.get('animation_labels',{}))
+        validate_labels(result)
         result._mark_saved()
         return result
 
@@ -3953,6 +3968,7 @@ class ProjectService:
         return references
 
     def state(self) -> dict:
+        from .animation_labels import key as label_key
         from .model_vertex_groups import review_key as vertex_group_review_key
         from .scene_views import review_key as view_review_key
         from .script_bookmarks import review_key as bookmark_review_key
@@ -4026,6 +4042,7 @@ class ProjectService:
                 "scenes": [{"id": key, "name": value["scene"]["name"]} for key, value in self.imports.items()],
                 "runtime_correlation": correlation,
                 "scene_view_source_key": digest(document) if document else None,
+                "animation_labels": deepcopy(self.animation_labels), "animation_labels_key": label_key(self),
                 "script_bookmarks": [{**deepcopy(value),"review_key":bookmark_review_key(self,value)} for value in sorted(self.script_bookmarks.values(),key=lambda v:(v["owner_id"],v["name"].casefold(),v["id"]))],
                 "model_vertex_groups": [{**deepcopy(value),"review_key":vertex_group_review_key(self,value)} for value in sorted(self.model_vertex_groups.values(),key=lambda v:(v["asset_id"],v["name"].casefold(),v["id"]))],
                 "scene_views": [{**deepcopy(value), "review_key": view_review_key(self, value)} for value in sorted(self.scene_views.values(), key=lambda item: (item["scene_id"], item["name"].casefold(), item["id"]))],

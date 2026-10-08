@@ -1931,6 +1931,7 @@ function assetRecords(activeOnly=false){
     if(projectScope&&projectAssetControls.filter()!=='all'&&!existing&&authored.scene_id!==projectAssetControls.filter())continue;
     records.set(assetId,{...(existing ?? {id:assetId,type:authored.kind,label:authored.name ?? authored.id,source:authored.source_scene ?? authored.scene_id ?? 'Project library',data:{source_record:authored.source_record}}),sceneId:existing?.sceneId??authored.scene_id,authored:authored.authored ?? {},changes:authored.changes ?? [],authoredRecord:authored});
   }
+  for(const record of records.values())if(record.data?.scope==='authored-retained')record.label=state.animation_labels?.[record.id]?.name??'Retained clip '+record.data.retained_record.record_id;
   return [...records.values()];
 }
 function initialAssetUsage(record,modelReferences){
@@ -3184,6 +3185,7 @@ function openAnimationResource(record){
     openRetainedAnimationAsset({record,getState:()=>state,busy:()=>busy,onError:e=>notify(e.message,true),
       onEdit:({assetId,entityId,row})=>inspectRetainedAnimationContent({id:entityId},row,assetId),
       onGlb:({assetId,entityId,row})=>inspectRetainedAnimationGlb({id:entityId},row,assetId),
+      onName:async request=>{if(!canEdit())return false;const applied=await api('/api/command',request);if(applied){notify('Clip display name updated. Save project to persist.');setTimeout(()=>{if(!busy&&resourceKey===resourceStateKey()){const fresh=assetRecords(true).find(item=>item.id===request.asset_id);if(fresh)openAnimationResource(fresh);}},0);}return applied;},
       onLifecycle:({assetId,entityId,row})=>inspectSavedAnimationRecords({id:entityId},row,assetId),
       getAssignmentTarget:()=>selected()?.id??null,onAssign:({assetId,targetEntityId,row})=>{const entity=entities().find(entity=>entity.id===targetEntityId);if(!entity)throw new Error('Assignment target changed. Reopen the retained clip.');return inspectSavedAnimationRecords(entity,row,assetId,true);},
       onModel:id=>openModel(id),onActor:async id=>{if(await api('/api/selection',{entity_id:id})){frame(selected());document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}},
@@ -3626,7 +3628,7 @@ async function inspectRetainedAnimationContent(entity,row,assetId=null,initialCh
 async function inspectSavedAnimationRecords(entity,retainedRecord=null,assetId=null,assetAssignment=false){
   if(busy||state.project.mode!=='edit')return;
   animationRecordLibrary?.dispose();animationRecordEntityId=entity.id;animationRecordAssetId=assetId;
-  animationRecordLibrary=await openAnimationRecordLibrary({entityId:entity.id,retainedRecord,assetAssignment,
+  animationRecordLibrary=await openAnimationRecordLibrary({entityId:entity.id,retainedRecord,assetAssignment,getLabel:id=>state.animation_labels?.[id]?.name??null,
     onEdit:assetAssignment?null:row=>inspectRetainedAnimationContent(entity,row,assetId),
     onGlb:assetAssignment?null:row=>inspectRetainedAnimationGlb(entity,row,assetId),
     assignment:entity.components?.ActorAllocatedAnimation?.authored??null,
@@ -3656,7 +3658,7 @@ async function inspectAssignedAnimationDuplicate(entity){
   try{row=await resolveActorAnimationGlbTarget({entityId:entity.id,getActor:()=>selected(),getContext});if(!row)throw Error('The actor has no assigned allocated clip.');}
   catch(error){notify(error.message,true);return;}finally{setBusy(false);}
   animationRecordLibrary?.dispose();animationRecordEntityId=entity.id;animationRecordAssetId=null;
-  try{animationRecordLibrary=await openAnimationRecordLibrary({entityId:entity.id,retainedRecord:row,duplicateOnly:true,assignment:entity.components.ActorAllocatedAnimation.authored,getContext,busy:()=>busy,setBusy,onError:error=>notify(error.message,true),
+  try{animationRecordLibrary=await openAnimationRecordLibrary({entityId:entity.id,retainedRecord:row,duplicateOnly:true,getLabel:id=>state.animation_labels?.[id]?.name??null,assignment:entity.components.ActorAllocatedAnimation.authored,getContext,busy:()=>busy,setBusy,onError:error=>notify(error.message,true),
     onApplied:async(next,change)=>{state=next;render();notify('Assigned clip duplicated. Original assignment retained; the new clip is active and unassigned. Save project to persist.');await openCopiedAnimationAfterApply(change,getContext);}});}catch(error){notify(error.message,true);}
 }
 async function inspectAnimationAllocation(entity){

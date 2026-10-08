@@ -64,7 +64,7 @@ export function retainedAnimationAssignedTarget(record,state,entityId){
   const row=retainedAnimationAssignedActors(record,state).find(row=>row.id===entityId);
   if(!row)throw new Error('Choose a verified authored initial assignment for this clip.');return row.id;
 }
-export function openRetainedAnimationAsset({record,getState,busy,onPreview,onModel,onActor,onEdit=null,onGlb=null,onLifecycle=null,onAssign=null,getAssignmentTarget=()=>null,onError=()=>{}}){
+export function openRetainedAnimationAsset({record,getState,busy,onPreview,onModel,onActor,onEdit=null,onGlb=null,onLifecycle=null,onAssign=null,onName=null,getAssignmentTarget=()=>null,onError=()=>{}}){
   if(busy())return;
   const data=decodeRetainedAnimationAsset(record),initial=getState(),key=initial.scene_preview_source_key,scene=initial.scene?.id,path=initial.project?.path;
   if(!hash(key)||scene!=='scene://'+data.semantic_id.split('/')[2])throw new Error('Retained clip requires its current scene source.');
@@ -103,9 +103,18 @@ export function openRetainedAnimationAsset({record,getState,busy,onPreview,onMod
     catch(e){usersNote.textContent=e.message;}
   }
   selectUser.onclick=async()=>{try{guard();const target=retainedAnimationAssignedTarget(data,getState(),usersChoice.value);dialog.close();await onActor(target);}catch(e){if(dialog.open)status.textContent=e.message;onError(e);}};
+  const names=add('section');names.hidden=typeof onName!=='function'||initial.project?.mode!=='edit'||!hash(initial.animation_labels_key);
+  add('h3','Editor display name',names);add('p','Project-local label. Stable identity, native clip bytes and assignments stay intact.',names);
+  const nameField=add('input',undefined,names);nameField.type='text';nameField.maxLength=80;nameField.setAttribute('aria-label','Retained clip display name');nameField.value=initial.animation_labels?.[data.semantic_id]?.name??'';
+  const nameActions=add('div',undefined,names);nameActions.className='dialog-actions';const saveName=add('button','Save clip name',nameActions),clearName=add('button','Reset clip name',nameActions);
+  const validName=()=>{const value=nameField.value;return value.trim().length>=1&&value.trim().length<=80&&!/[\u0000-\u001f\u007f\ud800-\udfff]/u.test(value);};
+  function refreshName(){const old=initial.animation_labels?.[data.semantic_id]?.name;nameField.disabled=busy()||pending||!current();saveName.disabled=nameField.disabled||!validName()||nameField.value.trim()===old;clearName.disabled=nameField.disabled||old===undefined;}
+  nameField.oninput=()=>refreshName();
+  async function applyName(clear){try{guard();if(names.hidden||!clear&&!validName())throw Error('Enter a clip name with 1–80 characters without controls.');pending=true;refreshName();const request={type:clear?'clear_animation_label':'set_animation_label',asset_id:data.semantic_id,expected_source_key:key,expected_labels_key:initial.animation_labels_key,...(clear?{}:{name:nameField.value.trim()})};if(await onName(request))dialog.close();}catch(e){if(dialog.open)status.textContent=e.message;onError(e);}finally{pending=false;if(dialog.open)refreshName();}}
+  saveName.onclick=()=>applyName(false);clearName.onclick=()=>applyName(true);
   const details=add('details');add('summary','Retained source and provenance',details);add('pre',JSON.stringify(data,null,2),details).className='diagnostic-detail';
   let controller=null,pending=false;
-  const current=()=>dialog.open&&getState().scene_preview_source_key===key&&getState().scene?.id===scene&&getState().project?.path===path;
+  const current=()=>dialog.open&&getState().scene_preview_source_key===key&&getState().scene?.id===scene&&getState().project?.path===path&&getState().animation_labels_key===initial.animation_labels_key;
   const guard=()=>{if(!current())throw new Error('Project source changed. Reopen the retained clip.');if(busy()||pending)throw new Error('Finish the current operation before inspecting this clip.');};
   model.onclick=async()=>{try{guard();dialog.close();await onModel(data.model_asset_id);}catch(e){onError(e);}};
   owner.onclick=async()=>{try{guard();dialog.close();await onActor(data.retained_record.entity_id);}catch(e){onError(e);}};
@@ -113,5 +122,5 @@ export function openRetainedAnimationAsset({record,getState,busy,onPreview,onMod
     const response=await fetch('/api/retained-animation-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:data.semantic_id,expected_source_key:key}),signal:controller.signal});const value=await response.json();
     if(!current()){if(dialog.open)status.textContent='Project source changed. Reopen the retained clip.';return;}if(!response.ok||value.error)throw new Error(value.error||'Retained clip preview failed.');qualifyRetainedAnimationPreview(value,data);dialog.close();await onPreview(data,value);
   }catch(e){if(e.name!=='AbortError'&&dialog.open){status.textContent=e.message;onError(e);}}finally{pending=false;if(dialog.open){preview.disabled=model.disabled=owner.disabled=edit.disabled=glb.disabled=lifecycle.disabled=assign.disabled=!current();refreshUsers();refreshTargets();}}};
-  dialog.addEventListener('close',()=>{controller?.abort();dialog.remove();});document.body.append(dialog);dialog.showModal();refreshUsers();if(!assign.hidden)refreshTargets(getAssignmentTarget());return dialog;
+  dialog.addEventListener('close',()=>{controller?.abort();dialog.remove();});document.body.append(dialog);dialog.showModal();refreshName();refreshUsers();if(!assign.hidden)refreshTargets(getAssignmentTarget());return dialog;
 }

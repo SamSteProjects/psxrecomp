@@ -5,7 +5,7 @@ from .project import ProjectError, canonical, digest
 PAGE_SIZE = 50
 MAX_BYTES = 8 * 1024 * 1024
 COLLECTIONS = frozenset(('authored', 'actor_templates', 'actor_drafts', 'scene_views',
-    'script_bookmarks', 'actor_selection_sets', 'scene_selection_sets', 'model_vertex_groups',
+    'script_bookmarks', 'animation_labels', 'actor_selection_sets', 'scene_selection_sets', 'model_vertex_groups',
     'texture_overrides', 'texture_additions', 'model_overrides', 'model_sources',
     'animation_sources', 'audio_sample_sources', 'audio_sample_overrides',
     'audio_overrides', 'audio_bank_overrides'))

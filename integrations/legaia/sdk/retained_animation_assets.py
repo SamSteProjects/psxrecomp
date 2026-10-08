@@ -23,7 +23,7 @@ def records(project):
     for row in library['records']:
         entry=entries[row['record_id']]
         result.append(dict(semantic_id=row['animation_id'],asset_kind='animation',
-            name='Retained clip '+row['record_id'],scope='authored-retained',authored_animation_record=True,
+            name=project.animation_labels.get(row['animation_id'],{}).get('name','Retained clip '+row['record_id']),scope='authored-retained',authored_animation_record=True,
             frame_count=row['frame_count'],bone_count=row['object_count'],model_asset_id=row['donor_asset_id'],
             retained_record={**deepcopy(row),'assigned_actor_ids':assigned.get(row['record_id'],[])},
             source_record=dict(source_kind='authored_animation_record',record_id=row['record_id'],
