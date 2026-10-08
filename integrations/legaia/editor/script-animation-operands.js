@@ -30,6 +30,17 @@ export function decodeAnimationOperandSource(value,owner,stateKey){
  if(value.supported!==(value.targets.length>0)||value.unresolved_overrides.some(id=>typeof id!=='string'||ids.has(id))||new Set(value.unresolved_overrides).size!==value.unresolved_overrides.length)fail('Animation target availability is inconsistent.');
  return structuredClone(value);
 }
+export function currentAnimationSelection(snapshot,rawSource,selectedPC,state){
+ const source=decodeAnimationOperandSource(rawSource,snapshot?.owner_id,state.script_authoring_state_key),target=source.targets.find(row=>row.pc===selectedPC);
+ const retail=snapshot.source_report?.instructions?.find(row=>row.pc===selectedPC),current=snapshot.current_report?.instructions?.find(row=>row.pc===selectedPC);
+ if(state.project?.mode!=='edit'||state.capabilities?.script_animation_operand_authoring!==true||state.scene?.id!=='scene://'+source.source.scene||snapshot.schema_version!=='legaia.script-branches.v1'||snapshot.state_key!==source.state_key||snapshot.gameplay_verified!==false||!target||target.source_record_sha256!==snapshot.source_record_sha256||!retail||!current)fail('Select a qualified Current animation instruction in Edit mode.');
+ for(const row of [retail,current])if(row.mnemonic!==target.mnemonic||row.length!==target.instruction_length||row.target_context!==target.target_context)fail('Current animation boundary differs from its source target.');
+ if(retail.raw_hex!==target.raw_instruction_hex)fail('Retail animation instruction differs from its source bytes.');
+ const native=decodeNative(target,current.raw_hex),original=decodeNative(target,target.raw_instruction_hex);
+ if(!same(native.values,target.effective_values)||specs[target.mnemonic].some(([key])=>current.operands?.[key]!==native.values[key])||current.operands?.encoded_hex!==current.raw_hex.slice(native.header*2))fail('Current animation arguments differ from effective native bytes.');
+ for(let i=0;i<native.header+1;i++)if(native.raw[i]!==original.raw[i])fail('Current animation dispatch differs from Retail.');
+ return {owner_id:source.owner_id,animation_operand_id:target.semantic_id,pc:target.pc,values:structuredClone(native.values)};
+}
 export function decodeAnimationOperandReview(value,source,id,values){
  const target=source.targets.find(row=>row.semantic_id===id);
  if(!target||!(values===null||valuesValid(target.mnemonic,values))||!object(value)||value.schema_version!==source.schema_version||value.owner_id!==source.owner_id||value.state_key!==source.state_key||value.gameplay_verified!==false||!object(value.review)||!hash(value.review.review_key)||value.review.animation_operand_id!==id||!same(value.review.values,values)||value.source?.decoded_man_sha256!==source.source.decoded_man_sha256)fail('Animation Review differs from its source or request.');
@@ -52,7 +63,7 @@ export function decodeAnimationOperandReview(value,source,id,values){
  return structuredClone(value);
 }
 
-export function mountAnimationOperands(host,{source:rawSource,owner,stateKey,current,busy,drafts,onDraftChange,requestReview,command,reopen,onError,selectInstruction}){
+export function mountAnimationOperands(host,{source:rawSource,owner,stateKey,current,busy,drafts,onDraftChange,requestReview,command,reopen,onError,selectInstruction,onReturn}){
  const el=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
  const root=el('section');root.className='animation-operands-authoring';host.append(root);
  root.append(el('h3','Animation Script Arguments'),el('p','Edit fixed native model/frame/tween or effect arguments. Numeric arguments are not resolved model or clip identities. Playback, valid clip ranges and timing units remain unverified.'));
@@ -64,12 +75,13 @@ export function mountAnimationOperands(host,{source:rawSource,owner,stateKey,cur
  root.append(comparison,fields,actions,status,proposalView);
  const reviewButton=el('button','Review Animation Arguments'),apply=el('button','Apply Reviewed Arguments'),reset=el('button','Review Reset to Retail'),discard=el('button','Discard Animation Draft');
  for(const button of [reviewButton,apply,reset,discard])button.type='button';actions.append(reviewButton,apply,reset,discard);
+ const back=onReturn?el('button','Return to Current Script Flow'):null;if(back){back.type='button';back.onclick=()=>{if(active()&&!busy()&&!inflight)onReturn(target.pc);};actions.append(back);}
  let target,inputs={},proposal=null,disposed=false,inflight=false,invalid=false;
  const active=()=>!disposed&&current()&&root.isConnected;
  const values=()=>Object.fromEntries(Object.entries(inputs).map(([k,input])=>[k,Number(input.value)]));
  const valid=()=>Object.values(inputs).every(input=>input.value!==''&&input.checkValidity())&&valuesValid(target.mnemonic,values());
  const summary=(layer,value)=>{const row=el('p');row.append(el('strong',layer+': '));row.append(document.createTextNode(specs[target.mnemonic].map(([key,,label])=>label+' '+value[key]).join(' · ')));return row;};
- function updateState(){const editable=active()&&!busy()&&!inflight&&!invalid;select.disabled=!editable;for(const input of Object.values(inputs))input.disabled=!editable;reviewButton.disabled=!editable||!valid();apply.disabled=!editable||!proposal;reset.disabled=!editable||target?.authored_values===null;discard.disabled=!active()||busy()||inflight;discard.hidden=!drafts.has(target?.semantic_id)&&!proposal;if(invalid)status.textContent='Animation authoring was refused; reopen script inspection.';if(!active()){proposal=null;proposalView.replaceChildren();status.textContent='Project, source or mode changed. Reopen script inspection to edit.';}}
+ function updateState(){if(back)back.disabled=!active()||busy()||inflight;const editable=active()&&!busy()&&!inflight&&!invalid;select.disabled=!editable;for(const input of Object.values(inputs))input.disabled=!editable;reviewButton.disabled=!editable||!valid();apply.disabled=!editable||!proposal;reset.disabled=!editable||target?.authored_values===null;discard.disabled=!active()||busy()||inflight;discard.hidden=!drafts.has(target?.semantic_id)&&!proposal;if(invalid)status.textContent='Animation authoring was refused; reopen script inspection.';if(!active()){proposal=null;proposalView.replaceChildren();status.textContent='Project, source or mode changed. Reopen script inspection to edit.';}}
  function renderTarget(){proposal=null;proposalView.replaceChildren();fields.replaceChildren();comparison.replaceChildren();inputs={};target=source.targets.find(row=>row.semantic_id===select.value);comparison.append(summary('Retail',target.values),summary('Current',target.effective_values));
   let draft=drafts.get(target.semantic_id);if(draft&&draft.state_key!==source.state_key){drafts.delete(target.semantic_id);draft=null;}
   for(const [key,width,labelText] of specs[target.mnemonic]){const label=el('label',labelText),input=el('input');input.type='number';input.required=true;input.step='1';input.min='0';input.max=String(2**(width*8)-1);input.value=draft?.fields[key]??target.effective_values[key];input.setAttribute('aria-label',labelText);input.oninput=()=>{proposal=null;proposalView.replaceChildren();drafts.set(target.semantic_id,{state_key:source.state_key,fields:Object.fromEntries(Object.entries(inputs).map(([k,node])=>[k,node.value]))});status.textContent='Local draft; Review before Apply.';onDraftChange();updateState();};label.append(input);fields.append(label);inputs[key]=input;}

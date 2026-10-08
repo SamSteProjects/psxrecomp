@@ -115,7 +115,7 @@ import {openNpcAnimationOperands} from './npc-animation-operands.js';
 import {openNpcEffectColors} from './npc-effect-colors.js';
 import {openNpcTransitions} from './npc-transitions.js';
 import {renderEffectColorAuthoring} from './script-effect-colors.js';
-import {mountAnimationOperands} from './script-animation-operands.js';
+import {mountAnimationOperands,currentAnimationSelection} from './script-animation-operands.js';
 import {openNpcFacing} from './npc-facing.js';
 import {openNpcModelSelectors} from './npc-model-selectors.js';
 import {openNpcFlags} from './npc-flags.js';
@@ -3905,6 +3905,8 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
         getContext:()=>({projectPath:state.project?.path,sceneId:state.scene?.id,mode:state.project?.mode,scriptKey:state.script_authoring_state_key}),
         busy:()=>busy,setBusy,api,getProjectSourceKey:()=>state.project_copy_source_key,selectInstruction:(pc,reveal=true)=>instructionNavigation.select(pc,true,reveal),
         reopen:pc=>openActorScript(scriptEntity,true,null,null,pc),
+        canEditAnimation:(snapshot,pc)=>{try{if(!scriptDialog.open||scriptReport!==accepted||sceneAnimationController?.active())return false;currentAnimationSelection(snapshot,accepted.animation_operand_authoring,pc,state);return true;}catch{return false;}},
+        onEditAnimation:(snapshot,pc)=>{try{const selection=currentAnimationSelection(snapshot,accepted.animation_operand_authoring,pc,state);animationOperandControls?.select(selection.pc);scriptDialog.querySelector('.animation-operands-authoring')?.scrollIntoView({block:'start'});}catch(error){notify(error.message,true);}},
         onDraftChange:drafts=>{for(const id of scriptDrafts.keys())if(id.includes('/branch/'))scriptDrafts.delete(id);for(const [id,value] of drafts)scriptDrafts.set(id,value);updateScriptActions();},
         onError:error=>{if(scriptDialog.open&&scriptReport===accepted)scriptDialog.querySelector('.dialog-error').textContent=error.message;}});
       scriptBranchControls.ready.then(()=>{if(scriptDialog.open&&scriptReport===accepted){if(Number.isInteger(focusInstruction))scriptBranchControls?.select(focusInstruction);updateScriptActions();}});
@@ -4034,6 +4036,7 @@ function renderScriptAnimationOperands(){
   const owner=scriptEntity.id,accepted=scriptReport,key=state.script_authoring_state_key;
   const current=()=>scriptDialog.open&&scriptEntity?.id===owner&&scriptReport===accepted&&state.script_authoring_state_key===key&&state.project?.mode==='edit'&&!sceneAnimationController?.active();
   animationOperandControls=mountAnimationOperands($('script-report'),{source:scriptReport.animation_operand_authoring,owner,stateKey:key,current,busy:()=>busy,drafts:scriptDrafts,onDraftChange:updateScriptActions,
+    onReturn:pc=>{if(current()&&!busy){scriptBranchControls?.select(pc);scriptDialog.querySelector('.script-branch-authoring')?.scrollIntoView({block:'start'});}},
     requestReview:async body=>{if(!current()||busy)throw new Error('Animation source changed; reopen script inspection.');setBusy(true);try{const response=await fetch('/api/script-animation-operand-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await response.json();if(!response.ok||data.error)throw new Error(typeof data.error==='string'?data.error:'Animation Review failed.');return data;}finally{setBusy(false);}},
     command:async body=>{if(!await api('/api/command',body))throw new Error($('status').textContent);return true;},reopen:pc=>openActorScript(scriptEntity,true,null,null,pc),
     onError:error=>{if(scriptDialog.open&&scriptReport===accepted)scriptDialog.querySelector('.dialog-error').textContent=error.message;},
