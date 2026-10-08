@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {decodeNpcCurrentScript,npcCurrentMovementSelection,npcCurrentSystemSelection,npcCurrentOperandSelection} from '../editor/npc-current-script.js';
+import {decodeNpcCurrentScript,npcCurrentMovementSelection,npcCurrentSystemSelection,npcCurrentOperandSelection,npcCurrentBranchSelection,npcCurrentDialogueSelection} from '../editor/npc-current-script.js';
 assert(process.argv[2],'Fresh Retail Current and movement qualification required');
 const f=JSON.parse(fs.readFileSync(process.argv[2],'utf8')),before=structuredClone(f),current=await decodeNpcCurrentScript(f.report,f.entity_id,f.state);
 const selected=npcCurrentMovementSelection(current,f.movement,35,f.state);assert.equal(selected.entity_id,f.entity_id);assert.equal(selected.movement_id,'script://town01/actors/man-p1/0011/movement/0023');assert.deepEqual(selected.values,{x:64,z:16384,move_id:13});
@@ -26,3 +26,14 @@ for(const [family,pc,values,capability] of [['facing',35,{sector:7},'actor_facin
 assert.throws(()=>npcCurrentOperandSelection(current,f.waits,35,f.state,'waits'));assert.throws(()=>npcCurrentOperandSelection(current,f.facing,35,f.state,'other'));
 if(process.argv[3]){const w=JSON.parse(fs.readFileSync(process.argv[3],'utf8')),report=await decodeNpcCurrentScript(w.report,w.entity_id,w.state),row=w.waits.options.targets[0];assert.deepEqual(npcCurrentOperandSelection(report,w.waits,row.pc,w.state,'waits').values,row.effective_values);const changed=structuredClone(w.waits);changed.options.targets[0].effective_values.duration_ticks++;assert.throws(()=>npcCurrentOperandSelection(report,changed,row.pc,w.state,'waits'));}
 console.log('Current facing/wait/flag-bit navigation qualifies source bytes and effective operands with independent family, owner, Edit and stale gates.');
+
+assert.deepEqual(npcCurrentBranchSelection(current,f.branches,22,f.state).values,{target_pc:55});const text=npcCurrentDialogueSelection(current,f.dialogue,84,f.state);assert.equal(text.run_ids.length,2);assert.deepEqual(f,before);
+for(const [source,pc,capability,select] of [[f.branches,22,'actor_branch_authoring',npcCurrentBranchSelection],[f.dialogue,84,'actor_dialogue_authoring',npcCurrentDialogueSelection]]){
+ for(const badPc of [null,35,99999])assert.throws(()=>select(current,source,badPc,f.state));
+ for(const change of [s=>s.project.mode='live',s=>s.capabilities[capability]=false,s=>s.project_copy_source_key='a'.repeat(64)]){const state=structuredClone(f.state);change(state);assert.throws(()=>select(current,source,pc,state));}
+}
+const wrongBranch=structuredClone(f.branches);wrongBranch.options.targets[0].operand_pc++;assert.throws(()=>npcCurrentBranchSelection(current,wrongBranch,22,f.state));const wrongText=structuredClone(f.dialogue);wrongText.options.runs[0].pc++;assert.throws(()=>npcCurrentDialogueSelection(current,wrongText,84,f.state));
+if(process.argv[4]){const m=JSON.parse(fs.readFileSync(process.argv[4],'utf8')),report=await decodeNpcCurrentScript(m.report,m.entity_id,m.state),row=m.model_selectors.options.targets[0];assert.deepEqual(npcCurrentOperandSelection(report,m.model_selectors,row.pc,m.state,'model_selectors').values,row.effective_values);const forged=structuredClone(report);forged.inspection.instructions.find(r=>r.pc===row.pc).raw_hex='00'.repeat(forged.inspection.instructions.find(r=>r.pc===row.pc).length);assert.throws(()=>npcCurrentOperandSelection(forged,m.model_selectors,row.pc,m.state,'model_selectors'));}
+console.log('Current branch words, source glyph spans and signed model selectors qualify exact ownership, bytes and selection.');
+
+if(process.argv[5]){const menu=JSON.parse(fs.readFileSync(process.argv[5],'utf8')),report=await decodeNpcCurrentScript(menu.report,menu.entity_id,menu.state),row=menu.dialogue.options.runs.find(r=>r.kind==='menu_label');assert(npcCurrentDialogueSelection(report,menu.dialogue,row.menu_pc,menu.state).run_ids.includes(row.semantic_id));}

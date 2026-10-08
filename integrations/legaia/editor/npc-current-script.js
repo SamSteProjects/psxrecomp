@@ -5,6 +5,9 @@ import {decodeNpcSystemFlagsSource,openNpcSystemFlags} from './npc-system-flags.
 import {decodeNpcWaitSource,openNpcWaits} from './npc-waits.js';
 import {decodeNpcFacingSource,openNpcFacing} from './npc-facing.js';
 import {decodeNpcFlagsSource,openNpcFlags} from './npc-flags.js';
+import {decodeNpcModelSelectorsSource,openNpcModelSelectors} from './npc-model-selectors.js';
+import {decodeNpcBranchesSource,openNpcBranches} from './npc-branches.js';
+import {decodeNpcDialogueSource,openNpcDialogue} from './npc-dialogue.js';
 const same=(a,b)=>JSON.stringify(canonicalScriptMetadata(a))===JSON.stringify(canonicalScriptMetadata(b));
 const hash=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
 async function recordHash(hex){if(typeof hex!=='string'||!hex.length||hex.length>131072||hex.length%2||!/^[a-f0-9]+$/.test(hex))throw Error('Current NPC record bytes are invalid.');const bytes=Uint8Array.from(hex.match(/../g),v=>parseInt(v,16));return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(v=>v.toString(16).padStart(2,'0')).join('');}
@@ -28,6 +31,7 @@ export function npcCurrentSystemSelection(value,source,pc,state){
  return {entity_id:value.entity_id,system_flag_id:row.semantic_id,pc:row.pc,values:structuredClone(row.effective_values)};
 }
 const operandFamilies={
+ model_selectors:{label:'Edit selected NPC model selector',route:'/api/npc-model-selectors-source',capability:'actor_model_selector_authoring',decode:decodeNpcModelSelectorsSource,open:openNpcModelSelectors,field:'model_selector_signed'},
  waits:{label:'Edit selected NPC wait',route:'/api/npc-waits-source',capability:'actor_wait_authoring',decode:decodeNpcWaitSource,open:openNpcWaits,field:'duration_ticks'},
  facing:{label:'Edit selected NPC facing',route:'/api/npc-facing-source',capability:'actor_facing_authoring',decode:decodeNpcFacingSource,open:openNpcFacing,field:'sector'},
  flags:{label:'Edit selected NPC flag bit',route:'/api/npc-flags-source',capability:'actor_flag_authoring',decode:decodeNpcFlagsSource,open:openNpcFlags,field:'bit'}
@@ -41,7 +45,9 @@ export function npcCurrentOperandSelection(value,source,pc,state,family){
  const bytes=Uint8Array.from(raw.match(/../g),v=>parseInt(v,16)),header=bytes[0]&128?2:1,op=bytes[0]&127;
  if(instruction.target_context!==(header===2?bytes[1]:null))throw Error('Current operand dispatch differs from its native header.');
  let operand;
- if(family==='waits'){
+ if(family==='model_selectors'){
+  if(op!==0x4c||bytes.length!==header+3||bytes[header]!==0x50)throw Error('Current model-selector encoding is unresolved.');const word=bytes[header+1]|bytes[header+2]<<8;operand=word&32768?word-65536:word;
+ }else if(family==='waits'){
   if(op!==0x4a||bytes.length!==header+2)throw Error('Current wait encoding is unresolved.');operand=bytes[header]|bytes[header+1]<<8;
  }else if(family==='flags'){
   const [bank,operation]=instruction.mnemonic.split('_'),opcode=0x2b+['LFLAG','GFLAG','CFLAG'].indexOf(bank)*3+['SET','CLEAR','TEST'].indexOf(operation);
@@ -55,6 +61,33 @@ export function npcCurrentOperandSelection(value,source,pc,state,family){
  if(operand!==row.effective_values[editor.field])throw Error('Current NPC operand differs from its qualified authoring source.');
  return {entity_id:value.entity_id,operand_id:row.semantic_id,pc:row.pc,values:structuredClone(row.effective_values)};
 }
+const branchWords={JMP_REL:[0,'unconditional'],COND_JMP:[2,'test_passed'],BBOX_TEST:[4,'outside_box'],SYSFLAG_TEST:[1,'flag_set'],FLAG_WORD_BRANCH:[2,'flag_bit_set'],FIELD_68_BRANCH:[1,'field_68_zero'],ACTOR_SEARCH_BRANCH:[3,'search_match'],VALUE_COMPARE_BRANCH:[4,'comparison_true']};
+export function npcCurrentBranchSelection(value,source,pc,state){
+ const accepted=decodeNpcBranchesSource(source,value.entity_id,state),row=accepted.options.targets.find(r=>r.pc===pc),instruction=[...value.inspection.instructions,...(value.inspection.unvisited_instructions??[])].find(r=>r.pc===pc),known=value.donor.inspection.instructions.find(r=>r.pc===pc);
+ if(state.project?.mode!=='edit'||state.capabilities?.actor_branch_authoring!==true||value.schema_version!=='legaia.npc-current-script.v1'||value.project_source_key!==accepted.project_source_key||!same(value.draft,accepted.draft)||!row||!instruction||!known||instruction.mnemonic!==row.mnemonic||known.mnemonic!==row.mnemonic||instruction.length!==known.length||row.source_record_sha256!==value.donor.inspection.record.sha256||row.target_context!==instruction.target_context)throw Error('Select a qualified Current NPC branch in Edit mode.');
+ const layout=branchWords[row.mnemonic],raw=instruction.raw_hex,record=value.inspection.record.raw_hex;
+ if(!layout||typeof raw!=='string'||!/^[a-f0-9]+$/.test(raw)||raw.length!==instruction.length*2||record.slice(pc*2,(pc+instruction.length)*2)!==raw)throw Error('Current branch bytes differ from their record.');
+ const bytes=Uint8Array.from(raw.match(/../g),v=>parseInt(v,16)),header=bytes[0]&128?2:1,relative=header+layout[0],operand=pc+relative;
+ if(row.operand_pc!==operand||row.condition!==layout[1]||relative+2>bytes.length||instruction.target_context!==(header===2?bytes[1]:null)||row.mnemonic==='SYSFLAG_TEST'&&(header!==1||(bytes[0]&240)!==112))throw Error('Current branch target-word layout differs.');
+ if(row.mnemonic!=='SYSFLAG_TEST'&&raw.slice(0,relative*2)!==known.raw_hex.slice(0,relative*2))throw Error('Current branch condition bytes changed.');
+ const target=(operand+(bytes[relative]|bytes[relative+1]<<8))&65535,edges=instruction.successors?.filter(e=>e.condition===layout[1]);
+ if(target!==row.effective_values.target_pc||edges?.length!==1||edges[0].pc!==target)throw Error('Current branch destination differs from its native target word.');
+ return {entity_id:value.entity_id,operand_id:row.semantic_id,pc,values:structuredClone(row.effective_values)};
+}
+export function npcCurrentDialogueSelection(value,source,pc,state){
+ const accepted=decodeNpcDialogueSource(source,value.entity_id,state);
+ if(state.project?.mode!=='edit'||state.capabilities?.actor_dialogue_authoring!==true||value.schema_version!=='legaia.npc-current-script.v1'||value.project_source_key!==accepted.project_source_key||!same(value.draft,accepted.draft))throw Error('Select qualified Current NPC text in Edit mode.');
+ const runs=accepted.options.runs.filter(r=>r.kind==='menu_label'?r.menu_pc===pc:r.dialogue_pc===pc),messages=[...value.inspection.dialogues,...(value.inspection.unvisited_dialogues??[])],instructions=[...value.inspection.instructions,...(value.inspection.unvisited_instructions??[])];
+ if(!runs.length)throw Error('Selected instruction has no qualified text runs.');
+ for(const run of runs){const menu=run.kind==='menu_label',parent=(menu?instructions:messages).find(r=>r.pc===pc),known=(menu?value.donor.inspection.instructions:value.donor.inspection.dialogues).find(r=>r.pc===pc);
+  if(!parent||!known||parent.length!==known.length||menu&&parent.mnemonic!=='DIALOGUE_PICKER'||run.pc<=pc||run.pc+run.byte_length>pc+parent.length||run.decoded_byte_offset!==value.donor.inspection.record.byte_offset+run.pc)throw Error('Current text run escapes its qualified source boundary.');
+  const menuOption=menu?known.operands?.options?.find(option=>run.dialogue_id===`script://${accepted.draft.donor_entity_id.slice(8)}/menu/${pc.toString(16).padStart(4,'0')}/option/${option.index}`):null,tokens=menu?menuOption?.label_tokens:known.tokens;
+  if(!menu&&run.dialogue_id!==known.semantic_id||run.semantic_id!==run.dialogue_id+'/run/'+run.pc.toString(16).padStart(4,'0')||!Array.isArray(tokens)||Array.from(run.text).some((character,index)=>!tokens.some(token=>token.pc===run.pc+index&&token.kind==='glyph'&&token.length===1&&token.text===character)))throw Error('Current text run includes an unqualified control or glyph span.');
+  const ascii=text=>Array.from(text,c=>c.charCodeAt(0).toString(16).padStart(2,'0')).join('');
+  if(/[^\x20-\x7e]|[\^|]/.test(run.text+run.effective_text)||value.donor.inspection.record.raw_hex.slice(run.pc*2,(run.pc+run.byte_length)*2)!==ascii(run.text)||value.inspection.record.raw_hex.slice(run.pc*2,(run.pc+run.byte_length)*2)!==ascii(run.effective_text))throw Error('Current text differs from its native equal-span glyph bytes.');
+ }
+ return {entity_id:value.entity_id,pc,run_ids:runs.map(r=>r.semantic_id)};
+}
 export function openNpcCurrentScript({entityId,getState,isBusy,renderInstructions,showTargets,focusPc,targetSettings=null,canEdit=()=>false,api}){
  if(isBusy())return;const state=getState(),key=state.project_copy_source_key,draft=structuredClone(state.actor_drafts?.[entityId]);if(!draft||draft.scene_id!==state.scene?.id)return;
  const dialog=document.createElement('dialog');dialog.id='npc-current-script-dialog';dialog.style.cssText='width:min(900px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;overflow-wrap:anywhere';
@@ -67,17 +100,19 @@ export function openNpcCurrentScript({entityId,getState,isBusy,renderInstruction
  dialog.querySelector('[data-status]').textContent=`Retail ${value.donor.inspection.record.sha256} · Current ${report.record.sha256} · ${value.changed_byte_count} changed bytes. Project unchanged.`;
  renderNpcScriptContents(dialog.querySelector('[data-content]'),report,(host,r)=>renderInstructions(host,r,r.semantic_id,null,pc=>{selectedPc=pc;updateEdit();},{label:'Walk through Current NPC instructions',current,getContext:()=>structuredClone(context),requalify:async({signal})=>{const fresh=await post(signal);if(!same(fresh,value))throw Error('Current NPC source qualification changed.');return true;}}),value,'npc_authored_script_source');
  if(typeof api==='function'){
-  const tools=document.createElement('section');tools.dataset.currentNpcEdit='';dialog.querySelector('[data-content]').before(tools);
+  const tools=document.createElement('section'),actions=document.createElement('div'),note=document.createElement('p');tools.dataset.currentNpcEdit='';actions.style.cssText='display:flex;flex-wrap:wrap;gap:8px';note.className='field-note';note.setAttribute('role','status');tools.append(actions,note);dialog.querySelector('[data-content]').before(tools);
   const editors=[
    {label:'Edit selected NPC destination',route:'/api/npc-movement-source',capability:'actor_movement_authoring',decode:decodeNpcMovementSource,select:npcCurrentMovementSelection,open:openNpcMovement},
    {label:'Edit selected NPC system selector',route:'/api/npc-system-flags-source',capability:'npc_system_selector_authoring',decode:decodeNpcSystemFlagsSource,select:npcCurrentSystemSelection,open:openNpcSystemFlags},
+   {label:'Edit selected NPC branch',route:'/api/npc-branches-source',capability:'actor_branch_authoring',decode:decodeNpcBranchesSource,select:npcCurrentBranchSelection,open:openNpcBranches},
+   {label:'Edit selected NPC dialogue',route:'/api/npc-dialogue-source',capability:'actor_dialogue_authoring',decode:decodeNpcDialogueSource,select:npcCurrentDialogueSelection,open:openNpcDialogue},
    ...Object.entries(operandFamilies).map(([family,editor])=>({...editor,select:(value,source,pc,state)=>npcCurrentOperandSelection(value,source,pc,state,family)}))
   ];
-  for(const editor of editors){editor.button=document.createElement('button');editor.button.type='button';editor.button.textContent=editor.label;editor.note=document.createElement('p');editor.note.className='field-note';editor.pending=true;editor.source=null;editor.failure='';tools.append(editor.button,editor.note);
+  for(const editor of editors){editor.button=document.createElement('button');editor.button.type='button';editor.button.textContent=editor.label;editor.pending=true;editor.source=null;editor.failure='';actions.append(editor.button);
    editor.selection=()=>{try{if(current()&&canEdit()&&!isBusy()&&!editor.pending&&editor.source)return editor.select(value,editor.source,selectedPc,getState());}catch{}return null;};
    editor.button.onclick=()=>{const selection=editor.selection();if(!selection)return;const pc=selection.pc,returnCurrent=()=>{const next=getState().actor_drafts?.[entityId];if(!isBusy()&&next?.scene_id===draft.scene_id&&next?.donor_entity_id===draft.donor_entity_id)openNpcCurrentScript({entityId,getState,isBusy,renderInstructions,showTargets,focusPc:pc,targetSettings,canEdit,api});};dialog.close();editor.open({entityId,getState,isBusy,canEdit,api,showTargets,focusPc:pc,onReturn:returnCurrent,onApplied:returnCurrent});};
   }
-  updateEdit=()=>{for(const editor of editors){const selection=editor.selection();editor.button.disabled=!selection;editor.note.textContent=!current()?'Source changed. Reopen Current inspection.':editor.pending?'Qualifying authoring source…':editor.failure||(selection?'Qualified instruction at0x'+selection.pc.toString(16)+'. Review clone-owned operands before Apply.':'Select a supported instruction in Edit mode.');}};
+  updateEdit=()=>{let qualified=false;for(const editor of editors){const selection=editor.selection();editor.button.disabled=!selection;qualified ||=!!selection;}note.textContent=!current()?'Source changed. Reopen Current inspection.':!canEdit()?'Switch to Edit mode to edit selected script content.':editors.some(e=>e.pending)?'Qualifying authoring sources…':qualified?'Selected content is qualified. Review clone-owned edits before Apply.':editors.filter(e=>e.failure).map(e=>e.failure).join(' · ')||'Select a supported instruction or dialogue segment to edit its clone-owned content.';};
   editTimer=setInterval(updateEdit,300);updateEdit();
   await Promise.all(editors.map(async editor=>{if(canEdit()&&getState().capabilities?.[editor.capability]===true){try{const response=await fetch(editor.route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entityId}),signal:controller.signal}),raw=await response.json();if(!response.ok)throw Error(raw.error??'Authoring source unavailable.');editor.source=editor.decode(raw,entityId,getState());}catch(error){if(!controller.signal.aborted)editor.failure=error.message;}}editor.pending=false;if(current())updateEdit();}));
  }
