@@ -44,6 +44,15 @@ export function createScriptFlagSandbox(report){
       else next=row.pc+2;
      }else{b.value=(op==='SET'?b.value|flag:b.value&~flag)>>>0;b.known=(b.known|flag)>>>0;next=row.pc+2;}
     }
+   }else if(row.mnemonic==='FLAG_WORD_BRANCH'){
+    const bank={actor_flags:'context',actor_local_flags:'local',global_story_word:'global'}[a?.flag_word],sub={actor_flags:0xa0,actor_local_flags:0xa1,global_story_word:0xa2}[a?.flag_word],raw=a?.bit_encoded,delta=a?.delta,target=Number.isSafeInteger(delta)?(row.pc+3+delta)&65535:null;
+    if(!bank||row.opcode!==0x4c||row.length!==5||a.sub_op!==sub||!Number.isSafeInteger(raw)||raw<0||raw>255||!Number.isSafeInteger(delta)||delta< -32768||delta>32767||a.target!==target||row.successors.length!==2||row.successors[0].pc!==target||row.successors[0].condition!=='flag_bit_set'||row.successors[1].pc!==row.pc+5||row.successors[1].condition!=='flag_bit_clear'){status='unsupported';reason='Flag-word branch metadata is not qualified.';}
+    else if(bank==='local'&&(raw&31)>=16){status='unsupported';reason='Local flag bits above 15 have unresolved bank-width semantics.';}
+    else{
+     const bit=raw&31,flag=(2**bit)>>>0,b=state.banks[bank],known=(b.known&flag)!==0,set=known?(b.value&flag)!==0:null;effect={bank,bit,operation:'branch_test',tested_value:set,successor_index:set===null?null:set?0:1};
+     if(!known){status='unknown_flag';reason='Branch predicate depends on an unknown hypothetical bit; no successor is chosen.';}
+     else next=row.successors[effect.successor_index].pc;
+    }
    }else if(row.mnemonic==='NOP'&&[0x21,0x24,0x25,0x48].includes(row.opcode)&&row.length===1&&row.successors.length===1&&row.successors[0].pc===row.pc+1&&row.successors[0].condition==='encoded_continuation')next=row.pc+1;
    else if(row.mnemonic==='JMP_REL'&&row.opcode===0x26&&row.length===3&&Number.isSafeInteger(a?.delta)&&a.delta>=-32768&&a.delta<=32767&&row.successors.length===1&&row.successors[0].condition==='unconditional'&&row.successors[0].pc===((row.pc+1+a.delta)&65535))next=row.successors[0].pc;
    else{status='unsupported';reason='This instruction requires semantics or host effects outside the flag sandbox.';}
@@ -65,6 +74,7 @@ export function mountScriptFlagSandbox(host,{report,selection,current,busy,selec
   if(disposed)return;const fresh=current(),blocked=!fresh||busy();if(!fresh)engine?.reset();const s=engine?.snapshot();start.disabled=blocked||!engine?.has(selection());entry.disabled=blocked||!s?.entry_decoded;step.disabled=run.disabled=blocked||s?.state?.status!=='ready';back.disabled=blocked||!s?.history.length;reset.disabled=blocked||!s?.state;for(const input of Object.values(inputs))input.disabled=blocked;
   values.replaceChildren();if(!fresh){status.textContent='Source context changed; reopen inspection.';return;}if(!s)return;
   status.textContent=s.state?`${s.history.length} of ${limit} simulated instructions · 0x${s.state.pc.toString(16).toUpperCase().padStart(4,'0')} · ${s.state.status}${s.state.reason?' · '+s.state.reason:''}`:'Choose hypothetical words, then start at a decoded instruction.';
+  const allDecisions=s.history.filter(r=>r.effect?.operation==='branch_test'),decisions=allDecisions.slice(-16);if(allDecisions.length>decisions.length)values.append(el('p',`Showing last ${decisions.length} of ${allDecisions.length} hypothetical branch decisions.`));for(const row of decisions){const e=row.effect;values.append(el('p',`Branch 0x${row.before.pc.toString(16).toUpperCase().padStart(4,'0')} · ${e.bank} bit ${e.bit} ${e.tested_value===null?'unknown; no choice':e.tested_value?'set':'clear'}${e.successor_index===null?'':` → 0x${row.after.pc.toString(16).toUpperCase().padStart(4,'0')}`}`));}
   if(s.state)for(const [bank,b] of Object.entries(s.state.banks))values.append(el('p',bank+' value 0x'+b.value.toString(16).toUpperCase().padStart(widths[bank]/4,'0')+' · known mask 0x'+b.known.toString(16).toUpperCase().padStart(widths[bank]/4,'0')));
  }
  function act(fn){if(disposed||!current()||busy()||!engine)return;try{const s=fn();update();if(s.state&&engine.has(s.state.pc))selectInstruction(s.state.pc,false);}catch(error){status.textContent=error.message;onError(error);}}

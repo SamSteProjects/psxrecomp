@@ -324,3 +324,7 @@
 .script-branch-authoring [data-branch-links] button{max-width:100%;white-space:normal;text-align:left;overflow-wrap:anywhere}
 [data-branch-walkthrough]{min-width:0;max-width:100%;overflow-wrap:anywhere}
 [data-branch-walkthrough]>.script-walkthrough-tools button{max-width:100%;white-space:normal;text-align:left}
+
+[data-flag-sandbox] { min-width:0; overflow-wrap:anywhere; }
+[data-flag-sandbox] > label { display:block; margin:12px 0; }
+[data-flag-sandbox] > label input { display:block; width:100%; box-sizing:border-box; }
