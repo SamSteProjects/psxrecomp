@@ -2193,6 +2193,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!=fields:raise ProjectError('MIDI source recovery requires exact Current fields')
                     from .audio_midi_sources import library,download
                     self._json(200,(library if route=='/api/audio-midi-sources' else download)(self.server.project,**body));return
+                if route == '/api/audio-midi-source-removal-review':
+                    if set(body)!={'receipt_key','expected_authoring_key'}:
+                        raise ProjectError('MIDI removal Review requires exact Current receipt and freshness fields')
+                    from .audio_midi_sources import review_removal
+                    self._json(200,review_removal(self.server.project,**body));return
                 if route == '/api/audio-sequence-midi-review':
                     if set(body)!={'asset_id','expected_entry_sha256','expected_authoring_key','midi_base64'}:
                         raise ProjectError('MIDI Review requires exact native source, freshness and upload fields')

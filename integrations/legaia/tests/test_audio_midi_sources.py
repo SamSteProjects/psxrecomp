@@ -3,7 +3,7 @@ from hashlib import sha256
 import base64,json,os,unittest
 import test_audio_authoring as base
 from test_audio_sequence_midi import export_fixture
-from sdk.audio_midi_sources import review,library,download,validate_collection,preserve_build_inputs
+from sdk.audio_midi_sources import review,library,download,validate_collection,preserve_build_inputs,review_removal
 from sdk.audio_authoring import source_key,_current
 from sdk.build import authored_state_key
 from sdk.project import ProjectError,ProjectService,digest
@@ -67,6 +67,32 @@ class MidiSources(unittest.TestCase):
         loaded=json.loads((directory/'manifest.json').read_text(encoding='utf-8'));self.assertEqual(loaded,manifest)
         self.assertEqual(loaded['manifest_key'],digest({k:v for k,v in loaded.items() if k!='manifest_key'}));self.assertFalse(loaded['native_content_changed'])
         with self.assertRaises(ProjectError):preserve_build_inputs(self.project,destination,'f'*64,self.project.root)
+
+    def test_reviewed_removal_preserves_native_file_history_and_saved_build(self):
+        raw,_=self.retain();receipt=next(iter(self.project.audio_midi_sources.values()));key=receipt['receipt_key']
+        native=_current(self.project,self.identifier,self.entry_hash)[1];before=deepcopy(self.project._document())
+        path=self.project.root/'Authored/Audio/MidiSources'/(receipt['midi_sha256']+'.mid')
+        context=source_key(self.project);report=review_removal(self.project,key,context)
+        self.assertEqual(self.project._document(),before);self.assertFalse(report['source_file_deleted']);self.assertEqual(report['registered_bytes_released'],len(raw))
+        for changes in [{'review_key':'f'*64},{'expected_authoring_key':'f'*64},{'extra':True}]:
+            with self.assertRaises(ProjectError):self.project.command({**dict(type='remove_audio_midi_source',receipt_key=key,expected_authoring_key=context,review_key=report['review_key']),**changes})
+        self.project.command(dict(type='remove_audio_midi_source',receipt_key=key,expected_authoring_key=context,review_key=report['review_key']))
+        after=deepcopy(self.project._document());self.assertEqual(self.project.audio_midi_sources,{})
+        self.assertEqual(path.read_bytes(),raw);self.assertEqual(_current(self.project,self.identifier,self.entry_hash)[1],native)
+        self.project.undo();self.assertEqual(self.project._document(),before);self.project.redo();self.assertEqual(self.project._document(),after)
+        self.project.save();self.assertEqual(ProjectService.open(self.project.root)._document(),after)
+        with self.assertRaises(ProjectError):review_removal(self.project,key,source_key(self.project))
+
+
+    def test_shared_removal_keeps_registered_bytes_and_preserved_source(self):
+        raw,_=self.retain();first=next(iter(self.project.audio_midi_sources.values()));other=deepcopy(first)
+        other['review_key']='f'*64;other.pop('receipt_key');other['receipt_key']=digest(other)
+        self.project.audio_midi_sources[other['receipt_key']]=other
+        report=review_removal(self.project,first['receipt_key'],source_key(self.project))
+        self.assertEqual(report['remaining_shared_receipts'],1);self.assertEqual(report['registered_bytes_released'],0)
+        self.project.command(dict(type='remove_audio_midi_source',receipt_key=first['receipt_key'],expected_authoring_key=source_key(self.project),review_key=report['review_key']))
+        self.assertEqual(list(self.project.audio_midi_sources),[other['receipt_key']])
+        self.assertEqual(base64.b64decode(download(self.project,other['receipt_key'],source_key(self.project))['midi_base64']),raw)
 
 
 if __name__=='__main__':unittest.main()

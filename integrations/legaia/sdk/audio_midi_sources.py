@@ -13,7 +13,7 @@ from .audio_sequence_midi import decode_upload
 from .audio_authoring import _source, source_key
 from .project import ProjectError, digest, atomic_write, canonical
 
-COMMANDS={'retain_audio_midi_source'}
+COMMANDS={'retain_audio_midi_source','remove_audio_midi_source'}
 FIELDS={'schema_version','asset_id','source_scene_id','source_record','midi_sha256',
         'byte_length','edits','candidate_sequence_sha256','review_key','receipt_key'}
 HASH=lambda v:isinstance(v,str) and re.fullmatch('[a-f0-9]{64}',v) is not None
@@ -94,6 +94,14 @@ def review(project,asset_id,expected_entry_sha256,expected_authoring_key,midi_ba
 
 
 def command(project,value):
+    if value.get('type')=='remove_audio_midi_source':
+        if set(value)!={'type','receipt_key','expected_authoring_key','review_key'}:raise ProjectError('MIDI removal requires exact reviewed fields')
+        proposal=review_removal(project,value['receipt_key'],value['expected_authoring_key'])
+        if value['review_key']!=proposal['review_key']:raise ProjectError('MIDI sources changed; review removal again')
+        before=deepcopy(project.audio_midi_sources);after=deepcopy(before);del after[value['receipt_key']]
+        project.audio_midi_sources=after
+        project.undo_stack.append(dict(target='audio_midi_sources',before=before,after=deepcopy(after)));project.redo_stack.clear()
+        return
     args=('asset_id','expected_entry_sha256','expected_authoring_key','midi_base64')
     if set(value)!={'type','review_key',*args} or value['type']!='retain_audio_midi_source':raise ProjectError('MIDI retention requires exact reviewed fields')
     proposal=review(project,**{k:value[k] for k in args})
@@ -130,6 +138,20 @@ def download(project,receipt_key,expected_authoring_key):
     raw=read_source(project,r)
     if source_key(project)!=expected_authoring_key:raise ProjectError('MIDI sources changed during recovery')
     return dict(result,selected=r,midi_base64=base64.b64encode(raw).decode('ascii'))
+
+
+def review_removal(project,receipt_key,expected_authoring_key):
+    if project.mode!='edit':raise ProjectError('MIDI receipt removal requires Edit mode')
+    if not HASH(receipt_key):raise ProjectError('Choose a typed MIDI receipt identity')
+    result=library(project,expected_authoring_key);r=result['receipts'].get(receipt_key)
+    if r is None:raise ProjectError('MIDI receipt is absent from Current')
+    shared=sum(row['midi_sha256']==r['midi_sha256'] for row in result['receipts'].values())
+    report=dict(schema_version='legaia.audio-midi-source-removal.v1',authoring_key=expected_authoring_key,
+        receipt_key=receipt_key,midi_sha256=r['midi_sha256'],remaining_shared_receipts=shared-1,
+        registered_bytes_released=r['byte_length'] if shared==1 else 0,
+        source_file_deleted=False,native_content_changed=False,project_changed=False,runtime_state='not_observed')
+    report['review_key']=digest(report)
+    return report
 
 
 def preserve_build_inputs(project,destination,input_key,boundary):
