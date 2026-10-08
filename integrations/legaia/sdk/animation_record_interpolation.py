@@ -10,7 +10,15 @@ from .scene_preview import source_key
 from .project import ProjectError
 
 
-def interpolate_axis(kind,first,last,index,span):
+def interpolate_axis(kind,first,last,index,span,curve='linear'):
+    if (type(curve) is not str or curve not in ('linear','ease_in','ease_out','smoothstep')
+            or type(span) is not int or not 1<=span<=511 or type(index) is not int or not 0<=index<=span
+            or kind not in ('translation','rotation_psx')
+            or any(type(v) is not int or not (-2048<=v<=2047 if kind=='translation' else 0<=v<=4080 and v%16==0) for v in (first,last))):
+        raise ProjectError('Interpolation requires qualified native axes, bounded frame indices and a supported curve')
+    if curve=='ease_in':index,span=index*index,span*span
+    elif curve=='ease_out':index,span=2*index*span-index*index,span*span
+    elif curve=='smoothstep':index,span=index*index*(3*span-2*index),span*span*span
     def rounded(numerator):
         return (2*numerator+span)//(2*span)
     if kind=='translation':
@@ -21,7 +29,9 @@ def interpolate_axis(kind,first,last,index,span):
     return (rounded(first//16*span+delta*index)%256)*16
 
 
-def stage(project,scene_id,record_id,source_frame_indices,edits,object_index,start,end,expected_source_key,all_objects=False):
+def stage(project,scene_id,record_id,source_frame_indices,edits,object_index,start,end,expected_source_key,all_objects=False,curve='linear'):
+    if type(curve) is not str or curve not in ('linear','ease_in','ease_out','smoothstep'):
+        raise ProjectError('Choose a supported native interpolation curve')
     current=options(project,scene_id,record_id,expected_source_key);entry=current['entry']
     if (type(all_objects) is not bool or not current['edit_available'] or not isinstance(source_frame_indices,list)
             or not 2<=len(source_frame_indices)<=current['maximum_frame_count']
@@ -41,7 +51,7 @@ def stage(project,scene_id,record_id,source_frame_indices,edits,object_index,sta
     for frame in range(start,end+1):
         for obj in selected_objects:
             first,last=endpoints[obj]
-            after={kind:{axis:interpolate_axis(kind,first[kind][axis],last[kind][axis],frame-start,end-start) for axis in 'xyz'} for kind in ['translation','rotation_psx']}
+            after={kind:{axis:interpolate_axis(kind,first[kind][axis],last[kind][axis],frame-start,end-start,curve) for axis in 'xyz'} for kind in ['translation','rotation_psx']}
             row=rows.get((frame,obj))
             if row is None:
                 row=dict(frame_index=frame,object_index=obj);result.append(row)
@@ -54,4 +64,5 @@ def stage(project,scene_id,record_id,source_frame_indices,edits,object_index,sta
         raise ProjectError('Effective interpolation source changed during staging')
     report=dict(schema_version='legaia.animation-record-interpolation.v1',scene_id=scene_id,record_id=record_id,project_source_key=expected_source_key,source_frame_indices=deepcopy(source_frame_indices),before_edits=deepcopy(edits),edits=result,object_index=object_index,start=start,end=end,poses=poses,before_record_sha256=sha256(before).hexdigest(),after_record_sha256=review['candidate_record_sha256'],project_changed=False,gameplay_verified=False)
     if all_objects:report.update(schema_version='legaia.animation-record-interpolation.v2',all_objects=True,object_count=entry['object_count'])
+    if curve!='linear':report.update(schema_version='legaia.animation-record-interpolation.v4' if all_objects else 'legaia.animation-record-interpolation.v3',curve=curve)
     return report

@@ -1,5 +1,7 @@
 # Effective retained pose interpolation
 
+The retained editor now also supports [native interpolation curves](legaia-animation-interpolation-curves.md); Linear remains the default.
+
 The same editor now offers [complete native frame interpolation](legaia-animation-frame-interpolation.md) through an explicit scope selector. Selected rigid object remains the default; Complete rigid frame blends every existing object through a typed v2 staging receipt.
 
 The retained editor also supports [effective pose copying](legaia-animation-pose-copy.md) from one output frame across a destination range, using complete inherited and draft native axes.
