@@ -1,3 +1,4 @@
+import {createAssetResourceDiscovery,resourceAssetCategories} from '/asset-resource-discovery.js';
 import {copiedAnimationAsset} from '/animation-copy-selection.js';
 import {decodeSceneCatalog} from '/scene-catalog.js';
 import {openCatalogScenePreview} from '/catalog-scene-preview.js';
@@ -185,7 +186,7 @@ let sceneAnimationController=null;
 let sceneCameraInspector=null;
 let sceneAnimationWriteGuard=false;
 let worldmapControls=null,worldmapGeometryControls=null,worldPlacementControls=null,worldmapDraftPending=false;
-let projectAssetControls=null;
+let projectAssetControls=null,assetResourceDiscovery=null;
 let sceneResourceSelection=null;
 let scenePlacementMode=false,scenePlacementBoxMode=false,scenePlacementSelection=[],scenePlacementKey=null,scenePlacementInspection=null,scenePlacementTool=null;
 let actorGroupInspection=null,actorGroupSelection=[],actorGroupSelectionKey=null,actorGroupRangeAnchor=null,actorBoxMode=false;
@@ -878,6 +879,7 @@ function setBusy(value) {
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);updateAssetPlacementActions();
   assetNavigation?.afterRender(assetFocus);
+  if(!value)assetResourceDiscovery?.request();
   assetPrevious.disabled=value||assetPage===0;assetNext.disabled=value||assetPage>=assetPages-1;
   document.querySelectorAll('.model-preview-button').forEach(button=>button.disabled=value||((button.dataset.animationEdit==='true'||button.dataset.inspectorEdit==='true')&&state.project?.mode!=='edit'));
   if($('inspect-actor-candidate'))$('inspect-actor-candidate').disabled=value;
@@ -1709,11 +1711,12 @@ assetPrevious.type=assetNext.type='button';assetPrevious.textContent='Previous a
 assetPager.append(assetPrevious,assetPageStatus,assetNext);$('assets').before(assetPager);assetPager.hidden=true;
 assetPrevious.onclick=()=>{if(busy||assetPage<=0)return;assetPage--;renderAssets();};assetNext.onclick=()=>{if(busy||assetNext.disabled)return;assetPage++;renderAssets();};
 assetNavigation=mountAssetNavigation($('assets'),()=>[state.project?.path,state.scene?.id,projectAssetControls?.scope(),projectAssetControls?.filter()],delta=>{if(busy||projectAssetControls?.scope()!=='project'||assetPage+delta<0||assetPage+delta>=assetPages)return false;assetPage+=delta;renderAssets();return true;});
-$('asset-search').oninput=renderAssets;$('asset-category').onchange=renderAssets;
+$('asset-search').oninput=renderAssets;$('asset-category').onchange=()=>{renderAssets();assetResourceDiscovery?.request(true);};
 const assetSearchHelp=document.createElement('details');assetSearchHelp.id='asset-search-help';assetSearchHelp.innerHTML='<summary>Search filters</summary><p>Use name:, id:, type:, scene:, model:, confidence: or provenance:. Combine terms to narrow results; quote phrases and prefix a term with - to exclude it.</p><p>Examples: <code>type:model scene:town01 confidence:confirmed</code> · <code>name:&quot;Actor 0012&quot; -type:script</code>. Confidence searches recorded claims; a match does not confirm every property. Model filters include recorded imported and authored references, without proving runtime use. Project scope searches all retained imported memberships; active scope covers the refreshed scene. Project provenance searches include retained import/catalog hashes and source evidence. A match keeps the chosen source membership.</p>';assetTools.append(assetSearchHelp);
 const assetKeyboardHelp=document.createElement('p');assetKeyboardHelp.id='asset-keyboard-help';assetKeyboardHelp.textContent='Tab enters asset results. Up/Down browse records; Left/Right choose Open or Details. Home/End jump to the first/last visible record. PageUp/PageDown browse imported-project pages. Enter/Space activate the focused action.';assetSearchHelp.append(assetKeyboardHelp);$('assets').setAttribute('aria-describedby',assetKeyboardHelp.id);
 let resourceRecords=[],resourceLimitations=[],resourceContextKey=null,resourceKey=null,resourcePendingKey=null,resourceAbort=null,resourceError=null;
 const resourceStateKey=()=>JSON.stringify([state.project?.path,state.scene?.id,state.scene_preview_source_key,state.scene_flag_state_key,state.scene_transition_state_key,state.scene_region_state_key,state.scene_trigger_state_key]);
+assetResourceDiscovery=createAssetResourceDiscovery({getContext:()=>({key:resourceStateKey(),eligible:state.capabilities?.resource_catalog===true&&!!state.scene?.id&&!!state.scene_preview_source_key&&projectAssetControls?.scope()!=='project'&&resourceAssetCategories.has($('asset-category').value),busy,loaded:resourceKey===resourceStateKey(),pending:resourcePendingKey===resourceStateKey()}),load:refreshResources,onError:error=>notify(error.message,true)});
 let flagResourceDialog=null,transitionResourceDialog=null;
 $('resource-refresh').onclick=refreshResources;
 const transitionsButton=document.createElement('button');transitionsButton.id='scene-transitions';transitionsButton.textContent='Scene transitions';$('resource-refresh').after(transitionsButton);
@@ -1899,7 +1902,7 @@ function synchronizeResources(){
   textButton.hidden=!state.capabilities?.scene_text_search;textButton.disabled=busy||!state.capabilities?.scene_text_search;
   projectTextButton.hidden=!state.capabilities?.scene_text_search;projectTextButton.disabled=busy||!state.capabilities?.scene_text_search;
   $('resource-refresh').hidden=!state.capabilities?.resource_catalog;$('resource-refresh').disabled=busy||!state.capabilities?.resource_catalog;
-  $('resource-status').textContent=!state.capabilities?.resource_catalog?'Resource catalog is unavailable in this service.':resourceError ?? (resourcePendingKey?'Verifying scene resources…':resourceKey?`${resourceRecords.length} verified resource records`:'Refresh to load textures, animations, scripts, dialogue, flag references, transitions and field-map metadata.');
+  $('resource-status').textContent=!state.capabilities?.resource_catalog?'Resource catalog is unavailable in this service.':resourceError ?? (resourcePendingKey?'Verifying scene resources…':resourceKey?`${resourceRecords.length} verified resource records`:'Choose a resource category to load its catalog. Refresh scene resources retries or verifies it again.');
 }
 async function refreshResources(){
   if(busy||!state.capabilities?.resource_catalog)return;
@@ -2207,8 +2210,9 @@ function renderAssets(){
   const projectScope=projectAssetControls?.scope()==='project';
   const list=$('assets'),category=$('asset-category').value;let query=[],searchError=null;try{query=parseAssetQuery($('asset-search').value);}catch(error){searchError=error.message;}
   $('asset-search').setAttribute('aria-invalid',String(!!searchError));
-  assetScope.querySelector('p').textContent=`Models and actors come from the active imported scene; shared models retain that scene’s source variant. Scenes lists imported scenes. Authored assets gathers project-wide NPC drafts, actor edits, script dialogue edits, model and texture replacements and transform templates without a resource refresh. Refresh adds scene texture candidates, referenced scene-header animations and saved retained clips, actor and partition-two scripts, dialogue, source-scoped flag reference groups, decoded transition assets and supported field-map metadata; it also lists global world-map menu records and eight supported shared field clips, without claiming current actor playback or complete runtime coverage. ${state.capabilities?.actor_script_preview?'Script inspection and supported dialogue text tools are available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio lists supported global source VAB/SEQ headers and sound packs; scene playback, events and waveforms remain unverified. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
+  assetScope.querySelector('p').textContent=`Models and actors come from the active imported scene; shared models retain that scene’s source variant. Scenes lists imported scenes. Authored assets gathers project-wide NPC drafts, actor edits, script dialogue edits, model and texture replacements and transform templates without a resource refresh. Refresh adds scene texture candidates, referenced scene-header animations and saved retained clips, actor and partition-two scripts, dialogue, source-scoped flag reference groups, decoded transition assets and supported field-map metadata; it also lists global world-map menu records and eight supported shared field clips, without claiming current actor playback or complete runtime coverage. ${state.capabilities?.actor_script_preview?'Script inspection and supported dialogue text tools are available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio exposes qualified source bank, sequence and sample tools; scene playback and runtime instrument selection remain unverified. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
   if(projectScope)assetScope.querySelector('p').textContent='Project resources retain each recorded source scene and its provenance. Choose a source membership in Details before opening a shared asset. Discovery verifies imported sources without changing project data. Partial or unavailable coverage is listed above; residency, reachability and current playback remain unobserved.';
+  assetResourceDiscovery?.request();
   const records=assetRecords(),filtered=searchError?[]:records.filter(record=>(category==='all'||(category==='authored'?(!!record.authoredRecord||record.data?.authored_animation_record===true):record.type===category&&(category!=='actor'||projectScope||record.sceneId===state.scene?.id)))&&assetMatchesQuery(record,query));
   list.replaceChildren();$('asset-count').textContent=records.length;$('asset-results').textContent=searchError??`${filtered.length} / ${records.length} records`;
   const pageSignature=JSON.stringify([projectScope,projectAssetControls?.filter(),state.project_assets_source_key,category,$('asset-search').value]);
