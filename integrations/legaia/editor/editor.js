@@ -87,6 +87,7 @@ import {mountModelPlacementUsers} from '/model-placement-users.js';
 import {mountAnimationPlacementUsers,currentAnimationPlacementIds} from '/animation-placement-users.js';
 import {mountAnimationContributions} from '/animation-contributions.js';
 import {openStabilitySourceAudit} from '/sdk-stability-sources.js';
+import {openStabilityChecks} from '/sdk-stability-checks.js';
 import {mountHierarchyGroups,revealHierarchyEntities,matchingHierarchyPlacementIds} from '/hierarchy-groups.js';
 import {captureSceneViewHierarchy} from '/hierarchy-views.js';
 import {mountSceneToolDrawer} from '/scene-tool-drawer.js';
@@ -1347,6 +1348,8 @@ function frameSceneSelection(){
 $('frame-selected').onclick=frameSceneSelection;
 $('grid-toggle').onclick=()=>{grid=!grid;$('grid-toggle').classList.toggle('active',grid);$('grid-toggle').setAttribute('aria-pressed',grid);draw();};
 let stabilitySourceAudit=null;
+let stabilityChecks=null;
+$('diagnostics-dialog').addEventListener('close',()=>{if($('diagnostics-dialog').open)return;stabilityChecks?.dispose();stabilityChecks=null;});
 $('diagnostics-dialog').addEventListener('close',()=>{if($('diagnostics-dialog').open)return;stabilitySourceAudit?.dispose();stabilitySourceAudit=null;});
 $('diagnostics-button').onclick=()=>{
   $('diagnostics').replaceChildren();
@@ -1356,6 +1359,7 @@ $('diagnostics-button').onclick=()=>{
   if(scenePreview||sceneError){const details=document.createElement('details');details.className='scene-preview-evidence';details.innerHTML='<summary>Scene model evidence and limits</summary><pre></pre>';details.querySelector('pre').textContent=JSON.stringify({source_key:sceneKey,error:sceneError,metrics:scenePreview?.metrics,limits:scenePreview?.limits,entities:scenePreview?.entities},null,2);$('diagnostics').append(details);}
   const check=document.createElement('button');check.textContent='Check SDK stability sources…';check.onclick=()=>{if(busy)return;stabilitySourceAudit?.dispose();const path=state.project?.path;stabilitySourceAudit=openStabilitySourceAudit({current:()=>$('diagnostics-dialog').open&&path===state.project?.path,busy:()=>busy,onError:error=>notify(error.message,true)});};$('diagnostics').append(check);
   $('diagnostics-dialog').showModal();
+  const freshCheck=document.createElement('button');freshCheck.textContent='Run Fresh SDK Stability Checks…';freshCheck.onclick=()=>{if(busy)return;stabilityChecks?.dispose();const path=state.project?.path;stabilityChecks=openStabilityChecks({current:()=>$('diagnostics-dialog').open&&path===state.project?.path,busy:()=>busy,onError:error=>notify(error.message,true)});};$('diagnostics').append(freshCheck);
 };
 groupPresetTool=mountPresetBatch({after:actorGroupTools,getState:()=>state,getSelection:()=>actorGroupSelection,isBusy:()=>busy,canEdit,
   canAuthor:()=>canEdit()&&!actorGroupInspection&&!scenePose&&!shapeDraft,setBusy,api,

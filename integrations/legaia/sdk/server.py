@@ -133,6 +133,8 @@ class EditorServer(ThreadingHTTPServer):
         self.scene_previews = ScenePreviewService()
         from .run import RunService
         self.runs = RunService()
+        from .stability_checks import StabilityCheckService
+        self.stability_checks = StabilityCheckService()
         self.observer = ObserverService(port=runtime_port)
         self.live_status = {"available": False, "state": "disconnected", "reason": {"message": "Runtime has not been checked"}}
         self.command_lock = threading.RLock()
@@ -284,6 +286,7 @@ class EditorServer(ThreadingHTTPServer):
         return state
 
     def server_close(self) -> None:
+        self.stability_checks.close()
         self.observer.close()
         super().server_close()
 
@@ -796,6 +799,9 @@ class EditorHandler(BaseHTTPRequestHandler):
                 except (ValueError, OSError):
                     self._json(503, {"error": "Recorded SDK stability manifest is unavailable or invalid."})
                 return
+            if route == '/api/sdk-stability-checks':
+                self._json(200, {'job': self.server.stability_checks.status()})
+                return
             if route == "/api/state":
                 self._json(200, self.server.state())
                 return
@@ -976,6 +982,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-placement-users.js": ("animation-placement-users.js", "text/javascript"),
                  "/animation-contributions.js": ("animation-contributions.js", "text/javascript"),
                  "/sdk-stability-sources.js": ("sdk-stability-sources.js", "text/javascript"),
+                 "/sdk-stability-checks.js": ("sdk-stability-checks.js", "text/javascript"),
                  "/command-history.js": ("command-history.js", "text/javascript"),
                  "/project-changes.js": ("project-changes.js", "text/javascript"),
                  "/preset-files.js": ("preset-files.js", "text/javascript"),
@@ -1092,6 +1099,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                 raise ProjectError("Command body must be an object")
             with self.server.command_lock:
                 route = urlsplit(self.path).path
+                if route == '/api/sdk-stability-checks/start':
+                    if body:
+                        raise ProjectError('Stability checks take no project, command or tool arguments')
+                    self._json(202, {'job': self.server.stability_checks.start()})
+                    return
+                if route == '/api/sdk-stability-checks/cancel':
+                    if set(body) != {'id'}:
+                        raise ProjectError('Stability cancellation requires the current job identity')
+                    self._json(200, {'job': self.server.stability_checks.cancel(body['id'])})
+                    return
                 if route == '/api/command-history':
                     if set(body) not in (set(), {'offset'}):
                         raise ProjectError('History listing accepts an optional offset only')

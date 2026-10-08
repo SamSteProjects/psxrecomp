@@ -58,3 +58,5 @@ Earlier attempts retain an initialization timing assumption and the queued-close
 abort issue corrected by synchronous disposal. No runtime fixture execution,
 native Build, game, attachment, installation or disc export occurred. The full
 SDK goal remains active and gameplay acceptance remains deferred.
+
+Fresh execution is now available separately through [Fresh SDK Stability Checks](legaia-stability-checks.md). This historical comparison remains source inclusion only.

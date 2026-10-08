@@ -1,5 +1,7 @@
 # Legaia stability and release parity
 
+Fresh fixture workflow — 2026-10-08: [Fresh SDK Stability Checks](legaia-stability-checks.md) reruns the existing production synthetic restore, host-audio reporting and precompile groups from an isolated source snapshot through editor Diagnostics. All three groups passed with current source equality; recorded eight-file inclusion also passed separately. Receipts bind 140 source/fixture/header files and tool executable hashes. This adds no new runtime patch or release/gameplay acceptance; source parity and manual limitations below remain separate.
+
 ## SDK Source Inclusion Diagnostic — 2026-10-07
 
 The current checkout still matches all eight recorded source/fixture hashes from the October 6 inclusion receipt and October 4 execution checkpoint. This fresh comparison is now available through SDK Diagnostics and a read-only GET endpoint, with a downloadable timestamped metadata receipt. See [Check Recorded SDK Stability Source Inclusion](legaia-stability-source-diagnostic.md). No missing justified patch or target-source drift was found in this inspected set.
