@@ -144,6 +144,7 @@ import {decodeTextFont,layoutGlyphRun} from '/text-font.js';
 import {instructionOperandEditors,menuLabelEditors} from '/script-operands.js';
 import {mountScriptFacing} from '/script-facing.js';
 import {mountScriptBranches} from '/script-branches.js';
+import {mountSystemSelectors} from '/system-flag-selectors.js';
 import {mountSourceBuildScript} from '/source-build-script.js';
 import {mountWorldmapAuthoring} from '/worldmap-authoring.js';
 import {mountWorldmapGeometry} from '/worldmap-geometry.js';
@@ -3733,8 +3734,8 @@ async function openAppearanceOptions(entity){
 }
 
 const scriptDialog=document.createElement('dialog');scriptDialog.id='script-dialog';document.body.append(scriptDialog);
-let scriptEntity=null,scriptReport=null,scriptDrafts=new Map(),scriptFacingControls=null,scriptBranchControls=null,sourceBuildScriptControls=null;
-scriptDialog.addEventListener('close',()=>{scriptBookmarkControls?.dispose();scriptBookmarkControls=null;scriptFacingControls?.dispose();scriptFacingControls=null;scriptBranchControls?.dispose();scriptBranchControls=null;sourceBuildScriptControls?.dispose();sourceBuildScriptControls=null;});
+let scriptEntity=null,scriptReport=null,scriptDrafts=new Map(),scriptFacingControls=null,scriptBranchControls=null,systemSelectorControls=null,sourceBuildScriptControls=null;
+scriptDialog.addEventListener('close',()=>{scriptBookmarkControls?.dispose();scriptBookmarkControls=null;scriptFacingControls?.dispose();scriptFacingControls=null;scriptBranchControls?.dispose();scriptBranchControls=null;systemSelectorControls?.dispose();systemSelectorControls=null;sourceBuildScriptControls?.dispose();sourceBuildScriptControls=null;});
 function renderFacingAuthoring(){
   scriptFacingControls?.dispose();scriptFacingControls=null;
   if(!scriptReport?.facing_authoring)return;
@@ -3821,7 +3822,7 @@ async function openActorCandidate(entity){
 }
 let scriptBookmarkControls=null;
 async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=null,focusInstruction=null,focusComponent=null,focusBookmark=null){
-  if(busy||(refresh&&!scriptDialog.open))return;const scroll=refresh?scriptDialog.scrollTop:0;scriptBookmarkControls?.dispose();scriptBookmarkControls=null;scriptFacingControls?.dispose();scriptFacingControls=null;scriptBranchControls?.dispose();scriptBranchControls=null;sourceBuildScriptControls?.dispose();sourceBuildScriptControls=null;scriptReport=null;setBusy(true);
+  if(busy||(refresh&&!scriptDialog.open))return;const scroll=refresh?scriptDialog.scrollTop:0;scriptBookmarkControls?.dispose();scriptBookmarkControls=null;scriptFacingControls?.dispose();scriptFacingControls=null;scriptBranchControls?.dispose();scriptBranchControls=null;systemSelectorControls?.dispose();systemSelectorControls=null;sourceBuildScriptControls?.dispose();sourceBuildScriptControls=null;scriptReport=null;setBusy(true);
   if(!refresh){scriptEntity=entity;scriptDrafts.clear();
   scriptDialog.innerHTML=`<div class="dialog-heading"><h2>Script and dialogue</h2><button id="close-script" aria-label="Close script inspection">×</button></div><p>${escapeHTML(entity.name)} · Review source-qualified branch destinations below</p><div id="script-authoring-toolbar" class="script-authoring-toolbar" hidden><button id="script-undo">Undo</button><button id="script-redo">Redo</button><button id="script-save">Save project</button><span id="script-authoring-status"></span></div><div id="script-report"><p>Verifying the imported script record…</p></div><p class="dialog-error" role="alert"></p>`;
   $('close-script').onclick=()=>scriptDialog.close();scriptDialog.showModal();
@@ -3849,6 +3850,14 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
       scriptBookmarkControls=mountScriptBookmarks($('script-report'),{owner,report,getRows:()=>state.script_bookmarks??[],getSelected:()=>instructionNavigation.selected(),select:instructionNavigation.select,
         current:()=>scriptDialog.open&&key===resourceStateKey()&&scriptEntity?.id===owner&&scriptReport===accepted,busy:()=>busy,editable:()=>!sceneAnimationController?.active()&&state.project?.mode==='edit',draftPending:()=>scriptDrafts.size>0,
         command:body=>api('/api/command',body),reopen:pc=>openActorScript(scriptEntity,true,null,null,pc),onError:error=>notify(error.message,true)});
+    }
+    if(state.capabilities?.system_selector_authoring){
+      const owner=scriptEntity.id,accepted=report;
+      systemSelectorControls=mountSystemSelectors($('script-report'),{owner,initialDrafts:new Map([...scriptDrafts].filter(([id])=>id.includes('/system-flag/'))),
+        getContext:()=>({projectPath:state.project?.path,sceneId:state.scene?.id,mode:state.project?.mode,scriptKey:state.script_authoring_state_key}),busy:()=>busy,setBusy,api,
+        reopen:pc=>openActorScript(scriptEntity,true,null,null,pc),
+        onDraftChange:drafts=>{for(const id of scriptDrafts.keys())if(id.includes('/system-flag/'))scriptDrafts.delete(id);for(const [id,value] of drafts)scriptDrafts.set(id,value);updateScriptActions();},
+        onError:error=>{if(scriptDialog.open&&scriptReport===accepted)scriptDialog.querySelector('.dialog-error').textContent=error.message;}});
     }
     if(state.capabilities?.script_branch_authoring){
       const owner=scriptEntity.id,accepted=report;
@@ -4069,7 +4078,7 @@ function renderTransitionAuthoring(){
 function canEditDialogue(){return state.capabilities?.actor_dialogue_authoring===true && (state.project?.mode ?? 'edit').toLowerCase()==='edit';}
 function updateScriptActions(){
   projectBookmarkNavigator?.updateState();
-  scriptFacingControls?.updateState();scriptBranchControls?.updateState();sourceBuildScriptControls?.updateState();scriptBookmarkControls?.updateState();
+  scriptFacingControls?.updateState();scriptBranchControls?.updateState();systemSelectorControls?.updateState();sourceBuildScriptControls?.updateState();scriptBookmarkControls?.updateState();
   const authoring=scriptReport?.dialogue_authoring;
   $('script-authoring-toolbar').hidden=!state.capabilities?.actor_dialogue_authoring||!(state.capabilities?.script_branch_authoring||authoring?.supported||authoring?.unresolved_overrides?.length||scriptReport?.transition_authoring?.supported||scriptReport?.movement_authoring?.supported||scriptReport?.movement_authoring?.unresolved_overrides?.length||scriptReport?.flag_authoring?.supported||scriptReport?.flag_authoring?.unresolved_overrides?.length||scriptReport?.wait_authoring?.supported||scriptReport?.wait_authoring?.unresolved_overrides?.length||scriptReport?.model_selector_authoring?.supported||scriptReport?.model_selector_authoring?.unresolved_overrides?.length||scriptReport?.facing_authoring?.supported||scriptReport?.facing_authoring?.unresolved_overrides?.length);
   if(scriptBookmarkControls&&state.capabilities?.saved_script_bookmarks)$('script-authoring-toolbar').hidden=false;

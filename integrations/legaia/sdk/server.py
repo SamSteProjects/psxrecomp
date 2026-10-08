@@ -191,6 +191,7 @@ class EditorServer(ThreadingHTTPServer):
         from .script_branches import state_key as script_state_key
         state['script_authoring_state_key'] = script_state_key(self.project)
         state['capabilities']['script_branch_authoring'] = bool(self.project.disc_path)
+        state['capabilities']['system_selector_authoring'] = bool(self.project.disc_path)
         state['capabilities']['source_build_script_inspection'] = bool(self.project.disc_path)
         from .worldmap_authoring import state_key as worldmap_state_key
         state['worldmap_authoring_state_key'] = worldmap_state_key(self.project)
@@ -994,6 +995,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-operands.js": ("script-operands.js", "text/javascript"),
                  "/script-effect-colors.js": ("script-effect-colors.js", "text/javascript"),
                  "/script-branches.js": ("script-branches.js", "text/javascript"),
+                 "/system-flag-selectors.js": ("system-flag-selectors.js", "text/javascript"),
                  "/source-build-script.js": ("source-build-script.js", "text/javascript"),
                  "/worldmap-authoring.js": ("worldmap-authoring.js", "text/javascript"),
                  "/worldmap-geometry.js": ("worldmap-geometry.js", "text/javascript"),

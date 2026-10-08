@@ -96,8 +96,8 @@ def inspector_schema():
     schema['components']['ScriptSystemFlags'] = {
         'label': 'Authored system selectors', 'units': 'Encoded selector indices', 'layout': 'read-only-properties',
         'properties': [{'id': 'authored_instruction_count', 'label': 'Authored instructions', 'path': ['authored_instruction_count'], 'type': 'integer', 'state': 'authored-through-review'}],
-        'actions': [], 'details': [{'label': 'Reviewed source selector bindings', 'path': ['entries']}],
-        'notes': ['SDK Review/Apply, history and native Build are supported. Editor controls remain pending; no live story values or execution are inferred.'],
+        'actions': [{'id': 'inspect-script', 'label': 'Inspect system selectors', 'capability': 'system_selector_authoring'}], 'details': [{'label': 'Reviewed source selector bindings', 'path': ['entries']}],
+        'notes': ['Open the source editor for separate Retail/Current selectors and keyed Proposed Review/Apply. History and native Build are supported; no live story values or execution are inferred.'],
     }
 
     for identifier in ('ScriptFacing', 'ScriptBranches'):
