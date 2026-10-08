@@ -1000,6 +1000,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
                  "/npc-creation-selection.js": ("npc-creation-selection.js", "text/javascript"),
                  "/npc-ground-placement.js": ("npc-ground-placement.js", "text/javascript"),
+                 "/scene-ground-position.js": ("scene-ground-position.js", "text/javascript"),
                  "/model-placement-users.js": ("model-placement-users.js", "text/javascript"),
                  "/animation-placement-users.js": ("animation-placement-users.js", "text/javascript"),
                  "/animation-contributions.js": ("animation-contributions.js", "text/javascript"),

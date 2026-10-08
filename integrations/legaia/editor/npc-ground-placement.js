@@ -14,12 +14,12 @@ export function mountNpcGroundPlacement({after,getKey,available,getDocument,getS
   const toolbar=document.createElement('div');toolbar.hidden=true;toolbar.className='scene-placement-tools';toolbar.innerHTML='<p role="status">Choose a visible source-ground corner within 24 pixels. Drag to orbit; right-drag to pan. Only X/Z will be copied into the creation form.</p><button type="button">Return to NPC creation</button>';Object.assign(toolbar.style,{padding:'8px 12px',flexShrink:'0',borderBottom:'1px solid #2b3539'});after.after(toolbar);
   let session=null;
   const finish=result=>{if(!session)return;const active=session;session=null;toolbar.hidden=true;onChange();clearInterval(active.timer);active.resume(result);};
-  const fresh=()=>!!session&&available()&&session.key===getKey();
+  const fresh=()=>!!session&&available()&&session.current()&&session.key===getKey();
   toolbar.querySelector('button').onclick=()=>finish(null);
   document.addEventListener('keydown',event=>{if(session&&event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();finish(null);}},true);
   return {
     bar:toolbar,
-    begin(resume){if(session||!available())throw Error('Use the current Authored scene with models enabled and other scene tools closed.');session={key:getKey(),resume,timer:null};session.timer=setInterval(()=>{if(!fresh()){onError(Error('NPC placement source changed. Reopen creation against the current Project.'));finish(null);}},250);toolbar.hidden=false;onChange();},
+    begin(resume,{current=()=>true,returnLabel="Return to NPC creation",note="Choose a visible source-ground corner within 24 pixels. Drag to orbit; right-drag to pan. Only X/Z will be copied into the creation form."}={}){if(session||!available()||!current())throw Error('Use the current Authored scene with models enabled and other scene tools closed.');toolbar.querySelector('button').textContent=returnLabel;toolbar.querySelector('p').textContent=note;session={key:getKey(),resume,current,timer:null};session.timer=setInterval(()=>{if(!fresh()){onError(Error('Ground placement source changed. Reopen against the current Project.'));finish(null);}},250);toolbar.hidden=false;onChange();},
     active:()=>!!session,
     key:()=>session?.key,
     pick(point,key){if(!fresh()||key!==session.key){finish(null);return;}try{const hit=pickVertex(point);if(!hit)throw Error('Click within 24 pixels of a visible source-ground corner.');const result=npcGroundPlacement(getDocument(),hit,getSceneId());finish(result);}catch(error){onError(error);}},

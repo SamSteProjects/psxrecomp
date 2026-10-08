@@ -102,6 +102,7 @@ import {mountSceneCameraInspector} from '/scene-camera-inspector.js';
 import {appendPresetImport,presetExportButton} from '/preset-files.js';
 import {openActorPresetReview} from '/actor-preset-review.js';
 import {ANIMATION_PRESET_SCOPE,presetScopeLabel} from '/preset-animation.js';
+import {mountSceneGroundPosition} from '/scene-ground-position.js';
 import {mountNpcGroundPlacement} from '/npc-ground-placement.js';
 import {captureNpcCreation,createdNpcSelection} from '/npc-creation-selection.js';
 import {modelUsageContext,effectiveModelUsers,validateModelUserSelection,retailModelDonors} from '/model-user-selection.js';
@@ -1543,6 +1544,11 @@ let sceneFacePickMode=false,floorPickMode=false;
 const sceneFacePickButton=document.createElement('button');sceneFacePickButton.id='scene-face-pick';sceneFacePickButton.textContent='Pick model face';sceneFacePickButton.title='Click a visible authored model surface to open its Current native face';sceneFacePickButton.setAttribute('aria-pressed','false');$('frame-selected').after(sceneFacePickButton);
 let sceneRuler=null;
 const npcGroundPlacement=mountNpcGroundPlacement({after:document.querySelector('.viewport-toolbar'),getKey:()=>JSON.stringify([resourceStateKey(),state.project_copy_source_key,sceneRequestKey()]),available:()=>!sceneRuler?.picking()&&!transitionArrivalOverlay&&!npcArrivalOverlay&&canMeasureScene(),getDocument:activeScenePreview,getSceneId:()=>state.scene?.id,pickVertex:p=>sceneRenderer.pickSurfaceVertex(p.x,p.y,sceneView()),onChange:()=>resize(),onError:error=>notify(error.message,true)});
+function mountExistingGroundPosition(host,kind,id){
+  const context=()=>{const target=kind==='npc'&&npcDraftSelection===id?selectedNpcDraft():kind==='actor'&&selected()?.id===id&&!selectedNpcDraft()&&!selectedEnvironment()?selected():null;if(!target)return null;return {project:state.project?.path,scene:state.scene?.id,source:state.project_copy_source_key,preview:state.scene_preview_source_key,id,position:kind==='npc'?target.position:target.components.Transform.effective.position};};
+  if(!context())return;
+  mountSceneGroundPosition({host,kind,id,getContext:context,busy:()=>busy,canEdit,beginPick:(resume,options)=>{npcGroundPlacement.begin(result=>{if(host.isConnected&&context()){resume(result);document.querySelector('.workspace-tabs [data-panel="inspector"]').click();}},options);document.querySelector('.workspace-tabs [data-panel="viewport"]').click();},apply:command=>api('/api/command',command,{success:'Picked X/Z applied. Save persists the position; gameplay remains unverified.'}),onError:error=>notify(error.message,true)});
+}
 function canMeasureScene(){return !busy&&canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePendingKey&&!scenePose&&!shapeDraft&&!draft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!scenePlacementMode&&!actorBoxMode&&!wallSelectMode&&!wallInspection&&!sceneFacePickMode&&!pickScriptTargets&&!pickHistoricalSamples&&!pickRuntimeNodes&&!fieldSpatialPick&&!floorPickMode;}
 sceneRuler=mountSceneRuler({after:sceneFacePickButton,getContext:()=>({project_path:state.project?.path??'',scene_id:state.scene?.id??'',source_key:state.scene_preview_source_key??'',representation:sceneRepresentation,preview_key:sceneKey,hidden_entities:[...hiddenSceneEntities()].sort()}),available:canMeasureScene,busy:()=>busy,pickVertex:p=>sceneRenderer.pickSurfaceVertex(p.x,p.y,sceneView()),onDraw:()=>{updateSceneFacePick();draw();},notify});
 function canPickSceneFace(allowBusy=false){return !sceneRuler?.picking()&&(allowBusy||!busy)&&canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePendingKey&&!scenePose&&!shapeDraft&&!draft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!scenePlacementMode&&!actorBoxMode&&!wallSelectMode&&!wallInspection&&!pickScriptTargets&&!pickRuntimeNodes&&!fieldSpatialPick&&!floorPickMode;}
@@ -3401,6 +3407,7 @@ function renderInspector(){
     const form=$('draft-inspector-form');form.elements.x.value=npc.position.x;form.elements.z.value=npc.position.z;
     form.querySelectorAll('input,button').forEach(control=>control.disabled=busy||!canEdit());
     form.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'set_actor_draft_position',entity_id:id,position:{x:Number(form.elements.x.value),z:Number(form.elements.z.value)}});};
+    mountExistingGroundPosition(form,'npc',id);
     $('frame-npc-draft').textContent=sceneRepresentation==='retail'?'Show in authored scene':'Frame draft';
     $('frame-npc-draft').onclick=frameNpcDraft;
     const inspectDraft=document.createElement('button');inspectDraft.id='inspect-npc-draft';inspectDraft.textContent='Inspect donor append prototype';inspectDraft.disabled=busy;inspectDraft.onclick=()=>openActorCandidate({id,name:npc.name,components:{Transform:{effective:{position:{...npc.position,y:null}}}}});$('inspector').querySelector('section').append(inspectDraft);
@@ -3531,6 +3538,7 @@ function renderInspector(){
   mountInspectorComponentFilter($('inspector'),{authored:entity.authored_components??[],state:inspectorComponentFilterState,current:()=>actorActionContext===resourceStateKey()&&selected()?.id===entity.id});
   mountInspectorSections($('inspector'),{state:inspectorSectionsState,project:state.project.path,scope:inspectorSectionsScope,snapshot:sectionSnapshot,current:()=>actorActionContext===resourceStateKey()&&selected()?.id===entity.id});
   bindComponentActions($('inspector'),actorActions,{current:()=>actorActionContext===resourceStateKey()&&selected()?.id===entity.id,editable:canEdit,busy:()=>busy,onError:error=>notify(error.message,true)});
+  const transformHost=$('inspector').querySelector('[data-component-content="Transform"]')?.parentElement;if(transformHost)mountExistingGroundPosition(transformHost,'actor',entity.id);
   const inspectorContext=resourceStateKey();
   bindComponentReferences($('inspector'),{current:()=>inspectorContext===resourceStateKey()&&selected()?.id===entity.id,busy:()=>busy,records:()=>assetRecords(true),discover:()=>refreshResources(),open:record=>showAssetDetails(record,()=>assetRecords(true)),onError:error=>notify(error.message,true)});
   $('inspector').querySelectorAll('[data-component-property]').forEach(input=>input.addEventListener('change',async()=>{
