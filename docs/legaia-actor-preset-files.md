@@ -1,5 +1,9 @@
 # Actor preset files
 
+## Portable NPC Arrival Presets v12 — 2026-10-08
+
+[NPC Transition Arrival Presets](legaia-npc-transition-authoring.md) freeze donor-owned encoded destination entry bytes through capture, metadata-only transfer and reviewed independent instantiation. v12 takes precedence when transitions are present; earlier envelopes retain their existing selection and size limits. Arrival-bearing metadata cannot claim an older version. Export/import qualify the native source again, with no destination-name editing or retail payload export. Library/import summaries show arrival ownership separately from placement.
+
 ## Portable NPC model-selector presets v9 - 2026-10-06
 
 NPC presets now freeze and transfer signed SET_ACTOR_MODEL operands alongside

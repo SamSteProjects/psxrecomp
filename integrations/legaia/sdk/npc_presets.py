@@ -11,7 +11,7 @@ def validate(project, identifier, value):
     if (value.get('scope')!=SCOPE or not isinstance(source,dict) or set(source)!={'disc_identity','scene_id','entity_id','capture_draft_id','import_sha256'} or
         not isinstance(components,dict) or set(components)!={'Transform','NpcDraft'} or
         not isinstance(components['Transform'],dict) or set(components['Transform'])!={'position'} or
-        not isinstance(components['NpcDraft'],dict) or (set(components['NpcDraft'])-{'name','donor_entity_id','dialogue','appearance','waits','movement','facing','flags','system_flags','branches','model_selectors','effect_colors'} or not {'name','donor_entity_id'}<=set(components['NpcDraft']))):
+        not isinstance(components['NpcDraft'],dict) or (set(components['NpcDraft'])-{'name','donor_entity_id','dialogue','appearance','waits','movement','facing','flags','system_flags','branches','model_selectors','effect_colors','transitions'} or not {'name','donor_entity_id'}<=set(components['NpcDraft']))):
         raise ProjectError('NPC preset requires exact frozen donor/placement and source fields')
     if any(not isinstance(source[k],str) or not source[k] for k in source):
         raise ProjectError('NPC preset provenance fields must be nonempty strings')
@@ -25,7 +25,9 @@ def capture(project,command):
         raise ProjectError('NPC capture requires an existing draft and space in the preset library')
     draft=deepcopy(project.actor_drafts[command['entity_id']]);project._validate_actor_draft(command['entity_id'],draft)
     key=source_key(project)
-    if 'transitions' in draft:raise ProjectError('NPC transition presets are not implemented yet; capture cannot omit arrival edits')
+    if 'transitions' in draft:
+        from .npc_transitions import validate
+        validate(project,draft)
     if 'effect_colors' in draft:
         from .npc_effect_colors import qualify
         qualify(project,draft)
@@ -59,7 +61,7 @@ def capture(project,command):
     if any(row['name'].casefold()==name.casefold() for row in project.actor_templates.values()):raise ProjectError('A preset already uses that name')
     identifier='template://'+str(uuid.uuid4());document=project.imports[draft['scene_id']]
     value=dict(id=identifier,name=name,scope=SCOPE,source=dict(scene_id=draft['scene_id'],entity_id=draft['donor_entity_id'],capture_draft_id=command['entity_id'],disc_identity=document['source']['disc_identity'],import_sha256=digest(document)),
-               components=dict(Transform=dict(position=draft['position']),NpcDraft=dict(name=draft['name'],donor_entity_id=draft['donor_entity_id'],**{k:deepcopy(draft[k]) for k in ('dialogue','appearance','waits','movement','facing','flags','system_flags','branches','model_selectors','effect_colors') if k in draft})))
+               components=dict(Transform=dict(position=draft['position']),NpcDraft=dict(name=draft['name'],donor_entity_id=draft['donor_entity_id'],**{k:deepcopy(draft[k]) for k in ('dialogue','appearance','waits','movement','facing','flags','system_flags','branches','model_selectors','effect_colors','transitions') if k in draft})))
     project._validate_template(identifier,value)
     if source_key(project)!=key:raise ProjectError('Project changed during NPC preset capture')
     project.actor_templates[identifier]=value
@@ -110,13 +112,17 @@ def review(project,request):
         from .npc_model_selectors import qualify
         candidate['model_selectors']=deepcopy(template['components']['NpcDraft']['model_selectors'])
         qualify(project,candidate)
+    if 'transitions' in template['components']['NpcDraft']:
+        from .npc_transitions import validate
+        candidate['transitions']=deepcopy(template['components']['NpcDraft']['transitions'])
+        validate(project,candidate)
     if 'branches' in template['components']['NpcDraft']:
         from .npc_branches import qualify
         candidate['branches']=deepcopy(template['components']['NpcDraft']['branches'])
         qualify(project,candidate)
     project._validate_actor_draft(identifier,candidate)
     result=dict(schema_version='legaia.npc-preset-review.v1',project_source_key=before,scene_preview_source_key=scene_key(project),scene_id=project.active_scene,request=deepcopy(request),template=deepcopy(template),entity_id=identifier,draft=candidate,review_key=digest(dict(source=before,request=request,algorithm='npc-preset-instance.v1')),gameplay_verified=False,
-                limitations=['Creates a new authored NPC from the captured retail donor and chosen native-grid placement.','Presets freeze donor, name, X/Z defaults and supported NPC-owned dialogue/initial appearance/wait-target/script-movement/facing-sector/flag-bit/branch-destination/signed-model-selector/RGB-intensity edits; they do not inherit authored donor appearance, other actor script edits or runtime state. Shared model/animation asset edits remain project-wide.','Review Build assesses the complete candidate; runtime spawning, script scheduling, collision and gameplay remain unverified.'])
+                limitations=['Creates a new authored NPC from the captured retail donor and chosen native-grid placement.','Presets freeze donor, name, X/Z defaults and supported NPC-owned dialogue/initial appearance/wait-target/script-movement/facing-sector/flag-bit/branch-destination/signed-model-selector/RGB-intensity/named-transition-arrival edits; they do not inherit authored donor appearance, other actor script edits or runtime state. Shared model/animation asset edits remain project-wide.','Review Build assesses the complete candidate; runtime spawning, script scheduling, collision and gameplay remain unverified.'])
     if source_key(project)!=before:raise ProjectError('Project changed during NPC preset review')
     return result
 

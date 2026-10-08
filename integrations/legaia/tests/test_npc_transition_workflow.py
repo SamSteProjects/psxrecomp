@@ -24,7 +24,7 @@ class NpcTransitionWorkflow(unittest.TestCase):
         p.command(dict(type='create_actor_draft',donor_entity_id=OWNER,name='Arrival probe',position=dict(x=128,z=256)))
         return p,next(iter(p.actor_drafts))
 
-    def test_review_literal_current_history_persistence_clear_and_capture_refusal(self):
+    def test_review_literal_current_history_persistence_clear_and_capture(self):
         with tempfile.TemporaryDirectory() as raw:
             p,identity=self.project(raw);before=deepcopy((p._document(),p.undo_stack,p.redo_stack));imports=deepcopy(p.imports)
             retail=inspect(p,identity);request=dict(entity_id=identity,entries={TARGET:dict(entry_x_encoded=0,entry_z_encoded=255,direction_encoded=7)})
@@ -36,8 +36,9 @@ class NpcTransitionWorkflow(unittest.TestCase):
             after=deepcopy((p._document(),p.undo_stack));p.undo();self.assertEqual(p._document(),before[0]);p.redo();self.assertEqual((p._document(),p.undo_stack),after)
             self.assertEqual(ProjectService.open(p.save())._document(),after[0])
             self.assertEqual(source(p,identity)['options']['transitions'][0]['effective_values'],request['entries'][TARGET])
-            with self.assertRaisesRegex(ProjectError,'capture cannot omit'):
-                p.command(dict(type='create_npc_preset',entity_id=identity,name='Must retain arrivals'))
+            p.command(dict(type='create_npc_preset',entity_id=identity,name='Must retain arrivals'))
+            captured=next(iter(p.actor_templates.values()))
+            self.assertEqual(captured['components']['NpcDraft']['transitions'],p.actor_drafts[identity]['transitions'])
             clear=dict(entity_id=identity,entries={});proposal=review(p,clear)
             p.command(dict(type='set_actor_draft_transitions',**clear,review_key=proposal['review_key']))
             self.assertEqual(inspect(p,identity)['inspection'],retail['inspection']);self.assertEqual(p.imports,imports)

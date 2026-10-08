@@ -18,9 +18,11 @@ NPC_BRANCHES_SCHEMA='legaia.npc-preset-file.v8'
 NPC_MODEL_SELECTORS_SCHEMA='legaia.npc-preset-file.v9'
 NPC_EFFECT_COLORS_SCHEMA='legaia.npc-preset-file.v10'
 NPC_SYSTEM_FLAGS_SCHEMA='legaia.npc-preset-file.v11'
+NPC_TRANSITIONS_SCHEMA='legaia.npc-preset-file.v12'
 MAX_NPC_DIALOGUE_BYTES=512*1024
 
 def _file_schema(scope,components=None):
+    if scope=='npc-draft-preset-v1' and isinstance(components,dict) and isinstance(components.get('NpcDraft'),dict) and 'transitions' in components['NpcDraft']:return NPC_TRANSITIONS_SCHEMA
     if scope=='npc-draft-preset-v1' and isinstance(components,dict) and isinstance(components.get('NpcDraft'),dict) and 'system_flags' in components['NpcDraft']:return NPC_SYSTEM_FLAGS_SCHEMA
     if scope=='npc-draft-preset-v1' and isinstance(components,dict) and isinstance(components.get('NpcDraft'),dict) and 'effect_colors' in components['NpcDraft']:return NPC_EFFECT_COLORS_SCHEMA
     if scope=='npc-draft-preset-v1' and isinstance(components,dict) and isinstance(components.get('NpcDraft'),dict) and 'model_selectors' in components['NpcDraft']:return NPC_MODEL_SELECTORS_SCHEMA
@@ -53,9 +55,9 @@ def parse(content):
     try:
         value=json.loads(content,object_pairs_hook=_pairs,parse_constant=_constant)
     except (ValueError,RecursionError) as exc:raise ProjectError('Invalid preset JSON') from exc
-    if not isinstance(value,dict) or set(value)!={'schema_version','source_import_sha256','template'} or value['schema_version'] not in (SCHEMA,ANIMATED_SCHEMA,NPC_SCHEMA,NPC_DIALOGUE_SCHEMA,NPC_APPEARANCE_SCHEMA,NPC_WAITS_SCHEMA,NPC_MOVEMENT_SCHEMA,NPC_FACING_SCHEMA,NPC_FLAGS_SCHEMA,NPC_BRANCHES_SCHEMA,NPC_MODEL_SELECTORS_SCHEMA,NPC_EFFECT_COLORS_SCHEMA,NPC_SYSTEM_FLAGS_SCHEMA):
+    if not isinstance(value,dict) or set(value)!={'schema_version','source_import_sha256','template'} or value['schema_version'] not in (SCHEMA,ANIMATED_SCHEMA,NPC_SCHEMA,NPC_DIALOGUE_SCHEMA,NPC_APPEARANCE_SCHEMA,NPC_WAITS_SCHEMA,NPC_MOVEMENT_SCHEMA,NPC_FACING_SCHEMA,NPC_FLAGS_SCHEMA,NPC_BRANCHES_SCHEMA,NPC_MODEL_SELECTORS_SCHEMA,NPC_EFFECT_COLORS_SCHEMA,NPC_SYSTEM_FLAGS_SCHEMA,NPC_TRANSITIONS_SCHEMA):
         raise ProjectError('Unsupported preset file fields or schema')
-    if size>(MAX_NPC_DIALOGUE_BYTES if value['schema_version'] in (NPC_DIALOGUE_SCHEMA,NPC_APPEARANCE_SCHEMA,NPC_WAITS_SCHEMA,NPC_MOVEMENT_SCHEMA,NPC_FACING_SCHEMA,NPC_FLAGS_SCHEMA,NPC_BRANCHES_SCHEMA,NPC_MODEL_SELECTORS_SCHEMA,NPC_EFFECT_COLORS_SCHEMA,NPC_SYSTEM_FLAGS_SCHEMA) else MAX_FILE_BYTES):raise ProjectError('Preset file exceeds its schema size bound')
+    if size>(MAX_NPC_DIALOGUE_BYTES if value['schema_version'] in (NPC_DIALOGUE_SCHEMA,NPC_APPEARANCE_SCHEMA,NPC_WAITS_SCHEMA,NPC_MOVEMENT_SCHEMA,NPC_FACING_SCHEMA,NPC_FLAGS_SCHEMA,NPC_BRANCHES_SCHEMA,NPC_MODEL_SELECTORS_SCHEMA,NPC_EFFECT_COLORS_SCHEMA,NPC_SYSTEM_FLAGS_SCHEMA,NPC_TRANSITIONS_SCHEMA) else MAX_FILE_BYTES):raise ProjectError('Preset file exceeds its schema size bound')
     source_hash=value['source_import_sha256']
     if not isinstance(source_hash,str) or len(source_hash)!=64 or any(c not in '0123456789abcdef' for c in source_hash):
         raise ProjectError('Preset requires a source import SHA256')
@@ -102,6 +104,9 @@ def _verify_source(project,template):
     if 'model_selectors' in npc:
         from .npc_model_selectors import qualify
         qualify(project,npc)
+    if 'transitions' in npc:
+        from .npc_transitions import validate
+        validate(project,npc)
     if 'branches' in npc:
         from .npc_branches import qualify
         qualify(project,npc)
@@ -131,7 +136,7 @@ def review(project,content,name):
     project._validate_template(template['id'],template)
     if key!=digest({'root':str(project.root),'disc':project.disc_path,'imports':project.imports,'templates':project.actor_templates,'file':value,'name':name}):raise ProjectError('Project changed during preset review')
     npc=template['scope']=='npc-draft-preset-v1'
-    limitations=(['Import adds an independent NPC preset; no NPC instances or imported actors change.','Frozen retail donor, native-grid name/XZ defaults and owning import remain bound. Placement requires a separate reviewed new instance.','Original capture identity is provenance only. Supported NPC-owned dialogue, initial appearance, wait targets, script movement, facing sectors, flag-bit indices, branch destinations and signed model selectors transfer with the preset. No prefab inheritance, other script edits or runtime identity is transferred; gameplay remains unverified.'] if npc else ['Import adds one independent preset to the library; it changes no actor components.','Source scene/import and donor compatibility remain bound; Apply revalidates its target.','Coordinates are absolute; height may be project-only and gameplay remains unverified.'])
+    limitations=(['Import adds an independent NPC preset; no NPC instances or imported actors change.','Frozen retail donor, native-grid name/XZ defaults and owning import remain bound. Placement requires a separate reviewed new instance.','Original capture identity is provenance only. Supported NPC-owned dialogue, initial appearance, wait targets, script movement, facing sectors, flag-bit indices, branch destinations, signed model selectors, RGB/intensity, system selectors and named-transition arrival bytes transfer with the preset. No prefab inheritance, other script edits or runtime identity is transferred; gameplay remains unverified.'] if npc else ['Import adds one independent preset to the library; it changes no actor components.','Source scene/import and donor compatibility remain bound; Apply revalidates its target.','Coordinates are absolute; height may be project-only and gameplay remains unverified.'])
     return {'schema_version':'legaia.actor-preset-import-review.v1','review_key':key,'template':template,
             'source_import_sha256':source_hash,'limitations':limitations}
 
