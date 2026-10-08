@@ -48,3 +48,26 @@ class ReplacementFreshness(unittest.TestCase):
   current=(b'source',NATIVE,None,{'entry_sha256':'a'*64},None)
   with patch('sdk.audio_sequence_replacement.source_key',return_value='b'*64),patch('sdk.audio_sequence_replacement._current',side_effect=[current,(b'source',NATIVE+b'changed',None,current[3],None)]):
    with self.assertRaisesRegex(ProjectError,'native sources changed'):review(SimpleNamespace(mode='edit'),'audio://legaia/prot/0877','a'*64,'b'*64,base64.b64encode(MIDI).decode())
+
+class SequenceArchive(unittest.TestCase):
+ def test_generic_sequence_owner_preserves_neighbors_and_standalone(self):
+  from test_audio_bank_growth import fixture
+  from importer.model_pack_composition import compose_model_pack_archive
+  from importer.audio_bank_growth import rebuild_audio_sequence_entry
+  from importer.audio_sequence_replacement import sequence_span
+  source,entry,_=fixture();raw=smf(ANCHORS+bytes([0,144,60,110,131,96,128,60,0,0,255,47,0]))
+  candidate,_,_=replace_midi(entry,raw,expected_current_sha256=sha256(entry).hexdigest())
+  output,audit=compose_model_pack_archive(source,sha256(source).hexdigest(),[dict(kind='audio-sequence',entry_index=0,expected_entry_sha256=sha256(entry).hexdigest(),candidate=candidate)])
+  from importer.model_pack_archive import _archive
+  archive=_archive(output);at=archive.entry(0).start_lba*2048;self.assertEqual(output[at:at+len(candidate)],candidate);self.assertTrue(audit['final_audio_sequences_verified'])
+  original=_archive(source);self.assertEqual(output[archive.entry(1).start_lba*2048:],source[original.entry(1).start_lba*2048:])
+  standalone=NATIVE.ljust(4096,b'\0');synthetic=source[:2048]+standalone+source[6144:];new,_,_=replace_midi(standalone,raw,expected_current_sha256=sha256(standalone).hexdigest())
+  rebuilt,proof=rebuild_audio_sequence_entry(synthetic,sha256(synthetic).hexdigest(),0,sha256(standalone).hexdigest(),new)
+  self.assertEqual(rebuilt[2048:2048+len(new)],new);self.assertTrue(proof['reopened_audio_sequence_verified'])
+
+class ReplacementCommandShape(unittest.TestCase):
+ def test_unhashable_identity_refuses_as_project_error(self):
+  from types import SimpleNamespace
+  from sdk.sequence_replacement_authoring import command
+  from sdk.project import ProjectError
+  with self.assertRaises(ProjectError):command(SimpleNamespace(),dict(type='clear_audio_sequence_replacement',asset_id=[],expected_entry_sha256='a'*64,expected_authoring_key='b'*64))

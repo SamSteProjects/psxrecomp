@@ -105,6 +105,7 @@ def _allocated(project,asset_id):
 
 
 def options(project, asset_id, expected_entry_sha256, expected_source_key):
+    if asset_id in project.audio_sequence_replacements:raise ProjectError('Full sequence replacement owns this resource; clear it before editing retail operands')
     from .scene_preview import source_key as resource_key
     if expected_source_key != resource_key(project):
         raise ProjectError('Audio resource source changed; refresh resources')
@@ -128,6 +129,7 @@ def options(project, asset_id, expected_entry_sha256, expected_source_key):
 
 
 def review(project, asset_id, expected_entry_sha256, expected_authoring_key, edits):
+    if asset_id in project.audio_sequence_replacements:raise ProjectError('Full sequence replacement owns this resource; clear it before editing retail operands')
     if project.mode != 'edit' or expected_authoring_key != source_key(project):
         raise ProjectError('Audio authored state changed or is not in Edit mode; inspect again')
     body, current, sequence, record, binding = _current(project, asset_id, expected_entry_sha256)

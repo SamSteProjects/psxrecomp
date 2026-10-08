@@ -28,7 +28,7 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
         animation = isinstance(request,dict) and request.get('kind') == 'animation-bank'
         streaming = isinstance(request,dict) and request.get('kind') == 'streaming-animation-bank'
         streaming_man = isinstance(request,dict) and request.get('kind') == 'streaming-man'
-        raw_audio = isinstance(request,dict) and request.get('kind') == 'audio-sample-bank'
+        raw_audio = isinstance(request,dict) and request.get('kind') in ('audio-sample-bank','audio-sequence')
         compressed_man = isinstance(request,dict) and request.get('kind') == 'compressed-man'
         raw_resource = streaming or streaming_man
         fields = ({'kind','entry_index','expected_entry_sha256','candidate'} if raw_audio else
@@ -107,9 +107,10 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
         if request.get('kind') in ('streaming-animation-bank','streaming-man'):
             from .streaming_animation_bank import remap_streaming_header
             request=dict(request,chunk_header_offset=remap_streaming_header(request['entry_index'],request['chunk_header_offset'],3 if request['kind']=='streaming-man' else 5,reports))
-        if request.get('kind') == 'audio-sample-bank':
-            from .audio_bank_growth import rebuild_audio_bank_entry
-            working,report=rebuild_audio_bank_entry(working,sha256(working).hexdigest(),
+        if request.get('kind') in ('audio-sample-bank','audio-sequence'):
+            from .audio_bank_growth import rebuild_audio_bank_entry,rebuild_audio_sequence_entry
+            rebuild_audio=rebuild_audio_sequence_entry if request['kind']=='audio-sequence' else rebuild_audio_bank_entry
+            working,report=rebuild_audio(working,sha256(working).hexdigest(),
                 **{k:v for k,v in request.items() if k!='kind'},header_offset=header_offset)
         elif request.get('kind') == 'streaming-man':
             from .prot_rebuild import rebuild_streaming_man_entry
@@ -169,12 +170,15 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
         entry = reopened.entry(request['entry_index'])
         span = locate_physical_span(reopened, entry.start_lba*2048)
         raw = working[span['byte_offset']:span['byte_offset']+span['byte_length']]
-        if request.get('kind')=='audio-sample-bank':
+        if request.get('kind') in ('audio-sample-bank','audio-sequence'):
             from .audio_bank import bank_from_entry,inspect_bank
             size=report['candidate_size_bytes']
             if raw[:size]!=request['candidate'] or raw[size:]!=bytes(len(raw)-size):
                 raise ImportError('Resource composition final reopened audio owner changed')
-            inspect_bank(bank_from_entry(raw)[0])
+            if request['kind']=='audio-sample-bank':inspect_bank(bank_from_entry(raw)[0])
+            else:
+                from .audio_catalog import decode_audio_entry
+                decode_audio_entry(raw)
             continue
         if request.get('kind') in ('texture-layout-raw','texture-addition-raw'):
             from .textures import _pack_members
@@ -201,6 +205,7 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
             raise ImportError('Model composition final reopened pack changed')
     return working, dict(schema_version='legaia.model-pack-composition.v1', source_sha256=expected_sha256,
         **({'final_audio_banks_verified':True} if any(r.get('kind')=='audio-sample-bank' for r in completed) else {}),
+        **({'final_audio_sequences_verified':True} if any(r.get('kind')=='audio-sequence' for r in completed) else {}),
         patched_sha256=patched_sha256, proposed_sha256=sha256(working).hexdigest(),
         patch_count=len(prepared), patched_bytes=sum(len(payload) for _,payload in prepared),
         resources=reports, final_packs_verified=True, final_animation_banks_verified=True,final_streaming_man_verified=True,final_compressed_man_verified=True,final_texture_packs_verified=True,final_texture_layouts_verified=True,final_texture_additions_verified=any(r.get('kind') in ('texture-addition-pack','texture-addition-raw') for r in completed),growth_bytes=len(working)-len(source),

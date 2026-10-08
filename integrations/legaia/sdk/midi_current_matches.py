@@ -1,7 +1,8 @@
 """Compare native content; equal bytes do not establish input-file usage."""
 from copy import copy,deepcopy
 from hashlib import sha256
-from .audio_authoring import _current,_layout
+from .audio_authoring import _current
+from importer.audio_sequence_replacement import sequence_span
 from .project import ProjectError
 
 
@@ -17,7 +18,7 @@ def compare(project,receipts):
             view=copy(project);view.active_scene=r['source_scene_id']
             source,current,_,record,_=_current(view,r['asset_id'],r['source_record']['entry_sha256'])
             if record!=r['source_record']:raise ProjectError('Current MIDI target retail ownership changed')
-            start,size=_layout(source,current,record)
+            start,size=sequence_span(current)
             cache[key]=(sha256(current).hexdigest(),sha256(current[start:start+size]).hexdigest(),start,size)
         entry_hash,sequence_hash,start,size=cache[key]
         rows.append(dict(native_asset_id=r['asset_id'],receipt_key=r['receipt_key'],

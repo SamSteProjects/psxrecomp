@@ -41,6 +41,7 @@ def authored_state_key(project) -> str:
                                 "texture_additions": getattr(project, "texture_additions", {}),
                                 "models": getattr(project, "model_overrides", {}),
                                 **({"audio": project.audio_overrides} if getattr(project, "audio_overrides", {}) else {}),
+                                **({"audio_sequence_replacements": project.audio_sequence_replacements} if getattr(project,"audio_sequence_replacements",{}) else {}),
                                 **({"audio_bank": project.audio_bank_overrides} if getattr(project, "audio_bank_overrides", {}) else {}),
                                 **({"audio_midi_sources": project.audio_midi_sources} if getattr(project,"audio_midi_sources",{}) else {}),
                                 **({"audio_sample_sources": project.audio_sample_sources} if getattr(project,"audio_sample_sources",{}) else {}),
@@ -1488,6 +1489,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     preserve_build_inputs(project,destination,input_key,boundary)
     from .audio_midi_sources import preserve_build_inputs as preserve_midi_inputs
     preserve_midi_inputs(project,destination,input_key,boundary)
+    from .sequence_replacement_authoring import preserve_build_inputs as preserve_sequence_inputs
+    preserve_sequence_inputs(project,destination,input_key,boundary)
     _guard_output(primary_receipt,boundary)
     if primary_receipt.exists():
         from .project import read_metadata_json

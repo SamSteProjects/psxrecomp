@@ -838,6 +838,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-range.js": ("animation-range.js", "text/javascript"),
                  "/project-settings.js": ("project-settings.js", "text/javascript"),
                  "/asset-reference-trace.js": ("asset-reference-trace.js", "text/javascript"),
+                 "/sequence-replacement-authoring.js": ("sequence-replacement-authoring.js", "text/javascript"),
                  "/audio-sequence-replacement.js": ("audio-sequence-replacement.js", "text/javascript"),
                  "/asset-references.js": ("asset-references.js", "text/javascript"),
                  "/audio-sequence.js": ("audio-sequence.js", "text/javascript"),
@@ -2204,6 +2205,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('MIDI removal Review requires exact Current receipt and freshness fields')
                     from .audio_midi_sources import review_removal
                     self._json(200,review_removal(self.server.project,**body));return
+                if route == '/api/audio-sequence-replacement-options':
+                    if set(body)!={'asset_id','expected_entry_sha256','expected_authoring_key'}:
+                        raise ProjectError('Replacement options require exact source and freshness fields')
+                    from .sequence_replacement_authoring import options
+                    self._json(200,options(self.server.project,**body));return
+                if route == '/api/audio-sequence-replacement-authoring':
+                    if set(body)!={'asset_id','expected_entry_sha256','expected_authoring_key','midi_base64'}:
+                        raise ProjectError('Replacement authoring requires exact source, freshness and upload fields')
+                    from .sequence_replacement_authoring import review
+                    self._json(200,review(self.server.project,**body));return
                 if route == '/api/audio-sequence-replacement-review':
                     if set(body)!={'asset_id','expected_entry_sha256','expected_authoring_key','midi_base64'}:
                         raise ProjectError('Replacement review requires exact source, freshness and upload fields')

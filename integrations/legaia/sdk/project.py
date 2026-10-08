@@ -123,6 +123,7 @@ class ProjectService:
         self.texture_additions: dict[str, dict] = {}
         self.model_overrides: dict[str, dict] = {}
         self.audio_overrides: dict[str, dict] = {}
+        self.audio_sequence_replacements: dict[str, dict] = {}
         self.audio_bank_overrides: dict[str, dict] = {}
         self.animation_sources: dict[str, dict] = {}
         self.model_sources: dict[str, dict] = {}
@@ -221,6 +222,7 @@ class ProjectService:
                 **({"audio_sample_sources": deepcopy(self.audio_sample_sources)} if self.audio_sample_sources else {}),
                 **({"audio_midi_sources": deepcopy(self.audio_midi_sources)} if self.audio_midi_sources else {}),
                 **({"audio_sample_overrides": deepcopy(self.audio_sample_overrides)} if self.audio_sample_overrides else {}),
+                **({"audio_sequence_replacements": deepcopy(self.audio_sequence_replacements)} if self.audio_sequence_replacements else {}),
                 **({"audio_overrides": deepcopy(self.audio_overrides)} if self.audio_overrides else {}),
                 **({"audio_bank_overrides": deepcopy(self.audio_bank_overrides)} if self.audio_bank_overrides else {}),
                 **({"model_overrides": deepcopy(self.model_overrides)} if self.model_overrides else {})}
@@ -261,7 +263,7 @@ class ProjectService:
         labels = {"name": "Project name", "retail_source": "Retail source",
                   "imports": "Imported scenes", "active_scene": "Active scene",
                   "authored": "Scene and game-data edits", "actor_templates": "Actor presets",
-                  "texture_additions": "New texture slots", "texture_overrides": "Texture replacements", "model_overrides": "Model content", "audio_overrides": "Audio sequence operands", "audio_bank_overrides": "Audio bank parameters", "audio_sample_sources": "Retained WAV inputs", "audio_midi_sources": "Retained MIDI inputs", "audio_sample_overrides": "Native audio samples",
+                  "texture_additions": "New texture slots", "texture_overrides": "Texture replacements", "model_overrides": "Model content", "audio_sequence_replacements": "Audio sequence replacements", "audio_overrides": "Audio sequence operands", "audio_bank_overrides": "Audio bank parameters", "audio_sample_sources": "Retained WAV inputs", "audio_midi_sources": "Retained MIDI inputs", "audio_sample_overrides": "Native audio samples",
                   "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "scene_views": "Saved scene views", "model_vertex_groups": "Saved model vertex groups", "script_bookmarks": "Saved script bookmarks",
                   "model_sources": "Retained model inputs", "animation_sources": "Retained animation inputs"}
         return [label for key, label in labels.items()
@@ -273,7 +275,7 @@ class ProjectService:
         self.saved_document = deepcopy(document)
         self.saved_sections = {key: digest(document.get(key)) for key in
                                ("name", "retail_source", "imports", "active_scene",
-                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_bank_overrides", "audio_sample_sources", "audio_midi_sources", "audio_sample_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views", "model_vertex_groups", "script_bookmarks", "model_sources", "animation_sources")}
+                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_sequence_replacements", "audio_bank_overrides", "audio_sample_sources", "audio_midi_sources", "audio_sample_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views", "model_vertex_groups", "script_bookmarks", "model_sources", "animation_sources")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):
@@ -2016,6 +2018,9 @@ class ProjectService:
         self._command(command)
 
     def _command(self, command: dict) -> None:
+        from .sequence_replacement_authoring import COMMANDS as replacement_commands,command as replacement_command
+        if isinstance(command.get('type'),str) and command['type'] in replacement_commands:
+            replacement_command(self,command);return
         from .audio_sample_authoring import COMMANDS as sample_commands,command as sample_command
         if isinstance(command.get("type"),str) and command["type"] in sample_commands:
             sample_command(self,command)
@@ -3076,6 +3081,19 @@ class ProjectService:
             else:view.audio_sample_overrides[entry['asset_id']]=deepcopy(entry[field])
             validate_collection(view);self.audio_sample_overrides=view.audio_sample_overrides
             source.pop();target.append(entry);return
+        if source[-1].get('target') == 'audio_sequence_replacement':
+            from copy import copy
+            from .sequence_replacement_authoring import validate_collection
+            entry=source[-1];value=deepcopy(entry[field]);view=copy(self)
+            view.audio_sequence_replacements=deepcopy(self.audio_sequence_replacements);view.audio_overrides=deepcopy(self.audio_overrides)
+            for name,key in [('audio_sequence_replacements','replacement'),('audio_overrides','operands')]:
+                if value[key] is None:getattr(view,name).pop(entry['asset_id'],None)
+                else:getattr(view,name)[entry['asset_id']]=value[key]
+            validate_collection(view)
+            from .audio_authoring import validate_collection as validate_operands
+            validate_operands(view)
+            self.audio_sequence_replacements=view.audio_sequence_replacements;self.audio_overrides=view.audio_overrides
+            source.pop();target.append(entry);return
         if source[-1].get('target') == 'audio_midi_sources':
             entry=source[-1];value=deepcopy(entry[field])
             from .audio_midi_sources import validate_files
@@ -3163,6 +3181,8 @@ class ProjectService:
         self._apply_history(self.redo_stack, self.undo_stack, "after")
 
     def save(self) -> Path:
+        from .sequence_replacement_authoring import validate_collection as validate_replacements
+        validate_replacements(self)
         from .audio_authoring import validate_collection as validate_audio
         validate_audio(self)
         from .audio_bank_authoring import validate_collection as validate_banks
@@ -3456,6 +3476,9 @@ class ProjectService:
         from .audio_midi_sources import validate_files as midi_files
         result.audio_midi_sources=deepcopy(raw.get("audio_midi_sources",{}))
         midi_files(result,result.audio_midi_sources)
+        result.audio_sequence_replacements=deepcopy(raw.get('audio_sequence_replacements',{}))
+        from .sequence_replacement_authoring import validate_collection as validate_replacements
+        validate_replacements(result)
         result._mark_saved()
         return result
 
@@ -3782,6 +3805,12 @@ class ProjectService:
                                 scene_id=binding["source_scene_id"], source_scene="Global source audio",
                                 changes=[f"Bank parameters: {len(binding['edits'])} fields"],
                                 authored=deepcopy(binding), source_record=deepcopy(binding["source_record"])))
+        for identifier,binding in sorted(self.audio_sequence_replacements.items()):
+            existing=next((row for row in records if row['id']==identifier and row['kind']=='audio'),None)
+            if existing:
+                existing['changes'].append('Full native sequence replacement');existing['authored_replacement']=deepcopy(binding)
+            else:
+                records.append(dict(id=identifier,kind='audio',name='SEQ replacement '+identifier.rsplit('/',1)[-1],scene_id=binding['source_scene_id'],source_scene='Global source audio',changes=['Full native sequence replacement'],authored=deepcopy(binding),source_record=deepcopy(binding['source_record'])))
         for identifier, binding in sorted(self.audio_overrides.items()):
             scene_id = binding['source_scene_id']
             bank_binding = self.audio_bank_overrides.get(identifier)
@@ -3950,6 +3979,7 @@ class ProjectService:
                 "actor_drafts": deepcopy(self.actor_drafts),
                 "npc_script_bindings": npc_script_bindings(self),
                 "model_overrides": deepcopy(self.model_overrides),
+                "audio_sequence_replacements": deepcopy(self.audio_sequence_replacements),
                 "audio_overrides": deepcopy(self.audio_overrides),
                 "audio_bank_overrides": deepcopy(self.audio_bank_overrides),
                 "audio_sample_sources": deepcopy(self.audio_sample_sources),

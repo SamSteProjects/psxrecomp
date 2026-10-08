@@ -70,3 +70,22 @@ def replace_midi(current,midi,*,expected_current_sha256):
         before_ticks=source['decoded_ticks'],after_ticks=decoded['decoded_ticks'],opaque_tail_sha256=_hash(tail),opaque_tail_size=len(tail),
         added_alignment_bytes=pad,unchanged=unchanged,bank_samples_preserved=True,carrier_suffix_preserved=True)
     return output,decoded,audit
+
+
+def insert_sequence(current,sequence):
+    """Inject an independently qualified source-owned SEQ, preserving other families."""
+    c=decode_audio_entry(current);report=inspect_sequence(sequence)
+    if c['sequence'] is None or not report['complete']:raise ImportError('Sequence injection requires complete supported native ownership')
+    if c['format']=='SEQ':return sequence
+    chunk=c['chunks'][2];start,size=chunk['payload_offset'],chunk['size_bytes'];head=chunk['header_offset']
+    if len(sequence)%4 or len(sequence)>0xffffff:raise ImportError('Injected SEQ requires aligned native chunk extent')
+    output=current[:head]+struct.pack('<I',2<<24|len(sequence))+sequence+current[start+size:]
+    if len(output)>MAX_ENTRY_BYTES:raise ImportError('Injected audio carrier exceeds its budget')
+    decode_audio_entry(output);return output
+
+
+def sequence_span(entry):
+    c=decode_audio_entry(entry)
+    if c['sequence'] is None:raise ImportError('No supported native SEQ in carrier')
+    if c['format']=='SEQ':return 0,len(entry)
+    r=c['chunks'][2];return r['payload_offset'],r['size_bytes']

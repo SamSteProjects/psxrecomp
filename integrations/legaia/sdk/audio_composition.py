@@ -25,7 +25,12 @@ def read_entry(project, identifier, original=None):
     from .audio_authoring import read as read_sequence
     from .audio_bank_authoring import read as read_bank
     from .audio_sample_authoring import read as read_samples
-    candidates=[]
+    candidates=[];replacement_sequence=None
+    if identifier in project.audio_sequence_replacements:
+        from .sequence_replacement_authoring import read
+        source,replacement_sequence,_=read(project,identifier,project.audio_sequence_replacements[identifier])
+        if original is None:original=source
+        elif original!=source:raise ProjectError('Replacement audio differs from its common retail carrier')
     allocated=project.audio_sample_overrides.get(identifier,{}).get('format')=='sample-wav-allocated-v1'
     if allocated:
         from .audio_sample_allocation import _qualified
@@ -46,7 +51,10 @@ def read_entry(project, identifier, original=None):
     output=merge(original,candidates)
     if allocated:
         from .audio_sample_allocation import compose
-        return compose(project,identifier,project.audio_sample_overrides[identifier],output)[1]
+        output=compose(project,identifier,project.audio_sample_overrides[identifier],output)[1]
+    if replacement_sequence is not None:
+        from importer.audio_sequence_replacement import insert_sequence
+        output=insert_sequence(output,replacement_sequence)
     return output
 
 
@@ -88,7 +96,7 @@ def prepare_overlays(project,image,archive):
     return result,changes
 
 
-def prepare_native(project,image,archive):
+def _prepare_native_base(project,image,archive):
     """Fixed families keep overlays; allocated owners deliver complete native resources."""
     from copy import copy,deepcopy
     import struct
@@ -151,4 +159,23 @@ def prepare_native(project,image,archive):
         overlays=[row for row in overlays if row['prot_entry_index']!=index]
         for change in changes:
             if change['semantic_id']==identifier:change['candidate_entry_sha256']=_hash(candidate)
+    return overlays,changes,requests
+
+
+def prepare_native(project,image,archive):
+    from copy import copy,deepcopy
+    from .sequence_replacement_authoring import validate_collection,read
+    validate_collection(project)
+    if not project.audio_sequence_replacements:return _prepare_native_base(project,image,archive)
+    view=copy(project);view.audio_sequence_replacements={}
+    overlays,changes,requests=_prepare_native_base(view,image,archive)
+    for identifier,binding in sorted(project.audio_sequence_replacements.items()):
+        original,_,_=read(project,identifier,binding);candidate=read_entry(project,identifier,original)
+        record=binding['source_record'];index=record['prot_entry_index'];offset=archive.node.extent_lba*2048+record['entry_byte_offset']
+        if image.read_user(0,offset,len(original),image.size//2352*2048)!=original:raise ProjectError('Replacement physical source changed before Build')
+        overlays=[r for r in overlays if r['prot_entry_index']!=index];requests=[r for r in requests if r['entry_index']!=index]
+        requests.append(dict(kind='audio-sequence',entry_index=index,expected_entry_sha256=_hash(original),candidate=candidate))
+        changes.append(dict(scene='global-audio',semantic_id=identifier,field='audio.sequence.replacement',scope='audio-SEQ-complete-replacement',source_entry_sha256=_hash(original),candidate_entry_sha256=_hash(candidate),midi_sha256=binding['midi_sha256']))
+        for row in changes:
+            if row['semantic_id']==identifier:row['candidate_entry_sha256']=_hash(candidate)
     return overlays,changes,requests
