@@ -1221,9 +1221,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200, snapshot(self.server.project, body['entity']) if route == '/api/system-flag-selectors' else review(self.server.project, body['entity'], body['operand_id'], body['value']))
                     return
                 if route=='/api/animation-operand-uses':
-                    if set(body)!={'entity_id','animation_operand_id','expected_state_key'} or any(not isinstance(value,str) or len(value)>512 for value in body.values()):raise ProjectError('Animation usage requires a source owner, target and current state key')
+                    required={'entity_id','animation_operand_id','expected_state_key'}
+                    if not required<=set(body) or set(body)-required-{'offset'} or any(not isinstance(body[field],str) or len(body[field])>512 for field in required):raise ProjectError('Animation usage requires a source owner, target, current state key and optional page offset')
                     from .animation_operand_uses import inspect as inspect_animation_uses
-                    self._json(200,inspect_animation_uses(self.server.project,body['entity_id'],body['animation_operand_id'],body['expected_state_key']));return
+                    self._json(200,inspect_animation_uses(self.server.project,body['entity_id'],body['animation_operand_id'],body['expected_state_key'],body.get('offset',0)));return
                 if route in ('/api/script-animation-operands', '/api/script-animation-operand-review'):
                     expected = {'entity_id'} if route == '/api/script-animation-operands' else {'entity_id','animation_operand_id','values'}
                     if set(body) != expected or not isinstance(body['entity_id'], str) or not body['entity_id']:

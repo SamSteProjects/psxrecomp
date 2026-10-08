@@ -31,17 +31,30 @@ class ArgumentUses(unittest.TestCase):
     self.assertEqual(post('/api/animation-operand-uses',dict(request,extra=1))[0],400)
     self.assertEqual(post('/api/animation-operand-uses',dict(request,entity_id=[]))[0],400)
     self.assertEqual(post('/api/animation-operand-uses',dict(request,expected_state_key='0'*64))[0],400)
+    self.assertEqual(post('/api/animation-operand-uses',dict(request,offset=True))[0],400)
+    self.assertEqual(post('/api/animation-operand-uses',dict(request,offset=256))[0],400)
    if os.environ.get('LEGAIA_ARGUMENT_USES_EVIDENCE'):
     out=Path(os.environ['LEGAIA_ARGUMENT_USES_EVIDENCE']);out.parent.mkdir(parents=True,exist_ok=True);out.write_text(json.dumps(dict(source=options(p,owner),id=target['semantic_id'],report=report),indent=2)+'\n',encoding='utf-8')
    p.command(dict(type='rename_actor_draft',entity_id=ids[0],name='Changed'))
    with self.assertRaises(ProjectError):inspect(p,owner,target['semantic_id'],key)
    import uuid
-   draft=deepcopy(p.actor_drafts[ids[0]]);draft.pop('animation_operands',None)
-   p.actor_drafts.update({'authored-actor://'+str(uuid.UUID(int=i+1)):deepcopy(draft) for i in range(260)})
-   bounded=inspect(p,owner,target['semantic_id'],state_key(p))
+   bounded_project=ProjectService(Path(d)/'bounded');bounded_project.import_metadata(import_scene(os.environ['LEGAIA_DISC_BIN'],'jagaroom'),os.environ['LEGAIA_DISC_BIN'])
+   bound_owner='scene://jagaroom/actors/man-p1/0008';bound_targets=options(bounded_project,bound_owner)['targets'];bound_target=bound_targets[0]
+   self.assertGreaterEqual(len(bound_targets),2)
+   entries={t['semantic_id']:deepcopy(bound_target['values']) for t in bound_targets if t['mnemonic']==bound_target['mnemonic']}
+   draft=dict(scene_id=bounded_project.active_scene,donor_entity_id=bound_owner,name='Paged usage probe',position=dict(x=128,z=256),animation_operands=dict(donor_entity_id=bound_owner,entries=entries))
+   bounded_project.actor_drafts={'authored-actor://'+str(uuid.UUID(int=i+1)):deepcopy(draft) for i in range(128)}
+   bounded_project=ProjectService.open(bounded_project.save())
+   bound_key=state_key(bounded_project);bounded=inspect(bounded_project,bound_owner,bound_target['semantic_id'],bound_key)
    self.assertTrue(bounded['truncated']);self.assertEqual(len(bounded['rows']),256);self.assertGreater(bounded['match_count'],256)
+   last=inspect(bounded_project,bound_owner,bound_target['semantic_id'],bound_key,256)
+   self.assertEqual(last['page_offset'],256);self.assertEqual(len(last['rows']),bounded['match_count']-256)
+   self.assertFalse({(r['entity_id'],r['target']['semantic_id']) for r in bounded['rows']}&{(r['entity_id'],r['target']['semantic_id']) for r in last['rows']})
+   self.assertEqual(inspect(bounded_project,bound_owner,bound_target['semantic_id'],bound_key)['rows'],bounded['rows'])
+   for offset in (-256,1,True,1.5,'256',512,8192):
+    with self.assertRaises(ProjectError):inspect(bounded_project,bound_owner,bound_target['semantic_id'],bound_key,offset)
    if os.environ.get('LEGAIA_ARGUMENT_USES_EVIDENCE'):
-    content=json.loads(out.read_text(encoding='utf-8'));content.update(bounded_source=options(p,owner),bounded_report=bounded);out.write_text(json.dumps(content,indent=2)+'\n',encoding='utf-8')
+    content=json.loads(out.read_text(encoding='utf-8'));content.update(bounded_source=options(bounded_project,bound_owner),bounded_report=bounded,last_report=last,bounded_id=bound_target['semantic_id']);out.write_text(json.dumps(content,indent=2)+'\n',encoding='utf-8')
    p.active_scene='scene://foreign'
    with self.assertRaises(ProjectError):inspect(p,owner,target['semantic_id'],state_key(p))
 

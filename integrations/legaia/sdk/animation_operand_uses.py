@@ -5,7 +5,8 @@ from .project import ProjectError
 from .script_animation_operands import context,options,COMPONENT
 from .script_branches import state_key
 
-def inspect(project,owner,operand_id,expected_state_key):
+def inspect(project,owner,operand_id,expected_state_key,offset=0):
+    if type(offset) is not int or not 0<=offset<8192 or offset%256:raise ProjectError('Animation usage page offset must be a multiple of 256 within the scan bound')
     key=state_key(project)
     if key!=expected_state_key:raise ProjectError('Animation argument usage inputs changed; reopen inspection')
     if project._dialogue_document(owner)['scene']['semantic_id']!=project.active_scene:raise ProjectError('Open the animation usage owner source scene first')
@@ -38,7 +39,8 @@ def inspect(project,owner,operand_id,expected_state_key):
         project._validate_actor_draft(identity,draft)
         collect(identity,draft['donor_entity_id'],'npc',draft.get('animation_operands',{}).get('entries',{}))
     if state_key(project)!=key:raise ProjectError('Project changed during animation argument usage inspection')
-    return dict(schema_version='legaia.animation-operand-uses.v1',scene_id=scene,owner_id=owner,animation_operand_id=operand_id,state_key=key,
+    if offset and offset>=len(found):raise ProjectError('Animation usage page is outside the matching result set')
+    return dict(schema_version='legaia.animation-operand-uses.v2',scene_id=scene,owner_id=owner,animation_operand_id=operand_id,state_key=key,
         query_values=deepcopy(target['effective_values']),mnemonic=target['mnemonic'],source=deepcopy(selected['source']),
-        rows=found[:256],match_count=len(found),truncated=len(found)>256,scanned_owner_count=len(owners),scanned_target_count=scanned,
+        rows=found[offset:offset+256],page_offset=offset,page_size=256,match_count=len(found),truncated=len(found)>256,scanned_owner_count=len(owners),scanned_target_count=scanned,
         read_only=True,gameplay_verified=False,runtime_binding='not_asserted',identity_resolution='numeric_arguments_only')
