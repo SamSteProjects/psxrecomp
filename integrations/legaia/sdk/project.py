@@ -99,6 +99,16 @@ class AssetDatabase:
             if existing is None:
                 self.records[identifier] = record
 
+    @classmethod
+    def scene_models(cls, document):
+        """Project navigation projects the selected import, including shared variants."""
+        if not document:
+            return []
+        view = cls()
+        view.ingest(document)
+        scene_id = document['scene']['semantic_id']
+        return [{**deepcopy(record), 'scene_id': scene_id} for record in view.records.values()]
+
 
 class ProjectService:
     FORMAT = "legaia.project.v1"
@@ -4026,6 +4036,7 @@ class ProjectService:
                 "actor_templates": [{**deepcopy(template), "application": self.template_application(template, self.selected)}
                                     for template in self.actor_templates.values()],
                 "assets": deepcopy(list(self.assets.records.values())),
+                "active_scene_assets": AssetDatabase.scene_models(document),
                 "model_references": self.model_references(), "selection": {"entity_id": self.selected},
                 "texture_overrides": deepcopy(self.texture_overrides),
                 "texture_additions": deepcopy(self.texture_additions),

@@ -1512,7 +1512,7 @@ function render(){
   $('scene-name').textContent=state.scene?.name ?? 'No scene imported';
   $('viewport-title').textContent=state.scene?.name ?? 'Scene';
   $('entity-count').textContent=entities().length;
-  $('asset-count').textContent=(state.assets ?? []).length;
+  $('asset-count').textContent=(state.active_scene_assets ?? []).length;
   $('diagnostic-count').textContent=(state.diagnostics ?? []).length;
   $('viewport-empty').hidden=!!state.scene?.id;
   sceneSelect.replaceChildren();for(const scene of state.scenes ?? []){const option=document.createElement('option');option.value=scene.id;option.textContent=scene.name;option.selected=scene.id===state.scene?.id;sceneSelect.append(option);}sceneSelect.hidden=(state.scenes ?? []).length<2;
@@ -1872,7 +1872,7 @@ async function refreshResources(){
 function assetRecords(activeOnly=false){
   const projectScope=!activeOnly&&projectAssetControls?.scope()==='project';
   const records=new Map((projectScope?projectAssetControls.records():[
-    ...(state.assets ?? []).map(asset=>({id:asset.id,type:asset.kind ?? 'model',label:asset.name ?? asset.label ?? `Model ${asset.id.split('/').at(-1)}`,source:asset.source_record?.prot_entry_name ?? asset.scope ?? 'Imported',data:asset})),
+    ...(state.active_scene_assets ?? []).map(asset=>({id:asset.id,type:asset.kind ?? 'model',label:asset.name ?? asset.label ?? `Model ${asset.id.split('/').at(-1)}`,source:asset.source_record?.prot_entry_name ?? asset.scope ?? 'Imported',sceneId:asset.scene_id,data:asset})),
     ...entities().map(actor=>({id:actor.id,type:'actor',label:actor.name ?? actor.id,source:state.scene?.name ?? state.scene?.id,sceneId:state.scene?.id,data:actor})),
     ...(state.scenes ?? []).map(scene=>({id:scene.id,type:'scene',label:scene.name ?? scene.id,source:scene.name ?? scene.id,data:scene})),
     ...resourceRecords.map(record=>({id:record.semantic_id,type:record.asset_kind,label:record.name ?? record.semantic_id,source:record.scope?.startsWith('global-')?record.scope:(record.source_record?.prot_entry_name ?? state.scene?.name),sceneId:state.scene?.id,data:record}))
@@ -1882,7 +1882,7 @@ function assetRecords(activeOnly=false){
     const assetId=authored.kind==='script'?(authored.script_id ?? authored.id):authored.id,existing=records.get(assetId);
     if(activeOnly&&!existing&&authored.scene_id&&authored.scene_id!==state.scene?.id)continue;
     if(projectScope&&projectAssetControls.filter()!=='all'&&!existing&&authored.scene_id!==projectAssetControls.filter())continue;
-    records.set(assetId,{...(existing ?? {id:assetId,type:authored.kind,label:authored.name ?? authored.id,source:authored.source_scene ?? authored.scene_id ?? 'Project library',data:{source_record:authored.source_record}}),sceneId:existing?.projectMembership?existing.sceneId:authored.scene_id,authored:authored.authored ?? {},changes:authored.changes ?? [],authoredRecord:authored});
+    records.set(assetId,{...(existing ?? {id:assetId,type:authored.kind,label:authored.name ?? authored.id,source:authored.source_scene ?? authored.scene_id ?? 'Project library',data:{source_record:authored.source_record}}),sceneId:existing?.sceneId??authored.scene_id,authored:authored.authored ?? {},changes:authored.changes ?? [],authoredRecord:authored});
   }
   return [...records.values()];
 }
@@ -2159,7 +2159,7 @@ function renderAssets(){
   const projectScope=projectAssetControls?.scope()==='project';
   const list=$('assets'),category=$('asset-category').value;let query=[],searchError=null;try{query=parseAssetQuery($('asset-search').value);}catch(error){searchError=error.message;}
   $('asset-search').setAttribute('aria-invalid',String(!!searchError));
-  assetScope.querySelector('p').textContent=`Models come from imported scenes; actors come from the active scene. Scenes lists imported scenes. Authored assets gathers project-wide NPC drafts, actor edits, script dialogue edits, model and texture replacements and transform templates without a resource refresh. Refresh adds scene texture candidates, referenced scene-header animations and saved retained clips, actor and partition-two scripts, dialogue, source-scoped flag reference groups, decoded transition assets and supported field-map metadata; it also lists global world-map menu records and eight supported shared field clips, without claiming current actor playback or complete runtime coverage. ${state.capabilities?.actor_script_preview?'Script inspection and supported dialogue text tools are available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio lists supported global source VAB/SEQ headers and sound packs; scene playback, events and waveforms remain unverified. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
+  assetScope.querySelector('p').textContent=`Models and actors come from the active imported scene; shared models retain that scene’s source variant. Scenes lists imported scenes. Authored assets gathers project-wide NPC drafts, actor edits, script dialogue edits, model and texture replacements and transform templates without a resource refresh. Refresh adds scene texture candidates, referenced scene-header animations and saved retained clips, actor and partition-two scripts, dialogue, source-scoped flag reference groups, decoded transition assets and supported field-map metadata; it also lists global world-map menu records and eight supported shared field clips, without claiming current actor playback or complete runtime coverage. ${state.capabilities?.actor_script_preview?'Script inspection and supported dialogue text tools are available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio lists supported global source VAB/SEQ headers and sound packs; scene playback, events and waveforms remain unverified. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
   if(projectScope)assetScope.querySelector('p').textContent='Project resources retain each recorded source scene and its provenance. Choose a source membership in Details before opening a shared asset. Discovery verifies imported sources without changing project data. Partial or unavailable coverage is listed above; residency, reachability and current playback remain unobserved.';
   const records=assetRecords(),filtered=searchError?[]:records.filter(record=>(category==='all'||(category==='authored'?(!!record.authoredRecord||record.data?.authored_animation_record===true):record.type===category&&(category!=='actor'||projectScope||record.sceneId===state.scene?.id)))&&assetMatchesQuery(record,query));
   list.replaceChildren();$('asset-count').textContent=records.length;$('asset-results').textContent=searchError??`${filtered.length} / ${records.length} records`;
