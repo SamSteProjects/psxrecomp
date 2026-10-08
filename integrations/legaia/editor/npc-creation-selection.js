@@ -21,3 +21,14 @@ export function createdNpcPresetSelection(state,capture){
   if(id!==capture.plannedId||canonical(state.actor_drafts[id])!==canonical(capture.draft))throw Error('NPC preset created; returned identity or components differ from the reviewed instance. Select it in the hierarchy.');
   return id;
 }
+export function captureNpcDuplication(state,id,name){
+  const original=state.actor_drafts?.[id];
+  if(original?.scene_id!==state.scene?.id||typeof name!=='string'||!name.trim()||name.length>120)throw Error('NPC duplication requires a current scene draft and supported name');
+  const capture=captureNpcCreation(state,{type:'create_actor_draft',donor_entity_id:original.donor_entity_id,name,position:original.position});
+  return {...capture,originalId:id,draft:{...structuredClone(original),name}};
+}
+export function duplicatedNpcSelection(state,capture){
+  const id=createdNpcSelection(state,capture);
+  if(!/^authored-actor:\/\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(id)||id===capture.originalId||canonical(state.actor_drafts[id])!==canonical(capture.draft))throw Error('NPC duplicated; returned identity or components differ from the requested copy. Select it in the hierarchy.');
+  return id;
+}

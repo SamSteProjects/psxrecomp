@@ -106,7 +106,7 @@ import {mountSceneGroundPosition,decodeGroundPositionPreview,nativePositionEntry
 import {mountNpcCreationPreview} from '/npc-creation-preview.js';
 import {mountNpcCreationBuildReview} from '/npc-creation-build-review.js';
 import {mountNpcGroundPlacement} from '/npc-ground-placement.js';
-import {captureNpcCreation,createdNpcSelection,captureNpcPresetCreation,createdNpcPresetSelection} from '/npc-creation-selection.js';
+import {captureNpcCreation,createdNpcSelection,captureNpcPresetCreation,createdNpcPresetSelection,captureNpcDuplication,duplicatedNpcSelection} from '/npc-creation-selection.js';
 import {modelUsageContext,effectiveModelUsers,validateModelUserSelection,retailModelDonors} from '/model-user-selection.js';
 import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,renderComponentDetails,renderComponentActions,bindComponentActions} from '/component-inspector.js';
 import {mountInspectorComponentFilter} from '/inspector-component-filter.js';
@@ -973,6 +973,14 @@ function frameNpcDraft(){
   if(sceneRepresentation==='retail'){representationSelect.value='authored';representationSelect.onchange();selectNpcDraft(id);}
   frame({id,components:{Transform:{imported:{position:{...value.position,y:null}}}}});
 }
+async function duplicateNpcDraft(id){
+  const original=state.actor_drafts?.[id];
+  if(busy||!canEdit()||id!==npcDraftSelection||original?.scene_id!==state.scene?.id||scenePose||shapeDraft||draft||groundPositionInspection||npcCreationInspection||actorGroupInspection||environmentGroupInspection||scenePlacementInspection||scenePlacementMode||currentPlacementSelection().length>1||npcGroundPlacement.active())return;
+  try{const name=original.name.slice(0,115)+' copy',capture=captureNpcDuplication(state,id,name);
+    if(!await api('/api/command',{type:'duplicate_actor_draft',entity_id:id,name}))return;
+    const created=duplicatedNpcSelection(state,capture);clearScenePlacementSelection();selectNpcDraft(created);frameNpcDraft();revealHierarchyButton.click();document.querySelector('.workspace-tabs [data-panel="inspector"]').click();notify('NPC duplicated at the same position. Move the selected copy with X/Z or the viewport handles.');
+  }catch(error){notify(error.message,true);}
+}
 function selectNpcDraft(id){sceneResourceSelection=null;clearEnvironmentGroupSelection();clearActorGroupSelection();pendingEntityFrame=null;npcDraftSelection=id;environmentSelection=null;cancelViewportGesture();renderHierarchy();renderInspector();$("frame-selected").disabled=false;draw();}
 function environmentEntities(){return activeScenePreview()?.entities.filter(e=>e.kind==='environment') ?? [];}
 function selectedEnvironment(){return environmentEntities().find(e=>e.entity_id===environmentSelection);}
@@ -1505,6 +1513,9 @@ document.addEventListener('keydown',event=>{
   if(event.key==='Escape'&&scenePlacementMode){event.preventDefault();scenePlacementMode=false;draw();return;}
   if(event.key==='Escape'&&wallSelectMode){event.preventDefault();wallSelectMode=false;updateFieldToggle();draw();return;}
   if(event.target.matches('input,textarea') || document.querySelector('dialog[open]')) return;
+  if((event.ctrlKey||event.metaKey)&&!event.altKey&&!event.shiftKey&&event.key.toLowerCase()==='d'&&!event.target.matches('select,[contenteditable]')&&!event.target.isContentEditable&&selectedNpcDraft()){
+    event.preventDefault();if(!event.repeat)duplicateNpcDraft(npcDraftSelection);return;
+  }
   if((event.ctrlKey||event.metaKey) && event.key.toLowerCase()==='s'){event.preventDefault();if(!busy)api('/api/project/save',{}, {success:'Project saved.'});}
   if((event.ctrlKey||event.metaKey) && event.key.toLowerCase()==='z'){event.preventDefault();const redo=event.shiftKey;if(redo?state.history?.can_redo:state.history?.can_undo)api(redo?'/api/redo':'/api/undo',{});}
   if(event.key.toLowerCase()==='f'&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&!event.target.matches('select,[contenteditable]')&&!event.target.isContentEditable){event.preventDefault();frameSceneSelection();}
@@ -3391,7 +3402,7 @@ function renderInspector(){
         'inspect-npc-donor-script':()=>openNpcDonorScript({...scriptOptions,renderInstructions:appendScriptInstructions})},
       onError:error=>notify(error.message,true)});
     const duplicate=document.createElement('button');duplicate.id='duplicate-npc-draft';duplicate.textContent='Duplicate draft';duplicate.title='Creates an independent draft at the same position, then selects it to move';$('delete-npc-draft').before(duplicate);
-    duplicate.onclick=async()=>{const previous=new Set(Object.keys(state.actor_drafts??{}));if(await api('/api/command',{type:'duplicate_actor_draft',entity_id:id,name:npc.name.slice(0,115)+' copy'})){const created=Object.keys(state.actor_drafts??{}).find(key=>!previous.has(key));if(created){selectNpcDraft(created);frameNpcDraft();notify('Draft duplicated at the same position. Move it with X/Z or the viewport handles.');}}};
+    duplicate.disabled=busy||!canEdit();duplicate.title+=' (Ctrl+D)';duplicate.onclick=()=>duplicateNpcDraft(id);
     const repeat=document.createElement('button');repeat.id='repeat-npc-draft';repeat.textContent='Repeat draft...';duplicate.after(repeat);repeat.onclick=()=>openDraftRepeat({entityId:id,entityIds:currentPlacementSelection(),onError:error=>notify(error.message,true),getState:()=>state,isBusy:()=>busy,canEdit,setBusy,api,
       canInspectScene:()=>sceneModelsReady()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection,
       getScenePreview:()=>scenePreview,
