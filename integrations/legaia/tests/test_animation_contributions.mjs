@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {inspectAnimationContributions} from '../editor/animation-contributions.js';
+const scene='scene://fixture',clip='animation://fixture/scene-anm/0000',hash='a'.repeat(64),record={type:'animation',id:clip,data:{frame_count:4,bone_count:2,source_record:{record_sha256:hash}}};
+const actor=(id,value)=>({id:scene+'/actors/'+id,components:{ActorAnimation:{imported:{animation_asset_id:clip}},Animation:{authored_channels:{animation_id:clip,source_record_sha256:hash,edits:[{frame_index:1,object_index:0,translation:{x:value},rotation_psx:{z:4080}}]}}}});
+const entities=[actor('b',7),actor('a',7)],before=structuredClone(entities),r=inspectAnimationContributions(record,entities,scene);
+assert.equal(r.axis_count,2);assert.equal(r.contribution_count,4);assert.equal(r.conflict_count,0);assert.deepEqual(r.owners,[scene+'/actors/a',scene+'/actors/b']);assert.deepEqual(r.rows[1].values,[{value:7,owners:r.owners}]);assert.deepEqual(entities,before);
+const conflicting=inspectAnimationContributions(record,[actor('a',7),actor('b',8)],scene);assert.equal(conflicting.conflict_count,1);assert.equal(conflicting.rows[1].values.length,2);
+assert.deepEqual(inspectAnimationContributions(record,[],scene).rows,[]);
+for(const change of [a=>a.id='other',a=>a.components.ActorAnimation.imported.animation_asset_id='other',a=>a.components.Animation.authored_channels.source_record_sha256='b'.repeat(64),a=>a.components.Animation.authored_channels.edits[0].frame_index=4,a=>a.components.Animation.authored_channels.edits[0].object_index=2,a=>a.components.Animation.authored_channels.edits[0].translation.x=2048,a=>a.components.Animation.authored_channels.edits[0].rotation_psx.z=17,a=>a.components.Animation.authored_channels.edits.push(a.components.Animation.authored_channels.edits[0]),a=>a.components.Animation.authored_channels.edits[0].translation.q=1]){const row=actor('a',7);change(row);assert.throws(()=>inspectAnimationContributions(record,[row],scene));}
+assert.throws(()=>inspectAnimationContributions(record,[actor('a',7),actor('a',7)],scene));
+console.log('Stored source/owner/count/encoding qualification, exact axis ownership, equal/conflicting values, deterministic output, immutability and malformed refusal passed.');
