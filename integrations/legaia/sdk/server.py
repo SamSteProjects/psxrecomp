@@ -850,6 +850,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/audio-input-assets.js": ("audio-input-assets.js", "text/javascript"),
                  "/audio-note-links.js": ("audio-note-links.js", "text/javascript"),
                  "/audio-note-timeline.js": ("audio-note-timeline.js", "text/javascript"),
+                 "/audio-channel-state.js": ("audio-channel-state.js", "text/javascript"),
                  "/audio-note-authoring.js": ("audio-note-authoring.js", "text/javascript"),
                  "/audio-bank.js": ("audio-bank.js", "text/javascript"),
                  "/audio-bank-authoring.js": ("audio-bank-authoring.js", "text/javascript"),
