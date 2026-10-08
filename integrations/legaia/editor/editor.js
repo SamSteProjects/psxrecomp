@@ -1,4 +1,4 @@
-import {createAssetResourceDiscovery,resourceAssetCategories} from '/asset-resource-discovery.js';
+import {createAssetResourceDiscovery,assetSearchNeedsResources} from '/asset-resource-discovery.js';
 import {copiedAnimationAsset} from '/animation-copy-selection.js';
 import {decodeSceneCatalog} from '/scene-catalog.js';
 import {openCatalogScenePreview} from '/catalog-scene-preview.js';
@@ -1716,7 +1716,7 @@ const assetSearchHelp=document.createElement('details');assetSearchHelp.id='asse
 const assetKeyboardHelp=document.createElement('p');assetKeyboardHelp.id='asset-keyboard-help';assetKeyboardHelp.textContent='Tab enters asset results. Up/Down browse records; Left/Right choose Open or Details. Home/End jump to the first/last visible record. PageUp/PageDown browse imported-project pages. Enter/Space activate the focused action.';assetSearchHelp.append(assetKeyboardHelp);$('assets').setAttribute('aria-describedby',assetKeyboardHelp.id);
 let resourceRecords=[],resourceLimitations=[],resourceContextKey=null,resourceKey=null,resourcePendingKey=null,resourceAbort=null,resourceError=null;
 const resourceStateKey=()=>JSON.stringify([state.project?.path,state.scene?.id,state.scene_preview_source_key,state.scene_flag_state_key,state.scene_transition_state_key,state.scene_region_state_key,state.scene_trigger_state_key]);
-assetResourceDiscovery=createAssetResourceDiscovery({getContext:()=>({key:resourceStateKey(),eligible:state.capabilities?.resource_catalog===true&&!!state.scene?.id&&!!state.scene_preview_source_key&&projectAssetControls?.scope()!=='project'&&resourceAssetCategories.has($('asset-category').value),busy,loaded:resourceKey===resourceStateKey(),pending:resourcePendingKey===resourceStateKey()}),load:refreshResources,onError:error=>notify(error.message,true)});
+assetResourceDiscovery=createAssetResourceDiscovery({getContext:()=>({key:resourceStateKey(),eligible:state.capabilities?.resource_catalog===true&&!!state.scene?.id&&!!state.scene_preview_source_key&&projectAssetControls?.scope()!=='project'&&assetSearchNeedsResources($('asset-category').value,$('asset-search').value),busy,loaded:resourceKey===resourceStateKey(),pending:resourcePendingKey===resourceStateKey()}),load:refreshResources,onError:error=>notify(error.message,true)});
 let flagResourceDialog=null,transitionResourceDialog=null;
 $('resource-refresh').onclick=refreshResources;
 const transitionsButton=document.createElement('button');transitionsButton.id='scene-transitions';transitionsButton.textContent='Scene transitions';$('resource-refresh').after(transitionsButton);

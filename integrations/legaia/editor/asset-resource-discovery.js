@@ -1,5 +1,13 @@
+import {parseAssetQuery} from './asset-search.js';
 // Catalog loading follows user category selection; the loader owns source validation.
 export const resourceAssetCategories=new Set(['authored','audio','texture','animation','script','dialogue','flag','transition','collision','trigger','region','worldmap']);
+export function assetSearchNeedsResources(category,query){
+  if(resourceAssetCategories.has(category))return true;
+  if(category!=='all')return false;
+  let terms;try{terms=parseAssetQuery(query);}catch{return false;}
+  const types=[...resourceAssetCategories].filter(type=>type!=='authored');
+  return terms.some(term=>!term.exclude&&(term.field==='type'?types.some(type=>type.includes(term.text)):(term.field===null||term.field==='id')&&types.some(type=>term.text.startsWith(type+'://'))));
+}
 export function createAssetResourceDiscovery({getContext,load,schedule=work=>setTimeout(work,0),onError=()=>{}}){
   let attempted=null,queued=null,disposed=false;
   function request(retry=false){
