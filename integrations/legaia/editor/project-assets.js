@@ -137,7 +137,8 @@ export function mountProjectAssets({host,getContext,busy,setBusy,onChange=()=>{}
   filterInput.onchange=()=>{if(disposed||scopeValue!=='project'||busy()!==false||!fresh()||filterInput.value!=='all'&&!context.scenes.some(scene=>scene.id===filterInput.value)){filterInput.value=filterValue;return false;}filterValue=filterInput.value;renderCoverage();notify();return true;};refresh.onclick=()=>refresh.disabled?false:refreshReport();
   function records(){updateState();return scopeValue==='project'&&report&&fresh()?projectAssetRecords(report,filterValue,context.activeSceneId??null,preferredScenes):[];}
   function chooseVariant(assetId,sceneId){updateState();if(disposed||scopeValue!=='project'||!report||!fresh()||busy()!==false||pending||filterValue!=='all'&&filterValue!==sceneId)return false;const asset=report.assets.find(row=>row.id===assetId);if(!asset?.scene_ids.includes(sceneId))return false;preferredScenes.set(assetId,sceneId);notify();return true;}
+  function revealSource(sceneId){updateState();if(disposed||scopeValue!=='project'||!fresh()||busy()!==false||pending||!context.scenes.some(scene=>scene.id===sceneId))return false;if(filterValue!=='all'&&filterValue!==sceneId){filterValue=sceneId;filterInput.value=sceneId;renderCoverage();notify();}return true;}
   function sourceReport(){updateState();return report&&fresh()?clone(report):null;}
   function dispose(){if(disposed)return;disposed=true;discovery.dispose();invalidate();section.remove();}
-  updateState();mounting=false;return {scope:()=>scopeValue,filter:()=>filterValue,chooseVariant,records,sourceReport,updateState,dispose};
+  updateState();mounting=false;return {scope:()=>scopeValue,filter:()=>filterValue,chooseVariant,revealSource,records,sourceReport,updateState,dispose};
 }

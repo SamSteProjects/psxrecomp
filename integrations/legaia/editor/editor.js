@@ -3653,7 +3653,10 @@ async function openCopiedAnimationAfterApply(change,getContext=()=>({projectPath
     if(change?.kind!=='duplicate')throw Error('Copy handoff returned an unrelated change.');
     await refreshResources();
     if(JSON.stringify(context)!==JSON.stringify(getContext())||key!==resourceStateKey()||resourceKey!==key||busy)throw Error('Copy created; source changed before opening it. Select the new clip in the asset database.');
-    openAnimationResource(copiedAnimationAsset(assetRecords(true),change.review,state));
+    const record=copiedAnimationAsset(assetRecords(true),change.review,state);
+    if(projectAssetControls?.scope()==='project'&&!projectAssetControls.revealSource(record.sceneId))throw Error('Copy created; project source changed before revealing it. Select the new clip in the asset database.');
+    $('asset-category').value='animation';$('asset-search').value='id:'+record.id;renderAssets();
+    openAnimationResource(record);
   }catch(error){notify(error.message,true);}
 }
 async function inspectAssignedAnimationDuplicate(entity){
