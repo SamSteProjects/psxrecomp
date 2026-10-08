@@ -115,6 +115,8 @@ def review(project,owner,key,values):
                 current_report=inspect_record(current_record,entry),proposed_report=inspect_record(proposed_record,entry),
                 review=dict(review_key=digest(proof),animation_operand_id=key,values=deepcopy(values),
                             no_op=before==after,changed_byte_offsets=changed,
+                            current_instruction_hex=current_record[target['pc']:target['pc']+target['instruction_length']].hex(),
+                            proposed_instruction_hex=proposed_record[target['pc']:target['pc']+target['instruction_length']].hex(),
                             current_record_sha256=proof['current_record_sha256'],proposed_record_sha256=proof['proposed_record_sha256']))
     return result,after
 

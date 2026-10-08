@@ -79,6 +79,14 @@ def _wait_authoring_report(project, identifier):
                 "limitations": ["Read-only inspection does not establish wait-write safety."]}
 
 
+def _animation_operand_authoring_report(project, identifier):
+    try:
+        return project.script_animation_operand_options(identifier)
+    except (RetailImportError, ProjectError) as exc:
+        return {'supported': False, 'reason': str(exc), 'targets': [],
+                'limitations': ['Read-only inspection does not establish animation argument write safety.']}
+
+
 def _effect_color_authoring_report(project, identifier):
     """Unsupported authoring must not suppress the read-only script report."""
     try:
@@ -219,6 +227,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_dialogue_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_wait_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_effect_color_authoring"] = bool(self.project.disc_path)
+        state['capabilities']['script_animation_operand_authoring'] = bool(self.project.disc_path)
         state['capabilities']['npc_transition_authoring'] = bool(self.project.disc_path)
         state['capabilities']['npc_system_selector_authoring'] = bool(self.project.disc_path)
         state['capabilities']['npc_script_reset'] = bool(self.project.imports)
@@ -407,6 +416,7 @@ class EditorServer(ThreadingHTTPServer):
             report["flag_authoring"] = _flag_authoring_report(project, entity_id)
             report["wait_authoring"] = _wait_authoring_report(project, entity_id)
             report["effect_color_authoring"] = _effect_color_authoring_report(project, entity_id)
+            report["animation_operand_authoring"] = _animation_operand_authoring_report(project, entity_id)
             report["model_selector_authoring"] = _model_selector_authoring_report(project, entity_id)
             try:
                 report["dialogue_authoring"] = project.dialogue_options(entity_id)
@@ -1012,6 +1022,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-node-layers.js": ("script-node-layers.js", "text/javascript"),
                  "/script-operands.js": ("script-operands.js", "text/javascript"),
                  "/script-effect-colors.js": ("script-effect-colors.js", "text/javascript"),
+                 "/script-animation-operands.js": ("script-animation-operands.js", "text/javascript"),
                  "/script-branches.js": ("script-branches.js", "text/javascript"),
                  "/system-flag-selectors.js": ("system-flag-selectors.js", "text/javascript"),
                  "/source-build-script.js": ("source-build-script.js", "text/javascript"),
@@ -2344,6 +2355,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     report["flag_authoring"] = _flag_authoring_report(self.server.project, body["entity_id"])
                     report["wait_authoring"] = _wait_authoring_report(self.server.project, body["entity_id"])
                     report["effect_color_authoring"] = _effect_color_authoring_report(self.server.project, body["entity_id"])
+                    report["animation_operand_authoring"] = _animation_operand_authoring_report(self.server.project, body["entity_id"])
                     report["model_selector_authoring"] = _model_selector_authoring_report(self.server.project, body["entity_id"])
                     self._json(200, report)
                     return
@@ -2360,6 +2372,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     report["flag_authoring"] = _flag_authoring_report(self.server.project, identifier)
                     report["wait_authoring"] = _wait_authoring_report(self.server.project, identifier)
                     report["effect_color_authoring"] = _effect_color_authoring_report(self.server.project, identifier)
+                    report["animation_operand_authoring"] = _animation_operand_authoring_report(self.server.project, identifier)
                     report["model_selector_authoring"] = _model_selector_authoring_report(self.server.project, identifier)
                     self._json(200, report)
                     return

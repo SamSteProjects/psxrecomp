@@ -56,6 +56,13 @@
 .transition-entry input, .movement-entry input, .flag-entry input, .wait-entry input, .modelSelector-entry input { width: 100%; box-sizing: border-box; }
 .transition-unresolved { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
 .transition-unresolved code { overflow-wrap: anywhere; }
+.animation-operands-authoring{border:1px solid var(--border,#48505d);padding:12px;margin:12px 0;overflow-wrap:anywhere;min-width:0}
+.animation-operands-authoring select{width:100%;max-width:100%;margin-bottom:8px}
+.animation-operand-fields,.animation-operand-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.animation-operand-fields label{display:flex;flex-direction:column;gap:4px;flex:1 1 150px;min-width:0}
+.animation-operand-fields input{box-sizing:border-box;width:100%;min-width:0}
+.animation-operand-actions button{white-space:normal;flex:1 1 180px}
+.animation-operand-comparison p{white-space:normal;line-height:1.5}
 
 #actor-batch-dialog { width: min(820px, 90vw); }
 .batch-actors { max-height: 230px; overflow: auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
