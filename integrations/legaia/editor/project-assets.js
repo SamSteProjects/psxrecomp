@@ -1,4 +1,5 @@
 // A read-only project index with distinct imported and authored records. Each selected record keeps one scene's source binding.
+import {createAssetResourceDiscovery} from './asset-resource-discovery.js';
 const MAX_METADATA_BYTES=32*1024*1024;
 const kinds=new Set(['audio','scene','actor','model','texture','animation','script','dialogue','flag','transition','collision','trigger','region','worldmap']);
 const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
@@ -86,7 +87,7 @@ export function qualifyProjectCatalogVariant(variant,record,catalogKey){
 }
 
 function element(tag,label){const node=document.createElement(tag);if(label!==undefined)node.textContent=label;return node;}
-export function mountProjectAssets({host,getContext,busy,setBusy,onChange=()=>{},onError=()=>{},getUnavailableReason=()=>null}){
+export function mountProjectAssets({host,getContext,busy,setBusy,onChange=()=>{},onError=()=>{},getUnavailableReason=()=>null,schedule}){
   if(!host||[getContext,busy,setBusy,onChange,onError,getUnavailableReason].some(callback=>typeof callback!=='function'))fail('Project asset controls require source and lifecycle callbacks.');
   const section=element('section');section.className='asset-scope project-assets-scope';section.dataset.projectAssets='';Object.assign(section.style,{gridColumn:'1 / -1',minWidth:'0'});
   const controls=element('div');Object.assign(controls.style,{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,180px),1fr))',gap:'7px',minWidth:'0'});
@@ -96,6 +97,7 @@ export function mountProjectAssets({host,getContext,busy,setBusy,onChange=()=>{}
   const status=element('p');status.className='field-note';status.dataset.projectAssetCoverage='';status.setAttribute('role','status');const error=element('p');error.className='dialog-error';error.setAttribute('role','alert');const coverage=element('details'),summary=element('summary','Imported scene coverage and limits'),sceneRows=element('div');coverage.append(summary,sceneRows);section.append(controls,status,error,coverage);host.append(section);
   let scopeValue='active',filterValue='all',context=null,identity=null,report=null,controller=null,busyOwner=null,generation=0,disposed=false,pending=false,updating=false,mounting=true;
   const preferredScenes=new Map();
+  const discovery=createAssetResourceDiscovery({getContext:()=>({key:identity===null?null:JSON.stringify(identity),eligible:!disposed&&scopeValue==='project'&&!!context?.scenes.length&&!error.textContent,busy:busy()!==false,loaded:report!==null,pending}),load:refreshReport,schedule,onError});
   const capture=()=>{try{return projectAssetsContext(getContext());}catch{return null;}};
   const fresh=()=>{const value=capture();return !disposed&&value!==null&&identity!==null&&same(identity,sourceIdentity(value));};
   const notify=()=>{if(!disposed&&!mounting)onChange();};
@@ -108,9 +110,9 @@ export function mountProjectAssets({host,getContext,busy,setBusy,onChange=()=>{}
     filterLabel.hidden=refresh.hidden=coverage.hidden=scopeValue!=='project';
     status.hidden=scopeValue!=='project'&&context!==null;
     if(context===null){const reason=getUnavailableReason();status.textContent=typeof reason==='string'&&reason.length<=8192?reason:'Project source is unavailable.';return;}
-    if(scopeValue!=='project'){status.textContent='Active scene resource scope. Project inventory is loaded only by explicit refresh.';return;}
+    if(scopeValue!=='project'){status.textContent='Choose Project resources to discover imported project inventory.';return;}
     if(pending){status.textContent=`Verifying resources across ${context?.scenes.length??0} imported scenes…`;return;}
-    if(!report){status.textContent=!context?'Project source is unavailable.':!context.scenes.length?'No imported scenes. Import scenes before refreshing project resources.':`Project resources are not verified. Refresh to load ${context.scenes.length} imported scenes.`;return;}
+    if(!report){status.textContent=!context?'Project source is unavailable.':!context.scenes.length?'No imported scenes. Import scenes before refreshing project resources.':error.textContent?`Project resources are not verified. Refresh to retry ${context.scenes.length} imported scenes.`:`Project resources are not verified. Discovery will load ${context.scenes.length} imported scenes when the editor is ready.`;return;}
     const counts=report.coverage,filtered=filterValue==='all'?counts.asset_count:report.assets.filter(asset=>asset.scene_ids.includes(filterValue)).length;
     status.textContent=`${filtered} scoped / ${counts.asset_count} project identities · ${counts.membership_count} scene memberships · ${counts.available_scene_count} available / ${counts.partial_scene_count} partial / ${counts.unavailable_scene_count} unavailable of ${counts.imported_scene_count} imported scenes.`;
   }
@@ -124,17 +126,18 @@ export function mountProjectAssets({host,getContext,busy,setBusy,onChange=()=>{}
       const blocked=context===null||busy()!==false;scopeInput.disabled=context===null||busy()!==false&&busyOwner===null;filterInput.disabled=blocked||scopeValue!=='project';refresh.disabled=blocked||scopeValue!=='project'||!context?.scenes.length;renderCoverage();
     }finally{updating=false;}
     if(changed)notify();
+    discovery.request();
   }
   async function refreshReport(){
     updateState();if(disposed||scopeValue!=='project'||!fresh()||busy()!==false||pending||!context.scenes.length)return false;
     const ticket=++generation,expected=clone(context),token={};report=null;sceneRows.replaceChildren();pending=true;controller=new AbortController();const signal=controller.signal;busyOwner=token;setBusy(true);error.textContent='';notify();updateState();const valid=()=>fresh()&&generation===ticket&&!signal.aborted&&scopeValue==='project';
     try{const response=await fetch('/api/project-assets',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal});const raw=await response.text();if(new TextEncoder().encode(raw).byteLength>MAX_METADATA_BYTES)fail('Project asset metadata exceeds the 32 MiB budget.');const value=JSON.parse(raw);if(!response.ok||value?.error)fail(typeof value?.error==='string'?value.error:'Project resource verification failed.');if(!valid())return false;report=decodeProjectAssets(value,expected);renderScenes();notify();return true;}catch(value){if(valid()&&value?.name!=='AbortError'){report=null;sceneRows.replaceChildren();error.textContent=value?.message??String(value);onError(value instanceof Error?value:new Error(String(value)));notify();}return false;}finally{if(generation===ticket){controller=null;pending=false;}release(token);if(!disposed)updateState();}
   }
-  scopeInput.onchange=()=>{if(disposed||!['active','project'].includes(scopeInput.value))return false;if(busy()!==false&&busyOwner===null){scopeInput.value=scopeValue;return false;}const next=scopeInput.value;if(next===scopeValue)return true;scopeValue=next;if(pending)invalidate();error.textContent='';updateState();notify();return true;};
+  scopeInput.onchange=()=>{if(disposed||!['active','project'].includes(scopeInput.value))return false;if(busy()!==false&&busyOwner===null){scopeInput.value=scopeValue;return false;}const next=scopeInput.value;if(next===scopeValue)return true;scopeValue=next;if(pending)invalidate();error.textContent='';updateState();notify();discovery.request(true);return true;};
   filterInput.onchange=()=>{if(disposed||scopeValue!=='project'||busy()!==false||!fresh()||filterInput.value!=='all'&&!context.scenes.some(scene=>scene.id===filterInput.value)){filterInput.value=filterValue;return false;}filterValue=filterInput.value;renderCoverage();notify();return true;};refresh.onclick=()=>refresh.disabled?false:refreshReport();
   function records(){updateState();return scopeValue==='project'&&report&&fresh()?projectAssetRecords(report,filterValue,context.activeSceneId??null,preferredScenes):[];}
   function chooseVariant(assetId,sceneId){updateState();if(disposed||scopeValue!=='project'||!report||!fresh()||busy()!==false||pending||filterValue!=='all'&&filterValue!==sceneId)return false;const asset=report.assets.find(row=>row.id===assetId);if(!asset?.scene_ids.includes(sceneId))return false;preferredScenes.set(assetId,sceneId);notify();return true;}
   function sourceReport(){updateState();return report&&fresh()?clone(report):null;}
-  function dispose(){if(disposed)return;disposed=true;invalidate();section.remove();}
+  function dispose(){if(disposed)return;disposed=true;discovery.dispose();invalidate();section.remove();}
   updateState();mounting=false;return {scope:()=>scopeValue,filter:()=>filterValue,chooseVariant,records,sourceReport,updateState,dispose};
 }

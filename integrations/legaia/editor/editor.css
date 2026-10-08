@@ -145,6 +145,8 @@
 #asset-search-help,#resource-status{grid-column:1 / -1}
 #asset-search-help{font-size:10px;overflow-wrap:anywhere}
 #asset-search-help p{line-height:1.5;color:var(--muted)}
+.asset-panel [data-asset-pages]{padding:0 10px;justify-content:flex-start;min-width:0;flex:0 0 auto}
+.asset-panel [data-asset-pages]>span{min-width:0;flex:1 1 120px;font-size:10px;overflow-wrap:anywhere}
 
 #preset-batch-dialog{width:min(1000px,calc(100vw - 30px));max-height:90vh;overflow:auto}
 #preset-batch-dialog table{width:100%;table-layout:fixed;font-size:11px}

@@ -4,7 +4,7 @@
 
 Project resources now include the complete saved project document in their freshness key, including native audio bindings, retained animation/model inputs, texture additions, templates and saved metadata. Future persisted fields participate automatically. Active scene navigation remains excluded; selection, mode, history and transient caches do not invalidate inventory. Project root, disc path/stat and full import digests also participate.
 
-After Apply changes saved inputs, Refresh project resources before inspecting the catalog again. Review leaves Current identity unchanged; Undo restores the prior identity. Discovery rejects persisted snapshot drift. Existing import/metadata budgets remain in force. A freshness token does not prove file integrity, runtime residency or catalog coverage. Thirty retail-enabled Python tests, two Node suites and the actual audio Apply/Refresh/Undo/Save/Open workflow passed; native bytes/document restored exactly. Evidence: `local-output/sdk-20260909/project-input-freshness-20261006/pass2/`. Gameplay remains deferred.
+After Apply changes saved inputs, the selected Project resources scope discovers the new source before inspection; Refresh project resources explicitly retries or re-verifies it. Review leaves Current identity unchanged; Undo restores the prior identity. Discovery rejects persisted snapshot drift. Existing import/metadata budgets remain in force. A freshness token does not prove file integrity, runtime residency or catalog coverage. Thirty retail-enabled Python tests, two Node suites and the actual audio Apply/Refresh/Undo/Save/Open workflow passed; native bytes/document restored exactly. Evidence: `local-output/sdk-20260909/project-input-freshness-20261006/pass2/`. Gameplay remains deferred.
 
 ## NPC drafts in the central project Asset Database — 2026-10-05
 
@@ -37,8 +37,9 @@ This is a source inventory; it does not establish runtime residency, actor
 spawning, playable routes or complete game coverage.
 
 1. Import the scenes needed for the project using the user-owned retail disc.
-2. In **Asset database scope**, choose **Project resources**, then
-   **Refresh project resources**. Discovery verifies the imported sources and
+2. In **Asset database scope**, choose **Project resources** to discover the
+   imported inventory automatically. **Refresh project resources** explicitly
+   retries a failure or re-verifies the inventory. Discovery verifies sources and
    builds catalogs on detached project views. It does not select a scene, issue
    authoring commands, change Undo/Redo history, save the project or replace the
    active scene's resource caches.
@@ -62,8 +63,9 @@ spawning, playable routes or complete game coverage.
    existing Review/Apply, Undo/Redo, Save and Build workflows remain authoritative.
 
 Choose **Active scene resources** to return to the existing scene workflow.
-**Refresh scene resources** loads the active resource catalog. Project discovery
-is explicit: changing scope alone does not load every imported scene.
+**Refresh scene resources** loads the active resource catalog. Whole-project discovery starts only after choosing Project resources; the default
+active scope does not load every imported scene. Failed discovery waits for an
+explicit Refresh or leaving and reentering Project resources.
 
 | Records | Existing inspection and navigation |
 | --- | --- |
