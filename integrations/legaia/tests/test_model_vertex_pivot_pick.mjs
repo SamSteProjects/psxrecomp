@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {vertexPivotCoordinates,vertexGroupAxisScalePreview,vertexGroupAnglePreview} from '../editor/model-vertex-move.js';
+const source={preview:{objects:[{object_index:0,vertex_start:0,vertex_count:3},{object_index:1,vertex_start:3,vertex_count:1}],vertices:[[0,0,0],[10,0,0],[10,-20,30],[-32768,32767,0]],triangles:[[0,1,2]],normals:[[0,1,0]]}},before=structuredClone(source);
+const pivot=vertexPivotCoordinates(source,0,2);assert.deepEqual(pivot,[10,-20,30]);assert.deepEqual(vertexPivotCoordinates(source,1,0),[-32768,32767,0]);
+assert.deepEqual(vertexGroupAxisScalePreview(source,0,[0,1],[150,75,125],pivot).vertices,[[-5,-5,-8],[10,-5,-8],[10,-20,30],[-32768,32767,0]]);
+assert.deepEqual(vertexGroupAnglePreview(source,0,[0,1],'y',512,pivot).vertices,[[-18,0,16],[-11,0,9],[10,-20,30],[-32768,32767,0]]);
+pivot[0]=999;assert.deepEqual(source,before);
+for(const [owner,index] of [[-1,0],[true,0],[0,-1],[0,true],[0,0.5],[0,3],[1,1],[2,0]])assert.throws(()=>vertexPivotCoordinates(source,owner,index));
+for(const row of [[],[0,0],[0,0,0,0],[true,0,0],[0.5,0,0],[32768,0,0],[-32769,0,0],Array(3)])assert.throws(()=>vertexPivotCoordinates({preview:{...source.preview,vertices:[row,...source.preview.vertices.slice(1)]}},0,0));
+for(const object of [{object_index:1,vertex_start:0,vertex_count:3},{object_index:0,vertex_start:-1,vertex_count:3},{object_index:0,vertex_start:0,vertex_count:5}])assert.throws(()=>vertexPivotCoordinates({preview:{...source.preview,objects:[object]}},0,0));
+console.log('Current vertex pivot: exact local ownership, detached words, scale/rotation results and invalid rows passed.');
