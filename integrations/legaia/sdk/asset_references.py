@@ -268,6 +268,10 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
             from .npc_flags import validate as validate_npc_flags
             validate_npc_flags(project,draft)
         targets={row['semantic_id']:row for row in project._flag_context(draft['donor_entity_id']).options(draft['donor_entity_id'])['targets']} if 'flags' in draft else {}
+        if 'system_flags' in draft:
+            from .npc_system_flags import qualify, context_for
+            qualify(project,draft)
+            targets.update({row['semantic_id']:row for row in context_for(project,draft['donor_entity_id']).options(draft['donor_entity_id'])['targets']})
         npc_flag_owners.setdefault(draft['donor_entity_id'],[]).append((owner,draft,proof,records[0],targets))
 
     # These are historical capture targets, not Current native assignments.
@@ -383,8 +387,10 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
                     site=(owner,reference['pc'])
                     if site in npc_flag_sites:raise ProjectError('Duplicate NPC flag instruction ownership')
                     npc_flag_sites.add(site)
-                    npc_reference=dict(reference,flag_operand_id=None) if system else reference
-                    binding=npc_flag_binding(draft,donor_proof,record,npc_reference,script,targets.get(operand))
+                    npc_operand='script://'+record['owner_id'][8:]+f"/system-flag/{reference['pc']:04x}" if system else operand
+                    if system and npc_operand not in draft.get('system_flags',{}).get('entries',{}):npc_operand=None
+                    npc_reference=dict(reference,flag_operand_id=npc_operand)
+                    binding=npc_flag_binding(draft,donor_proof,record,npc_reference,script,targets.get(npc_operand))
                     if binding['authored_index'] is not None:npc_flag_consumed.setdefault(owner,set()).add(binding['operand_id'])
                     edge(owner,identity,'npc_script_flag_operand',scene,'authored',reference['pc'],flag_evidence=proof,npc_flag_evidence=binding)
                 if authored is not None:
@@ -485,7 +491,8 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
                     edge(model['model_id'],target,'effective_material_texture_source',scene,'effective',evidence=evidence)
     for owners in npc_flag_owners.values():
         for owner,draft,_,_,_ in owners:
-            unresolved+=len(set(draft.get('flags',{}).get('entries',{}))-npc_flag_consumed.get(owner,set()))
+            for family in ('flags','system_flags'):
+                unresolved+=len(set(draft.get(family,{}).get('entries',{}))-npc_flag_consumed.get(owner,set()))
     if own_audio_snapshot:audio_snapshot.verify(project)
     if _full_graph:
         for identity,value in nodes.items():
