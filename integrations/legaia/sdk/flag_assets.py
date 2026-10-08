@@ -142,8 +142,9 @@ def validate_flag_asset(record):
                                          (mnemonic == 'COND_JMP' and bank == 'extra'))
         if not ordinary and not branch:
             _reject("reference mnemonic or operation")
-        editable = ordinary and bank in ('local', 'global', 'context')
-        operand_id = record['script_id'] + f'/flag-bit/{pc:04x}' if editable else None
+        system = ordinary and bank=='system' and target is None and index<=4095 and ref['authored_index'] is not None
+        editable = ordinary and bank in ('local', 'global', 'context') or system
+        operand_id = record['script_id'] + f"/{'system-flag' if system else 'flag-bit'}/{pc:04x}" if editable else None
         if ref['flag_operand_id'] != operand_id:
             _reject("flag operand identity")
         authored = ref['authored_index']
@@ -152,7 +153,7 @@ def validate_flag_asset(record):
             from .flag_qualification import validate
             validate(ref['authored_qualification'],record['owner_id'],operand_id,source['sha256'],pc,mnemonic,target,index,authored)
         if authored is not None:
-            if not editable or not _integer(authored, 0, 31):
+            if not editable or not _integer(authored, 0, 4095 if system else 31) or system and not qualified:
                 _reject("authored selector")
             if (record['script_status'] != 'decoded_supported_paths' and not qualified or
                     bank == 'local' and (index >= 16 or authored >= 16) or

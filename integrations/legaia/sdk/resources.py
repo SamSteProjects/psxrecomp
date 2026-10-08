@@ -167,9 +167,9 @@ def scene_flag_state_key(project) -> str:
     """Operand annotations have their own freshness key, separate from geometry."""
     from .project import digest
     scene = project.active_scene
-    return digest(dict(scene_id=scene, flags={owner: deepcopy(parts['ScriptFlags'])
+    return digest(dict(scene_id=scene, flags={owner: {family:deepcopy(parts[family]) for family in ('ScriptFlags','ScriptSystemFlags') if family in parts}
                   for owner, parts in project.overrides.items()
-                  if scene and owner.startswith(scene + '/') and 'ScriptFlags' in parts}))
+                  if scene and owner.startswith(scene + '/') and any(family in parts for family in ('ScriptFlags','ScriptSystemFlags'))}))
 
 
 def project_flag_state_key(project) -> str:
@@ -177,9 +177,9 @@ def project_flag_state_key(project) -> str:
     from .project import digest
     return digest(dict(project_path=str(project.root), disc_path=project.disc_path,
                        imports=project.imports,
-                       flags={owner: deepcopy(parts['ScriptFlags'])
+                       flags={owner: {family:deepcopy(parts[family]) for family in ('ScriptFlags','ScriptSystemFlags') if family in parts}
                               for owner, parts in getattr(project, 'overrides', {}).items()
-                              if 'ScriptFlags' in parts}))
+                              if any(family in parts for family in ('ScriptFlags','ScriptSystemFlags'))}))
 
 
 def _flag_edits(project, scene_id,qualifications=None):
@@ -206,6 +206,26 @@ def _flag_edits(project, scene_id,qualifications=None):
                 qualifications.update({key:from_target(targets[key],values) for key,values in requested.items()})
         except RetailImportError as exc:
             raise ProjectError("Authored flag operands failed source verification: " + str(exc)) from exc
+    system_requested={}
+    for owner,components in deepcopy(getattr(project,'overrides',{})).items():
+        if not owner.startswith(scene_id+'/') or 'ScriptSystemFlags' not in components:continue
+        from .system_flags import validate
+        validate(project,owner,components['ScriptSystemFlags'])
+        for key,values in components['ScriptSystemFlags']['entries'].items():
+            if key in system_requested:raise ProjectError('System selector has multiple authored owners')
+            system_requested[key]=values
+    if system_requested:
+        from importer.system_flag_authoring import load_system_flag_authoring_context
+        from .flag_qualification import from_target
+        try:
+            context=load_system_flag_authoring_context(project.disc_path,project.imports[scene_id]['scene']['name'])
+            context.patch(system_requested)
+            owners=sorted({key.split('/system-flag/')[0].replace('script://','scene://',1) for key in system_requested})
+            targets={row['semantic_id']:row for owner in owners for row in context.options(owner)['targets']}
+            if set(system_requested)-set(targets):raise ProjectError('Authored system selector lacks native qualification')
+            if qualifications is not None:qualifications.update({key:from_target(targets[key],values) for key,values in system_requested.items()})
+        except RetailImportError as exc:raise ProjectError('Authored system selectors failed source verification: '+str(exc)) from exc
+        requested.update(system_requested)
     return requested
 
 

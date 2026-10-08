@@ -65,15 +65,19 @@ def build_flag_index(catalog: dict, authored: dict | None = None, qualifications
                 }
             row = deepcopy(reference)
             supported = reference['mnemonic'] in tuple(f'{bank}_{op}' for bank in ('LFLAG','GFLAG','CFLAG') for op in ('SET','CLEAR','TEST'))
-            key = script['semantic_id'] + f"/flag-bit/{reference['pc']:04x}" if supported else None
+            system = reference['mnemonic'] in ('SYSFLAG_SET','SYSFLAG_CLEAR','SYSFLAG_TEST') and target is None and reference['index']<=4095
+            key = script['semantic_id'] + f"/{'system-flag' if system else 'flag-bit'}/{reference['pc']:04x}" if supported or system else None
             row.update(retail_index=reference['index'], authored_index=None,
-                       effective_index=reference['index'], flag_operand_id=key)
+                       effective_index=reference['index'], flag_operand_id=key if supported or key in authored else None)
             if key in authored:
                 from importer.flag_authoring import validate_flag_values
+                from importer.system_flag_authoring import validate_system_flag_values
                 from importer.core import ImportError
-                bit = validate_flag_values(authored[key])
-                if reference['mnemonic'] not in tuple(f'{bank}_{op}' for bank in ('LFLAG','GFLAG','CFLAG') for op in ('SET','CLEAR','TEST')):
+                bit = validate_system_flag_values(authored[key]) if system else validate_flag_values(authored[key])
+                if not system and reference['mnemonic'] not in tuple(f'{bank}_{op}' for bank in ('LFLAG','GFLAG','CFLAG') for op in ('SET','CLEAR','TEST')):
                     raise ImportError('Authored flag reference is not a supported bit instruction')
+                if system and (qualifications is None or key not in qualifications):
+                    raise ImportError('Authored system selector requires independent native qualification')
                 row.update(authored_index=bit,effective_index=bit)
                 if qualifications is not None and key in qualifications:
                     from .flag_qualification import validate

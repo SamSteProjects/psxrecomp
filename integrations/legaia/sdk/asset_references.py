@@ -362,13 +362,18 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
             scripts=source_scripts.get(target,[])
             if len(scripts)!=1 or scripts[0].get('source_record')!=record['source_record']:
                 raise ProjectError('Flag reference differs from its unique source script or record hash')
-            component=project.overrides.get(record['owner_id'],{}).get('ScriptFlags')
-            if component is not None:project._validate_flags(record['owner_id'],component)
+            system=record['bank']=='system'
+            component=project.overrides.get(record['owner_id'],{}).get('ScriptSystemFlags' if system else 'ScriptFlags')
+            if component is not None:
+                if system:
+                    from .system_flags import validate
+                    validate(project,record['owner_id'],component)
+                else:project._validate_flags(record['owner_id'],component)
             entries=component.get('entries',{}) if component is not None else {}
             for reference in record['references']:
                 operand=reference['flag_operand_id']
                 authored=entries.get(operand)
-                if reference['authored_index'] != (authored['bit'] if authored is not None else None):
+                if reference['authored_index'] != (authored['index' if system else 'bit'] if authored is not None else None):
                     raise ProjectError('Flag reference differs from its authored operand binding')
                 proof={key:deepcopy(record[key]) for key in ('bank','index','scope','extended_target','grouping_layer')}
                 proof.update(operation=reference['operation'],mnemonic=reference['mnemonic'])
@@ -378,7 +383,8 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
                     site=(owner,reference['pc'])
                     if site in npc_flag_sites:raise ProjectError('Duplicate NPC flag instruction ownership')
                     npc_flag_sites.add(site)
-                    binding=npc_flag_binding(draft,donor_proof,record,reference,script,targets.get(operand))
+                    npc_reference=dict(reference,flag_operand_id=None) if system else reference
+                    binding=npc_flag_binding(draft,donor_proof,record,npc_reference,script,targets.get(operand))
                     if binding['authored_index'] is not None:npc_flag_consumed.setdefault(owner,set()).add(binding['operand_id'])
                     edge(owner,identity,'npc_script_flag_operand',scene,'authored',reference['pc'],flag_evidence=proof,npc_flag_evidence=binding)
                 if authored is not None:
