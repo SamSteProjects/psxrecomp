@@ -953,6 +953,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/component-references.js": ("component-references.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
                  "/model-placement-users.js": ("model-placement-users.js", "text/javascript"),
+                 "/animation-placement-users.js": ("animation-placement-users.js", "text/javascript"),
                  "/command-history.js": ("command-history.js", "text/javascript"),
                  "/project-changes.js": ("project-changes.js", "text/javascript"),
                  "/preset-files.js": ("preset-files.js", "text/javascript"),

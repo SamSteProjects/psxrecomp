@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {animationPlacementIdsForAsset,mountAnimationPlacementUsers} from '../editor/animation-placement-users.js';
+const scene='scene://fixture',asset='animation://fixture/scene-anm/0000';
+const actor=(number,clip)=>({id:scene+'/actors/'+number,components:{ActorAnimation:{imported:{animation_asset_id:asset},effective:{animation_asset_id:clip}}}});
+const rows=[actor('a',asset),actor('b',asset),actor('c','animation://fixture/authored-record/clip'),actor('d',null)],eligible=new Set(rows.map(r=>r.id)),before=structuredClone(rows);
+assert.deepEqual(animationPlacementIdsForAsset(rows,asset,eligible,scene),rows.slice(0,2).map(r=>r.id));
+assert.deepEqual(animationPlacementIdsForAsset(rows,'animation://fixture/authored-record/clip',eligible,scene),[rows[2].id]);
+assert.deepEqual(animationPlacementIdsForAsset(rows,asset,new Set([rows[1].id]),scene),[rows[1].id]);assert.deepEqual(rows,before);
+for(const invalid of [[rows,asset,eligible,'other'],[[...rows,rows[0]],asset,eligible,scene],[[{id:rows[0].id,components:{}}],asset,eligible,scene],[rows,'',eligible,scene],[rows,asset,[],scene],[[actor('x',undefined)],asset,eligible,scene]])assert.throws(()=>animationPlacementIdsForAsset(...invalid));
+const many=Array.from({length:129},(_,i)=>actor(String(i),asset));assert.throws(()=>animationPlacementIdsForAsset(many,asset,new Set(many.map(r=>r.id)),scene));
+let fresh=true,context={projectPath:'project',sceneId:scene,sourceKey:'source',projectSourceKey:'document',rows,eligible},held,release,calls=0;
+const host={children:[],ownerDocument:{createElement:()=>({dataset:{},disabled:false})},append(...items){this.children.push(...items);}};
+const control=mountAnimationPlacementUsers(host,{assetId:asset,getContext:()=>context,current:()=>fresh,busy:()=>false,onError:e=>{throw e;},onSelect:async(ids,current)=>{assert.deepEqual(ids,rows.slice(0,2).map(r=>r.id));held=current;calls++;await new Promise(r=>release=r);}}),button=host.children[0];
+assert.match(button.textContent,/actors \(2\)/);assert('selectCurrentAnimationActors' in button.dataset);
+const pending=button.onclick();assert(held());await button.onclick();assert.equal(calls,1);context={...context,rows:[actor('a',null),...rows.slice(1)]};assert(!held());release();await pending;
+fresh=false;control.synchronize();assert(button.disabled);fresh=true;control.synchronize();assert(!button.disabled);control.dispose();assert(button.disabled);await button.onclick();assert.equal(calls,1);
+console.log('Effective initial clip identities, allocated clips, imported/current separation, eligibility, source ambiguity, selection bound and stale/pending/disposed action ownership passed.');

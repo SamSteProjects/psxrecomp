@@ -83,6 +83,7 @@ import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {parseHierarchyQuery,hierarchyMatches,matchingActorIds} from '/hierarchy-query.js';
 import {mountHierarchyNavigation} from '/hierarchy-navigation.js';
 import {mountModelPlacementUsers} from '/model-placement-users.js';
+import {mountAnimationPlacementUsers,animationPlacementIdsForAsset} from '/animation-placement-users.js';
 import {mountHierarchyGroups,revealHierarchyEntities,matchingHierarchyPlacementIds} from '/hierarchy-groups.js';
 import {captureSceneViewHierarchy} from '/hierarchy-views.js';
 import {mountSceneToolDrawer} from '/scene-tool-drawer.js';
@@ -154,7 +155,7 @@ const $ = (id) => document.getElementById(id);
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const numeric = (value) => typeof value === 'number' && Number.isFinite(value);
 const format = (value) => numeric(value) ? String(Math.round(value * 1000) / 1000) : 'Unknown';
-let modelAssetPlacementSelection=null;
+let assetPlacementSelection=null;
 let state = {project:{}, scene:null, assets:[], selection:{}, history:{}, capabilities:{}};
 let busy = false, toastTimer, lastSceneId, grid = true;
 let sceneAnimationController=null;
@@ -1006,7 +1007,7 @@ function setSourcePlacementGroup(ids,focus){
 function clearScenePlacementSelection(){scenePlacementMode=false;scenePlacementBoxMode=false;scenePlacementSelection=[];scenePlacementKey=null;scenePlacementTool?.restore();}
 function updateScenePlacementSelection(){
   if((scenePlacementMode||scenePlacementSelection.length)&&(!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||scenePlacementKey!==resourceStateKey()||scenePlacementSelection.some(id=>!scenePlacementEligible().has(id))))clearScenePlacementSelection();
-  savedSceneSelections?.synchronize();scenePlacementTool?.refresh();updateSceneFocusButton();updateHierarchyPlacementMatchSelection();updateModelInstanceSelection();modelAssetPlacementSelection?.synchronize();const host=document.querySelector('#scene-placement-tools');if(!host)return;
+  savedSceneSelections?.synchronize();scenePlacementTool?.refresh();updateSceneFocusButton();updateHierarchyPlacementMatchSelection();updateModelInstanceSelection();assetPlacementSelection?.synchronize();const host=document.querySelector('#scene-placement-tools');if(!host)return;
   host.querySelector('[data-mixed-select]').disabled=busy||!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||!!scenePose||!!shapeDraft||!!actorGroupInspection||!!environmentGroupInspection||!!wallSelectMode||!!wallInspection||!!scenePlacementInspection;
   host.querySelector('[data-mixed-box]').disabled=host.querySelector('[data-mixed-select]').disabled||!sceneModelsReady()||pickScriptTargets||pickRuntimeNodes;
   for(const name of ['visible','invert'])host.querySelector('[data-mixed-'+name+']').disabled=host.querySelector('[data-mixed-box]').disabled;
@@ -1589,7 +1590,7 @@ $('assets').before(assetTools);
 const assetScope=document.createElement('details');assetScope.className='asset-scope';assetScope.innerHTML='<summary>Catalog scope</summary><p>Choose active scene resources or explicitly refresh imported project resources. Coverage and source memberships distinguish supported imported metadata from runtime state.</p>';$('assets').after(assetScope);
 mountScriptOperandBundle({after:assetTools,getState:()=>state,context:()=>JSON.stringify([resourceStateKey(),state.project?.mode,state.authored_assets]),canEdit:canEditDialogue,busy:()=>busy,setBusy,api,onError:error=>notify(error.message,true)});
 const assetMetadataPin=createAssetMetadataPin();
-const assetDetails=document.createElement('dialog');assetDetails.id='asset-details';document.body.append(assetDetails);assetDetails.addEventListener('close',()=>{if(assetDetails.open)return;modelAssetPlacementSelection?.dispose();modelAssetPlacementSelection=null;});
+const assetDetails=document.createElement('dialog');assetDetails.id='asset-details';document.body.append(assetDetails);assetDetails.addEventListener('close',()=>{if(assetDetails.open)return;assetPlacementSelection?.dispose();assetPlacementSelection=null;});
 let assetPage=0,assetPages=1,assetPageSignature=null;
 const assetPager=document.createElement('div');assetPager.className='dialog-actions';assetPager.dataset.assetPages='';assetPager.style.flexWrap='wrap';
 const assetPrevious=document.createElement('button'),assetNext=document.createElement('button'),assetPageStatus=document.createElement('span');
@@ -1836,7 +1837,7 @@ function initialAssetUsage(record,modelReferences){
   return [...references.values()];
 }
 function showAssetDetails(record,lookup=()=>assetRecords()){
-  modelAssetPlacementSelection?.dispose();modelAssetPlacementSelection=null;
+  assetPlacementSelection?.dispose();assetPlacementSelection=null;
   const isAuthored=!!record.authoredRecord,inspectorId=assetInspectorDefinition(state.inspector_schema,record);
   assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${inspectorId?'':property('Stable ID',record.id)+property('Record type',record.type)+property(record.data?.scope?.startsWith('global-')?'Source scope':'Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='model'?'Inspect authored model':record.type==='script'?'Open script workspace':record.type==='scene'?'Open scene':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
   const exportContext=resourceStateKey(),exportSnapshot=JSON.stringify(record);
@@ -1846,9 +1847,12 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
   try{mountAssetMetadataComparison(evidence,{record,getState:()=>state,current:exportCurrent,busy:()=>busy,pin:assetMetadataPin,onError:error=>notify(error.message,true)});}catch(error){const note=document.createElement('p');note.className='field-note';note.textContent=error.message;evidence.append(note);}
   $('asset-source-data').parentElement.before(evidence);
   if(record.type!=='template'&&state.build_review_source_key){const button=document.createElement('button');button.textContent='Inspect saved Build records...';button.dataset.assetBuildHistory='';button.onclick=()=>{if(busy||!exportCurrent())return;assetDetails.close();openAssetBuildHistory({record,getState:()=>state,current:()=>exportContext===resourceStateKey()&&JSON.stringify(lookup().find(item=>item.id===record.id))===exportSnapshot,busy:()=>busy,setBusy,onError:error=>notify(error.message,true)});};evidence.append(button);}
-  if(record.type==='model')modelAssetPlacementSelection=mountModelPlacementUsers(evidence,{assetId:record.id,current:exportCurrent,busy:()=>busy,
+  if(record.type==='model')assetPlacementSelection=mountModelPlacementUsers(evidence,{assetId:record.id,current:exportCurrent,busy:()=>busy,
     getContext:()=>canSelectHierarchyMatches()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!wallSelectMode?{projectPath:state.project.path,sceneId:state.scene.id,sourceKey:state.scene_preview_source_key,projectSourceKey:state.project_copy_source_key,rows:activeScenePreview().entities,eligible:scenePlacementEligible()}:null,
     onSelect:async(ids,current)=>{const active=visibilitySelection(),focus=ids.includes(active)?active:ids[0];if(await selectCurrentModelPlacementGroup(record.id,focus,current)&&current())assetDetails.close();},onError:error=>notify(error.message,true)});
+  if(record.type==='animation')assetPlacementSelection=mountAnimationPlacementUsers(evidence,{assetId:record.id,current:exportCurrent,busy:()=>busy,
+    getContext:()=>canSelectHierarchyMatches()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!wallSelectMode?{projectPath:state.project.path,sceneId:state.scene.id,sourceKey:state.scene_preview_source_key,projectSourceKey:state.project_copy_source_key,rows:entities(),eligible:scenePlacementEligible()}:null,
+    onSelect:async(ids,current)=>{const active=visibilitySelection(),focus=ids.includes(active)?active:ids[0];const held=()=>current()&&JSON.stringify(ids)===JSON.stringify(animationPlacementIdsForAsset(entities(),record.id,scenePlacementEligible(),state.scene.id));if(await selectCurrentPlacementGroup(ids,focus,held)&&held())assetDetails.close();},onError:error=>notify(error.message,true)});
   const source=isAuthored?(record.authoredRecord.source_record ?? record.data?.source_record ?? record.data?.components?.RetailMetadata ?? {note:'No additional imported provenance is attached to this authored record.'}):record.data;
   $('asset-source-data').textContent=JSON.stringify(source,null,2);
   if(record.projectMembership){
@@ -1903,7 +1907,7 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
   if(['model','animation'].includes(record.type)){
     const usage=document.createElement('section');usage.innerHTML=`<h3>Used by</h3><p>${record.type==='model'?'Initial model assignments across imported scenes.':'Verified initial animation bindings and authored donor assignments.'} Scripts may change these assignments during gameplay.</p>`;
     const references=initialAssetUsage(record,state.model_references??[]),usageContext=modelUsageContext(state);
-    for(const ref of references){const button=document.createElement('button');button.textContent=`${ref.source_name??ref.source_id} · ${ref.kind==='draft_initial_model_assignment'?'NPC draft':`${ref.imported?'Imported':''}${ref.imported&&ref.effective?' + ':''}${ref.effective?'Effective':''}`}`;button.title=ref.source_id;button.onclick=async()=>{if(busy||usageContext!==modelUsageContext(state))return;assetDetails.close();if(ref.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:ref.scene_id}))return;if(ref.kind==='draft_initial_model_assignment'){selectNpcDraft(ref.source_id);frameNpcDraft();}else if(await api('/api/selection',{entity_id:ref.source_id}))frame(selected());};usage.append(button);}
+    for(const ref of references){const button=document.createElement('button');Object.assign(button.style,{maxWidth:'100%',whiteSpace:'normal',overflowWrap:'anywhere',textAlign:'left'});button.textContent=`${ref.source_name??ref.source_id} · ${ref.kind==='draft_initial_model_assignment'?'NPC draft':`${ref.imported?'Imported':''}${ref.imported&&ref.effective?' + ':''}${ref.effective?'Effective':''}`}`;button.title=ref.source_id;button.onclick=async()=>{if(busy||usageContext!==modelUsageContext(state))return;assetDetails.close();if(ref.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:ref.scene_id}))return;if(ref.kind==='draft_initial_model_assignment'){selectNpcDraft(ref.source_id);frameNpcDraft();}else if(await api('/api/selection',{entity_id:ref.source_id}))frame(selected());};usage.append(button);}
     if(!references.length){const empty=document.createElement('p');empty.textContent='No imported or effective initial actor assignments in this project.';usage.append(empty);}
     if(record.type==='model'){
       const groups=(state.scenes??[]).map(scene=>({scene,ids:effectiveModelUsers(state,record.id,scene.id)})).filter(row=>row.ids.length>=2&&row.ids.length<=128);
@@ -1972,7 +1976,7 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
     }
     $('asset-authored-data').before(actions);
   }
-  $('close-asset-details').onclick=()=>assetDetails.close();assetDetails.showModal();modelAssetPlacementSelection?.synchronize();
+  $('close-asset-details').onclick=()=>assetDetails.close();assetDetails.showModal();assetPlacementSelection?.synchronize();
 }
 function projectAssetContext(){return state.capabilities?.project_assets?{projectPath:state.project.path,sourceKey:state.project_assets_source_key,scenes:(state.scenes??[]).map(({id,name})=>({id,name})),activeSceneId:state.scene?.id??null}:null;}
 async function resolveProjectAsset(record){

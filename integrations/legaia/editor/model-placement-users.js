@@ -1,22 +1,23 @@
 import {modelPlacementIdsForAsset} from './scene-placement-selection.js';
 
 // Asset Details owns the record; this adapter owns only the local selection action.
-export function mountModelPlacementUsers(host,{assetId,getContext,current,busy,onSelect,onError}){
+export function mountModelPlacementUsers(host,{assetId,getContext,current,busy,onSelect,onError,kind='model',resolveIds=null,description=null}){
   const button=host.ownerDocument.createElement('button'),note=host.ownerDocument.createElement('p');
-  button.type='button';button.dataset.selectCurrentModelPlacements='';
-  note.className='field-note';note.textContent='Current SDK model bindings in the active authored scene, including hidden placements and NPC drafts. Initial imported usage remains separate; gameplay use is unverified.';
+  const label=kind==='animation'?'Select current scene actors':'Select current scene placements';
+  button.type='button';button.dataset[kind==='animation'?'selectCurrentAnimationActors':'selectCurrentModelPlacements']='';
+  note.className='field-note';note.textContent=description??'Current SDK model bindings in the active authored scene, including hidden placements and NPC drafts. Initial imported usage remains separate; gameplay use is unverified.';
   host.append(button,note);
   let disposed=false,pending=false;
   function snapshot(){
     if(disposed||busy()||!current())return null;
     const context=getContext();if(!context)return null;
     if(['projectPath','sceneId','sourceKey','projectSourceKey'].some(key=>typeof context[key]!=='string'||!context[key]))throw new Error('Current model placement source is unavailable.');
-    const ids=modelPlacementIdsForAsset(context.rows,assetId,context.eligible);
+    const ids=resolveIds?resolveIds(context):modelPlacementIdsForAsset(context.rows,assetId,context.eligible);
     return {ids,key:JSON.stringify([context.projectPath,context.sceneId,context.sourceKey,context.projectSourceKey,ids])};
   }
   function synchronize(){
-    button.disabled=true;button.textContent='Select current scene placements';button.title='Requires a current authored scene and fresh Asset Details context.';
-    try{const value=snapshot();if(value){button.textContent=`Select current scene placements (${value.ids.length})`;button.disabled=pending||!value.ids.length;button.title=value.ids.length?'Select exact current model users for existing placement tools.':'No eligible current scene placements use this SDK model identity.';}}catch(error){button.title=error.message;}
+    button.disabled=true;button.textContent=label;button.title='Requires a current authored scene and fresh Asset Details context.';
+    try{const value=snapshot();if(value){button.textContent=`${label} (${value.ids.length})`;button.disabled=pending||!value.ids.length;button.title=value.ids.length?`Select exact current ${kind} users for existing placement tools.`:`No eligible current scene placements use this SDK ${kind} identity.`;}}catch(error){button.title=error.message;}
   }
   button.onclick=async()=>{
     if(disposed||pending||button.disabled)return;
