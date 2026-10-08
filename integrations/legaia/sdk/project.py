@@ -1787,6 +1787,11 @@ class ProjectService:
             {'indices':indices,'percents':percents,'pivot':pivot},expected_sha256)
         if report['changes_from_current']:self.set_model_replacement(asset_id,replacement)
 
+    def transform_model_vertices_sequence(self,asset_id,object_index,indices,steps,expected_sha256):
+        replacement,report=self._prepare_model_object(asset_id,object_index,'vertex_sequence',
+            {'indices':indices,'steps':steps},expected_sha256)
+        if report['changes_from_current']:self.set_model_replacement(asset_id,replacement)
+
     def _prepare_model_object(self, asset_id: str, object_index: int, operation: str,
                               values: dict, expected_sha256: str) -> tuple[bytes, dict]:
         from importer.model_json import translate_shape_object, translate_shape_vertices, align_shape_vertices, distribute_shape_vertices, scale_shape_vertices, scale_shape_vertices_axes, rotate_shape_vertices, rotate_shape_vertices_angle, rotate_shape_object, scale_shape_object
@@ -1829,6 +1834,9 @@ class ProjectService:
             replacement = scale_shape_vertices(*args,values['indices'],values['percent'],values['pivot'])
         elif operation == 'vertex_axis_scaling' and set(values) == {'indices','percents','pivot'}:
             replacement = scale_shape_vertices_axes(*args,values['indices'],values['percents'],values['pivot'])
+        elif operation == 'vertex_sequence' and set(values) == {'indices','steps'}:
+            from importer.model_vertex_sequence import transform_shape_vertices_sequence
+            replacement = transform_shape_vertices_sequence(*args,values['indices'],values['steps'])
         elif operation == 'object_mirror' and set(values) == {'axis','pivot'}:
             replacement = mirror_object(*args,values['axis'],values['pivot'])
         elif operation == 'object_axis_scaling' and set(values) == {'percents','pivot'}:
@@ -1850,12 +1858,12 @@ class ProjectService:
         elif operation == 'vertex_references' and set(values) == {'from_index','to_index'}:
             replacement = retarget_object_vertices(*args, values['from_index'], values['to_index'])
         else:
-            raise ProjectError('Choose translation, vertex_translation, vertex_alignment, vertex_distribution, vertex_scaling, vertex_axis_scaling, vertex_rotation, vertex_rotation_angle, vertex_grid, rotation, object_rotation_angle, object_axis_scaling, object_mirror, scale, normal_length, normal_rebuild, normal_rotation_angle, normal_references or vertex_references with exact operation fields')
+            raise ProjectError('Choose translation, vertex_translation, vertex_alignment, vertex_distribution, vertex_scaling, vertex_axis_scaling, vertex_rotation, vertex_rotation_angle, vertex_grid, vertex_sequence, rotation, object_rotation_angle, object_axis_scaling, object_mirror, scale, normal_length, normal_rebuild, normal_rotation_angle, normal_references or vertex_references with exact operation fields')
         report = self.preview_model_file(asset_id, replacement)
         report.update(effective_sha256=hashlib.sha256(effective).hexdigest(),
                       object_index=object_index, operation=operation,
                       preview=decode_tmd(replacement), current_preview=decode_tmd(effective))
-        if operation in ('vertex_translation','vertex_alignment','vertex_distribution','vertex_scaling','vertex_axis_scaling','vertex_rotation','vertex_rotation_angle','vertex_grid'):
+        if operation in ('vertex_translation','vertex_alignment','vertex_distribution','vertex_scaling','vertex_axis_scaling','vertex_rotation','vertex_rotation_angle','vertex_grid','vertex_sequence'):
             report['values'] = deepcopy(values)
         if operation == 'normal_rebuild':
             from importer.model_json import export_shape_json

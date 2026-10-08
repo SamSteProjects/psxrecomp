@@ -1800,6 +1800,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'asset_id','object_index','indices','axis','angle_units','pivot','expected_sha256'} or not isinstance(body['asset_id'],str):raise ProjectError('Vertex angle rotation requires exact model, object, indices, axis, angle units, pivot and inspected hash')
                     self.server.project.rotate_model_vertices_angle(body['asset_id'],body['object_index'],body['indices'],body['axis'],body['angle_units'],body['pivot'],body['expected_sha256'])
                     self._json(200,self.server.state());return
+                if route == '/api/model-vertices-sequence':
+                    if set(body)!={'asset_id','object_index','indices','steps','expected_sha256'} or not isinstance(body['asset_id'],str):raise ProjectError('Vertex sequence requires exact model, object, indices, steps and inspected hash')
+                    self.server.project.transform_model_vertices_sequence(body['asset_id'],body['object_index'],body['indices'],body['steps'],body['expected_sha256'])
+                    self._json(200,self.server.state());return
                 if route == '/api/model-vertices-grid':
                     if set(body)!={'asset_id','object_index','indices','axes','spacing','expected_sha256'} or not isinstance(body['asset_id'],str):raise ProjectError('Vertex grid requires model, object, indices, axes, spacing and inspected hash')
                     self.server.project.snap_model_vertices(body['asset_id'],body['object_index'],body['indices'],body['axes'],body['spacing'],body['expected_sha256'])
