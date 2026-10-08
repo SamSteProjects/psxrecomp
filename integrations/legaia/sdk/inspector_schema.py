@@ -354,6 +354,7 @@ def inspector_schema():
             ('facing','Edit NPC script facing...','actor_facing_authoring'),
             ('model-selectors','Edit NPC script model selectors...','actor_model_selector_authoring'),
             ('flags','Edit NPC script flags...','actor_flag_authoring'),
+            ('system-flags','Edit NPC system selectors...','npc_system_selector_authoring'),
             ('branches','Edit NPC script branches...','actor_branch_authoring'),
             ('effect-colors','Edit NPC effect colors...','actor_effect_color_authoring'),
             ('waits','Edit NPC wait targets...','actor_wait_authoring'),
@@ -379,5 +380,6 @@ def inspector_schema():
     asset_actions.insert(next(i for i,a in enumerate(asset_actions) if a['id']=='edit-npc-flags'),
         {'id':'edit-npc-effect-colors','label':'Edit NPC effect colors','capability':'actor_effect_color_authoring',
          'when':['authoredRecord','donor_entity_id']})
+    asset_actions.append({'id':'edit-npc-system-flags','label':'Edit NPC system selectors','capability':'npc_system_selector_authoring','when':['authoredRecord','donor_entity_id']})
     asset_actions.append({'id':'reset-npc-script','label':'Reset NPC-owned script edits','capability':'npc_script_reset','when':['authoredRecord','donor_entity_id']})
     return schema

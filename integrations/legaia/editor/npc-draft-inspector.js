@@ -16,13 +16,13 @@ export function renderNpcDraftInspector(schema,snapshot,previewState){
 export const npcScriptActionButtons={
   'edit-npc-dialogue':'npc-dialogue-button','edit-npc-facing':'npc-facing-button',
   'edit-npc-model-selectors':'npc-model-selectors-button','edit-npc-flags':'npc-flags-button',
-  'edit-npc-branches':'npc-branches-button','edit-npc-effect-colors':'npc-effect-colors-button',
+  'edit-npc-system-flags':'npc-system-flags-button','edit-npc-branches':'npc-branches-button','edit-npc-effect-colors':'npc-effect-colors-button',
   'edit-npc-waits':'npc-waits-button','edit-npc-movement':'npc-movement-button',
   'inspect-npc-build-script':'npc-build-script-button','inspect-npc-donor-script':'npc-donor-script-button',
   'reset-npc-script':'npc-script-reset-button'};
 export const npcDraftActionContext=(state,id)=>JSON.stringify([state.project?.path,state.scene?.id,state.mode??state.project?.mode,state.asset_reference_source_key,state.actor_drafts?.[id]??null]);
 export function npcScriptBindingSnapshot(state,id){
-  const draft=state.actor_drafts?.[id],row=state.npc_script_bindings?.[id],families=['dialogue','waits','movement','facing','flags','branches','model_selectors','effect_colors'];
+  const draft=state.actor_drafts?.[id],row=state.npc_script_bindings?.[id],families=['dialogue','waits','movement','facing','flags','system_flags','branches','model_selectors','effect_colors'];
   const keys=['schema_version','entity_id','scene_id','donor_entity_id','source_script_id','authored_draft_sha256','authored_counts','source_qualification','generated_qualification','runtime_binding'];
   if(typeof draft?.donor_entity_id!=='string'||!row||Array.isArray(row)||Object.keys(row).length!==keys.length||keys.some(k=>!Object.hasOwn(row,k))||Array.isArray(row.authored_counts))throw Error('Unsupported NPC script ownership metadata. Reselect the NPC.');
   if(!draft||!row||row.schema_version!=='legaia.npc-script-binding.v1'||row.entity_id!==id||row.scene_id!==draft.scene_id||row.donor_entity_id!==draft.donor_entity_id||row.source_script_id!=='script://'+draft.donor_entity_id.slice(8)||!/^scene:\/\/[A-Za-z0-9_-]+\/actors\/man-p1\/[0-9]{4}$/.test(row.donor_entity_id)||! /^[0-9a-f]{64}$/.test(row.authored_draft_sha256)||row.source_qualification!=='inspect_retail_donor_script'||row.generated_qualification!=='inspect_saved_build_script'||row.runtime_binding!=='not_asserted'||!row.authored_counts||Object.keys(row.authored_counts).length!==families.length||families.some(f=>!Number.isSafeInteger(row.authored_counts[f])||row.authored_counts[f]<0||row.authored_counts[f]>1024||row.authored_counts[f]!==Object.keys(draft[f]?.[f==='dialogue'?'runs':'entries']??{}).length))throw Error('NPC script ownership snapshot differs from its authored draft. Reselect the NPC.');

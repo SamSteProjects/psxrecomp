@@ -1,7 +1,7 @@
 """Editor-facing NPC script ownership metadata, independent of retail decoding."""
 from .project import digest
 
-FAMILIES = ('dialogue', 'waits', 'movement', 'facing', 'flags', 'branches', 'model_selectors', 'effect_colors')
+FAMILIES = ('dialogue', 'waits', 'movement', 'facing', 'flags', 'system_flags', 'branches', 'model_selectors', 'effect_colors')
 
 
 def snapshots(project):

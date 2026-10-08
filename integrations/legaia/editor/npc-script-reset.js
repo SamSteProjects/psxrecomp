@@ -1,4 +1,4 @@
-const families=['dialogue','waits','movement','facing','flags','branches','model_selectors','effect_colors'];
+const families=['dialogue','waits','movement','facing','flags','system_flags','branches','model_selectors','effect_colors'];
 const canonical=v=>JSON.stringify(v,(_,x)=>x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.keys(x).sort().map(k=>[k,x[k]])):x),equal=(a,b)=>canonical(a)===canonical(b);
 const hash=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
@@ -12,7 +12,7 @@ export function decodeNpcScriptResetSource(value,id,state){
 export function decodeNpcScriptResetReview(value,request,source,state){
  decodeNpcScriptResetSource(source,request.entity_id,state);
  const selected=request.families;
- if(!exact(request,['entity_id','families'])||!Array.isArray(selected)||!selected.length||selected.length>8||!equal(selected,families.filter(f=>selected.includes(f)))||selected.some(f=>!source.families.find(row=>row.id===f)?.owned_count))throw Error('Select currently owned script families in Inspector order.');
+ if(!exact(request,['entity_id','families'])||!Array.isArray(selected)||!selected.length||selected.length>families.length||!equal(selected,families.filter(f=>selected.includes(f)))||selected.some(f=>!source.families.find(row=>row.id===f)?.owned_count))throw Error('Select currently owned script families in Inspector order.');
  const proposed=structuredClone(source.draft);for(const f of selected)delete proposed[f];
  if(!exact(value,['schema_version','entity_id','project_source_key','request','current','proposed','removed','review_key','scope','native_byte_preview','runtime_binding','gameplay_verified'])||value.schema_version!=='legaia.npc-script-reset-review.v1'||value.entity_id!==request.entity_id||value.project_source_key!==source.project_source_key||!equal(value.request,request)||!equal(value.current,source.draft)||!equal(value.proposed,proposed)||!equal(value.removed,source.families.filter(row=>selected.includes(row.id)))||!hash(value.review_key)||!scope(value))throw Error('NPC script reset review differs from the selected family removal.');
  return structuredClone(value);
