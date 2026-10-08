@@ -341,8 +341,8 @@ async function inspectScriptTarget(pc){
 function showNpcMovementTargets(overlay,returnToEditor,isCurrent,onClear){
   if(busy||!scenePreviewCurrent()||overlay.project_source_key!==state.project_copy_source_key||!isCurrent()||!overlay.targets.length||overlay.targets.some(r=>!Number.isFinite(r.position.x)||!Number.isFinite(r.position.z)))throw new Error('Scene or NPC movement source changed. Reopen the movement editor.');
   scriptTargetOverlay?.onClear?.();cancelViewportGesture();
-  scriptTargetOverlay={...overlay,key:resourceStateKey(),identity:overlay.entity_id+' - NPC script dispatch unresolved',partial:false,inspect:returnToEditor,isCurrent,onClear};
-  const select=scriptTargetTools.querySelector('select');select.replaceChildren();for(const target of overlay.targets){const option=document.createElement('option');option.value=target.pc;option.textContent=scriptOffset(target.pc)+' '+target.mnemonic+' - X '+target.position.x+', Z '+target.position.z;select.append(option);}
+  scriptTargetOverlay={...overlay,key:resourceStateKey(),identity:overlay.entity_id+' - NPC script dispatch unresolved',partial:overlay.partial??false,inspect:returnToEditor,isCurrent,onClear};
+  const select=scriptTargetTools.querySelector('select');select.replaceChildren();for(const target of overlay.targets){const option=document.createElement('option');option.value=target.pc;option.textContent=scriptOffset(target.pc)+' '+target.mnemonic+' - X '+target.position.x+', Z '+target.position.z+(target.path_status==='source_unvisited'?' - unvisited source anchor':'');select.append(option);}
   frameScriptTargets();
 }
 function currentScriptTargets(){
@@ -370,7 +370,7 @@ function drawScriptTargets(){
     const hit={pc:target.pc,x:p.x,y:p.y};scriptTargetHits.push(hit);
     ctx.strokeRect(p.x-6,p.y-6,12,12);
     const context=target.context===null||target.context===undefined?'':` · context ${target.context} unresolved`;
-    const title=`${scriptOffset(target.pc)} ${target.mnemonic}${target.parked?' · parked':''}${context}`,coordinates=`X ${target.position.x} · Z ${target.position.z}`;
+    const title=`${scriptOffset(target.pc)} ${target.mnemonic}${target.parked?' · parked':''}${target.path_status==='source_unvisited'?' · unvisited source anchor':''}${context}`,coordinates=`X ${target.position.x} · Z ${target.position.z}`;
     const box={x:Math.max(4,Math.min(p.x+10,width-ctx.measureText(title).width-12)),y:p.y-21,w:Math.max(ctx.measureText(title).width,ctx.measureText(coordinates).width)+8,h:32};
     let fits=false;
     for(let attempt=0;attempt<32;attempt++){
@@ -2028,7 +2028,7 @@ async function activateAsset(record,action=null){
   if(action==='edit-npc-waits'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC waits target changed. Reopen Asset Details.');openNpcWaits({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api});return;}
   if(action==='edit-npc-movement'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC script movement target changed. Reopen Asset Details.');openNpcMovement({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api,showTargets:showNpcMovementTargets});return;}
   if(action==='inspect-npc-build-script'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC Build target changed. Reopen Asset Details.');openNpcBuildScript({entityId:record.id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});return;}
-  if(action==='inspect-npc-current-script'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('Current NPC target changed. Reopen Asset Details.');openNpcCurrentScript({entityId:record.id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});return;}
+  if(action==='inspect-npc-current-script'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('Current NPC target changed. Reopen Asset Details.');openNpcCurrentScript({entityId:record.id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions,showTargets:showNpcMovementTargets});return;}
   if(action==='inspect-npc-donor-script'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC retail donor changed. Reopen Asset Details.');openNpcDonorScript({entityId:record.id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});return;}
   if(action==='inspect-npc-donor-model'){const model=npcDonorModel(record);if(!model||!state.model_references?.some(ref=>ref.source_id===record.id&&ref.target_id===model&&ref.scene_id===record.sceneId&&ref.kind==='draft_initial_model_assignment'&&ref.effective_donor_id===(record.authoredRecord.authored?.appearance?.donor_entity_id??record.authoredRecord.donor_entity_id)))throw new Error('NPC donor model assignment changed. Reopen Asset Details.');openModel(model,null,null,'imported');return;}
   if(action==='inspect-asset-region-bounds'){await inspectRegionBounds(record);return;}
@@ -2544,9 +2544,10 @@ function appendScriptOperands(cell,instruction,menuEditors=new Map(),focusMenuRu
 }
 function appendScriptInstructions(host,report,identity=report.semantic_id??report.script_id??'Inspected script',movementAuthoring=report.movement_authoring,onSelect=null,walkthroughOptions=null){
   host.replaceChildren();host.classList.remove('script-table-wrap');
-  const messages=(report.dialogues??[]).map(message=>({pc:message.pc,mnemonic:'DIALOGUE_SEGMENT',operands:{text:message.text},
+  const unvisited=new Set(walkthroughOptions?[...(report.unvisited_instructions??[]),...(report.unvisited_dialogues??[])].map(row=>row.pc):[]);
+  const messages=[...(report.dialogues??[]),...(walkthroughOptions?report.unvisited_dialogues??[]:[])].map(message=>({pc:message.pc,mnemonic:'DIALOGUE_SEGMENT',operands:{text:message.text},
     successors:[{pc:message.pc+message.length,condition:'encoded_continuation'}]}));
-  const instructions=[...(report.instructions??[]),...messages].sort((a,b)=>a.pc-b.pc),byPC=new Map(instructions.map(item=>[item.pc,item])),rows=new Map(),incoming=new Map(),history=[];
+  const instructions=[...(report.instructions??[]),...(walkthroughOptions?report.unvisited_instructions??[]:[]),...messages].sort((a,b)=>a.pc-b.pc),byPC=new Map(instructions.map(item=>[item.pc,item])),rows=new Map(),incoming=new Map(),history=[];
   let selectedPC=null;
   const navigation=document.createElement('div');navigation.className='script-path-navigation';
   const back=document.createElement('button');back.textContent='Back to previous instruction';back.disabled=true;
@@ -2653,7 +2654,7 @@ function appendScriptInstructions(host,report,identity=report.semantic_id??repor
   for(const instruction of instructions){
     const row=document.createElement('tr');row.tabIndex=-1;rows.set(instruction.pc,row);
     const offset=document.createElement('td'),jump=document.createElement('button');jump.textContent=scriptOffset(instruction.pc);jump.setAttribute('aria-label',`Select instruction ${scriptOffset(instruction.pc)}`);jump.onclick=()=>select(instruction.pc);offset.append(jump);row.append(offset);
-    const mnemonic=document.createElement('td');mnemonic.textContent=instruction.mnemonic;row.append(mnemonic);
+    const mnemonic=document.createElement('td');mnemonic.textContent=instruction.mnemonic+(unvisited.has(instruction.pc)?' · unvisited source anchor':'');row.append(mnemonic);
     const operands=document.createElement('td');appendScriptOperands(operands,instruction,menuEditors,focusMenuRun);row.append(operands);
     const editor=operandEditors.get(instruction.pc);
     if(editor){
@@ -3277,7 +3278,7 @@ function renderInspector(){
         'edit-npc-branches':()=>openNpcBranches(scriptOptions),'edit-npc-effect-colors':()=>openNpcEffectColors(scriptOptions),
         'edit-npc-waits':()=>openNpcWaits(scriptOptions),'edit-npc-movement':()=>openNpcMovement({...scriptOptions,showTargets:showNpcMovementTargets}),
         'inspect-npc-build-script':()=>openNpcBuildScript({...scriptOptions,renderInstructions:appendScriptInstructions}),
-        'inspect-npc-current-script':()=>openNpcCurrentScript({...scriptOptions,renderInstructions:appendScriptInstructions}),
+        'inspect-npc-current-script':()=>openNpcCurrentScript({...scriptOptions,renderInstructions:appendScriptInstructions,showTargets:showNpcMovementTargets}),
         'inspect-npc-donor-script':()=>openNpcDonorScript({...scriptOptions,renderInstructions:appendScriptInstructions})},
       onError:error=>notify(error.message,true)});
     const duplicate=document.createElement('button');duplicate.id='duplicate-npc-draft';duplicate.textContent='Duplicate draft';duplicate.title='Creates an independent draft at the same position, then selects it to move';$('delete-npc-draft').before(duplicate);

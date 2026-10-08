@@ -830,6 +830,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/npc-script-reset.js": ("npc-script-reset.js", "text/javascript"),
                  "/npc-movement.js": ("npc-movement.js", "text/javascript"),
                  "/npc-appearance.js": ("npc-appearance.js", "text/javascript"),
+                 "/npc-current-script-targets.js": ("npc-current-script-targets.js", "text/javascript"),
                  "/npc-current-script.js": ("npc-current-script.js", "text/javascript"),
                  "/npc-donor-script.js": ("npc-donor-script.js", "text/javascript"),
                  "/npc-draft-inspector.js": ("npc-draft-inspector.js", "text/javascript"),
