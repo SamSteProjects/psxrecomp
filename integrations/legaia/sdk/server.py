@@ -980,6 +980,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/asset-navigation.js": ("asset-navigation.js", "text/javascript"),
                  "/script-paths.js": ("script-paths.js", "text/javascript"),
                  "/script-branch-walkthrough.js": ("script-branch-walkthrough.js", "text/javascript"),
+                 "/script-flag-sandbox.js": ("script-flag-sandbox.js", "text/javascript"),
                  "/script-walkthrough.js": ("script-walkthrough.js", "text/javascript"),
                  "/script-flow-overview.js": ("script-flow-overview.js", "text/javascript"),
                  "/script-node-layers.js": ("script-node-layers.js", "text/javascript"),

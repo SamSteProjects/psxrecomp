@@ -1,3 +1,4 @@
+import {mountScriptFlagSandbox} from './script-flag-sandbox.js';
 import {analyzeScriptFlow} from './script-flow-overview.js';
 const offset=pc=>'0x'+pc.toString(16).toUpperCase().padStart(4,'0');
 const hash=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
@@ -29,10 +30,11 @@ export function mountScriptWalkthrough(host,{report,getContext,selection=()=>nul
  section.dataset.scriptWalkthrough='';tools.className='script-walkthrough-tools';status.dataset.walkthroughStatus='';status.setAttribute('role','status');choices.dataset.walkthroughChoices='';visits.dataset.walkthroughVisits='';for(const b of [start,entry,back,reset,download])b.type='button';tools.append(start,entry,back,reset,download);section.append(heading,note,tools,status,choices,visits);host.append(section);
  let disposed=false,stale=false,engine=null,exporting=false;const controller=new AbortController();const expected=structuredClone(getContext()),dialog=host.closest?.('dialog');
  try{engine=createScriptWalkthrough(report);}catch(error){status.textContent=error.message;onError(error);}
+ const sandbox=mountScriptFlagSandbox(section,{report,selection,current:()=>!disposed&&!stale&&current()&&JSON.stringify(expected)===JSON.stringify(getContext()),busy:()=>busy()||exporting,selectInstruction,onError});
  const same=()=>JSON.stringify(expected)===JSON.stringify(getContext());
  function fresh(){if(disposed||stale)return false;if(!current()||!same()){stale=true;engine?.reset();choices.replaceChildren();visits.replaceChildren();status.textContent='Source context changed. Reopen script inspection.';for(const b of [start,entry,back,reset,download])b.disabled=true;return false;}return true;}
  function draw(){
-  if(!fresh())return;const s=engine?.snapshot();if(!s){for(const b of [start,entry,back,reset,download])b.disabled=true;return;}
+  sandbox.update();if(!fresh())return;const s=engine?.snapshot();if(!s){for(const b of [start,entry,back,reset,download])b.disabled=true;return;}
   const blocked=busy()||exporting;start.disabled=blocked||!engine?.has(selection());entry.disabled=blocked||!s.entry_decoded;back.disabled=blocked||s.trace.length<2;reset.disabled=blocked||!s.trace.length;download.disabled=blocked||!s.trace.length;
   choices.replaceChildren();visits.replaceChildren();
   status.textContent=s.state==='not_started'?'Select a decoded boundary or start at the source entry.':`${s.trace.length} of ${s.max_visits} source visits · ${offset(s.pc)} · `+({choose_successor:'choose an encoded successor; conditions are not evaluated.',undecoded_target:'undecoded target; walkthrough stopped.',no_encoded_successor:'no encoded successor; runtime resumption is unknown.',visit_limit:'visit limit reached; go Back or Reset.'}[s.state]);
@@ -45,7 +47,7 @@ export function mountScriptWalkthrough(host,{report,getContext,selection=()=>nul
  start.onclick=()=>act(()=>engine.start(selection()));entry.onclick=()=>act(()=>engine.start(engine.snapshot().entry_pc));back.onclick=()=>act(()=>engine.back());reset.onclick=()=>act(()=>engine.reset());
  download.onclick=async()=>{if(!fresh()||busy()||exporting||!engine||!engine.snapshot().trace.length)return;const snapshot=engine.snapshot();exporting=true;draw();status.textContent='Requalifying source walkthrough…';try{if(await requalify({signal:controller.signal})!==true)throw Error('Source walkthrough requalification failed.');if(!fresh())return;const value=scriptWalkthroughEvidence(snapshot,expected);const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'})),a=el('a');a.href=url;a.download='source-script-walkthrough.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(error){if(!disposed){stale=true;engine.reset();choices.replaceChildren();visits.replaceChildren();for(const b of [start,entry,back,reset,download])b.disabled=true;status.textContent='Source requalification failed. Reopen script inspection. '+error.message;onError(error);}}finally{exporting=false;if(fresh())draw();}};
 
- const dispose=()=>{if(disposed)return;disposed=true;engine?.reset();controller.abort();clearInterval(timer);dialog?.removeEventListener('close',dispose);section.remove();};
- const timer=setInterval(()=>{if(!section.isConnected){dispose();return;}if(fresh()){const s=engine?.snapshot(),blocked=busy()||exporting;start.disabled=blocked||!engine?.has(selection());entry.disabled=blocked||!s?.entry_decoded;back.disabled=blocked||!s||s.trace.length<2;reset.disabled=download.disabled=blocked||!s?.trace.length;for(const b of choices.querySelectorAll('button'))b.disabled=blocked;for(const b of visits.querySelectorAll('button'))b.disabled=blocked||b.dataset.walkthroughDecoded!=='true';}},300);
+ const dispose=()=>{if(disposed)return;disposed=true;sandbox.dispose();engine?.reset();controller.abort();clearInterval(timer);dialog?.removeEventListener('close',dispose);section.remove();};
+ const timer=setInterval(()=>{sandbox.update();if(!section.isConnected){dispose();return;}if(fresh()){const s=engine?.snapshot(),blocked=busy()||exporting;start.disabled=blocked||!engine?.has(selection());entry.disabled=blocked||!s?.entry_decoded;back.disabled=blocked||!s||s.trace.length<2;reset.disabled=download.disabled=blocked||!s?.trace.length;for(const b of choices.querySelectorAll('button'))b.disabled=blocked;for(const b of visits.querySelectorAll('button'))b.disabled=blocked||b.dataset.walkthroughDecoded!=='true';}},300);
  dialog?.addEventListener('close',dispose,{once:true});draw();return {section,update:draw,dispose,get snapshot(){return engine?.snapshot()??null;}};
 }
