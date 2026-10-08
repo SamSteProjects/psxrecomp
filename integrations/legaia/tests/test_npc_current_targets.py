@@ -35,10 +35,11 @@ class CurrentTargets(unittest.TestCase):
                 root=Path(os.environ['LEGAIA_NPC_CURRENT_TARGET_EVIDENCE']);root.mkdir(parents=True,exist_ok=True)
                 from sdk.server import EditorServer
                 from sdk.npc_movement import source
+                from sdk.npc_system_flags import source as system_source
                 server=EditorServer(('127.0.0.1',0),p,runtime_port=65533)
                 try:state=server.state()
                 finally:server.server_close()
-                (root/'retail.json').write_text(json.dumps(dict(entity_id=identity,state=state,report=report,movement=source(p,identity))),encoding='utf-8')
+                (root/'retail.json').write_text(json.dumps(dict(entity_id=identity,state=state,report=report,movement=source(p,identity),system_flags=system_source(p,identity))),encoding='utf-8')
 
 
 if __name__=='__main__':unittest.main()
