@@ -1,11 +1,19 @@
 """Qualified NPC script-body preview before allocation, never emitted/live code."""
-from copy import deepcopy
+from copy import copy, deepcopy
 from hashlib import sha256
 from importer.script_inspection import inspect_record
 from .project import ProjectError, digest
 from .project_copy import source_key
 from .npc_donor_script import inspect as inspect_donor
 from .npc_branches import branch_context, effective_man
+
+
+def proposed_inspection(project, entity_id, proposed):
+    """Use the same serializers on a detached draft map; no command or history."""
+    detached=copy(project)
+    detached.actor_drafts=deepcopy(project.actor_drafts)
+    detached.actor_drafts[entity_id]=deepcopy(proposed)
+    return inspect(detached,entity_id)['inspection']
 
 
 def inspect(project, entity_id):

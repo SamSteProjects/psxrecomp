@@ -27,6 +27,14 @@ def effective_man(project,draft,context):
             if before==after:continue
             if at in occupied:raise ProjectError('NPC branch composition overlaps other authored operands')
             occupied.add(at);candidate[at]=after
+    if 'transitions' in draft:
+        adapter=project._transition_context(draft['donor_entity_id'])
+        if adapter._man!=context._man:raise ProjectError('NPC transition composition source snapshots differ')
+        changed,_=adapter.patch(draft['transitions']['entries'])
+        for at,(before,after) in enumerate(zip(context._man,changed)):
+            if before!=after:
+                if at in occupied:raise ProjectError('NPC transition composition overlaps other authored operands')
+                occupied.add(at);candidate[at]=after
     return bytes(candidate)
 
 

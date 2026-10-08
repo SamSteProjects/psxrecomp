@@ -9,7 +9,80 @@ from importer.man_layout import read_man_layout
 from importer.transition_authoring import patch_transition_entry
 from importer.script_inspection import _instruction
 from .npc_script_allocation import allocated_scripts
-from .project import ProjectError
+from .project import ProjectError, digest
+from .project_copy import source_key
+
+
+def validate(project, draft):
+    if 'transitions' not in draft:
+        return
+    value=draft['transitions']
+    if not isinstance(value,dict) or set(value)!={'donor_entity_id','entries'} or value['donor_entity_id']!=draft['donor_entity_id']:
+        raise ProjectError('NPC transitions belong to their script donor; clear transitions before changing donor')
+    project._validate_transitions(draft['donor_entity_id'],{'entries':value['entries']})
+    project._transition_context(draft['donor_entity_id']).patch(value['entries'])
+
+
+def source(project, identifier):
+    draft=project.actor_drafts.get(identifier) if isinstance(identifier,str) else None
+    if project.mode!='edit' or not isinstance(draft,dict) or draft['scene_id']!=project.active_scene:
+        raise ProjectError('NPC transitions require an active-scene draft in Edit mode')
+    project._validate_actor_draft(identifier,draft);key=source_key(project)
+    context=project._transition_context(draft['donor_entity_id'])
+    options=context.options(draft['donor_entity_id'])
+    entries=draft.get('transitions',{}).get('entries',{})
+    context.patch(entries)
+    from importer.transition_authoring import reference_entry_interpretation
+    for row in options['transitions']:
+        row['authored_values']=deepcopy(entries.get(row['semantic_id']))
+        row['effective_values']=dict(row['values'],**entries.get(row['semantic_id'],{}))
+        row['effective_interpretation']=reference_entry_interpretation(row['effective_values'])
+    if source_key(project)!=key:raise ProjectError('Project changed during NPC transition inspection')
+    return dict(schema_version='legaia.npc-transitions-source.v1',entity_id=identifier,
+        scene_id=draft['scene_id'],project_source_key=key,draft=deepcopy(draft),options=options,
+        gameplay_verified=False,transition_activation='not_asserted',destination_name_changed=False)
+
+
+def review(project, request):
+    if not isinstance(request,dict) or set(request)!={'entity_id','entries'} or not isinstance(request['entries'],dict):
+        raise ProjectError('NPC transition review requires identity and complete typed entries')
+    report=source(project,request['entity_id']);draft=report['draft'];proposed=deepcopy(draft)
+    if request['entries']:
+        proposed['transitions']=dict(donor_entity_id=draft['donor_entity_id'],entries=deepcopy(request['entries']))
+    else:proposed.pop('transitions',None)
+    project._validate_actor_draft(request['entity_id'],proposed)
+    _,changes=project._transition_context(draft['donor_entity_id']).patch(request['entries'])
+    # Qualify composition with existing script fields, including branch changes.
+    from .npc_current_script import proposed_inspection
+    inspection=proposed_inspection(project,request['entity_id'],proposed)
+    if source_key(project)!=report['project_source_key']:raise ProjectError('Project changed during NPC transition review')
+    return dict(schema_version='legaia.npc-transitions-review.v1',entity_id=request['entity_id'],
+        project_source_key=report['project_source_key'],request=deepcopy(request),current=draft,
+        proposed=proposed,changes=changes,inspection=inspection,
+        review_key=digest(dict(source=report['project_source_key'],request=request,algorithm='npc-transition-arrivals.v1')),
+        gameplay_verified=False,transition_activation='not_asserted',destination_name_changed=False)
+
+
+def apply(project, command):
+    if set(command)!={'type','entity_id','entries','review_key'}:
+        raise ProjectError('NPC transition Apply requires exact reviewed fields')
+    report=review(project,{k:command[k] for k in ('entity_id','entries')})
+    if command['review_key']!=report['review_key']:raise ProjectError('NPC transitions changed; review again')
+    if report['current']==report['proposed']:return
+    project.actor_drafts[command['entity_id']]=deepcopy(report['proposed'])
+    project.undo_stack.append(dict(target='actor_drafts',entity_id=command['entity_id'],before=report['current'],after=deepcopy(report['proposed'])))
+    project.redo_stack.clear()
+
+
+def patch_project(project, scene_id, context, candidate, allocations):
+    requests=[]
+    for row in allocations['drafts']:
+        draft=project.actor_drafts[row['draft_id']]
+        if draft['scene_id']!=scene_id:raise ProjectError('NPC transition allocation belongs to another scene')
+        if 'transitions' in draft:
+            validate(project,draft)
+            requests.append(dict(draft_id=row['draft_id'],**deepcopy(draft['transitions'])))
+    return patch_allocated_transitions(context,candidate,allocations,requests) if requests else (candidate,None)
 
 
 def patch_allocated_transitions(context,candidate,allocations,requests):

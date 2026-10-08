@@ -25,6 +25,7 @@ def capture(project,command):
         raise ProjectError('NPC capture requires an existing draft and space in the preset library')
     draft=deepcopy(project.actor_drafts[command['entity_id']]);project._validate_actor_draft(command['entity_id'],draft)
     key=source_key(project)
+    if 'transitions' in draft:raise ProjectError('NPC transition presets are not implemented yet; capture cannot omit arrival edits')
     if 'effect_colors' in draft:
         from .npc_effect_colors import qualify
         qualify(project,draft)

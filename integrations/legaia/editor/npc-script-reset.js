@@ -1,4 +1,4 @@
-const families=['dialogue','waits','movement','facing','flags','system_flags','branches','model_selectors','effect_colors'];
+const families=['dialogue','waits','movement','facing','flags','system_flags','branches','model_selectors','effect_colors','transitions'];
 const canonical=v=>JSON.stringify(v,(_,x)=>x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.keys(x).sort().map(k=>[k,x[k]])):x),equal=(a,b)=>canonical(a)===canonical(b);
 const hash=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));

@@ -3229,6 +3229,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .npc_waits import source
                     if set(body)!={'entity_id'}:raise ProjectError('NPC wait source requires identity only')
                     self._json(200,source(self.server.project,body['entity_id']));return
+                if route=='/api/npc-transitions-source':
+                    from .npc_transitions import source
+                    if set(body)!={'entity_id'}:raise ProjectError('NPC transition source requires identity only')
+                    self._json(200,source(self.server.project,body['entity_id']));return
+                if route=='/api/npc-transitions-review':
+                    from .npc_transitions import review
+                    self._json(200,review(self.server.project,body));return
                 if route=='/api/npc-waits-review':
                     from .npc_waits import review
                     self._json(200,review(self.server.project,body));return

@@ -412,6 +412,12 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
             from importer.effect_color_authoring import load_effect_color_authoring_context
             npc_effect_colors_context=load_effect_color_authoring_context(project.disc_path,scene)
             candidate,npc_effect_colors_audit=patch_npc_effect_colors(project,draft['scene_id'],npc_effect_colors_context,candidate,actor_audit)
+        npc_transitions_audit=None
+        if any('transitions' in item for item in project.actor_drafts.values() if item['scene_id']==draft['scene_id']):
+            from .npc_transitions import patch_project as patch_npc_transitions
+            from importer.transition_authoring import load_transition_authoring_context
+            npc_transitions_context=load_transition_authoring_context(project.disc_path,scene)
+            candidate,npc_transitions_audit=patch_npc_transitions(project,draft['scene_id'],npc_transitions_context,candidate,actor_audit)
         npc_branches_audit=None
         if any('branches' in item for item in drafts.values()):
             from .npc_branches import patch_project as patch_npc_branches
@@ -503,7 +509,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         selected_draft_id=draft_id,drafts=drafts,scene_id=draft['scene_id'],
         **({'_rebuild_request':request,'_asset_patches':map_patches} if defer_rebuild else {}),
         map_changes=map_audit,
-        texture_changes=texture_audit,model_changes=model_audit,animation_changes=animation_audit,npc_dialogue_changes=npc_dialogue_audit,npc_appearance_changes=npc_appearance_audit,npc_wait_changes=npc_wait_audit,npc_movement_changes=npc_movement_audit,npc_facing_changes=npc_facing_audit,npc_flags_changes=npc_flags_audit,npc_system_flags_changes=npc_system_flags_audit,npc_branches_changes=npc_branches_audit,npc_model_selectors_changes=npc_model_selectors_audit,npc_effect_colors_changes=npc_effect_colors_audit,
+        texture_changes=texture_audit,model_changes=model_audit,animation_changes=animation_audit,npc_dialogue_changes=npc_dialogue_audit,npc_appearance_changes=npc_appearance_audit,npc_wait_changes=npc_wait_audit,npc_movement_changes=npc_movement_audit,npc_facing_changes=npc_facing_audit,npc_flags_changes=npc_flags_audit,npc_system_flags_changes=npc_system_flags_audit,npc_branches_changes=npc_branches_audit,npc_model_selectors_changes=npc_model_selectors_audit,npc_effect_colors_changes=npc_effect_colors_audit,npc_transitions_changes=npc_transitions_audit,
         authored_state_key=input_key,
         imported_document_sha256=digest(document),source_disc_sha256=disc_hash,
         source_prot_sha256=prot_hash,result_prot_sha256=sha256(rebuilt).hexdigest(),

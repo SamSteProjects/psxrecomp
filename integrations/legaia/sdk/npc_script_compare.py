@@ -44,7 +44,7 @@ def authored_spans(metadata,entity_id,retail,generated,draft):
             _graph_candidate(a,qualification_record,retail['script_offset'],source_graph,selector_baseline)
         except NativeError as error:raise ProjectError('NPC branch comparison graph is not source-qualified') from error
     spans=[];occupied=set();movement_expected={};facing_expected={};flags_expected={};selectors_expected={};colors_expected={};prefix='script://'+draft['donor_entity_id'].removeprefix('scene://')+'/'
-    for key,category in [('npc_appearance_changes','initial_appearance'),('npc_dialogue_changes','own_dialogue'),('npc_wait_changes','own_wait'),('npc_movement_changes','own_movement'),('npc_facing_changes','own_facing'),('npc_flags_changes','own_flag'),('npc_system_flags_changes','own_system_flag'),('npc_branches_changes','own_branch'),('npc_model_selectors_changes','own_model_selector'),('npc_effect_colors_changes','own_effect_color')]:
+    for key,category in [('npc_appearance_changes','initial_appearance'),('npc_dialogue_changes','own_dialogue'),('npc_wait_changes','own_wait'),('npc_movement_changes','own_movement'),('npc_facing_changes','own_facing'),('npc_flags_changes','own_flag'),('npc_system_flags_changes','own_system_flag'),('npc_branches_changes','own_branch'),('npc_model_selectors_changes','own_model_selector'),('npc_effect_colors_changes','own_effect_color'),('npc_transitions_changes','own_transition')]:
         value=metadata.get(key)
         if value is None:continue
         if not isinstance(value,dict) or not isinstance(value.get('changes'),list) or len(value['changes'])>8192:
@@ -161,6 +161,23 @@ def authored_spans(metadata,entity_id,retail,generated,draft):
                 header_end=pc+(3 if expected['target_context'] is not None else 2)
                 if a[pc:header_end]!=b[pc:header_end]:raise ProjectError('NPC effect color comparison dispatch or sub-op differs')
                 before,after=bytes.fromhex(expected['before_hex']),bytes.fromhex(expected['after_hex'])
+            elif category=='own_transition':
+                from importer.transition_authoring import patch_transition_entry
+                from importer.core import ImportError as NativeError
+                owner=row.get('transition_id');pc=row.get('pc')
+                if (type(pc) is not int or not 0<=pc<=65535 or owner!=prefix+f'transition/{pc:04x}' or
+                    row.get('donor_entity_id')!=draft['donor_entity_id'] or
+                    draft.get('transitions',{}).get('donor_entity_id')!=draft['donor_entity_id']):
+                    raise ProjectError('NPC transition comparison differs from its source owner')
+                requested=draft.get('transitions',{}).get('entries',{}).get(owner)
+                try:
+                    _,changes=patch_transition_entry(a,retail['script_offset'],pc,requested,base_offset=retail['byte_offset'])
+                    patch_transition_entry(qualification_record,generated['script_offset'],pc,requested)
+                except NativeError as error:raise ProjectError('NPC transition comparison target is not qualified') from error
+                expected=next((c for c in changes if c['field']==row.get('field')),None)
+                if expected is None or any(type(row.get(k)) is not type(v) or row[k]!=v for k,v in expected.items() if k!='decoded_byte_offset') or source_at!=expected['decoded_byte_offset']:
+                    raise ProjectError('NPC transition comparison differs from its decoded source operand')
+                before,after=bytes([expected['before_byte']]),bytes([expected['after_byte']])
             elif category=='own_system_flag':
                 from importer.system_flag_authoring import patch_system_flag_selector
                 from importer.core import ImportError as NativeError

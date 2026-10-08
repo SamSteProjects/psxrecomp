@@ -2282,6 +2282,9 @@ class ProjectService:
         if command.get('type')=='set_actor_draft_effect_colors':
             from .npc_effect_colors import apply
             apply(self,command);return
+        if command.get('type')=='set_actor_draft_transitions':
+            from .npc_transitions import apply
+            apply(self,command);return
         if command.get('type')=='set_actor_draft_dialogue':
             from .npc_dialogue import apply
             apply(self,command);return
@@ -3045,7 +3048,7 @@ class ProjectService:
                 raise ValueError()
         except ValueError:
             raise ProjectError('Invalid authored actor UUID') from None
-        if not isinstance(draft, dict) or set(draft)-{'scene_id','donor_entity_id','position','name','dialogue','appearance','waits','movement','facing','flags','system_flags','branches','model_selectors','effect_colors'} or not {'scene_id','donor_entity_id','position','name'}<=set(draft):
+        if not isinstance(draft, dict) or set(draft)-{'scene_id','donor_entity_id','position','name','dialogue','appearance','waits','movement','facing','flags','system_flags','branches','model_selectors','effect_colors','transitions'} or not {'scene_id','donor_entity_id','position','name'}<=set(draft):
             raise ProjectError('Invalid actor draft fields')
         if not isinstance(draft['name'],str) or not draft['name'].strip() or len(draft['name']) > 120:
             raise ProjectError('Actor draft name must contain 1 through 120 characters')
@@ -3058,6 +3061,8 @@ class ProjectService:
             encode_placement_coordinate(value, axis)
         from .npc_effect_colors import validate as validate_effect_colors
         validate_effect_colors(self,draft)
+        from .npc_transitions import validate as validate_transitions
+        validate_transitions(self,draft)
         from .npc_dialogue import validate
         validate(draft)
         from .npc_appearance import validate as validate_appearance
