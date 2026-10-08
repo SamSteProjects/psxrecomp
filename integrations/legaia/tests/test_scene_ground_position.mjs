@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {sceneGroundPositionCommand,decodeGroundPositionPreview} from '../editor/scene-ground-position.js';
+import {sceneGroundPositionCommand,decodeGroundPositionPreview,nativePositionEntry} from '../editor/scene-ground-position.js';
 const position={x:128,z:256};const actor=sceneGroundPositionCommand('actor','scene://fixture/actors/0001',position),npc=sceneGroundPositionCommand('npc','authored-actor://fixture',position);assert.equal(actor.type,'set_transform');assert.equal(npc.type,'set_actor_draft_position');assert.deepEqual(actor.position,position);actor.position.x=999;assert.equal(position.x,128);assert.deepEqual(Object.keys(npc.position),['x','z']);
 for(const bad of [{x:65,z:256},{x:0,z:256},{x:16448,z:256},{x:128,z:256,y:0},{x:NaN,z:256},null])assert.throws(()=>sceneGroundPositionCommand('actor','id',bad));assert.throws(()=>sceneGroundPositionCommand('scenery','id',position));
 console.log('Actor/NPC picked positions use detached X/Z-only existing Project commands and reject unsupported axes/grid.');
@@ -11,3 +11,9 @@ const decoded=decodeGroundPositionPreview(value,context,'actor',position,before)
 for(const change of [v=>v.review.proposed_position.y=0,v=>v.review.project_source_key='stale',v=>v.unrelated_instances_unchanged=false,v=>v.current_instance.display_position.y=0,v=>v.proposed_instance.display_position.y=null,v=>v.proposed_instance.entity_id='other',v=>v.gameplay_verified=true]){const bad=structuredClone(value);change(bad);assert.throws(()=>decodeGroundPositionPreview(bad,context,'actor',position,before));}
 const reordered=structuredClone(value);reordered.review.command={position:{z:256,x:128},entity_id:'actor',type:'set_transform'};assert.doesNotThrow(()=>decodeGroundPositionPreview(reordered,context,'actor',position,before));
 console.log('Reviewed position preview checks source/target/XZ/preserved Y, displayed current instance, immutable flags and finite proposed display coordinates.');
+
+assert.deepEqual(nativePositionEntry({x:'15360',z:'7296'}),{x:15360,z:7296});
+assert.deepEqual(nativePositionEntry({x:'64',z:'16384'}),{x:64,z:16384});
+for(const x of ['', ' ', ' 128', '128 ', '128.0', '1e3', '-64', '+128', '0', '65', '16448', 'Infinity', '9007199254740992'])assert.throws(()=>nativePositionEntry({x,z:'256'}));
+for(const value of [{x:128,z:'256'},{x:'128',z:'256',y:'0'},null])assert.throws(()=>nativePositionEntry(value));
+console.log('Native coordinate entry refuses empty, fractional, signed, exponent, non-grid, out-of-range and unsupported values without rounding.');
