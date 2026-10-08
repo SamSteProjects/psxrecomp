@@ -33,8 +33,12 @@ class CurrentTargets(unittest.TestCase):
             restored=ProjectService.open(p.save());self.assertEqual(inspect(restored,identity),report)
             if os.environ.get('LEGAIA_NPC_CURRENT_TARGET_EVIDENCE'):
                 root=Path(os.environ['LEGAIA_NPC_CURRENT_TARGET_EVIDENCE']);root.mkdir(parents=True,exist_ok=True)
-                state=p.state();state['project_copy_source_key']=source_key(p)
-                (root/'retail.json').write_text(json.dumps(dict(entity_id=identity,state=state,report=report)),encoding='utf-8')
+                from sdk.server import EditorServer
+                from sdk.npc_movement import source
+                server=EditorServer(('127.0.0.1',0),p,runtime_port=65533)
+                try:state=server.state()
+                finally:server.server_close()
+                (root/'retail.json').write_text(json.dumps(dict(entity_id=identity,state=state,report=report,movement=source(p,identity))),encoding='utf-8')
 
 
 if __name__=='__main__':unittest.main()
