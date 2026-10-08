@@ -1,3 +1,4 @@
+import {mountScriptBranchWalkthrough} from './script-branch-walkthrough.js';
 // Encoded source flow only. Branch writers and destination qualification live in the SDK.
 import {mountScriptFlowOverview} from './script-flow-overview.js';
 import {mountScriptNodeLayers} from './script-node-layers.js';
@@ -120,7 +121,7 @@ function element(tag,label){const node=document.createElement(tag);if(label!==un
 function button(label,action){const node=element('button',label);node.type='button';node.dataset.action=action;return node;}
 function svgNode(tag,attributes={},label){const node=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [key,value] of Object.entries(attributes))node.setAttribute(key,String(value));if(label!==undefined)node.textContent=label;return node;}
 
-export function mountScriptBranches(host,{owner,getContext,busy,setBusy,api,selectInstruction,reopen,initialDrafts=new Map(),onDraftChange=()=>{},onError=()=>{}}){
+export function mountScriptBranches(host,{owner,getContext,busy,setBusy,api,selectInstruction,reopen,initialDrafts=new Map(),onDraftChange=()=>{},getProjectSourceKey=()=>null,onError=()=>{}}){
   let context,restoredDrafts;
   try{if(!host||[getContext,busy,setBusy,api,selectInstruction,reopen,onDraftChange,onError].some(callback=>typeof callback!=='function'))fail('Script branch controls require source and lifecycle callbacks.');context=scriptBranchContext(getContext());if(!ownerValid(owner,context.sceneId))fail('Script owner belongs to a different scene.');const prefix='script://'+owner.slice(8)+'/branch/';if(!(initialDrafts instanceof Map)||initialDrafts.size>1024||[...initialDrafts].some(([id,value])=>typeof id!=='string'||!id.startsWith(prefix)||!/^[0-9a-f]{4}$/.test(id.slice(prefix.length))||!valueValid(value)))fail('Pending branch drafts require this source owner and exact destination values.');restoredDrafts=new Map([...initialDrafts].map(([id,value])=>[id,clone(value)]));}catch(error){onError(error);return {ready:Promise.resolve(false),select(){return false;},updateState(){},dispose(){}};}
   const section=element('section');section.className='script-branch-authoring';section.dataset.scriptBranches='';section.append(element('h3','Source flow and branch destinations'));
@@ -132,21 +133,23 @@ export function mountScriptBranches(host,{owner,getContext,busy,setBusy,api,sele
   const filter=element('input');filter.type='search';filter.maxLength=128;filter.placeholder='Offset or instruction';filter.setAttribute('aria-label','Filter qualified branch destinations');const destinationLabel=element('label','Qualified decoded destination'),destination=element('select');destination.setAttribute('aria-label','Qualified branch destination');destinationLabel.append(destination);const destinationStatus=element('p');destinationStatus.className='field-note';
   const actions=element('div');actions.className='dialog-actions';actions.style.flexWrap='wrap';const inspect=button('Inspect destination','inspect-destination'),reviewButton=button('Review destination','review'),reset=button('Review reset to Retail','reset'),discard=button('Discard branch draft','discard'),apply=button('Apply reviewed destination','apply');actions.append(inspect,reviewButton,reset,discard,apply);form.append(branchLabel,layers,filter,destinationLabel,destinationStatus,actions);
   const unavailableList=element('div');unavailableList.dataset.unavailableBranchDrafts='';unavailableList.className='script-warning';unavailableList.hidden=true;
-  const overviewHost=element('div'),proposedOverviewHost=element('div');
+  const overviewHost=element('div'),proposedOverviewHost=element('div'),walkthroughHost=element('div');
   const nodeLayerHost=element('div'),nodeLayers=mountScriptNodeLayers(nodeLayerHost);
-  const assessment=element('div');assessment.dataset.branchReview='';section.append(status,error,tools,overviewHost,proposedOverviewHost,graph,graphStatus,links,nodeLayerHost,unknown,form,unavailableList,assessment);host.append(section);
+  const assessment=element('div');assessment.dataset.branchReview='';section.append(status,error,tools,walkthroughHost,overviewHost,proposedOverviewHost,graph,graphStatus,links,nodeLayerHost,unknown,form,unavailableList,assessment);host.append(section);
   let snapshot=null,accepted=null,activeId=null,selectedPC=null,pending=null,controller=null,busyOwner=null,generation=0,disposed=false,stale=false,started=false;
   const drafts=restoredDrafts,unavailableDrafts=new Map(),graphId='script-branch-arrow-'+(++nextGraph);let resolveReady;const ready=new Promise(resolve=>resolveReady=resolve);
   const overview=mountScriptFlowOverview(overviewHost,{selectInstruction:offset=>{if(current()&&pending===null&&busy()===false)selectNode(offset);}});
   const proposedOverview=mountScriptFlowOverview(proposedOverviewHost,{selectInstruction:offset=>{if(current()&&pending===null&&busy()===false)selectNode(offset);}});
   const current=()=>{try{return !disposed&&!stale&&same(context,scriptBranchContext(getContext()));}catch{return false;}};
   const coreCurrent=()=>{try{const value=scriptBranchContext(getContext());return !disposed&&['projectPath','sceneId','mode'].every(key=>value[key]===context[key]);}catch{return false;}};
+  let walkthroughSelecting=false;
+  const walkthrough=mountScriptBranchWalkthrough(walkthroughHost,{owner,getContext,getProjectSourceKey,current,busy,selection:()=>selectedPC,selectInstruction:(pc,reveal)=>{walkthroughSelecting=true;try{return selectInstruction(pc,reveal);}finally{walkthroughSelecting=false;}},request,decodeSnapshot:decodeScriptBranchSnapshot,decodeReview:decodeScriptBranchReview,onError});
   const target=()=>snapshot?.targets.find(row=>row.semantic_id===activeId)??null;
   const value=()=>drafts.has(activeId)?drafts.get(activeId):target()?{target_pc:target().current_target_pc}:undefined;
   const reviewed=()=>current()&&accepted?.branch_id===activeId&&same(accepted.value,value());
   const notifyDrafts=()=>onDraftChange(new Map([...drafts].map(([id,value])=>[id,clone(value)])));
   const release=token=>{if(busyOwner===token){busyOwner=null;setBusy(false);}};
-  function invalidate(){generation++;controller?.abort();controller=null;if(pending!=='apply')pending=null;if(busyOwner)release(busyOwner);accepted=null;assessment.replaceChildren();nodeLayers.clear('The inspected selection or review changed. Choose a current decoded boundary.');}
+  function invalidate(){generation++;controller?.abort();controller=null;if(pending!=='apply')pending=null;if(busyOwner)release(busyOwner);accepted=null;walkthrough.sync(snapshot,null);assessment.replaceChildren();nodeLayers.clear('The inspected selection or review changed. Choose a current decoded boundary.');}
   function showError(value){error.textContent=value?.message??String(value);onError(value instanceof Error?value:new Error(String(value)));}
   function updateState(){
     if(!disposed&&!stale&&!current()){stale=true;invalidate();status.textContent='Project, scene, mode, or script state changed. Reopen this script.';}
@@ -154,6 +157,7 @@ export function mountScriptBranches(host,{owner,getContext,busy,setBusy,api,sele
     const row=target(),chosen=value(),valid=chosen===null||valueValid(chosen)&&snapshot?.destinations.some(item=>item.pc===chosen.target_pc);
     layer.disabled=graphScope.disabled=blocked||!snapshot;refresh.disabled=blocked;graphPrevious.disabled=blocked||graphScope.value!=='whole'||flowPage===0;graphNext.disabled=blocked||graphScope.value!=='whole'||Number(graphNext.dataset.lastPage??0)<=flowPage;branch.disabled=filter.disabled=destination.disabled=blocked||!editable||!row;inspect.disabled=!available||!row||!valid||chosen===null;reviewButton.disabled=blocked||!editable||!row||!valid;reset.disabled=blocked||!editable||!row||row.authored_value===null;discard.disabled=blocked||!drafts.has(activeId);apply.disabled=blocked||!editable||!reviewed()||accepted?.no_op;form.hidden=!snapshot?.targets.length;
     for(const node of unavailableList.children)if(node.dataset.action==='discard-unavailable')node.disabled=blocked;
+    walkthrough.updateState();
     if(!started&&available&&busy()===false){started=true;void load().then(result=>{resolveReady?.(result);resolveReady=null;});}
   }
   async function request(route,body,signal){const response=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal});const result=await response.json();if(!response.ok||result?.error)fail(result?.error??'Script branch inspection failed.');return result;}
@@ -174,7 +178,7 @@ export function mountScriptBranches(host,{owner,getContext,busy,setBusy,api,sele
   }
   function focusGraphPage(offset){if(graphScope.value!=='whole'||!snapshot)return;const retail=layer.value==='retail'||snapshot.current_report===null,report=retail?snapshot.source_report:snapshot.current_report,proposal=!retail&&reviewed()?accepted.proposed_report:null,index=scriptBranchPage(report,proposal).all_pcs.indexOf(offset);if(index>=0)flowPage=Math.floor(index/24);}
   function setBranch(id,notify=false){if(!snapshot?.targets.some(row=>row.semantic_id===id))return false;if(activeId!==id){invalidate();activeId=id;}selectedPC=target().pc;focusGraphPage(selectedPC);renderFields();draw();updateState();if(notify)notifySelection(selectedPC);return true;}
-  function select(offset){if(!snapshot||!current())return false;const source=inspectReport(snapshot.source_report),present=source.has(offset)||snapshot.current_report!==null&&inspectReport(snapshot.current_report).has(offset)||accepted&&inspectReport(accepted.proposed_report).has(offset);if(!present)return false;const row=snapshot.targets.find(item=>item.pc===offset);if(row&&row.semantic_id!==activeId)setBranch(row.semantic_id);selectedPC=offset;focusGraphPage(offset);draw();return true;}
+  function select(offset){if(!snapshot||!current())return false;const source=inspectReport(snapshot.source_report),present=source.has(offset)||snapshot.current_report!==null&&inspectReport(snapshot.current_report).has(offset)||accepted&&inspectReport(accepted.proposed_report).has(offset);if(!present)return false;const row=snapshot.targets.find(item=>item.pc===offset);if(row&&row.semantic_id!==activeId&&!walkthroughSelecting)setBranch(row.semantic_id);selectedPC=offset;focusGraphPage(offset);draw();return true;}
   function selectNode(offset){if(select(offset))notifySelection(offset);}
   function renderFields(){
     branch.replaceChildren();for(const row of snapshot?.targets??[]){const option=element('option',`${pc(row.pc)} · ${row.mnemonic} · ${row.condition}`);option.value=row.semantic_id;branch.append(option);}branch.value=activeId??'';
@@ -187,6 +191,7 @@ export function mountScriptBranches(host,{owner,getContext,busy,setBusy,api,sele
     for(const row of rows){const option=element('option',`${pc(row.pc)} · ${row.mnemonic}`);option.value=String(row.pc);destination.append(option);}destination.value=offset===undefined?'':String(offset);destinationStatus.textContent=`${count} qualified destination(s)${count>256?' · showing 256; filter by offset or instruction':''}. Only SDK-qualified source instruction or atomic MES starts are selectable; opaque bytes remain excluded.`;
   }
   function draw(){
+    walkthrough.sync(snapshot,reviewed()?accepted:null);
     graph.replaceChildren();links.replaceChildren();unknown.replaceChildren();if(!snapshot||!current()){nodeLayers.clear('The source selection is unavailable or stale. Reopen this script.');return;}
     let retail=layer.value==='retail'||snapshot.current_report===null,base=retail?snapshot.source_report:snapshot.current_report,proposal=!retail&&reviewed()?accepted.proposed_report:null,nodes=inspectReport(base),fallback=false;
     if(selectedPC!==null&&!nodes.has(selectedPC)&&!(proposal&&inspectReport(proposal).has(selectedPC))&&inspectReport(snapshot.source_report).has(selectedPC)){retail=true;fallback=true;base=snapshot.source_report;proposal=null;nodes=inspectReport(base);layer.value='retail';}
@@ -219,8 +224,8 @@ export function mountScriptBranches(host,{owner,getContext,busy,setBusy,api,sele
   inspect.onclick=()=>{if(inspect.disabled)return false;notifySelection(value()?.target_pc??target().target_pc);return true;};reviewButton.onclick=()=>reviewValue(value());reset.onclick=()=>reset.disabled?false:reviewValue(null);discard.onclick=()=>{if(discard.disabled)return false;invalidate();drafts.delete(activeId);unavailableDrafts.delete(activeId);notifyDrafts();renderUnavailable();renderFields();status.textContent='Branch draft discarded. Current encoded flow is unchanged.';draw();updateState();return true;};refresh.onclick=()=>{if(refresh.disabled)return false;invalidate();return load();};
   apply.onclick=async()=>{
     if(apply.disabled||!reviewed()||accepted.no_op||pending!==null||busy()!==false)return false;const id=activeId,review=clone(accepted),focus=target().pc;pending='apply';error.textContent='';updateState();
-    try{const success=await api('/api/command',{type:'set_branch',entity:owner,branch_id:id,value:clone(review.value),review_key:review.review_key});if(success!==true){if(current()){accepted=null;assessment.replaceChildren();status.textContent='Apply failed. Review the destination again.';draw();}return false;}if(!coreCurrent())return false;drafts.delete(id);notifyDrafts();pending=null;await reopen(focus);return true;}catch(error){if(coreCurrent()){accepted=null;draw();showError(error);}return false;}finally{if(!disposed){pending=null;updateState();}}
+    try{const success=await api('/api/command',{type:'set_branch',entity:owner,branch_id:id,value:clone(review.value),review_key:review.review_key});if(success!==true){if(current()){accepted=null;walkthrough.sync(snapshot,null);assessment.replaceChildren();status.textContent='Apply failed. Review the destination again.';draw();}return false;}if(!coreCurrent())return false;drafts.delete(id);notifyDrafts();pending=null;await reopen(focus);return true;}catch(error){if(coreCurrent()){accepted=null;draw();showError(error);}return false;}finally{if(!disposed){pending=null;updateState();}}
   };
-  function dispose(){if(disposed)return;disposed=true;invalidate();pending=null;resolveReady?.(false);resolveReady=null;overview.dispose();proposedOverview.dispose();nodeLayers.dispose();section.remove();}
+  function dispose(){if(disposed)return;disposed=true;invalidate();pending=null;resolveReady?.(false);resolveReady=null;walkthrough.dispose();overview.dispose();proposedOverview.dispose();nodeLayers.dispose();section.remove();}
   updateState();return {ready,select,updateState,dispose};
 }

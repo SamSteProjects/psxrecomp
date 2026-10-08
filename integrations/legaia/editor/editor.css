@@ -319,3 +319,8 @@
 [data-script-walkthrough]{min-width:0;max-width:100%;overflow-wrap:anywhere}
 .script-walkthrough-tools{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
 [data-script-walkthrough] button{max-width:100%;white-space:normal;text-align:left;overflow-wrap:anywhere}
+
+/* Current/Proposed edge labels must wrap inside the script graph sidebar. */
+.script-branch-authoring [data-branch-links] button{max-width:100%;white-space:normal;text-align:left;overflow-wrap:anywhere}
+[data-branch-walkthrough]{min-width:0;max-width:100%;overflow-wrap:anywhere}
+[data-branch-walkthrough]>.script-walkthrough-tools button{max-width:100%;white-space:normal;text-align:left}

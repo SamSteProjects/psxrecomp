@@ -3853,7 +3853,7 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
       const owner=scriptEntity.id,accepted=report;
       scriptBranchControls=mountScriptBranches($('script-report'),{owner,initialDrafts:new Map([...scriptDrafts].filter(([id])=>id.includes('/branch/'))),
         getContext:()=>({projectPath:state.project?.path,sceneId:state.scene?.id,mode:state.project?.mode,scriptKey:state.script_authoring_state_key}),
-        busy:()=>busy,setBusy,api,selectInstruction:pc=>instructionNavigation.select(pc),
+        busy:()=>busy,setBusy,api,getProjectSourceKey:()=>state.project_copy_source_key,selectInstruction:(pc,reveal=true)=>instructionNavigation.select(pc,true,reveal),
         reopen:pc=>openActorScript(scriptEntity,true,null,null,pc),
         onDraftChange:drafts=>{for(const id of scriptDrafts.keys())if(id.includes('/branch/'))scriptDrafts.delete(id);for(const [id,value] of drafts)scriptDrafts.set(id,value);updateScriptActions();},
         onError:error=>{if(scriptDialog.open&&scriptReport===accepted)scriptDialog.querySelector('.dialog-error').textContent=error.message;}});
