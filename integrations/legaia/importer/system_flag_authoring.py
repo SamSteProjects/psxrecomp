@@ -15,7 +15,7 @@ LIMITATIONS = [
     'Only reached normal SYSFLAG SET/CLEAR/TEST selectors in fully decoded source paths are candidates.',
     'The operation/high opcode nibble, TEST delta, dispatch context and record lengths remain unchanged.',
     'Encoded selector range0..4095 does not establish native bank capacity, story meaning or execution.',
-    'This writer is not exposed as an editor command or normal Build family until SDK integration is qualified.',
+    'Typed SDK Review/Apply and native Build serialize selectors; editor authoring controls remain pending.',
 ]
 
 

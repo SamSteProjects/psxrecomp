@@ -17,6 +17,7 @@ OPERANDS = {
     'ScriptMovement': ('movement_authoring', 'MovementAuthoringContext', 'entries'),
     'ScriptFacing': ('facing_authoring', 'FacingAuthoringContext', 'entries'),
     'ScriptFlags': ('flag_authoring', 'FlagAuthoringContext', 'entries'),
+    'ScriptSystemFlags': ('system_flag_authoring', 'SystemFlagAuthoringContext', 'entries'),
     'ScriptWaits': ('wait_authoring', 'WaitAuthoringContext', 'entries'),
     'ScriptEffectColors': ('effect_color_authoring', 'EffectColorAuthoringContext', 'entries'),
     'ScriptModelSelectors': ('model_selector_authoring', 'ModelSelectorAuthoringContext', 'entries'),
@@ -55,7 +56,7 @@ def _context(project, owner):
     if document['scene']['semantic_id'] != project.active_scene:
         raise ProjectError('Branch inspection requires the active imported scene')
     source = project._dialogue_context(owner)
-    return source, BranchAuthoringContext(source)
+    return source, BranchAuthoringContext(source, system_selectors=project.overrides.get(owner, {}).get('ScriptSystemFlags', {}).get('entries', {}))
 
 
 def _compose(source, owner, components):

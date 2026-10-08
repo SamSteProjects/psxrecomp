@@ -93,6 +93,13 @@ def inspector_schema():
             'notes': ['Open the source editor for separate retail, authored and effective operands. Existing qualified commands own Apply/Clear, history and Build.', note],
         }
 
+    schema['components']['ScriptSystemFlags'] = {
+        'label': 'Authored system selectors', 'units': 'Encoded selector indices', 'layout': 'read-only-properties',
+        'properties': [{'id': 'authored_instruction_count', 'label': 'Authored instructions', 'path': ['authored_instruction_count'], 'type': 'integer', 'state': 'authored-through-review'}],
+        'actions': [], 'details': [{'label': 'Reviewed source selector bindings', 'path': ['entries']}],
+        'notes': ['SDK Review/Apply, history and native Build are supported. Editor controls remain pending; no live story values or execution are inferred.'],
+    }
+
     for identifier in ('ScriptFacing', 'ScriptBranches'):
         definition = schema['components'][identifier]
         definition['properties'] = [{'id': 'authored_instruction_count', 'label': 'Authored instructions',

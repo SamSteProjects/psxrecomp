@@ -191,6 +191,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     transitions={}
     movements={}
     flags={}
+    system_flags={}
     waits={}
     effect_colors={}
     model_selectors={}
@@ -198,7 +199,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     branches={}
     for identifier,components in overrides.items():
         p2=isinstance(identifier,str) and re.fullmatch(re.escape(f'scene://{scene}/scripts/man-p2/')+r'[0-9]{4}',identifier) is not None
-        allowed={'Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptEffectColors','ScriptModelSelectors','ScriptFacing','ScriptBranches'} if p2 else {'Transform','ActorAppearance','ActorAnimation','ActorAllocatedAnimation','Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptEffectColors','ScriptModelSelectors','ScriptFacing','ScriptBranches','AnimationChannels'}
+        allowed={'Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptSystemFlags','ScriptWaits','ScriptEffectColors','ScriptModelSelectors','ScriptFacing','ScriptBranches'} if p2 else {'Transform','ActorAppearance','ActorAnimation','ActorAllocatedAnimation','Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptSystemFlags','ScriptWaits','ScriptEffectColors','ScriptModelSelectors','ScriptFacing','ScriptBranches','AnimationChannels'}
         if (identifier not in actors and not p2) or not isinstance(components,dict) or not components or set(components)-allowed:
             raise ProjectError('Draft serialization requires supported same-scene actor or script components; unsupported authored families cannot be omitted')
         record=int(identifier.rsplit('/',1)[1]) if p2 else actors[identifier]['source_record']['record_index']
@@ -215,6 +216,10 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         if 'ScriptMovement' in components:
             project._validate_movements(identifier,components['ScriptMovement'])
             movements.update(components['ScriptMovement']['entries'])
+        if 'ScriptSystemFlags' in components:
+            from .system_flags import validate
+            validate(project,identifier,components['ScriptSystemFlags'])
+            system_flags.update(components['ScriptSystemFlags']['entries'])
         if 'ScriptFlags' in components:
             project._validate_flags(identifier,components['ScriptFlags'])
             flags.update(components['ScriptFlags']['entries'])
@@ -266,6 +271,8 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     from importer.movement_authoring import load_movement_authoring_context
     movement_context=load_movement_authoring_context(project.disc_path,scene) if movements else None
     from importer.flag_authoring import load_flag_authoring_context
+    from importer.system_flag_authoring import load_system_flag_authoring_context
+    system_flag_context=load_system_flag_authoring_context(project.disc_path,scene) if system_flags else None
     flag_context=load_flag_authoring_context(project.disc_path,scene) if flags else None
     from importer.effect_color_authoring import load_effect_color_authoring_context
     effect_context=load_effect_color_authoring_context(project.disc_path,scene) if effect_colors else None
@@ -335,6 +342,8 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
             transition_context.patch(transition_edits,original=source)
         if movement_context:
             movement_context.patch(movements,original=source)
+        if system_flag_context:
+            system_flag_context.patch(system_flags,original=source)
         if flag_context:
             flag_context.patch(flags,original=source)
         if wait_context:
@@ -429,6 +438,9 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         movement_audit=[]
         if movement_context:
             candidate,movement_audit=movement_context.patch_appended(candidate,movements)
+        system_flag_audit=[]
+        if system_flag_context:
+            candidate,system_flag_audit=system_flag_context.patch_appended(candidate,system_flags)
         flag_audit=[]
         if flag_context:
             candidate,flag_audit=flag_context.patch_appended(candidate,flags)
@@ -447,7 +459,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         branch_audit=[]
         if branches:
             from importer.branch_authoring import load_branch_authoring_context
-            branch_context=load_branch_authoring_context(project.disc_path,scene)
+            branch_context=load_branch_authoring_context(project.disc_path,scene,system_selectors=system_flags)
             branch_context.patch(branches,original=source)
             candidate,branch_audit=branch_context.patch_appended(candidate,branches)
         from .floor_heights import compose as compose_floor_heights
@@ -493,7 +505,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         existing_actor_appearance_changes=appearance_audit,
         existing_actor_allocated_animation_changes=allocated_audit,
         existing_actor_dialogue_changes=dialogue_audit,
-        branch_changes=branch_audit, transition_changes=transition_audit, movement_changes=movement_audit, flag_changes=flag_audit, wait_changes=wait_audit,effect_color_changes=effect_color_audit, model_selector_changes=model_selector_audit, facing_changes=facing_audit,
+        branch_changes=branch_audit, transition_changes=transition_audit, movement_changes=movement_audit, flag_changes=flag_audit, system_flag_changes=system_flag_audit, wait_changes=wait_audit,effect_color_changes=effect_color_audit, model_selector_changes=model_selector_audit, facing_changes=facing_audit,
         final_man_sha256=sha256(candidate).hexdigest(),
         container=container_audit,gameplay_verified=False)
 

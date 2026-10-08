@@ -1,5 +1,11 @@
 # Legaia SDK validation plan
 
+## System Selector SDK Integration (2026-10-07)
+
+Forty-six focused tests passed with Retail and the retained NPC fixture enabled: `test_system_flag_workflow`, `test_script_branch_workflow`, `test_branch_authoring`, `test_system_flag_authoring`, `test_draft_facing_composition` `test_npc_build` and `test_inspector_schema`. New checks qualify Review/history/persistence, native compressed package/branch composition, appended clone separation and malformed/missing/unaudited/no-op overlap receipts. Final evidence: `local-output/sdk-20260909/system-selector-sdk-20261007/result.json` and `tests.log`; zero failures/errors/skips, unchanged source hashes, 50.75 seconds. Dedicated editor control workflow, partition-two/streaming package evidence and gameplay remain pending; no authoring UI capability is exposed. See [current integration and historical foundation](legaia-system-flag-authoring.md).
+
+Five additional Retail HTTP checks passed with zero failures/errors/skips and unchanged server/test source hashes in 30.15 seconds, including the existing branch transport regressions. Snapshot and Review preserve documents, imports, history and files; malformed/foreign requests, stale keys and Live Apply refuse. Apply/Clear, Undo/Redo and Save/Open passed through the real handler. Evidence: `local-output/sdk-20260909/system-selector-sdk-20261007/http-result.json` and `http-tests.log`.
+
 ## System Selector Writer Foundation (2026-10-07)
 
 Twelve focused Python checks passed across `test_system_flag_authoring`, `test_script_system_flags` and existing `test_flag_authoring`, with private Retail evidence enabled. All4096 selector values per operation, TEST byte/edge preservation, exact MAN readback, immutable source, ownership/aliasing, appended records and no-op candidate refusal are covered. SDK component, Review/Apply, persistence, editor and Build integration remain pending; no authoring UI capability is exposed. See [foundation and next integration gates](legaia-system-flag-authoring.md).

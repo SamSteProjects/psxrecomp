@@ -82,7 +82,7 @@ def _shape(node):
     return node['pc'], node['length'], node['mnemonic'], node['target_context']
 
 
-def _graph_candidate(original, candidate, entry, source_graph):
+def _graph_candidate(original, candidate, entry, source_graph, selector_baseline=None):
     """Re-decode original anchors before following intentionally changed edges.
 
     Other authored values are supplied by the caller's existing qualified
@@ -93,6 +93,9 @@ def _graph_candidate(original, candidate, entry, source_graph):
         raise ImportError('Branch candidate must preserve its exact source record length')
     if source_graph['stops']:
         raise ImportError('Branch authoring requires no unknown or conflicting source-path stops')
+    # This optional baseline is supplied only by the context's independent
+    # SystemFlagAuthoringContext writer; unreviewed opcode changes still refuse.
+    selector_baseline = original if selector_baseline is None else selector_baseline
     known = {node['pc']: node for node in source_graph['instructions']}
     messages = {row['pc']: row for row in source_graph['dialogues']}
     original_boundaries = set(known) | set(messages)
@@ -104,13 +107,14 @@ def _graph_candidate(original, candidate, entry, source_graph):
         qualified_instructions.append(decoded)
         header = 2 if node['target_context'] is not None else 1
         if (_shape(decoded) != _shape(node) or
-                candidate[node['pc']:node['pc'] + header] != original[node['pc']:node['pc'] + header]):
+                node['mnemonic'].startswith('SYSFLAG_') and candidate[node['pc']:node['pc'] + 2] != selector_baseline[node['pc']:node['pc'] + 2] or
+                candidate[node['pc']:node['pc'] + header] != selector_baseline[node['pc']:node['pc'] + header]):
             raise ImportError('Branch candidate changed an original instruction or dispatch boundary')
         layout = _branch(original, node)
         if layout is not None:
             lo, hi = node['pc'], node['pc'] + node['length']
             operand = layout['operand_pc']
-            if (candidate[lo:operand] != original[lo:operand] or
+            if (candidate[lo:operand] != selector_baseline[lo:operand] or
                     candidate[operand + 2:hi] != original[operand + 2:hi]):
                 raise ImportError('Branch candidate changed an immutable condition, selector or flag operand')
             current_layout = _branch(candidate, decoded)
@@ -148,7 +152,7 @@ def _graph_candidate(original, candidate, entry, source_graph):
 
 class BranchAuthoringContext:
     """Request-scoped private MAN source snapshot with detached review products."""
-    def __init__(self, source):
+    def __init__(self, source, *, system_selectors=None):
         if not isinstance(source._man, bytes) or not 0 < len(source._man) <= MAX_MAN_BYTES:
             raise ImportError('Branch source requires a bounded immutable verified MAN')
         self._source, self._man = source, source._man
@@ -156,6 +160,12 @@ class BranchAuthoringContext:
         if len(self._layout['records']) > 8192:
             raise ImportError('Branch MAN exceeds its bounded record table')
         self._owners = {}
+        from .system_flag_authoring import SystemFlagAuthoringContext
+        self._selector_man = self._man if not system_selectors else SystemFlagAuthoringContext(source).patch(system_selectors)[0]
+
+    def _selector_record(self, snapshot):
+        at = snapshot['offset']
+        return self._selector_man[at:at + len(snapshot['record'])]
 
     def provenance(self):
         return dict(deepcopy(self._source.provenance()), limitations=list(LIMITATIONS))
@@ -265,7 +275,7 @@ class BranchAuthoringContext:
             if _entry(current, snapshot['partition']) != snapshot['entry']:
                 raise ImportError('Branch candidate changed its original script entry boundary')
             if owner not in current_reports:
-                current_reports[owner] = _graph_candidate(record, current, snapshot['entry'], snapshot['inspection'])
+                current_reports[owner] = _graph_candidate(record, current, snapshot['entry'], snapshot['inspection'], self._selector_record(snapshot))
                 offsets[owner] = start
             before = record[operand:operand + 2]
             if current[operand:operand + 2] != before:
@@ -297,7 +307,7 @@ class BranchAuthoringContext:
         for owner, start in offsets.items():
             snapshot = self._owner(owner)
             proposed_reports[owner] = _graph_candidate(snapshot['record'], result[start:start + len(snapshot['record'])],
-                                                       snapshot['entry'], snapshot['inspection'])
+                                                       snapshot['entry'], snapshot['inspection'], self._selector_record(snapshot))
         for row in audit:
             owner, pc = row['owner_id'], row['pc']
             snapshot, start = self._owner(owner), offsets[owner]
@@ -315,6 +325,8 @@ class BranchAuthoringContext:
     def patch(self, edits, *, original=None):
         if original is not None and (not isinstance(original, bytes) or original != self._man):
             raise ImportError('Branch MAN differs from its verified source baseline')
+        if self._selector_man != self._man:
+            return BranchAuthoringContext(self._source)._patch(self._man, edits)
         return self._patch(self._man, edits)
 
     def patch_composed(self, candidate, edits):
@@ -333,11 +345,11 @@ class BranchAuthoringContext:
         record = data[span['byte_offset']:span['byte_offset'] + span['byte_length']]
         if _entry(record, snapshot['partition']) != snapshot['entry']:
             raise ImportError('Branch inspection changed the source entry boundary')
-        report = _graph_candidate(snapshot['record'], record, snapshot['entry'], snapshot['inspection'])
+        report = _graph_candidate(snapshot['record'], record, snapshot['entry'], snapshot['inspection'], self._selector_record(snapshot))
         return deepcopy(dict(report, owner_id=owner, source_record_sha256=_hash(snapshot['record']),
                              current_record_sha256=_hash(record)))
 
 
-def load_branch_authoring_context(disc, scene):
+def load_branch_authoring_context(disc, scene, *, system_selectors=None):
     from .dialogue_authoring import load_dialogue_authoring_context
-    return BranchAuthoringContext(load_dialogue_authoring_context(disc, scene))
+    return BranchAuthoringContext(load_dialogue_authoring_context(disc, scene), system_selectors=system_selectors)

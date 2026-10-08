@@ -1168,6 +1168,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .source_build_script import inspect
                     self._json(200, inspect(self.server.project, body['entity'], body['build_id']))
                     return
+                if route in ('/api/system-flag-selectors', '/api/system-flag-selector-review'):
+                    expected = {'entity'} if route == '/api/system-flag-selectors' else {'entity', 'operand_id', 'value'}
+                    if set(body) != expected or not isinstance(body['entity'], str) or not body['entity']:
+                        raise ProjectError('System selector inspection requires exact source owner and operand fields')
+                    if route == '/api/system-flag-selector-review' and (not isinstance(body['operand_id'], str) or not body['operand_id']):
+                        raise ProjectError('System selector Review requires a source operand identity')
+                    from .system_flags import snapshot, review
+                    self._json(200, snapshot(self.server.project, body['entity']) if route == '/api/system-flag-selectors' else review(self.server.project, body['entity'], body['operand_id'], body['value']))
+                    return
                 if route in ('/api/script-branches', '/api/script-branch-review'):
                     expected = {'entity'} if route == '/api/script-branches' else {'entity', 'branch_id', 'value'}
                     if set(body) != expected or not isinstance(body['entity'], str) or not body['entity']:
@@ -3512,6 +3521,10 @@ class EditorHandler(BaseHTTPRequestHandler):
         # Reject malformed field types before they reach filesystem/importer services.
         required_strings = {"/api/project/new": ("path",), "/api/project/open": ("path",),
                             "/api/import": ("disc",), "/api/scene": ("scene_id",)}
+        if route == '/api/command' and body.get('type') == 'set_system_flag_selector':
+            if set(body) != {'type', 'entity_id', 'operand_id', 'value', 'review_key'}:
+                raise ProjectError('System selector Apply requires exact reviewed owner, operand, value and key')
+            required_strings[route] = ('entity_id', 'operand_id', 'review_key')
         if route == '/api/command' and body.get('type') == 'set_branch':
             if set(body) != {'type', 'entity', 'branch_id', 'value', 'review_key'}:
                 raise ProjectError('Branch Apply requires reviewed source identity and destination only')

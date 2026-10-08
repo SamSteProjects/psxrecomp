@@ -103,7 +103,7 @@ class AssetDatabase:
 class ProjectService:
     FORMAT = "legaia.project.v1"
     REVIEW_COMPONENTS = frozenset({"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions",
-                                  "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches",
+                                  "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches",
                                   "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts"})
 
     def __init__(self, root: Path, name: str = "Legaia project") -> None:
@@ -2090,6 +2090,10 @@ class ProjectService:
             from .script_branches import apply
             apply(self, command)
             return
+        if command.get('type') == 'set_system_flag_selector':
+            from .system_flags import apply
+            apply(self, command)
+            return
         if command.get('type') == 'set_worldmap_menu':
             from .worldmap_authoring import apply
             apply(self, command)
@@ -3274,7 +3278,7 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements"}:
                 raise ProjectError("Unsupported authored component")
             if 'WorldMapPlacements' in components:
                 from .worldmap_placements import validate
@@ -3353,6 +3357,10 @@ class ProjectService:
             if 'ScriptBranches' in components:
                 result._validate_branches(identifier, components['ScriptBranches'])
                 result.overrides.setdefault(identifier, {})['ScriptBranches'] = deepcopy(components['ScriptBranches'])
+            if 'ScriptSystemFlags' in components:
+                from .system_flags import validate
+                validate(result, identifier, components['ScriptSystemFlags'])
+                result.overrides.setdefault(identifier, {})['ScriptSystemFlags'] = deepcopy(components['ScriptSystemFlags'])
             if "ScriptFlags" in components:
                 result._validate_flags(identifier, components["ScriptFlags"])
                 result.overrides.setdefault(identifier, {})["ScriptFlags"] = deepcopy(components["ScriptFlags"])
@@ -3736,6 +3744,9 @@ class ProjectService:
                 flags = edits.get("ScriptFlags", {}).get("entries", {})
                 if flags:
                     changes.append(f"Flags: {len(flags)} operands")
+                system_flags = edits.get("ScriptSystemFlags", {}).get("entries", {})
+                if system_flags:
+                    changes.append(f"System selectors: {len(system_flags)} operands")
                 waits = edits.get("ScriptWaits", {}).get("entries", {})
                 if waits:
                     changes.append(f"Waits: {len(waits)} targets")
@@ -3769,6 +3780,9 @@ class ProjectService:
             flags = edits.get("ScriptFlags", {}).get("entries", {})
             if flags:
                 changes.append(f"Flags: {len(flags)} operands")
+            system_flags = edits.get("ScriptSystemFlags", {}).get("entries", {})
+            if system_flags:
+                changes.append(f"System selectors: {len(system_flags)} operands")
             waits = edits.get("ScriptWaits", {}).get("entries", {})
             if waits:
                 changes.append(f"Waits: {len(waits)} targets")
@@ -3951,7 +3965,7 @@ class ProjectService:
             entity['components']['Dialogue']['authored_run_count'] = len(entity['components']['Dialogue']['authored'].get('runs', {}))
             for component in ('ScriptFacing', 'ScriptBranches'):
                 entity['components'][component]['authored_instruction_count'] = len(entity['components'][component]['entries'])
-            for component in ('ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptEffectColors', 'ScriptModelSelectors', 'Transitions'):
+            for component in ('ScriptMovement', 'ScriptFlags', 'ScriptSystemFlags', 'ScriptWaits', 'ScriptEffectColors', 'ScriptModelSelectors', 'Transitions'):
                 entries = self.overrides.get(entity['id'], {}).get(component, {}).get('entries', {})
                 if entries:
                     entity['components'][component] = {'entries': deepcopy(entries), 'authored_instruction_count': len(entries)}

@@ -104,7 +104,9 @@ class InspectorSchema(unittest.TestCase):
             definition=schema['components'][identifier]
             self.assertEqual(definition['layout'],'read-only-properties')
             self.assertTrue(all('authoring' not in prop for prop in definition['properties']))
-            self.assertEqual(len(definition['actions']),4 if kind == 'trigger' else 3 if kind == 'audio' else 2 if kind in ('worldmap','region') else 1)
+            self.assertEqual(len(definition['actions']),4 if kind == 'trigger' else 5 if kind == 'audio' else 2 if kind in ('worldmap','region') else 1)
+            if kind == 'audio':
+                self.assertEqual({a['id'] for a in definition['actions']}, {'inspect-midi-input','inspect-audio-input','inspect-audio-bank','edit-sequence-replacement','inspect-audio-sequence'})
             for action in definition['actions']:self.assertNotIn('command',action)
         self.assertEqual(schema['components']['AssetRegion']['actions'][1]['capability'],'field_region_authoring')
         schema['components']['AssetModel']['actions'][0]['label']='changed'
