@@ -1,0 +1,49 @@
+import {analyzeScriptFlow} from './script-flow-overview.js';
+const offset=pc=>'0x'+pc.toString(16).toUpperCase().padStart(4,'0');
+const hash=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
+const MAX_VISITS=1024;
+export function createScriptWalkthrough(report){
+ const flow=analyzeScriptFlow(report),nodes=new Map(),stops=new Map(flow.stops.map(row=>[row.pc,row.reasons]));
+ for(const row of [...report.instructions,...(report.unvisited_instructions??[])])nodes.set(row.pc,{pc:row.pc,mnemonic:row.mnemonic,successors:structuredClone(row.successors)});
+ for(const row of [...report.dialogues,...(report.unvisited_dialogues??[])])nodes.set(row.pc,{pc:row.pc,mnemonic:'DIALOGUE_SEGMENT',successors:[{pc:row.pc+row.length,condition:'encoded_continuation'}]});
+ let trace=[];
+ function snapshot(){
+  const pc=trace.at(-1)?.pc??null,node=nodes.get(pc),state=pc===null?'not_started':!node?'undecoded_target':trace.length>=MAX_VISITS?'visit_limit':!node.successors.length?'no_encoded_successor':'choose_successor';
+  return structuredClone({state,pc,trace,successors:node?.successors??[],stop_reasons:stops.get(pc)??[],entry_pc:flow.entry_pc,entry_decoded:flow.entry_decoded,max_visits:MAX_VISITS});
+ }
+ return {snapshot,start(pc){if(!nodes.has(pc))throw Error('Choose a decoded source boundary.');trace=[{pc,mnemonic:nodes.get(pc).mnemonic,via:null}];return snapshot();},reset(){trace=[];return snapshot();},back(){if(trace.length>1)trace.pop();return snapshot();},step(index){
+  const value=snapshot();if(value.state!=='choose_successor')throw Error('This source walkthrough cannot advance.');
+  if(!Number.isSafeInteger(index)||index<0||index>=value.successors.length)throw Error('Choose an explicit encoded successor.');
+  const edge=value.successors[index];trace.push({pc:edge.pc,mnemonic:nodes.get(edge.pc)?.mnemonic??null,via:{source_pc:value.pc,successor_index:index,condition:edge.condition}});return snapshot();
+ }};
+}
+export function scriptWalkthroughEvidence(snapshot,context){
+ if(!context||Object.keys(context).length!==6||!['project_path','scene_id','script_id','project_source_key','record_sha256','representation'].every(k=>Object.hasOwn(context,k))||typeof context.project_path!=='string'||!context.project_path||context.project_path.length>4096||!/^scene:\/\/[A-Za-z0-9_-]+$/.test(context.scene_id)||typeof context.script_id!=='string'||!context.script_id.startsWith('script://'+context.scene_id.slice(8)+'/')||context.script_id.length>1024||!hash(context.project_source_key)||!hash(context.record_sha256)||context.representation!=='retail_source')throw Error('Source walkthrough provenance is unavailable.');
+ if(!snapshot.trace?.length)throw Error('Start a source walkthrough before exporting.');
+ return structuredClone({schema_version:'legaia.script-source-walkthrough.v1',source:context,walkthrough:snapshot,conditions_evaluated:false,runtime_execution:'not_asserted',project_changed:false});
+}
+export function mountScriptWalkthrough(host,{report,getContext,selection=()=>null,selectInstruction=()=>false,current=()=>true,busy=()=>false,requalify=async()=>true,onError=()=>{}}){
+ const el=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;},section=el('details'),heading=el('summary','Walk through source instructions'),note=el('p','Choose encoded successors explicitly. Conditions, waits, effects and dialogue are not executed. An undecoded target or absent successor stops this walkthrough; runtime resumption remains unknown.'),tools=el('div'),start=el('button','Start at selected instruction'),entry=el('button','Start at source entry'),back=el('button','Back one walkthrough step'),reset=el('button','Reset walkthrough'),download=el('button','Download source walkthrough'),status=el('p'),choices=el('div'),visits=el('div');
+ section.dataset.scriptWalkthrough='';tools.className='script-walkthrough-tools';status.dataset.walkthroughStatus='';status.setAttribute('role','status');choices.dataset.walkthroughChoices='';visits.dataset.walkthroughVisits='';for(const b of [start,entry,back,reset,download])b.type='button';tools.append(start,entry,back,reset,download);section.append(heading,note,tools,status,choices,visits);host.append(section);
+ let disposed=false,stale=false,engine=null,exporting=false;const controller=new AbortController();const expected=structuredClone(getContext()),dialog=host.closest?.('dialog');
+ try{engine=createScriptWalkthrough(report);}catch(error){status.textContent=error.message;onError(error);}
+ const same=()=>JSON.stringify(expected)===JSON.stringify(getContext());
+ function fresh(){if(disposed||stale)return false;if(!current()||!same()){stale=true;engine?.reset();choices.replaceChildren();visits.replaceChildren();status.textContent='Source context changed. Reopen script inspection.';for(const b of [start,entry,back,reset,download])b.disabled=true;return false;}return true;}
+ function draw(){
+  if(!fresh())return;const s=engine?.snapshot();if(!s){for(const b of [start,entry,back,reset,download])b.disabled=true;return;}
+  const blocked=busy()||exporting;start.disabled=blocked||selection()===null;entry.disabled=blocked||!s.entry_decoded;back.disabled=blocked||s.trace.length<2;reset.disabled=blocked||!s.trace.length;download.disabled=blocked||!s.trace.length;
+  choices.replaceChildren();visits.replaceChildren();
+  status.textContent=s.state==='not_started'?'Select a decoded boundary or start at the source entry.':`${s.trace.length} of ${s.max_visits} source visits · ${offset(s.pc)} · `+({choose_successor:'choose an encoded successor; conditions are not evaluated.',undecoded_target:'undecoded target; walkthrough stopped.',no_encoded_successor:'no encoded successor; runtime resumption is unknown.',visit_limit:'visit limit reached; go Back or Reset.'}[s.state]);
+  if(s.stop_reasons.length)choices.append(el('p',s.stop_reasons.join(' · ')));
+  if(s.state==='choose_successor')s.successors.forEach((edge,index)=>{const b=el('button',`Follow ${offset(edge.pc)}${edge.condition===null?'':' · '+edge.condition}`);b.type='button';b.dataset.walkthroughSuccessor=index;b.disabled=blocked;b.onclick=()=>act(()=>engine.step(index));choices.append(b);});
+  const shown=s.trace.slice(-32);if(s.trace.length>shown.length)visits.append(el('p',`Showing last ${shown.length} of ${s.trace.length} visits. Download includes the complete trace.`));
+  for(let i=0;i<shown.length;i++){const row=shown[i],line=el('p'),b=el('button',`${s.trace.length-shown.length+i+1}. ${offset(row.pc)} · ${row.mnemonic??'Undecoded target'}`);b.type='button';b.dataset.walkthroughPc=row.pc;b.dataset.walkthroughDecoded=String(row.mnemonic!==null);b.disabled=blocked||row.mnemonic===null;b.onclick=()=>{if(fresh()&&!busy()&&!exporting)selectInstruction(row.pc);};line.append(b);if(row.via?.condition!==null&&row.via?.condition!==undefined)line.append(el('span',' · chosen '+row.via.condition+' (not evaluated)'));visits.append(line);}
+ }
+ function act(run){if(!fresh()||busy()||exporting||!engine)return;try{const s=run();draw();if(s?.pc!==null&&s?.trace.at(-1)?.mnemonic!==null)selectInstruction(s.pc,false);}catch(error){status.textContent=error.message;onError(error);}}
+ start.onclick=()=>act(()=>engine.start(selection()));entry.onclick=()=>act(()=>engine.start(engine.snapshot().entry_pc));back.onclick=()=>act(()=>engine.back());reset.onclick=()=>act(()=>engine.reset());
+ download.onclick=async()=>{if(!fresh()||busy()||exporting||!engine||!engine.snapshot().trace.length)return;const snapshot=engine.snapshot();exporting=true;draw();status.textContent='Requalifying source walkthrough…';try{if(await requalify({signal:controller.signal})!==true)throw Error('Source walkthrough requalification failed.');if(!fresh())return;const value=scriptWalkthroughEvidence(snapshot,expected);const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'})),a=el('a');a.href=url;a.download='source-script-walkthrough.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(error){if(!disposed){stale=true;engine.reset();choices.replaceChildren();visits.replaceChildren();for(const b of [start,entry,back,reset,download])b.disabled=true;status.textContent='Source requalification failed. Reopen script inspection. '+error.message;onError(error);}}finally{exporting=false;if(fresh())draw();}};
+
+ const dispose=()=>{if(disposed)return;disposed=true;engine?.reset();controller.abort();clearInterval(timer);dialog?.removeEventListener('close',dispose);section.remove();};
+ const timer=setInterval(()=>{if(!section.isConnected){dispose();return;}if(fresh()){const s=engine?.snapshot(),blocked=busy()||exporting;start.disabled=blocked||selection()===null;entry.disabled=blocked||!s?.entry_decoded;back.disabled=blocked||!s||s.trace.length<2;reset.disabled=download.disabled=blocked||!s?.trace.length;for(const b of choices.querySelectorAll('button'))b.disabled=blocked;for(const b of visits.querySelectorAll('button'))b.disabled=blocked||b.dataset.walkthroughDecoded!=='true';}},300);
+ dialog?.addEventListener('close',dispose,{once:true});draw();return {section,update:draw,dispose,get snapshot(){return engine?.snapshot()??null;}};
+}

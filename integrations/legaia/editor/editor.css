@@ -314,3 +314,8 @@
 
 #actor-batch-dialog .dialog-actions,#environment-group-dialog .dialog-actions{flex-wrap:wrap;justify-content:flex-start}
 #actor-batch-dialog .dialog-actions button,#environment-group-dialog .dialog-actions button{max-width:100%;white-space:normal;text-align:left}
+
+/* Source walkthrough choices and complete condition labels fit narrow dialogs. */
+[data-script-walkthrough]{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.script-walkthrough-tools{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+[data-script-walkthrough] button{max-width:100%;white-space:normal;text-align:left;overflow-wrap:anywhere}

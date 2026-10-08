@@ -139,6 +139,7 @@ import {mountGroupAppearance} from '/group-appearance.js';
 import {textureSceneUsage,textureMatchedPlacementIds} from '/texture-usage.js';
 import {findDecodedPath} from '/script-paths.js';
 import {mountScriptFlowOverview} from '/script-flow-overview.js';
+import {mountScriptWalkthrough} from '/script-walkthrough.js';
 import {decodeTextFont,layoutGlyphRun} from '/text-font.js';
 import {instructionOperandEditors,menuLabelEditors} from '/script-operands.js';
 import {mountScriptFacing} from '/script-facing.js';
@@ -2577,12 +2578,12 @@ function appendScriptInstructions(host,report,identity=report.semantic_id??repor
   for(const instruction of instructions)for(const next of instruction.successors??[]){
     if(!incoming.has(next.pc))incoming.set(next.pc,new Set());incoming.get(next.pc).add(instruction.pc);
   }
-  function select(pc,remember=true){
+  function select(pc,remember=true,reveal=true){
     if(!rows.has(pc))return false;
     const disassembly=host.closest('details.script-instructions');if(disassembly)disassembly.open=true;
     if(remember&&selectedPC!==null&&selectedPC!==pc)history.push(selectedPC);
     if(rows.has(selectedPC))rows.get(selectedPC).classList.remove('script-path-selected');
-    selectedPC=pc;const row=rows.get(pc);row.classList.add('script-path-selected');row.scrollIntoView({block:'nearest'});row.focus({preventScroll:true});
+    selectedPC=pc;const row=rows.get(pc);row.classList.add('script-path-selected');if(reveal){row.scrollIntoView({block:'nearest'});row.focus({preventScroll:true});}
     back.disabled=!history.length;status.textContent=`Selected ${scriptOffset(pc)} · ${byPC.get(pc).mnemonic} · Decoded incoming edges (execution unknown)`;
     predecessors.replaceChildren();
     for(const source of incoming.get(pc)??[]){const button=document.createElement('button');button.textContent=`From ${scriptOffset(source)}`;button.onclick=()=>select(source);predecessors.append(button);}
@@ -2593,6 +2594,18 @@ function appendScriptInstructions(host,report,identity=report.semantic_id??repor
   back.onclick=()=>{if(history.length)select(history.pop(),false);};
   const flowOverview=mountScriptFlowOverview(navigation,{selectInstruction:pc=>select(pc),label:'Retail source flow'});
   flowOverview.update(report);
+  const walkthroughKey=resourceStateKey();
+  mountScriptWalkthrough(navigation,{report,selection:()=>selectedPC,selectInstruction:(pc,reveal=true)=>select(pc,true,reveal),busy:()=>busy,
+    current:()=>host.isConnected&&walkthroughKey===resourceStateKey(),
+    getContext:()=>({project_path:state.project?.path,scene_id:state.scene?.id,script_id:identity,project_source_key:state.project_copy_source_key,record_sha256:report.record?.sha256,representation:'retail_source'}),
+    requalify:async({signal})=>{
+      const route=identity.includes('/actors/man-p1/')?'/api/actor-script':'/api/partition-two-script';
+      const response=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:identity.replace(/^script:\/\//,'scene://')}),signal});
+      const raw=await response.text();if(raw.length>4*1024*1024)throw Error('Script requalification exceeds inspection bounds.');const source=JSON.parse(raw);
+      if(!response.ok||source.error||source.record?.sha256!==report.record?.sha256)throw Error('Retail script source changed.');
+      const check=await fetch('/api/state',{signal}),value=await check.json();
+      if(!check.ok||value.project?.path!==state.project?.path||value.scene?.id!==state.scene?.id||value.project_copy_source_key!==state.project_copy_source_key||walkthroughKey!==resourceStateKey())throw Error('Authoritative project context changed.');return true;
+    },onError:error=>notify(error.message,true)});
   let pathStart=null;
   const pathTools=document.createElement('details');pathTools.className='script-path-query';pathTools.innerHTML='<summary>Find a decoded instruction path</summary><p>Choose a start instruction, then select a destination. This finds one shortest route through encoded successors. Conditions are retained but not evaluated; hidden or undecoded execution remains unknown.</p><button type="button" data-path-start>Use selected instruction as path start</button><p data-path-source>No path start selected.</p><button type="button" data-path-find>Find path to selected instruction</button><p data-path-result role="status"></p><div data-path-steps></div>';
   navigation.append(pathTools);
@@ -2671,7 +2684,7 @@ function renderTriggerScript(result,report){
   for(const limit of result.limitations ?? []){const line=document.createElement('p');line.className='field-note';line.textContent=typeof limit==='string'?limit:JSON.stringify(limit);warnings.append(line);}
   const dialogues=$('trigger-script-dialogues');if(!report.dialogues.length)dialogues.textContent='No dialogue was decoded in these paths.';
   for(const dialogue of report.dialogues){const card=document.createElement('article');card.className='script-dialogue-card';card.innerHTML=`<small>Imported segment · ${escapeHTML(scriptOffset(dialogue.pc))} · ${escapeHTML(dialogue.length ?? 'Unknown')} bytes</small><p></p><details><summary>Text tokens and source span</summary><pre class="diagnostic-detail"></pre></details>`;card.querySelector('p').textContent=dialogue.text;card.querySelector('pre').textContent=JSON.stringify(dialogue,null,2);dialogues.append(card);}
-  appendScriptInstructions($('trigger-script-instructions'),report,result.script_id,result.movement_authoring);
+  appendScriptInstructions($('trigger-script-instructions'),{...report,record:result.record},result.script_id,result.movement_authoring);
   host.querySelector('.script-raw pre').textContent=JSON.stringify(result,null,2);
 }
 function drawFieldMap(){

@@ -979,6 +979,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/source-normal-view.js": ("source-normal-view.js", "text/javascript"),
                  "/asset-navigation.js": ("asset-navigation.js", "text/javascript"),
                  "/script-paths.js": ("script-paths.js", "text/javascript"),
+                 "/script-walkthrough.js": ("script-walkthrough.js", "text/javascript"),
                  "/script-flow-overview.js": ("script-flow-overview.js", "text/javascript"),
                  "/script-node-layers.js": ("script-node-layers.js", "text/javascript"),
                  "/script-operands.js": ("script-operands.js", "text/javascript"),
