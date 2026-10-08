@@ -232,6 +232,8 @@ class EditorServer(ThreadingHTTPServer):
         from .resources import scene_text_state_key, project_text_state_key, project_transition_state_key
         state['scene_text_state_key'] = scene_text_state_key(self.project)
         state['project_transition_state_key'] = project_transition_state_key(self.project)
+        from .npc_arrival_preview import source_key as npc_arrival_preview_key
+        state['npc_arrival_preview_state_key'] = npc_arrival_preview_key(self.project)
         try:
             state['project_text_state_key'] = project_text_state_key(self.project)
         except (RetailImportError, OSError):
@@ -949,6 +951,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/flag-resource.js': ('flag-resource.js', 'text/javascript'),
                  '/transition-resource.js': ('transition-resource.js', 'text/javascript'),
                  '/transition-graph-entry.js': ('transition-graph-entry.js', 'text/javascript'),
+                 '/npc-arrival-preview.js': ('npc-arrival-preview.js', 'text/javascript'),
                  '/transition-arrival-preview.js': ('transition-arrival-preview.js', 'text/javascript'),
                  '/field-spatial.js': ('field-spatial.js', 'text/javascript'),
                  '/region-bounds.js': ('region-bounds.js', 'text/javascript'),
@@ -2140,6 +2143,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .transition_arrival import apply
                     apply(self.server.project,body)
                     self._json(200,self.server.state())
+                    return
+                if route == '/api/npc-arrival-preview':
+                    from .npc_arrival_preview import inspect
+                    self._json(200,inspect(self.server.project,body))
                     return
                 if route == "/api/transition-arrival-preview":
                     if set(body) != {'asset_id','source_key'}:

@@ -59,3 +59,7 @@ The final document/original undo stack/imports were restored with one retained R
 ## Asset References
 
 [NPC Arrival References](legaia-npc-arrival-references.md) now expose independent Retail/Current arrival dependencies and exact donor-PC navigation from NPC Asset Details, including active and Project scope. These recorded relations do not establish route activation or runtime travel.
+
+## Destination Viewport
+
+[NPC Arrival Destination Preview](legaia-npc-arrival-preview.md) opens separate saved Retail/NPC Current arrival markers in an already imported destination and returns to the source arrival editor. Local form drafts are excluded. Reference Y is an explicit plane, with no inferred height or runtime travel.

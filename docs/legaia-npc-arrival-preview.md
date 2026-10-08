@@ -1,0 +1,17 @@
+# NPC Arrival Destination Preview
+
+The NPC arrival editor now offers **Preview Saved NPC Arrival in Destination** for each qualified donor transition. It loads the already imported named destination into the central viewport, frames separate Retail and NPC Current arrival markers, and exposes reference Y, Frame, Return to NPC Arrival Editor and Clear controls. Inspector, NPC Asset Details and selected Current-script arrival editing share this workflow.
+
+Preview consumes saved Current operands. Local unchecked or edited form values are excluded; Review/Apply remains the existing authoring workflow. Return reselects the source NPC and opens its exact arrival instruction, ready for the normal coordinate controls, Review and Apply. No imported donor actor override is substituted for the NPC's independent arrival ownership.
+
+`/api/npc-arrival-preview` accepts only NPC identity, typed transition identity and the current project source key. It obtains fresh qualified source metadata, verifies the loaded destination import and binds its scene preview key. A separate navigation-independent persistent-input key covers NPC drafts and other project inputs. Display requires Edit mode, the matching destination scene/key, matching persistent inputs and an unchanged NPC draft. Stale changes withdraw the overlay. Source and destination inspection do not alter authored data or history.
+
+The existing marker renderer and scene display conversion are reused. Marker X/Z and facing come from encoded native arrival bytes; Y is a user-chosen reference plane. It does not infer destination height, terrain collision, NPC placement, runtime travel or activation. Missing destination imports must be imported through the regular project workflow. The active controls stay visible beside the viewport rather than being placed in the collapsed Scene Tools drawer.
+
+## Offline Checks — 2026-10-08
+
+A real private Map02 donor0002 PC53 self-destination fixture shows Retail X4032/Z3904/facing0 and NPC Current X64/Z16384/facing3584. One focused Retail Python workflow passed immutable inspection, actual HTTP200/400 boundaries, foreign/stale inputs, destination verification refusal, Live refusal and navigation-independent keys across imported Map02/Town01 selection. The existing source arrival preview test also passed. Four Node suites passed: native preview qualification and malformed/freshness guards, all256 native coordinate-reference cases, NPC arrival source/Review/Current selection and Current script inspection. Three Python AST and five JavaScript syntax checks passed.
+
+Fresh private UI checks passed NPC Asset Details to destination preview, exclusion of local X128 in favor of saved X64, adjustable reference Y, framing, return to the exact arrival editor, stale-input withdrawal and Clear. Wide/400px captures were inspected with zero page errors and no control overflow. Document/history/imports/dirty state remained exact, Save/Open matched and helpers closed. Earlier hidden-drawer and premature stale-fixture attempts are retained separately. Final evidence: `local-output/sdk-20260909/npc-arrival-preview-20261008/browser-final/`; backend/client metadata: `qualified/retail.json`; source hashes: `source-hashes.json`.
+
+This real fixture names its own Map02 destination; it is not gameplay or cross-scene travel evidence. No native Build, game launch, runtime attachment, install or disc export ran. Streaming delivery, route activation, destination height and gameplay remain unverified. The full SDK goal remains active.
