@@ -13,3 +13,5 @@ Actual private Town01 editor checks selected model0092 and explicitly chose Reta
 Evidence: `local-output/sdk-20260909/asset-npc-creation-20261008/checks.json` and `browser/`. Retail inputs and evidence remain private and untracked. No native Build, game, runtime attachment, recompilation, install or disc export ran for this checkpoint. Source donor inspection is not proof of runtime spawning, scheduling, appearance restaging or gameplay. Those checks remain deferred; the full SDK goal remains active and solo development continues.
 
 The subsequent [NPC Creation Selection Handoff](legaia-npc-creation-selection.md) connects successful creation to hierarchy, camera and Inspector focus, including delayed-preview source guards.
+
+[Scene Ground Placement](legaia-npc-ground-placement.md) now copies qualified native X/Z into the creation form before explicit Create.

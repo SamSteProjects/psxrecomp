@@ -102,6 +102,7 @@ import {mountSceneCameraInspector} from '/scene-camera-inspector.js';
 import {appendPresetImport,presetExportButton} from '/preset-files.js';
 import {openActorPresetReview} from '/actor-preset-review.js';
 import {ANIMATION_PRESET_SCOPE,presetScopeLabel} from '/preset-animation.js';
+import {mountNpcGroundPlacement} from '/npc-ground-placement.js';
 import {captureNpcCreation,createdNpcSelection} from '/npc-creation-selection.js';
 import {modelUsageContext,effectiveModelUsers,validateModelUserSelection,retailModelDonors} from '/model-user-selection.js';
 import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,renderComponentDetails,renderComponentActions,bindComponentActions} from '/component-inspector.js';
@@ -1541,6 +1542,7 @@ function sceneView(){const positions=new Map(entities().map(entity=>[entity.id,d
 let sceneFacePickMode=false,floorPickMode=false;
 const sceneFacePickButton=document.createElement('button');sceneFacePickButton.id='scene-face-pick';sceneFacePickButton.textContent='Pick model face';sceneFacePickButton.title='Click a visible authored model surface to open its Current native face';sceneFacePickButton.setAttribute('aria-pressed','false');$('frame-selected').after(sceneFacePickButton);
 let sceneRuler=null;
+const npcGroundPlacement=mountNpcGroundPlacement({after:document.querySelector('.viewport-toolbar'),getKey:()=>JSON.stringify([resourceStateKey(),state.project_copy_source_key,sceneRequestKey()]),available:()=>!sceneRuler?.picking()&&!transitionArrivalOverlay&&!npcArrivalOverlay&&canMeasureScene(),getDocument:activeScenePreview,getSceneId:()=>state.scene?.id,pickVertex:p=>sceneRenderer.pickSurfaceVertex(p.x,p.y,sceneView()),onChange:()=>resize(),onError:error=>notify(error.message,true)});
 function canMeasureScene(){return !busy&&canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePendingKey&&!scenePose&&!shapeDraft&&!draft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!scenePlacementMode&&!actorBoxMode&&!wallSelectMode&&!wallInspection&&!sceneFacePickMode&&!pickScriptTargets&&!pickHistoricalSamples&&!pickRuntimeNodes&&!fieldSpatialPick&&!floorPickMode;}
 sceneRuler=mountSceneRuler({after:sceneFacePickButton,getContext:()=>({project_path:state.project?.path??'',scene_id:state.scene?.id??'',source_key:state.scene_preview_source_key??'',representation:sceneRepresentation,preview_key:sceneKey,hidden_entities:[...hiddenSceneEntities()].sort()}),available:canMeasureScene,busy:()=>busy,pickVertex:p=>sceneRenderer.pickSurfaceVertex(p.x,p.y,sceneView()),onDraw:()=>{updateSceneFacePick();draw();},notify});
 function canPickSceneFace(allowBusy=false){return !sceneRuler?.picking()&&(allowBusy||!busy)&&canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePendingKey&&!scenePose&&!shapeDraft&&!draft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!scenePlacementMode&&!actorBoxMode&&!wallSelectMode&&!wallInspection&&!pickScriptTargets&&!pickRuntimeNodes&&!fieldSpatialPick&&!floorPickMode;}
@@ -3878,7 +3880,7 @@ function openModelNpcCreation(record,rowCurrent){
 async function openActorCandidate(entity,modelAssetId=null){
   if(busy)return;
   const sceneId=state.scene?.id,key=resourceStateKey(),source=state.project_copy_source_key,controller=new AbortController();
-  let withdrawn=false;
+  let withdrawn=false,placing=false;
   const fresh=()=>!withdrawn&&state.scene?.id===sceneId&&key===resourceStateKey()&&source===state.project_copy_source_key&&(modelAssetId===null||canEdit()&&retailModelDonors(state,modelAssetId,sceneId).includes(entity.id));
   if(!fresh())return;
   const dialog=document.createElement('dialog');dialog.id='actor-candidate-dialog';
@@ -3886,7 +3888,7 @@ async function openActorCandidate(entity,modelAssetId=null){
   const timer=setInterval(()=>{try{if(!fresh())withdraw();}catch{withdraw();}},250);
   dialog.innerHTML='<h2>NPC creation candidate</h2><p>Inspecting the retail donor…</p><button data-close>Close</button>';
   dialog.querySelector('button').onclick=()=>dialog.close();
-  dialog.addEventListener('close',()=>{clearInterval(timer);controller.abort();dialog.remove();},{once:true});
+  dialog.addEventListener('close',()=>{if(placing)return;clearInterval(timer);controller.abort();dialog.remove();});
   document.body.append(dialog);dialog.showModal();
   try{
     const response=await fetch('/api/actor-candidate-inspection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id}),signal:controller.signal});
@@ -3915,6 +3917,10 @@ async function openActorCandidate(entity,modelAssetId=null){
       if(!await api('/api/command',command,{dialog,success:'NPC draft created. Save persists it; Review Build assesses native serialization.'}))return;
       try{const id=createdNpcSelection(state,capture);selectNpcDraft(id);frameNpcDraft();revealHierarchyButton.click();document.querySelector('.workspace-tabs [data-panel="inspector"]').click();}catch(error){notify(error.message,true);}
     };
+    const choosePosition=document.createElement('button');choosePosition.type='button';choosePosition.textContent='Choose NPC position in scene';choosePosition.disabled=!canEdit();
+    const pickedNote=document.createElement('p');pickedNote.className='field-note';
+    choosePosition.onclick=()=>{if(busy||!fresh())return;try{npcGroundPlacement.begin(result=>{placing=false;if(!fresh())withdraw();else if(result){form.elements.x.value=result.position.x;form.elements.z.value=result.position.z;pickedNote.textContent=`Source-ground corner X ${result.position.x}, Z ${result.position.z}. Height is not authored; Create still requires confirmation.`;}if(dialog.isConnected&&!dialog.open)dialog.showModal();});placing=true;dialog.close();document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}catch(error){form.querySelector('.dialog-error').textContent=error.message;}};
+    form.querySelector('button[type="submit"]').before(choosePosition,pickedNote);
     if(!canEdit())form.querySelectorAll('input,button').forEach(control=>control.disabled=true);
     if(!state.actor_drafts?.[entity.id])dialog.append(form);
     const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='Technical evidence';pre.textContent=JSON.stringify(report,null,2);details.append(summary,pre);dialog.append(details);
@@ -4553,6 +4559,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelViewp
 canvas.addEventListener('pointerdown',event=>{
   pendingEntityFrame=null;
   if(busy||drag)return;const p=pointer(event),entity=movableSelection();canvas.focus({preventScroll:true});canvas.setPointerCapture(event.pointerId);
+  if(npcGroundPlacement.active()&&event.button===0&&!event.shiftKey){drag={pointerId:event.pointerId,type:'npc-create-position',key:npcGroundPlacement.key(),cameraRevision,width,height,start:p,last:p,moved:false};canvas.classList.add('dragging');return;}
   if(sceneRuler?.picking()&&event.button===0){drag={pointerId:event.pointerId,type:'scene-ruler',rulerContext:sceneRuler.contextKey(),cameraRevision,width,height,start:p,last:p,moved:false};canvas.classList.add('dragging');return;}
   if(pickHistoricalSamples&&currentHistoricalPositions()&&event.button===0){drag={pointerId:event.pointerId,type:'historical-sample',key:historicalPositionKey(),cameraRevision,width,height,start:p,last:p,moved:false};canvas.classList.add('dragging');return;}
   if(floorPickMode&&event.button===0){drag={pointerId:event.pointerId,type:'floor-selector',context:resourceStateKey(),sourceKey:state.scene_preview_source_key,projectKey:state.project_copy_source_key,cameraRevision,width,height,start:p,last:p,moved:false};canvas.classList.add('dragging');return;}
@@ -4576,7 +4583,7 @@ canvas.addEventListener('pointermove',event=>{
     else if(drag.type==='wall-rectangle'){if(!wallGestureCurrent(drag)){cancelViewportGesture();return;}try{wallSelection=wallRectangleAt(drag,p);$('transform-drag-status').textContent=`Source wall rows ${wallSelection.row_start}–${wallSelection.row_end}, columns ${wallSelection.column_start}–${wallSelection.column_end} · Y=0 reference plane · Release to review`;}catch(error){wallSelection=null;$('transform-drag-status').textContent=error.message;}}
     else if(drag.type==='scene-placement-box'){if(!scenePlacementBoxCurrent(drag)){cancelViewportGesture();return;}drag.last=p;$('transform-drag-status').textContent='Visible placement pixels · Release to select; Ctrl/Command adds';}
     else if(drag.type==='actor-box'){drag.last=p;}
-    else if(drag.type==='orbit'||drag.type==='scene-ruler'||drag.type==='scene-face'||drag.type==='floor-selector'){camera.yaw-=dx*.006;camera.pitch=Math.max(camera.projection==='orthographic'?0:.12,Math.min(Math.PI/2,camera.pitch+dy*.005));cameraRevision++;}
+    else if(drag.type==='orbit'||drag.type==='scene-ruler'||drag.type==='scene-face'||drag.type==='floor-selector'||drag.type==='npc-create-position'){camera.yaw-=dx*.006;camera.pitch=Math.max(camera.projection==='orthographic'?0:.12,Math.min(Math.PI/2,camera.pitch+dy*.005));cameraRevision++;}
     else if(camera.projection==='orthographic'){const a=sceneCameraPlanePoint(camera,{width,height},0,0),b=sceneCameraPlanePoint(camera,{width,height},dx,dy);for(const axis of ['x','y','z'])camera.target[axis]+=a[axis]-b[axis];cameraRevision++;}
     else {const b=basis(),scale=camera.distance/Math.max(1,Math.min(width,height)*.9);camera.target.x-=dx*scale*b.right.x;camera.target.z-=dx*scale*b.right.z;camera.target.x-=dy*scale*Math.sin(camera.yaw)/Math.max(.15,Math.sin(camera.pitch));camera.target.z-=dy*scale*Math.cos(camera.yaw)/Math.max(.15,Math.sin(camera.pitch));cameraRevision++;}
     if(draft&&['transform','group-transform','environment-group-transform','scene-placement-group-transform'].includes(drag.type))$('transform-drag-status').textContent=['group-transform','environment-group-transform','scene-placement-group-transform'].includes(drag.type)?`${drag.type==='scene-placement-group-transform'?'Placement':drag.type==='environment-group-transform'?'Scenery':'Actor'} group ${drag.handle.axis.toUpperCase()} offset ${format(draft.groupAmount)} · ${drag.snapStep>1?`Snap ${drag.snapStep}`:'Integer move'} · Release to review; preview height held while dragging`:`${drag.handle.axis.toUpperCase()} ${format(draft.position[drag.handle.axis])} · ${drag.snapStep>1?`Snap ${drag.snapStep} units`:'Free move'} · Release to apply`;
@@ -4589,6 +4596,7 @@ canvas.addEventListener('pointerup',async event=>{
   if(['environment-yaw','transform','group-transform','environment-group-transform','scene-placement-group-transform'].includes(drag.type)&&(busy||!transformGestureCurrent(drag))){cancelViewportGesture();return;}
   const finished=drag,p=pointer(event),edit=draft;drag=null;draft=null;canvas.classList.remove('dragging');$('transform-drag-status').textContent='X/Z moves · snap aligns to scene origin';
   if(finished.type==='historical-sample'){if(!finished.moved&&event.button===0&&!busy&&currentHistoricalPositions()&&finished.key===historicalPositionKey()&&finished.cameraRevision===cameraRevision&&finished.width===width&&finished.height===height){const ids=historicalSampleHits(historicalHits,p);if(ids.length===1){historicalSample.value=ids[0];openHistoricalSample(ids[0]);}else if(ids.length>1){notify('Several historical keys overlap here. Choose a node in Historical node sample.');historicalSample.focus();}else notify('No historical sample at this point.');}draw();return;}
+  if(finished.type==='npc-create-position'){if(!finished.moved&&event.button===0&&finished.cameraRevision===cameraRevision&&finished.width===width&&finished.height===height)npcGroundPlacement.pick(p,finished.key);draw();return;}
   if(finished.type==='floor-selector'){floorPickMode=false;updateFieldToggle();if(!finished.moved&&event.button===0){try{pickFloorSelector(p,finished);}catch(error){notify(error.message,true);}}draw();return;}
   if(finished.type==='scene-ruler'){if(!finished.moved&&event.button===0&&finished.cameraRevision===cameraRevision&&finished.width===width&&finished.height===height&&canMeasureScene()){try{sceneRuler.pick(p,finished.rulerContext);}catch(error){notify(error.message,true);}}draw();return;}
   if(finished.type==='scene-face'){sceneFacePickMode=false;updateSceneFacePick();if(!finished.moved&&event.button===0){try{await inspectSceneFace(p,finished);}catch(error){notify(error.message,true);}}draw();return;}
@@ -5498,4 +5506,4 @@ projectAssetControls=mountProjectAssets({host:projectAssetHost,getContext:projec
   getUnavailableReason:()=>state.project_assets_unavailable_reason,
   onChange:()=>{assetPageSignature=null;renderAssets();},onError:error=>notify(error.message,true)});
 
-mountSceneToolDrawer({toolbar:document.querySelector('.viewport-toolbar'),viewport:$('viewport-wrap'),keep:[sceneRuler.bar,runRibbon,fieldNote,scenePoseBar,actorGroupTools,scriptTargetTools,transitionArrivalTools,npcArrivalTools,historicalTools],onToggle:()=>{cancelViewportGesture();resize();}});
+mountSceneToolDrawer({toolbar:document.querySelector('.viewport-toolbar'),viewport:$('viewport-wrap'),keep:[sceneRuler.bar,npcGroundPlacement.bar,runRibbon,fieldNote,scenePoseBar,actorGroupTools,scriptTargetTools,transitionArrivalTools,npcArrivalTools,historicalTools],onToggle:()=>{cancelViewportGesture();resize();}});
