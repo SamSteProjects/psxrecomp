@@ -104,6 +104,7 @@ import {openActorPresetReview} from '/actor-preset-review.js';
 import {ANIMATION_PRESET_SCOPE,presetScopeLabel} from '/preset-animation.js';
 import {mountSceneGroundPosition,decodeGroundPositionPreview,nativePositionEntry} from '/scene-ground-position.js';
 import {mountNpcCreationPreview} from '/npc-creation-preview.js';
+import {mountNpcCreationBuildReview} from '/npc-creation-build-review.js';
 import {mountNpcGroundPlacement} from '/npc-ground-placement.js';
 import {captureNpcCreation,createdNpcSelection} from '/npc-creation-selection.js';
 import {modelUsageContext,effectiveModelUsers,validateModelUserSelection,retailModelDonors} from '/model-user-selection.js';
@@ -3911,15 +3912,15 @@ function openModelNpcCreation(record,rowCurrent){
 async function openActorCandidate(entity,modelAssetId=null){
   if(busy)return;
   const sceneId=state.scene?.id,key=resourceStateKey(),source=state.project_copy_source_key,controller=new AbortController();
-  let withdrawn=false,placing=false,creationTool=null;
+  let withdrawn=false,placing=false,creationTool=null,creationBuildTool=null;
   const fresh=()=>!withdrawn&&state.scene?.id===sceneId&&key===resourceStateKey()&&source===state.project_copy_source_key&&(modelAssetId===null||canEdit()&&retailModelDonors(state,modelAssetId,sceneId).includes(entity.id));
   if(!fresh())return;
   const dialog=document.createElement('dialog');dialog.id='actor-candidate-dialog';
-  const withdraw=()=>{withdrawn=true;creationTool?.clear();if(placing&&dialog.isConnected&&!dialog.open){placing=false;dialog.showModal();}controller.abort();dialog.querySelector('p').textContent='Project, scene or donor source changed. Reopen NPC creation.';dialog.querySelectorAll('input,button:not([data-close])').forEach(control=>control.disabled=true);};
+  const withdraw=()=>{withdrawn=true;creationBuildTool?.clear();creationTool?.clear();if(placing&&dialog.isConnected&&!dialog.open){placing=false;dialog.showModal();}controller.abort();dialog.querySelector('p').textContent='Project, scene or donor source changed. Reopen NPC creation.';dialog.querySelectorAll('input,button:not([data-close])').forEach(control=>control.disabled=true);};
   const timer=setInterval(()=>{try{if(!fresh())withdraw();}catch{withdraw();}},250);
   dialog.innerHTML='<h2>NPC creation candidate</h2><p>Inspecting the retail donor…</p><button data-close>Close</button>';
   dialog.querySelector('button').onclick=()=>dialog.close();
-  dialog.addEventListener('close',()=>{if(placing)return;creationTool?.dispose();clearInterval(timer);controller.abort();dialog.remove();});
+  dialog.addEventListener('close',()=>{if(placing)return;creationBuildTool?.dispose();creationTool?.dispose();clearInterval(timer);controller.abort();dialog.remove();});
   document.body.append(dialog);dialog.showModal();
   try{
     const response=await fetch('/api/actor-candidate-inspection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id}),signal:controller.signal});
@@ -3930,7 +3931,7 @@ async function openActorCandidate(entity,modelAssetId=null){
     if(modelAssetId!==null&&report.donor_dependencies?.model?.asset_semantic_id!==modelAssetId)throw new Error('Retail donor model differs from the selected model');
     const rows=report.actor.script_coverage.records;
     const containerStatus=report.container.supported===false?`unavailable (${report.container.reason})`:`${report.container.growth_bytes} bytes`;
-    dialog.querySelector('p').textContent=`${entity.name}: ${report.includes_project_overrides ? "retail donor with authored X/Z placement" : "retail donor at imported placement"}; other project overrides are excluded. This inspection does not create an NPC. ${report.actor.reached_spawn_changes.length} decoded spawn references need updates; ${rows.filter(row=>row.coverage!=='decoded_supported_paths').length} scripts remain partial. Container growth: ${containerStatus}. Overlapping archive entries: ${report.archive.overlapping_entries.length}. This donor-only prototype does not assess complete project Build readiness. Use Review Build for serialization status; spawning, scheduling and gameplay remain unverified.`;
+    dialog.querySelector('p').textContent=`${entity.name}: ${report.includes_project_overrides ? "retail donor with authored X/Z placement" : "retail donor at imported placement"}; other project overrides are excluded. This inspection does not create an NPC. ${report.actor.reached_spawn_changes.length} decoded spawn references need updates; ${rows.filter(row=>row.coverage!=='decoded_supported_paths').length} scripts remain partial. Container growth: ${containerStatus}. Overlapping archive entries: ${report.archive.overlapping_entries.length}. This donor-only prototype does not assess complete project Build readiness. Use Review Build with proposed NPC below to assess proposed source serialization; spawning, scheduling and gameplay remain unverified.`;
     const placement=document.createElement('p');
     const included=Object.entries(report.included_overrides?.Transform?.position??{}).map(([axis,value])=>`${axis.toUpperCase()}=${value}`);
     const excluded=[...(report.excluded_override_components??[]),...(report.excluded_transform_axes??[]).map(axis=>`Position ${axis.toUpperCase()}`)];
@@ -3955,6 +3956,7 @@ async function openActorCandidate(entity,modelAssetId=null){
     if(!canEdit())form.querySelectorAll('input,button').forEach(control=>control.disabled=true);
     if(!state.actor_drafts?.[entity.id]){
       dialog.append(form);const previewOwner=Symbol('npc-creation');
+      creationBuildTool=mountNpcCreationBuildReview({form,current:fresh,getRequest:()=>({donor_entity_id:entity.id,name:form.elements.name.value,position:nativePositionEntry({x:form.elements.x.value,z:form.elements.z.value}),project_source_key:source}),getContext:()=>({scene_id:state.scene?.id,source_key:state.scene_preview_source_key,existing_npc_draft_count:Object.keys(state.actor_drafts??{}).length}),available:()=>canEdit()&&state.capabilities?.npc_creation_build_review===true,isBusy:()=>busy||creationTool?.pending?.(),setBusy,onError:error=>{form.querySelector('.dialog-error').textContent=error.message;}});
       creationTool=mountNpcCreationPreview({form,current:fresh,available:npcCreationSceneAvailable,isBusy:()=>busy,getScene:activeScenePreview,
         getRequest:()=>({donor_entity_id:entity.id,name:form.elements.name.value,position:nativePositionEntry({x:form.elements.x.value,z:form.elements.z.value}),project_source_key:source}),
         suspend:()=>{placing=true;dialog.close();document.querySelector('.workspace-tabs [data-panel="viewport"]').click();},resume:()=>{placing=false;if(dialog.isConnected&&!dialog.open)dialog.showModal();},

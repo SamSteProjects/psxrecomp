@@ -280,6 +280,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["trigger_script_preview"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["build"] = bool(self.project.disc_path and self.project.imports)
         state['capabilities']['build_review'] = bool(self.project.disc_path and 1<=len(self.project.imports)<=64)
+        state['capabilities']['npc_creation_build_review'] = state['capabilities']['build_review'] and self.project.mode == 'edit'
         from .build import authored_state_key
         state['build_review_source_key'] = authored_state_key(self.project)
         from .project_copy import source_key as copy_source_key
@@ -1004,6 +1005,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/npc-ground-placement.js": ("npc-ground-placement.js", "text/javascript"),
                  "/scene-ground-position.js": ("scene-ground-position.js", "text/javascript"),
                  "/npc-creation-preview.js": ("npc-creation-preview.js", "text/javascript"),
+                 "/npc-creation-build-review.js": ("npc-creation-build-review.js", "text/javascript"),
                  "/model-placement-users.js": ("model-placement-users.js", "text/javascript"),
                  "/animation-placement-users.js": ("animation-placement-users.js", "text/javascript"),
                  "/animation-contributions.js": ("animation-contributions.js", "text/javascript"),
@@ -1976,6 +1978,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if scope not in ('active','project'):raise ProjectError('Asset reference scope must be active or project')
                     from .asset_references import inspect,inspect_project
                     self._json(200,(inspect_project if scope=='project' else inspect)(self.server.project,body['asset_id']))
+                    return
+                if route == '/api/npc-creation-build-review':
+                    from .npc_creation_build_review import review
+                    self._json(200,review(self.server.project,body))
                     return
                 if route == '/api/build-review':
                     if body:raise ProjectError('Build review takes no fields')
