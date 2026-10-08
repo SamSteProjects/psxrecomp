@@ -1,0 +1,15 @@
+# Animation Argument Usage Inspector
+
+The Animation Script Arguments panel now offers **Find Matching Animation Argument Sets**. It searches the active scene's source-qualified P1 actors, P2 scripts and NPC drafts for the selected instruction's saved effective numeric argument set. Local unsaved drafts are excluded. Results distinguish **Retail match** from **Effective match**, retain the instruction PC and encoded context, and open the matching source or NPC argument editor.
+
+Matching numbers establish neither model/clip identity nor shared behavior. Instructions may be unvisited in the current authored branch flow. Runtime activation, timing, valid argument combinations and gameplay remain unknown; the inspector does not infer a clip binding or access runtime memory.
+
+`/api/animation-operand-uses` accepts only `entity_id`, `animation_operand_id` and `expected_state_key`. The SDK checks active-scene ownership and the current authored-state key, loads verified native source targets once, validates each retained override against the native writer, and keeps NPC values independent from donor-source overrides. Inspection is read-only and rechecks the key before returning. Unknown/unqualified source instructions remain excluded; unresolved authored entries refuse the query rather than disappearing.
+
+The scan is bounded at 8,192 qualified sites. At most 256 matching rows are returned, with the full match count and explicit truncation. Each row retains donor ownership, source record hash, native widths/dispatch and Retail/authored/effective arguments. The client independently qualifies native bytes and match flags, refuses duplicates and inconsistent response counts, and returns detached data. Navigation reopens the existing source-qualified editor; it does not apply a change.
+
+One focused Retail Python workflow passed immutable source/NPC inspection, independent layers, HTTP strict-field/type guards, stale and foreign-scene refusal, and explicit truncation with a larger private metadata fixture. Three Node suites passed: usage contracts with ten forged-response refusals, existing Current selection qualification and existing source/Review qualification. Two JS syntax and three Python AST checks passed.
+
+The actual private Map02 browser workflow passed source lookup, separate Retail/effective NPC matches, and navigation to the selected NPC's native instruction. Wide and 400 px screenshots were inspected with readable controls and zero page errors. The original private Project document, undo stack and imports were restored, saved and reopened; no Redo entries were introduced. Owned browser/server helpers closed.
+
+Private evidence: `local-output/sdk-20260909/animation-operands-20261008/uses.json`, `uses-checks.json` and `uses-browser/`. Browser proof covers a P1 effect argument and matching NPCs; P2/model argument navigation uses the same registered source editor but was not exercised in this browser check. No native Build, game, runtime attachment, install or disc export ran. Other offline SDK development can continue while gameplay is deferred.
