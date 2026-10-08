@@ -2282,6 +2282,9 @@ class ProjectService:
         if command.get('type')=='set_actor_draft_effect_colors':
             from .npc_effect_colors import apply
             apply(self,command);return
+        if command.get('type')=='set_actor_draft_arrival':
+            from .npc_arrival_authoring import apply
+            apply(self,command);return
         if command.get('type')=='set_actor_draft_transitions':
             from .npc_transitions import apply
             apply(self,command);return

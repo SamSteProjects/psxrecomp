@@ -951,6 +951,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/flag-resource.js': ('flag-resource.js', 'text/javascript'),
                  '/transition-resource.js': ('transition-resource.js', 'text/javascript'),
                  '/transition-graph-entry.js': ('transition-graph-entry.js', 'text/javascript'),
+                 '/npc-arrival-authoring.js': ('npc-arrival-authoring.js', 'text/javascript'),
                  '/npc-arrival-preview.js': ('npc-arrival-preview.js', 'text/javascript'),
                  '/transition-arrival-preview.js': ('transition-arrival-preview.js', 'text/javascript'),
                  '/field-spatial.js': ('field-spatial.js', 'text/javascript'),
@@ -2143,6 +2144,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .transition_arrival import apply
                     apply(self.server.project,body)
                     self._json(200,self.server.state())
+                    return
+                if route == '/api/npc-arrival-review':
+                    from .npc_arrival_authoring import review
+                    self._json(200,review(self.server.project,body))
                     return
                 if route == '/api/npc-arrival-preview':
                     from .npc_arrival_preview import inspect

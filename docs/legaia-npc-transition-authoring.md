@@ -63,3 +63,5 @@ The final document/original undo stack/imports were restored with one retained R
 ## Destination Viewport
 
 [NPC Arrival Destination Preview](legaia-npc-arrival-preview.md) opens separate saved Retail/NPC Current arrival markers in an already imported destination and returns to the source arrival editor. Local form drafts are excluded. Reference Y is an explicit plane, with no inferred height or runtime travel.
+
+[NPC Arrival Viewport Authoring](legaia-npc-arrival-authoring.md) also connects the destination comparison to reviewed source-NPC edits, gizmos, atomic history and Save/Open. Height and route execution remain unknown.

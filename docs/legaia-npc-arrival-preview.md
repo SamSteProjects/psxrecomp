@@ -15,3 +15,7 @@ A real private Map02 donor0002 PC53 self-destination fixture shows Retail X4032/
 Fresh private UI checks passed NPC Asset Details to destination preview, exclusion of local X128 in favor of saved X64, adjustable reference Y, framing, return to the exact arrival editor, stale-input withdrawal and Clear. Wide/400px captures were inspected with zero page errors and no control overflow. Document/history/imports/dirty state remained exact, Save/Open matched and helpers closed. Earlier hidden-drawer and premature stale-fixture attempts are retained separately. Final evidence: `local-output/sdk-20260909/npc-arrival-preview-20261008/browser-final/`; backend/client metadata: `qualified/retail.json`; source hashes: `source-hashes.json`.
 
 This real fixture names its own Map02 destination; it is not gameplay or cross-scene travel evidence. No native Build, game launch, runtime attachment, install or disc export ran. Streaming delivery, route activation, destination height and gameplay remain unverified. The full SDK goal remains active.
+
+## Viewport Editing
+
+[NPC Arrival Viewport Authoring](legaia-npc-arrival-authoring.md) now stages coordinate/facing drafts and source-qualified Review/Apply in this workspace, with an X/Z gizmo and normal history/persistence. Saved Retail/Current and local Draft/Proposed markers remain separate.

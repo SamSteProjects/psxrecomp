@@ -328,3 +328,5 @@
 [data-flag-sandbox] { min-width:0; overflow-wrap:anywhere; }
 [data-flag-sandbox] > label { display:block; margin:12px 0; }
 [data-flag-sandbox] > label input { display:block; width:100%; box-sizing:border-box; }
+
+#npc-arrival-preview-tools{max-height:32vh;overflow-y:auto;overflow-x:hidden}@media(max-width:800px){#npc-arrival-preview-tools{max-height:24vh}}
