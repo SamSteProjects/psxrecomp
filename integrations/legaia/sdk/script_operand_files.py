@@ -4,8 +4,14 @@ import json
 from .project import ProjectError,digest
 
 SCHEMA='legaia.script-operand-file.v1'
+ANIMATION_SCHEMA='legaia.script-operand-file.v2'
+
+def file_schema(components):
+    return ANIMATION_SCHEMA if 'ScriptAnimationOperands' in components else SCHEMA
+
 MAX_BYTES=65536
 KINDS={
+    'ScriptAnimationOperands':('apply_script_animation_operands','animation_operand_id'),
     'ScriptBranches':('set_branch','branch_id'),
     'ScriptMovement':('set_movement_target','movement_id'),
     'ScriptFacing':('set_facing_target','facing_id'),
@@ -33,12 +39,13 @@ def parse_json(content):
 
 def parse(content):
     value=parse_json(content)
-    if not isinstance(value,dict) or set(value)!={'schema_version','scene_id','source_import_sha256','owner_id','components'} or value['schema_version']!=SCHEMA:
+    if not isinstance(value,dict) or set(value)!={'schema_version','scene_id','source_import_sha256','owner_id','components'} or value['schema_version'] not in (SCHEMA,ANIMATION_SCHEMA):
         raise ProjectError('Unsupported operand file fields or schema')
     if not isinstance(value['source_import_sha256'],str) or len(value['source_import_sha256'])!=64 or any(c not in '0123456789abcdef' for c in value['source_import_sha256']):
         raise ProjectError('Operand file requires an imported source hash')
     components=value['components']
     if not isinstance(components,dict) or not set(components)<=set(KINDS):raise ProjectError('Unsupported operand component')
+    if value['schema_version']!=file_schema(components):raise ProjectError('Operand file version differs from its authored components')
     total=0
     for component in components.values():
         if not isinstance(component,dict) or set(component)!={'entries'} or not isinstance(component['entries'],dict) or not component['entries']:
@@ -72,7 +79,11 @@ def review(project,owner,content):
             kind,key_field=KINDS[component]
             for identifier,values in sorted(value['components'][component]['entries'].items()):
                 previous=deepcopy((before or {}).get(component,{}).get('entries',{}).get(identifier))
-                if component == 'ScriptBranches':
+                if component == 'ScriptAnimationOperands':
+                    from .script_animation_operands import review as animation_review
+                    inspected,_=animation_review(staged,owner,identifier,values)
+                    staged.command(dict(type=kind,entity_id=owner,animation_operand_id=identifier,values=values,review_key=inspected['review']['review_key']))
+                elif component == 'ScriptBranches':
                     from .script_branches import review as branch_review
                     inspected, _ = branch_review(staged, owner, identifier, values)
                     if not inspected['review']['no_op']:
@@ -89,13 +100,11 @@ def review(project,owner,content):
     return report
 
 def export_file(project,owner):
-    if project.overrides.get(owner, {}).get('ScriptAnimationOperands'):
-        raise ProjectError('Animation script operand file transfer is pending; export would omit authored arguments')
     from importer.pipeline import _disc_context
     if not project.disc_path:raise ProjectError('Operand transfer requires the project user-owned disc')
     with _disc_context(project.disc_path):scene,source=_source(project,owner)
     components={key:deepcopy(value) for key,value in project.overrides.get(owner,{}).items() if key in KINDS}
-    value=dict(schema_version=SCHEMA,scene_id=scene,source_import_sha256=source,owner_id=owner,components=components)
+    value=dict(schema_version=file_schema(components),scene_id=scene,source_import_sha256=source,owner_id=owner,components=components)
     content=json.dumps(value,ensure_ascii=True,indent=2)+'\n'
     review(project,owner,content)
     return value

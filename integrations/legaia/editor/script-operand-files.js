@@ -1,9 +1,10 @@
 export const operandOwnerContext=(state,owner)=>JSON.stringify((state.authored_assets??[]).find(row=>row.id===owner)?.authored??null);
-const COMPONENTS=['ScriptBranches','ScriptMovement','ScriptFacing','ScriptFlags','ScriptWaits','ScriptEffectColors','ScriptModelSelectors','Transitions'];
+export const operandFileSchema=components=>Object.hasOwn(components??{},'ScriptAnimationOperands')?'legaia.script-operand-file.v2':'legaia.script-operand-file.v1';
+const COMPONENTS=['ScriptAnimationOperands','ScriptBranches','ScriptMovement','ScriptFacing','ScriptFlags','ScriptWaits','ScriptEffectColors','ScriptModelSelectors','Transitions'];
 export function decodeOperandReview(value,file,owner,scene){
   const entries=value?.entries;
-  if(value?.schema_version!=='legaia.script-operand-review.v1'||value.owner_id!==owner||value.scene_id!==scene||value.source_import_sha256!==file.source_import_sha256||file.owner_id!==owner||file.scene_id!==scene||file.schema_version!=='legaia.script-operand-file.v1'||!/^[0-9a-f]{64}$/.test(value.review_key)||!Array.isArray(entries)||entries.length>256||new Set(entries.map(row=>row.component+'|'+row.operand_id)).size!==entries.length||value.change_count!==entries.filter(row=>row.changed===true).length)throw new Error('Operand review differs from file or active script');
-  const expected=Object.entries(file.components??{}).flatMap(([component,data])=>Object.entries(data.entries??{}).map(([operand_id,after])=>({component,operand_id,after}))).sort((a,b)=>a.component.localeCompare(b.component)||a.operand_id.localeCompare(b.operand_id));
+  if(value?.schema_version!=='legaia.script-operand-review.v1'||value.owner_id!==owner||value.scene_id!==scene||value.source_import_sha256!==file.source_import_sha256||file.owner_id!==owner||file.scene_id!==scene||file.schema_version!==operandFileSchema(file.components)||!/^[0-9a-f]{64}$/.test(value.review_key)||!Array.isArray(entries)||entries.length>256||new Set(entries.map(row=>row.component+'|'+row.operand_id)).size!==entries.length||value.change_count!==entries.filter(row=>row.changed===true).length)throw new Error('Operand review differs from file or active script');
+  const expected=Object.entries(file.components??{}).flatMap(([component,data])=>Object.entries(data.entries??{}).map(([operand_id,after])=>({component,operand_id,after}))).sort((a,b)=>Number(a.component==='ScriptBranches')-Number(b.component==='ScriptBranches')||a.component.localeCompare(b.component)||a.operand_id.localeCompare(b.operand_id));
   if(expected.length!==entries.length||entries.some(row=>!COMPONENTS.includes(row.component)||typeof row.changed!=='boolean'||!row.after||typeof row.after!=='object')||JSON.stringify(expected)!==JSON.stringify(entries.map(({component,operand_id,after})=>({component,operand_id,after}))))throw new Error('Operand review entries differ from file');
   return structuredClone(value);
 }
@@ -13,7 +14,7 @@ export function mountScriptOperandFiles(host,{owner,scene,current,busy,setBusy,a
   download.onclick=async()=>{if(busy()||!current())return;setBusy(true);try{
     const response=await fetch('/api/script-operand-export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:owner})}),value=await response.json();
     if(!response.ok||value.error)throw new Error(value.error??'Operand export failed');if(!current())return;
-    if(value.schema_version!=='legaia.script-operand-file.v1'||value.owner_id!==owner||value.scene_id!==scene)throw new Error('Operand export returned a different owner');
+    if(value.schema_version!==operandFileSchema(value.components)||value.owner_id!==owner||value.scene_id!==scene)throw new Error('Operand export returned a different owner');
     const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)+'\n'],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='authored-script-operands.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }catch(error){onError(error);}finally{setBusy(false);}};
   inspect.onclick=()=>{if(busy()||!current())return;const dialog=document.createElement('dialog'),controller=new AbortController();dialog.id='script-operand-file-dialog';dialog.className='project-dialog';
@@ -34,8 +35,8 @@ export function mountScriptOperandFiles(host,{owner,scene,current,busy,setBusy,a
 
 export function appendOperandReview(host,report){
   const summary=document.createElement('p');summary.textContent=report.change_count+' changed entries · one Undo command';
-  const families={ScriptMovement:'Movement',ScriptFacing:'Facing',ScriptFlags:'Flag',ScriptWaits:'Wait',ScriptEffectColors:'Effect color',ScriptModelSelectors:'Model selector',Transitions:'Transition'};
-  const fields={sector:'Facing sector',x:'X',z:'Z',move_id:'Move selector',bit:'Bit',duration_ticks:'Ticks',model_selector_signed:'Signed selector',entry_x_encoded:'Entry X byte',entry_z_encoded:'Entry Z byte',direction_encoded:'Direction byte'};
+  const families={ScriptAnimationOperands:'Animation Arguments',ScriptMovement:'Movement',ScriptFacing:'Facing',ScriptFlags:'Flag',ScriptWaits:'Wait',ScriptEffectColors:'Effect color',ScriptModelSelectors:'Model selector',Transitions:'Transition'};
+  const fields={model_id:'Encoded Model Argument',animation_frame:'Animation Frame Argument',tween_frames:'Tween Frame Argument',animation_operand:'Effect Animation Argument',sector:'Facing sector',x:'X',z:'Z',move_id:'Move selector',bit:'Bit',duration_ticks:'Ticks',model_selector_signed:'Signed selector',entry_x_encoded:'Entry X byte',entry_z_encoded:'Entry Z byte',direction_encoded:'Direction byte'};
   const format=values=>values===null?'Inherit retail':Object.entries(values).map(([key,value])=>(fields[key]??key)+': '+value).join(' · ');
   const table=document.createElement('table');table.className='operand-review-table';const heading=document.createElement('tr');
   for(const label of ['Operand','Instruction','Current authored','Proposed authored']){const cell=document.createElement('th');cell.textContent=label;heading.append(cell);}table.append(heading);

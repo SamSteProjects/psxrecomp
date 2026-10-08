@@ -2,17 +2,22 @@
 from copy import copy,deepcopy
 import json
 from .project import ProjectError,digest
-from .script_operand_files import SCHEMA as FILE_SCHEMA,KINDS,parse_json,parse as parse_file,review as review_file
+from .script_operand_files import SCHEMA as FILE_SCHEMA,KINDS,parse_json,parse as parse_file,review as review_file,file_schema
 
 SCHEMA='legaia.script-operand-bundle.v1'
+ANIMATION_SCHEMA='legaia.script-operand-bundle.v2'
+
+def bundle_schema(owners):
+    return ANIMATION_SCHEMA if any('ScriptAnimationOperands' in row['components'] for row in owners) else SCHEMA
+
 CONTEXTS={'ScriptBranches':'_branch_context','ScriptMovement':'_movement_context','ScriptFacing':'_facing_context','ScriptFlags':'_flag_context','ScriptWaits':'_wait_context','ScriptEffectColors':'_effect_color_context','ScriptModelSelectors':'_model_selector_context','Transitions':'_transition_context'}
 
 def owner_file(value,row):
-    return dict(schema_version=FILE_SCHEMA,scene_id=value['scene_id'],source_import_sha256=value['source_import_sha256'],owner_id=row['owner_id'],components=row['components'])
+    return dict(schema_version=file_schema(row['components']),scene_id=value['scene_id'],source_import_sha256=value['source_import_sha256'],owner_id=row['owner_id'],components=row['components'])
 
 def parse(content):
     value=parse_json(content)
-    if not isinstance(value,dict) or set(value)!={'schema_version','scene_id','source_import_sha256','owners'} or value['schema_version']!=SCHEMA:
+    if not isinstance(value,dict) or set(value)!={'schema_version','scene_id','source_import_sha256','owners'} or value['schema_version'] not in (SCHEMA,ANIMATION_SCHEMA):
         raise ProjectError('Unsupported operand bundle fields or schema')
     owners=value['owners']
     if not isinstance(owners,list) or len(owners)>128:raise ProjectError('Operand bundle is limited to 128 owners')
@@ -22,12 +27,13 @@ def parse(content):
         if not isinstance(row,dict) or set(row)!={'owner_id','components'} or not isinstance(row['owner_id'],str) or len(row['owner_id'])>512 or row['owner_id'] in seen:raise ProjectError('Invalid or duplicate operand bundle owner')
         seen.add(row['owner_id']);file=parse_file(json.dumps(owner_file(value,row)))
         total+=sum(len(component['entries']) for component in file['components'].values())
+    if value['schema_version']!=bundle_schema(owners):raise ProjectError('Operand bundle version differs from its authored components')
     if total>256:raise ProjectError('Operand bundle is limited to 256 instruction entries in total')
     return value
 
 def _composition(project,scene):
     """Compare every actual serialized byte write, including pre-existing scene edits."""
-    writes={};sources=[]
+    writes={};contributors={};sources=[];animation_spans=[]
     for owner,components in sorted(project.overrides.items()):
         numeric=set(components)&set(KINDS)
         if not numeric:continue
@@ -35,14 +41,24 @@ def _composition(project,scene):
         if 'scene://'+document['scene']['name']!=scene:continue
         sources.append(owner)
         for component in sorted(numeric):
-            modified,audit=getattr(project,CONTEXTS[component])(owner).patch(components[component]['entries'])
+            if component=='ScriptAnimationOperands':
+                from .script_animation_operands import context
+                adapter=context(project,owner)
+                for _,_,offset,record,_,pc,node,_,_ in adapter._requests(components[component]['entries']):
+                    animation_spans.append((offset+pc,offset+pc+node['length'],owner,component))
+            else:adapter=getattr(project,CONTEXTS[component])(owner)
+            modified,audit=adapter.patch(components[component]['entries'])
             for row in audit:
                 offset=row.get('decoded_byte_offset');width=row.get('byte_length',1)
-                if type(offset) is not int or type(width) is not int or width not in (1,2,4) or offset<0 or offset+width>len(modified):raise ProjectError('Invalid source-qualified operand byte audit')
+                if type(offset) is not int or type(width) is not int or width not in (1,2,3,4,5) or offset<0 or offset+width>len(modified):raise ProjectError('Invalid source-qualified operand byte audit')
                 for at in range(offset,offset+width):
                     byte=modified[at]
                     if at in writes and writes[at][0]!=byte:raise ProjectError('Operand owners request conflicting writes to shared source bytes')
                     writes[at]=(byte,owner,component)
+                    contributors.setdefault(at,set()).add((owner,component))
+    for start,end,owner,component in animation_spans:
+        if any(contributors.get(at,set())-{(owner,component)} for at in range(start,end)):
+            raise ProjectError('Animation instruction overlaps another authored operand family')
     return sources
 
 def review(project,content):
@@ -67,9 +83,6 @@ def review(project,content):
     return report
 
 def export_file(project):
-    if any(isinstance(owner, str) and owner.startswith(str(project.active_scene) + '/') and components.get('ScriptAnimationOperands')
-           for owner, components in project.overrides.items()):
-        raise ProjectError('Animation script operand bundle transfer is pending; export would omit authored arguments')
     from importer.pipeline import _disc_context
     from .resources import _verify
     scene=project.active_scene;document=project.imports.get(scene)
@@ -79,7 +92,7 @@ def export_file(project):
         for owner,components in sorted(project.overrides.items()):
             numeric={kind:deepcopy(value) for kind,value in components.items() if kind in KINDS}
             if numeric and project._dialogue_document(owner)==document:owners.append(dict(owner_id=owner,components=numeric))
-        value=dict(schema_version=SCHEMA,scene_id=scene,source_import_sha256=digest(document),owners=owners)
+        value=dict(schema_version=bundle_schema(owners),scene_id=scene,source_import_sha256=digest(document),owners=owners)
         review(project,json.dumps(value))
     return value
 

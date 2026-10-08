@@ -41,8 +41,8 @@ class AnimationOperandWorkflow(unittest.TestCase):
                 p.command(command);self.assertEqual(p.overrides[ACTOR][COMPONENT],component)
                 from sdk.script_operand_files import export_file
                 from sdk.script_operand_bundle import export_file as export_bundle
-                with self.assertRaisesRegex(ProjectError,'would omit authored arguments'):export_file(p,ACTOR)
-                with self.assertRaisesRegex(ProjectError,'would omit authored arguments'):export_bundle(p)
+                with self.assertRaisesRegex(ProjectError,'user-owned disc'):export_file(p,ACTOR)
+                with self.assertRaisesRegex(ProjectError,'user-owned disc'):export_bundle(p)
                 after=deepcopy((p._document(),p.undo_stack));self.assertEqual(len(p.undo_stack),len(before[1])+1)
                 fresh,_=review(p,ACTOR,key,values);self.assertTrue(fresh['review']['no_op'])
                 p.command(dict(command,review_key=fresh['review']['review_key']));self.assertEqual(after,(p._document(),p.undo_stack))
