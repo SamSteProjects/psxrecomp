@@ -1,5 +1,7 @@
 # Animation frame-range interpolation
 
+Imported and retained ranges now offer [native interpolation curves](legaia-animation-interpolation-curves.md), with Linear as the default.
+
 ## 2026-10-04: Retained clip partial-axis interpolation
 
 In **Edit retained content**, open **Frame sequence tools**, author the same

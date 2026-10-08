@@ -1,10 +1,9 @@
+import {interpolateNativeFrameAxis} from './animation-sample-curves.js';
 const canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v,same=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b)),integer=(v,a,b)=>Number.isSafeInteger(v)&&v>=a&&v<=b,hash=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v),fail=()=>{throw Error('Effective interpolation differs from the qualified native clip draft.');};
 export function interpolateEffectiveAxis(kind,first,last,index,span,curve='linear'){
  if(!['linear','ease_in','ease_out','smoothstep'].includes(curve))fail();
  if(!['translation','rotation_psx'].includes(kind)||!integer(span,1,511)||!integer(index,0,span)||![first,last].every(v=>integer(v,kind==='translation'?-2048:0,kind==='translation'?2047:4080)&&(kind!=='rotation_psx'||v%16===0)))fail();
- if(curve==='ease_in')[index,span]=[index*index,span*span];else if(curve==='ease_out')[index,span]=[2*index*span-index*index,span*span];else if(curve==='smoothstep')[index,span]=[index*index*(3*span-2*index),span*span*span];
- const rounded=n=>Math.floor((2*n+span)/(2*span));if(kind==='translation')return rounded(first*(span-index)+last*index);
- let delta=(last/16-first/16+256)%256;if(delta>128)delta-=256;return ((rounded(first/16*span+delta*index)%256+256)%256)*16;
+ return interpolateNativeFrameAxis(kind,first,last,index,span,curve);
 }
 function pose(v){if(!v||Object.keys(v).sort().join(',')!=='rotation_psx,translation')fail();for(const kind of ['translation','rotation_psx']){if(!v[kind]||Object.keys(v[kind]).sort().join('')!=='xyz')fail();for(const axis of 'xyz')if(!integer(v[kind][axis],kind==='translation'?-2048:0,kind==='translation'?2047:4080)||kind==='rotation_psx'&&v[kind][axis]%16!==0)fail();}}
 export function decodeEffectiveInterpolation(v,request,objects,validateAxes){

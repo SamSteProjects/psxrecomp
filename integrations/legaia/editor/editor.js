@@ -3705,7 +3705,7 @@ async function inspectAnimationGlb(entity){
       },{once:true});
     }});
 }
-const animationEditDialog=document.createElement('dialog');animationEditDialog.className='project-dialog';document.body.append(animationEditDialog);
+const animationEditDialog=document.createElement('dialog');animationEditDialog.className='project-dialog animation-imported-dialog';document.body.append(animationEditDialog);
 async function openAnimationChannels(entity,initialChannel=null){
   if(busy||state.project.mode!=='edit')return;
   const context=JSON.stringify([state.project.path,state.scene?.id,entity.id]);
@@ -3766,13 +3766,14 @@ async function openAnimationChannels(entity,initialChannel=null){
     }
     editedSelect.disabled=!edits.length;editedSelect.onchange=()=>{if(!editedSelect.value||!current())return;const [frame,object]=JSON.parse(editedSelect.value);form.elements.frame.value=frame;form.elements.object.value=object;refresh();};
     editedLabel.append(editedSelect);form.prepend(editedLabel);
-    form.querySelector('.close-animation').onclick=()=>animationEditDialog.close();
+    let userClosed=false;const cancelAnimationEditor=()=>{userClosed=true;};animationEditDialog.addEventListener('cancel',cancelAnimationEditor,{once:true});animationEditDialog.addEventListener('close',()=>animationEditDialog.removeEventListener('cancel',cancelAnimationEditor),{once:true});
+    form.querySelector('.close-animation').onclick=()=>{userClosed=true;animationEditDialog.close();};
     form.querySelector('.clear-animation').disabled=!edits.length;
     const apply=async command=>{
       if(busy||!current())return;
       const channel={frame:channelFrame,object:channelObject};
       if(!await api('/api/command',command,{dialog:animationEditDialog,success:'Animation override updated. Save project to persist.'})){error.textContent=$('status').textContent;return;}
-      const actor=selected();if(actor?.id===entity.id&&state.project.mode==='edit')await openAnimationChannels(actor,channel);
+      const actor=selected();if(!userClosed&&actor?.id===entity.id&&state.project.mode==='edit')await openAnimationChannels(actor,channel);
     };
     const recordTools=document.createElement('section');recordTools.className='animation-record-tools';
     const recordNote=document.createElement('p');recordNote.className='field-note';recordNote.textContent='Animation record interchange preserves this clip’s frame/object counts and opaque bytes. Import replaces this actor’s channel contributions; other contributors remain and conflicting values reject. A retail-identical record clears this actor’s contribution. Save the project after importing.';
@@ -3843,8 +3844,10 @@ async function openAnimationChannels(entity,initialChannel=null){
     rangeControls.append(rangeNote,applyRange);form.querySelector('.close-animation').before(rangeControls);
     const interpolate=document.createElement('button');interpolate.type='button';interpolate.textContent='Review interpolated frame range';
     const interpolationNote=document.createElement('p');interpolationNote.className='field-note';interpolationNote.textContent='Blend the copied pose into the selected effective pose across the target range. Translation rounds to integer units; rotation follows the shortest path on each PSX angle axis and rounds to 16 units. Half ties round upward; a half-turn follows the positive direction. This authors sampled poses, not playback timing or retargeting.';
+    const importedCurve=document.createElement('select'),curveLabel=document.createElement('label');curveLabel.textContent='Interpolation curve ';importedCurve.setAttribute('aria-label','Imported animation interpolation curve');for(const [value,label] of [['linear','Linear'],['ease_in','Ease in'],['ease_out','Ease out'],['smoothstep','Smoothstep']]){const option=document.createElement('option');option.value=value;option.textContent=label;importedCurve.append(option);}curveLabel.append(importedCurve);
     const interpolationReview=document.createElement('div');interpolationReview.dataset.animationInterpolation='review';
-    const interpolationKey=()=>JSON.stringify([context,state.scene_preview_source_key,state.authored_assets,copiedChannel,verifiedChannel,channelFrame,channelObject,rangeInputs.start.value,rangeInputs.end.value,channelDirty]);
+    const interpolationKey=()=>JSON.stringify([context,state.scene_preview_source_key,state.authored_assets,copiedChannel,verifiedChannel,channelFrame,channelObject,rangeInputs.start.value,rangeInputs.end.value,importedCurve.value,channelDirty]);
+    importedCurve.onchange=()=>{interpolationReview.replaceChildren();};
     interpolate.onclick=()=>{
       interpolationReview.replaceChildren();if(!current()||busy)return;
       try{
@@ -3853,15 +3856,15 @@ async function openAnimationChannels(entity,initialChannel=null){
         if(!copiedChannel||!verifiedChannel)throw new Error('Copy a verified channel and select the end pose first.');
         if(copiedChannel.object!==channelObject)throw new Error('Interpolation requires the same rigid object; no retargeting is inferred.');
         if(!rangeInputs.start.reportValidity()||!rangeInputs.end.reportValidity())return;
-        const result=interpolateAnimationRange({first:copiedChannel.values,last:verifiedChannel.effective,start:Number(rangeInputs.start.value),end:Number(rangeInputs.end.value),object:channelObject,frameCount:binding.frame_count,objectCount:binding.bone_count,edits}),key=interpolationKey();error.textContent='';
-        const summary=document.createElement('p');summary.textContent=`${result.proposed.length} proposed channels · copied ${copiedChannel.layer} frame ${copiedChannel.frame} to effective frame ${channelFrame} · project unchanged. Apply replaces this actor’s contributions in the target range; shared conflicts are checked on Apply.`;
+        const result=interpolateAnimationRange({first:copiedChannel.values,last:verifiedChannel.effective,start:Number(rangeInputs.start.value),end:Number(rangeInputs.end.value),object:channelObject,frameCount:binding.frame_count,objectCount:binding.bone_count,edits,curve:importedCurve.value}),key=interpolationKey();error.textContent='';
+        const summary=document.createElement('p');summary.textContent=`${importedCurve.selectedOptions[0].textContent} · ${result.proposed.length} proposed channels · copied ${copiedChannel.layer} frame ${copiedChannel.frame} to effective frame ${channelFrame} · project unchanged. Apply replaces this actor’s contributions in the target range; shared conflicts are checked on Apply.`;
         const preview=document.createElement('pre');preview.textContent=result.proposed.slice(0,256).map(row=>`Frame ${row.frame_index}, object ${row.object_index} · T ${Object.values(row.translation).join(' / ')} · R ${Object.values(row.rotation_psx).join(' / ')}`).join('\n');
         const accept=document.createElement('button');accept.type='button';accept.textContent='Apply reviewed interpolation';accept.dataset.applyInterpolation='';
         accept.onclick=async()=>{if(!current()||busy)return;if(key!==interpolationKey()){accept.disabled=true;error.textContent='Pose, range or project changed. Review interpolation again.';return;}await apply({type:'set_animation_channels',entity_id:entity.id,value:{animation_id:binding.semantic_id,source_record_sha256:binding.source_record.record_sha256,edits:result.edits}});};
         interpolationReview.append(summary,preview,accept);if(result.proposed.length>256){const limit=document.createElement('p');limit.textContent='Showing the first 256 channels; Apply uses the complete reviewed range.';interpolationReview.append(limit);}
       }catch(exc){error.textContent=exc.message;}
     };
-    rangeControls.append(interpolationNote,interpolate,interpolationReview);
+    rangeControls.append(interpolationNote,curveLabel,interpolate,interpolationReview);
     clearChannel.onclick=()=>{
       if(channelDirty){error.textContent='Apply or discard unapplied channel changes before clearing the selected contribution.';return;}
       const next=edits.filter(edit=>edit.frame_index!==channelFrame||edit.object_index!==channelObject);

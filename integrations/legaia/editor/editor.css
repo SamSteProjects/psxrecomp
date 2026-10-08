@@ -354,3 +354,5 @@
 #model-vertex-sequence-dialog .dialog-actions{flex-wrap:wrap;justify-content:flex-start}#model-vertex-sequence-dialog .dialog-actions button{white-space:normal;text-align:left}
 
 .sequence-preview-viewport{height:260px;position:relative;border:1px solid var(--line);background:#10181b}.sequence-preview-viewport canvas{width:100%;height:100%;display:block;touch-action:none}.sequence-preview-viewport [data-points]{position:absolute;inset:0;pointer-events:none;background:transparent}#model-vertex-sequence-dialog [data-sequence-preview]{margin:12px 0}#model-vertex-sequence-dialog [data-sequence-preview] .vertex-move-controls{flex-wrap:wrap}
+
+.animation-imported-dialog{overflow-wrap:anywhere}.animation-imported-dialog pre{max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere}.animation-imported-dialog button,.animation-imported-dialog select{max-width:100%;white-space:normal}
