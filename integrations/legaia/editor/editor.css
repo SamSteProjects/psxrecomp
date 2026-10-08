@@ -348,3 +348,7 @@
 @media(max-width:800px){body{display:flex;flex-direction:column;height:100dvh;min-height:0}.topbar{height:auto;min-height:0;max-height:35dvh;max-width:100%;overflow:auto;flex-shrink:0;align-content:flex-start}.workspace-tabs,.statusbar{flex-shrink:0}.workspace{height:auto;min-height:0;flex:1}}
 
 .scene-position-proposal .position-entry{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}.scene-position-proposal .position-entry label{display:flex;flex-direction:column;flex:1 1 100px;min-width:0;gap:4px}.scene-position-proposal .position-entry input{width:100%}.scene-position-proposal .position-entry button{max-width:100%;align-self:flex-end}
+
+#model-vertex-sequence-dialog{width:min(780px,calc(100vw - 28px))}#model-vertex-sequence-dialog ol{max-height:240px;overflow:auto;padding-left:24px}#model-vertex-sequence-dialog li{overflow-wrap:anywhere;margin:8px 0}#model-vertex-sequence-dialog input,#model-vertex-sequence-dialog select,#model-vertex-sequence-dialog button{max-width:100%;box-sizing:border-box}
+
+#model-vertex-sequence-dialog .dialog-actions{flex-wrap:wrap;justify-content:flex-start}#model-vertex-sequence-dialog .dialog-actions button{white-space:normal;text-align:left}

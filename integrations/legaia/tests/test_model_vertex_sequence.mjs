@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {vertexSequencePreview,qualifyObjectMoveReview} from '../editor/model-vertex-move.js';
+const source={preview:{objects:[{object_index:0,vertex_start:0,vertex_count:3}],vertices:[[0,0,0],[10,0,0],[0,10,0]],normals:[[0,1,0]],triangles:[[0,1,2]]}},steps=[{operation:'scaling',values:{percent:150,pivot:'origin'}},{operation:'rotation',values:{axis:'y',quarter_turns:1,pivot:'origin'}},{operation:'translation',values:{offset:[5,0,7]}}],before=structuredClone({source,steps});
+const result=vertexSequencePreview(source,0,[0,1],steps);assert.deepEqual(result.vertices,[[5,0,7],[5,0,-8],[0,10,0]]);assert.deepEqual({source,steps},before);
+assert.deepEqual(result.normals,source.preview.normals);assert.deepEqual(result.triangles,source.preview.triangles);
+assert.deepEqual(vertexSequencePreview(source,0,[0,1],[{operation:'translation',values:{offset:[1,0,0]}},{operation:'translation',values:{offset:[-1,0,0]}}]).vertices,source.preview.vertices);
+for(const invalid of [null,[],Array(17).fill(steps[0]),[{operation:'unknown',values:{}}],[{operation:'translation',values:{offset:[1,0,0],extra:0}}],[...steps,{operation:'scaling',values:{percent:0,pivot:'origin'}}],[...steps,{operation:'translation',values:{offset:[32767,0,0]}}]])assert.throws(()=>vertexSequencePreview(source,0,[0,1],invalid));
+assert.deepEqual({source,steps},before);
+const request={asset_id:'asset://fixture',object_index:0,operation:'vertex_sequence',values:{indices:[0,1],steps},expected_sha256:'a'.repeat(64)},expected={source_sha256:'b'.repeat(64),current_preview:source.preview,preview:result},report={...request,source_sha256:expected.source_sha256,effective_sha256:request.expected_sha256,project_changed:false,proposed_sha256:'c'.repeat(64),current_preview:source.preview,preview:result};
+assert.deepEqual(qualifyObjectMoveReview(report,request,expected),report);assert.throws(()=>qualifyObjectMoveReview({...report,values:{...request.values,steps:[...steps].reverse()}},request,expected));assert.throws(()=>qualifyObjectMoveReview({...report,preview:{...result,vertices:source.preview.vertices}},request,expected));
+console.log('Sequence drafts: literal ordered words, immutable inputs, atomic invalid steps and exact scene review passed.');
