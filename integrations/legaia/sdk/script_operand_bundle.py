@@ -67,6 +67,9 @@ def review(project,content):
     return report
 
 def export_file(project):
+    if any(isinstance(owner, str) and owner.startswith(str(project.active_scene) + '/') and components.get('ScriptAnimationOperands')
+           for owner, components in project.overrides.items()):
+        raise ProjectError('Animation script operand bundle transfer is pending; export would omit authored arguments')
     from importer.pipeline import _disc_context
     from .resources import _verify
     scene=project.active_scene;document=project.imports.get(scene)

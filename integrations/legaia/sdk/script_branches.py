@@ -20,6 +20,7 @@ OPERANDS = {
     'ScriptSystemFlags': ('system_flag_authoring', 'SystemFlagAuthoringContext', 'entries'),
     'ScriptWaits': ('wait_authoring', 'WaitAuthoringContext', 'entries'),
     'ScriptEffectColors': ('effect_color_authoring', 'EffectColorAuthoringContext', 'entries'),
+    'ScriptAnimationOperands': ('animation_operand_authoring', 'AnimationOperandAuthoringContext', 'entries'),
     'ScriptModelSelectors': ('model_selector_authoring', 'ModelSelectorAuthoringContext', 'entries'),
 }
 

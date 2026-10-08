@@ -103,7 +103,7 @@ class AssetDatabase:
 class ProjectService:
     FORMAT = "legaia.project.v1"
     REVIEW_COMPONENTS = frozenset({"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions",
-                                  "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches",
+                                  "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptAnimationOperands", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches",
                                   "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts"})
 
     def __init__(self, root: Path, name: str = "Legaia project") -> None:
@@ -865,6 +865,14 @@ class ProjectService:
             validate_wait_values(entry["effective_values"])
         result["unresolved_overrides"] = sorted(set(authored) - known)
         return result
+
+    def _validate_script_animation_operands(self, identifier: str, value: dict) -> None:
+        from .script_animation_operands import validate
+        validate(self, identifier, value)
+
+    def script_animation_operand_options(self, identifier: str) -> dict:
+        from .script_animation_operands import options
+        return options(self, identifier)
 
     def _validate_effect_colors(self, identifier: str, value: dict) -> None:
         import re
@@ -2702,6 +2710,10 @@ class ProjectService:
                 self.undo_stack.append({"entity_id": identifier, "before": before, "after": deepcopy(after)})
                 self.redo_stack.clear()
             return
+        if command.get('type') == 'apply_script_animation_operands':
+            from .script_animation_operands import apply
+            apply(self, command)
+            return
         if command.get("type") in ("set_effect_color_target", "clear_effect_color_target"):
             identifier, key = command.get("entity_id"), command.get("effect_color_id")
             # Clear also checks owner syntax, but remains possible offline.
@@ -3291,7 +3303,7 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptAnimationOperands", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements"}:
                 raise ProjectError("Unsupported authored component")
             if 'WorldMapPlacements' in components:
                 from .worldmap_placements import validate
@@ -3380,6 +3392,9 @@ class ProjectService:
             if "ScriptWaits" in components:
                 result._validate_waits(identifier, components["ScriptWaits"])
                 result.overrides.setdefault(identifier, {})["ScriptWaits"] = deepcopy(components["ScriptWaits"])
+            if "ScriptAnimationOperands" in components:
+                result._validate_script_animation_operands(identifier, components['ScriptAnimationOperands'])
+                result.overrides.setdefault(identifier, {})['ScriptAnimationOperands'] = deepcopy(components['ScriptAnimationOperands'])
             if "ScriptEffectColors" in components:
                 result._validate_effect_colors(identifier, components["ScriptEffectColors"])
                 result.overrides.setdefault(identifier, {})["ScriptEffectColors"] = deepcopy(components["ScriptEffectColors"])
@@ -3763,6 +3778,9 @@ class ProjectService:
                 waits = edits.get("ScriptWaits", {}).get("entries", {})
                 if waits:
                     changes.append(f"Waits: {len(waits)} targets")
+                animation_operands = edits.get('ScriptAnimationOperands', {}).get('entries', {})
+                if animation_operands:
+                    changes.append(f'Animation script operands: {len(animation_operands)} instructions')
                 effects = edits.get("ScriptEffectColors", {}).get("entries", {})
                 if effects:
                     changes.append(f"Effect colors: {len(effects)} instructions")
@@ -3799,6 +3817,9 @@ class ProjectService:
             waits = edits.get("ScriptWaits", {}).get("entries", {})
             if waits:
                 changes.append(f"Waits: {len(waits)} targets")
+            animation_operands = edits.get('ScriptAnimationOperands', {}).get('entries', {})
+            if animation_operands:
+                changes.append(f'Animation script operands: {len(animation_operands)} instructions')
             effects = edits.get("ScriptEffectColors", {}).get("entries", {})
             if effects:
                 changes.append(f"Effect colors: {len(effects)} instructions")
@@ -3978,7 +3999,7 @@ class ProjectService:
             entity['components']['Dialogue']['authored_run_count'] = len(entity['components']['Dialogue']['authored'].get('runs', {}))
             for component in ('ScriptFacing', 'ScriptBranches'):
                 entity['components'][component]['authored_instruction_count'] = len(entity['components'][component]['entries'])
-            for component in ('ScriptMovement', 'ScriptFlags', 'ScriptSystemFlags', 'ScriptWaits', 'ScriptEffectColors', 'ScriptModelSelectors', 'Transitions'):
+            for component in ('ScriptMovement', 'ScriptFlags', 'ScriptSystemFlags', 'ScriptWaits', 'ScriptAnimationOperands', 'ScriptEffectColors', 'ScriptModelSelectors', 'Transitions'):
                 entries = self.overrides.get(entity['id'], {}).get(component, {}).get('entries', {})
                 if entries:
                     entity['components'][component] = {'entries': deepcopy(entries), 'authored_instruction_count': len(entries)}

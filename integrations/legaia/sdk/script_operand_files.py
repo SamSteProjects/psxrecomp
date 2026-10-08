@@ -89,6 +89,8 @@ def review(project,owner,content):
     return report
 
 def export_file(project,owner):
+    if project.overrides.get(owner, {}).get('ScriptAnimationOperands'):
+        raise ProjectError('Animation script operand file transfer is pending; export would omit authored arguments')
     from importer.pipeline import _disc_context
     if not project.disc_path:raise ProjectError('Operand transfer requires the project user-owned disc')
     with _disc_context(project.disc_path):scene,source=_source(project,owner)

@@ -81,6 +81,7 @@ def inspector_schema():
         ('ScriptFlags', 'Authored script flag operands', 'Inspect flag instructions', 'Encoded flag operands do not establish live variable values, story meaning or executed paths.'),
         ('ScriptWaits', 'Authored script waits', 'Inspect wait instructions', 'Encoded wait operands do not establish runtime cadence or wall-clock durations.'),
         ('ScriptEffectColors', 'Authored effect colors', 'Inspect color instructions', 'Encoded color/intensity operands do not establish host rendering or visual color space.'),
+        ('ScriptAnimationOperands', 'Authored animation script operands', 'Inspect animation instructions', 'Encoded model/frame/tween and effect arguments do not resolve clip identities or establish playback.'),
         ('ScriptModelSelectors', 'Authored script model selectors', 'Inspect model-selector instructions', 'Encoded model selectors do not establish runtime rebinding, animation compatibility or executed paths.'),
     ):
         schema['components'][identifier] = {

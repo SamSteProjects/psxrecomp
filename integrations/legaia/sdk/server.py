@@ -1207,6 +1207,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .system_flags import snapshot, review
                     self._json(200, snapshot(self.server.project, body['entity']) if route == '/api/system-flag-selectors' else review(self.server.project, body['entity'], body['operand_id'], body['value']))
                     return
+                if route in ('/api/script-animation-operands', '/api/script-animation-operand-review'):
+                    expected = {'entity_id'} if route == '/api/script-animation-operands' else {'entity_id','animation_operand_id','values'}
+                    if set(body) != expected or not isinstance(body['entity_id'], str) or not body['entity_id']:
+                        raise ProjectError('Animation operand inspection requires exact source owner and reviewed fields')
+                    from .script_animation_operands import options, review
+                    self._json(200, options(self.server.project, body['entity_id']) if route == '/api/script-animation-operands'
+                               else review(self.server.project, body['entity_id'], body['animation_operand_id'], body['values'])[0])
+                    return
                 if route in ('/api/script-branches', '/api/script-branch-review'):
                     expected = {'entity'} if route == '/api/script-branches' else {'entity', 'branch_id', 'value'}
                     if set(body) != expected or not isinstance(body['entity'], str) or not body['entity']:
