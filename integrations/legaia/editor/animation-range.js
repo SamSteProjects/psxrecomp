@@ -31,3 +31,30 @@ export function interpolateAnimationRange({first,last,start,end,object,frameCoun
   next.sort((a,b)=>a.frame_index-b.frame_index||a.object_index-b.object_index);
   return {proposed,edits:next};
 }
+
+export function decodeImportedFrame(value,{entityId,frame,binding,sourceKey}){
+  if(!Number.isSafeInteger(binding.bone_count)||binding.bone_count<1||binding.bone_count>64||!Number.isSafeInteger(binding.frame_count)||binding.frame_count<1||binding.frame_count>512||!Number.isSafeInteger(frame)||frame<0||frame>=binding.frame_count)throw Error('Complete frame requires a bounded imported object/frame binding.');
+  const keys=['frame_index','object_count','animation_id','source_record_sha256','effective_record_sha256','retail','effective','schema_version','entity_id','project_source_key','project_changed','gameplay_verified'];
+  if(!value||Object.keys(value).length!==keys.length||!keys.every(k=>Object.hasOwn(value,k))||value.schema_version!=='legaia.imported-animation-frame.v1'||value.entity_id!==entityId||value.frame_index!==frame||value.object_count!==binding.bone_count||value.animation_id!==binding.semantic_id||value.source_record_sha256!==binding.source_record.record_sha256||value.project_source_key!==sourceKey||typeof value.effective_record_sha256!=='string'||!/^([a-f0-9]{64})$/.test(value.effective_record_sha256)||value.project_changed!==false||value.gameplay_verified!==false)throw Error('Complete frame differs from the current imported clip.');
+  for(const layer of ['retail','effective']){
+    if(!Array.isArray(value[layer])||value[layer].length!==binding.bone_count)throw Error('Complete frame has missing rigid objects.');
+    value[layer].forEach((row,index)=>{if(!row||Object.keys(row).sort().join(',')!=='object_index,rotation_psx,translation'||row.object_index!==index)throw Error('Complete frame has invalid object ownership.');values(row);});
+  }
+  return structuredClone(value);
+}
+
+export function interpolateAnimationFrameRange({first,last,start,end,frameCount,objectCount,edits,curve='linear'}){
+  if(!Number.isSafeInteger(objectCount)||objectCount<1||objectCount>64||!Array.isArray(first)||!Array.isArray(last)||first.length!==objectCount||last.length!==objectCount||!Array.isArray(edits)||edits.length>4096||!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start>=end||(end-start+1)*objectCount>4096)throw Error('Choose complete endpoint frames within the 4096-channel budget.');
+  const proposed=[];
+  for(let object=0;object<objectCount;object++){
+    for(const endpoint of [first,last])if(endpoint[object]?.object_index!==object)throw Error('Complete endpoint frames must retain ordered rigid-object identities.');
+    proposed.push(...interpolateAnimationRange({first:first[object],last:last[object],start,end,object,frameCount,objectCount,edits:[],curve}).proposed);
+  }
+  // Validate every existing contribution before withdrawing only the target frames.
+  const seen=new Set();for(const edit of edits){const key=JSON.stringify([edit.frame_index,edit.object_index]);if(!Number.isSafeInteger(edit.frame_index)||!Number.isSafeInteger(edit.object_index)||edit.frame_index<0||edit.frame_index>=frameCount||edit.object_index<0||edit.object_index>=objectCount||seen.has(key))throw Error('Existing contributions have invalid or duplicate identities.');seen.add(key);}
+  proposed.sort((a,b)=>a.frame_index-b.frame_index||a.object_index-b.object_index);
+  const next=structuredClone(edits.filter(edit=>edit.frame_index<start||edit.frame_index>end));next.push(...structuredClone(proposed));
+  if(next.length>4096)throw Error('Interpolation and existing contributions exceed the 4096-channel limit.');
+  next.sort((a,b)=>a.frame_index-b.frame_index||a.object_index-b.object_index);
+  return {proposed,edits:next};
+}

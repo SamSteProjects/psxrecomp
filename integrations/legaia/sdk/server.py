@@ -3147,6 +3147,22 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self.server.project.import_animation_record(body['entity_id'], payload, body.get('format', 'record'))
                     self._json(200, self.server.state())
                     return
+                if route == '/api/animation-frame-values':
+                    from .scene_preview import source_key
+                    if (set(body) != {'entity_id', 'frame_index', 'expected_source_key'} or
+                            not isinstance(body.get('entity_id'), str) or
+                            type(body.get('frame_index')) is not int):
+                        raise ProjectError('Frame inspection requires actor, frame and current source identity only')
+                    key = source_key(self.server.project)
+                    if not key or body['expected_source_key'] != key:
+                        raise ProjectError('Project changed; reopen the imported animation editor')
+                    report = self.server.project.animation_frame_values(body['entity_id'], body['frame_index'])
+                    if source_key(self.server.project) != key:
+                        raise ProjectError('Project changed during animation frame inspection')
+                    self._json(200, dict(report, schema_version='legaia.imported-animation-frame.v1',
+                                         entity_id=body['entity_id'], project_source_key=key,
+                                         project_changed=False, gameplay_verified=False))
+                    return
                 if route == "/api/animation-channel-values":
                     if set(body) != {"entity_id", "frame_index", "object_index"} or not isinstance(body.get("entity_id"), str):
                         raise ProjectError("Channel inspection requires an actor, frame and object index only")

@@ -532,6 +532,22 @@ class ProjectService:
                      for a in document["actors"] if "AnimationChannels" in self.overrides.get(a["semantic_id"], {})}
         return catalog.channel_values(self._actor(identifier), asset, frame_index, object_index, overrides)
 
+    def animation_frame_values(self, identifier: str, frame_index: int) -> dict:
+        """Resolve a freshly verified full imported frame for pose authoring."""
+        from importer.scene_animation import load_scene_actor_animation_catalog
+        if not any(a['semantic_id'] == identifier for a in self.imports.get(self.active_scene, {}).get('actors', [])):
+            raise ProjectError('Complete animation frame requires an actor in the active scene')
+        options = self.animation_authoring_options(identifier)
+        document = next(doc for doc in self.imports.values()
+                        if any(a['semantic_id'] == identifier for a in doc['actors']))
+        catalog = load_scene_actor_animation_catalog(self.disc_path, document['scene']['name'])
+        asset = next(a for a in document['assets']['models']
+                     if a['semantic_id'] == options['binding']['asset_semantic_id'])
+        overrides = {a['semantic_id']: self.overrides[a['semantic_id']]['AnimationChannels']
+                     for a in document['actors']
+                     if 'AnimationChannels' in self.overrides.get(a['semantic_id'], {})}
+        return catalog.frame_values(self._actor(identifier), asset, frame_index, overrides)
+
     def animation_authoring_options(self, identifier: str) -> dict:
         """Resolve editable imported rigid channels against current retail evidence."""
         from importer.pipeline import _disc_context, import_scene

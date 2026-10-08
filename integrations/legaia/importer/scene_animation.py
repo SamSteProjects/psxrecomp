@@ -216,6 +216,28 @@ class SceneActorAnimationCatalog:
                             result["axis_contributors"][field][axis].append(owner)
         return result
 
+    def frame_values(self, actor: dict, asset: dict, frame_index: int,
+                     overrides: dict[str, dict] | None = None) -> dict:
+        """Read a complete rigid frame with one shared-bank composition, no geometry."""
+        index, decoded = self._binding(actor, asset)
+        if type(frame_index) is not int or not 0 <= frame_index < decoded['frame_count']:
+            raise ImportError('Animation frame is outside the imported clip')
+        start, end = self._ranges[index]
+        source = self._body[start:end]
+        bank = self.authored_bank(overrides)[0] if overrides else self._body
+        effective = decode_animation_record(bank[start:end])
+        def rows(frame):
+            return [{'object_index': channel['object_index'],
+                     **{field: dict(zip('xyz', channel[field]))
+                        for field in ('translation', 'rotation_psx')}}
+                    for channel in frame['object_transforms']]
+        return {'frame_index': frame_index, 'object_count': decoded['bone_count'],
+                'animation_id': f'animation://{self.scene}/scene-anm/{index:04d}',
+                'source_record_sha256': hashlib.sha256(source).hexdigest(),
+                'effective_record_sha256': hashlib.sha256(bank[start:end]).hexdigest(),
+                'retail': rows(decoded['frames'][frame_index]),
+                'effective': rows(effective['frames'][frame_index])}
+
     def authored_bank(self, overrides: dict[str, dict]) -> tuple[bytes, list[dict]]:
         """Compose shared clip edits, rejecting contradictory writes to one axis."""
         from .animation_authoring import patch_animation_channels
