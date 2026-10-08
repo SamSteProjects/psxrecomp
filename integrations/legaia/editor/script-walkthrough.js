@@ -1,7 +1,7 @@
+import {validateScriptInspectionSource} from './script-inspection-source.js';
 import {mountScriptFlagSandbox} from './script-flag-sandbox.js';
 import {analyzeScriptFlow} from './script-flow-overview.js';
 const offset=pc=>'0x'+pc.toString(16).toUpperCase().padStart(4,'0');
-const hash=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
 const MAX_VISITS=1024;
 export function createScriptWalkthrough(report){
  const flow=analyzeScriptFlow(report),nodes=new Map(),stops=new Map(flow.stops.map(row=>[row.pc,row.reasons]));
@@ -19,18 +19,16 @@ export function createScriptWalkthrough(report){
  }};
 }
 export function scriptWalkthroughEvidence(snapshot,context){
- const authored=['authored_current','reviewed_proposed'].includes(context?.representation),keys=['project_path','scene_id','script_id','project_source_key','record_sha256','representation',...(authored?['flow_proof']:[])];
- if(!context||Object.keys(context).length!==keys.length||!keys.every(k=>Object.hasOwn(context,k))||typeof context.project_path!=='string'||!context.project_path||context.project_path.length>4096||!/^scene:\/\/[A-Za-z0-9_-]+$/.test(context.scene_id)||typeof context.script_id!=='string'||!context.script_id.startsWith('script://'+context.scene_id.slice(8)+'/')||context.script_id.length>1024||!hash(context.project_source_key)||!hash(context.record_sha256)||!authored&&context.representation!=='retail_source')throw Error('Source walkthrough provenance is unavailable.');
- if(authored){const p=context.flow_proof,proposed=context.representation==='reviewed_proposed';if(!p||Object.keys(p).length!==5||!['state_key','report_sha256','review_key','branch_id','branch_value'].every(k=>Object.hasOwn(p,k))||!hash(p.state_key)||!hash(p.report_sha256)||(!proposed&&(p.review_key!==null||p.branch_id!==null||p.branch_value!==null))||proposed&&(!hash(p.review_key)||typeof p.branch_id!=='string'||!p.branch_id.startsWith(context.script_id+'/branch/')||!/^[a-f0-9]{4}$/.test(p.branch_id.slice((context.script_id+'/branch/').length))||!(p.branch_value===null||p.branch_value&&typeof p.branch_value==='object'&&!Array.isArray(p.branch_value)&&Object.keys(p.branch_value).length===1&&Object.hasOwn(p.branch_value,'target_pc')&&Number.isSafeInteger(p.branch_value.target_pc)&&p.branch_value.target_pc>=0&&p.branch_value.target_pc<=32767)))throw Error('Authored walkthrough flow provenance is invalid.');}
+ const source=validateScriptInspectionSource(context),authored=['authored_current','reviewed_proposed'].includes(source.representation);
  if(!snapshot.trace?.length)throw Error('Start a source walkthrough before exporting.');
- return structuredClone({schema_version:authored?'legaia.script-source-walkthrough.v2':'legaia.script-source-walkthrough.v1',source:context,walkthrough:snapshot,conditions_evaluated:false,runtime_execution:'not_asserted',project_changed:false});
+ return structuredClone({schema_version:authored?'legaia.script-source-walkthrough.v2':'legaia.script-source-walkthrough.v1',source,walkthrough:snapshot,conditions_evaluated:false,runtime_execution:'not_asserted',project_changed:false});
 }
 export function mountScriptWalkthrough(host,{report,getContext,selection=()=>null,selectInstruction=()=>false,current=()=>true,busy=()=>false,requalify=async()=>true,label='Walk through source instructions',onError=()=>{}}){
  const el=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;},section=el('details'),heading=el('summary',label),note=el('p','Choose encoded successors explicitly. Conditions, waits, effects and dialogue are not executed. An undecoded target or absent successor stops this walkthrough; runtime resumption remains unknown.'),tools=el('div'),start=el('button','Start at selected instruction'),entry=el('button','Start at source entry'),back=el('button','Back one walkthrough step'),reset=el('button','Reset walkthrough'),download=el('button','Download source walkthrough'),status=el('p'),choices=el('div'),visits=el('div');
  section.dataset.scriptWalkthrough='';tools.className='script-walkthrough-tools';status.dataset.walkthroughStatus='';status.setAttribute('role','status');choices.dataset.walkthroughChoices='';visits.dataset.walkthroughVisits='';for(const b of [start,entry,back,reset,download])b.type='button';tools.append(start,entry,back,reset,download);section.append(heading,note,tools,status,choices,visits);host.append(section);
  let disposed=false,stale=false,engine=null,exporting=false;const controller=new AbortController();const expected=structuredClone(getContext()),dialog=host.closest?.('dialog');
  try{engine=createScriptWalkthrough(report);}catch(error){status.textContent=error.message;onError(error);}
- const sandbox=mountScriptFlagSandbox(section,{report,selection,current:()=>!disposed&&!stale&&current()&&JSON.stringify(expected)===JSON.stringify(getContext()),busy:()=>busy()||exporting,selectInstruction,onError});
+ const sandbox=mountScriptFlagSandbox(section,{report,getContext,requalify,selection,current:()=>!disposed&&!stale&&current()&&JSON.stringify(expected)===JSON.stringify(getContext()),busy:()=>busy()||exporting,selectInstruction,onError});
  const same=()=>JSON.stringify(expected)===JSON.stringify(getContext());
  function fresh(){if(disposed||stale)return false;if(!current()||!same()){stale=true;engine?.reset();choices.replaceChildren();visits.replaceChildren();status.textContent='Source context changed. Reopen script inspection.';for(const b of [start,entry,back,reset,download])b.disabled=true;return false;}return true;}
  function draw(){

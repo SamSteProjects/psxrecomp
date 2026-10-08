@@ -1,11 +1,8 @@
+import {scriptFlowReportHash} from './script-flow-identity.js';
+export {scriptFlowReportHash} from './script-flow-identity.js';
 import {createScriptWalkthrough,mountScriptWalkthrough} from './script-walkthrough.js';
 const hash=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
 const object=v=>v&&typeof v==='object'&&!Array.isArray(v);
-const canonical=v=>Array.isArray(v)?v.map(canonical):object(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
-export async function scriptFlowReportHash(report){
- const bytes=new TextEncoder().encode(JSON.stringify(canonical(report)));if(bytes.length>4*1024*1024)throw Error('Walkthrough flow report exceeds inspection bounds.');
- return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(v=>v.toString(16).padStart(2,'0')).join('');
-}
 export async function createBranchWalkthroughLayer({snapshot,review,kind,context,projectSourceKey}){
  const owner=snapshot?.owner_id,script=typeof owner==='string'?owner.replace(/^scene:\/\//,'script://'):null;
  if(!['current','proposed'].includes(kind)||!hash(projectSourceKey)||!hash(snapshot?.source_record_sha256)||snapshot?.state_key!==context?.scriptKey||!hash(context?.scriptKey)||typeof context?.projectPath!=='string'||!context.projectPath||!/^scene:\/\/[A-Za-z0-9_-]+$/.test(context.sceneId)||typeof owner!=='string'||!owner.startsWith(context.sceneId+'/')||!/^scene:\/\/[A-Za-z0-9_-]+\/(actors\/man-p1|scripts\/man-p2)\/[0-9]{4}$/.test(owner))throw Error('Current walkthrough source ownership changed.');
