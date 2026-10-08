@@ -1,5 +1,7 @@
 # Native SEQ operand codec groundwork
 
+[Import Matching-Layout MIDI Operands](legaia-sequence-midi-import.md) stages compatible external operands through the same native Review/Apply workflow. General sequence replacement and retained MIDI input assets remain unfinished.
+
 Selected event navigation now synchronizes exact tick markers and current details across Retail/Current/Proposed note timelines. Source event-table selection also focuses its timeline. See [Reveal Selected Sequence Events in Note Timelines](legaia-sequence-event-focus.md).
 
 ## Complete Track MIDI Export — 2026-10-07

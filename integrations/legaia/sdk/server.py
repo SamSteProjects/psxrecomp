@@ -841,6 +841,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/asset-references.js": ("asset-references.js", "text/javascript"),
                  "/audio-sequence.js": ("audio-sequence.js", "text/javascript"),
                  "/audio-sequence-midi.js": ("audio-sequence-midi.js", "text/javascript"),
+                 "/audio-sequence-midi-import.js": ("audio-sequence-midi-import.js", "text/javascript"),
                  "/audio-sequence-authoring.js": ("audio-sequence-authoring.js", "text/javascript"),
                  "/audio-input-assets.js": ("audio-input-assets.js", "text/javascript"),
                  "/audio-note-links.js": ("audio-note-links.js", "text/javascript"),

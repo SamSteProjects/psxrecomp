@@ -1,4 +1,4 @@
-# Saved GLB morph pose import
+# Saved GLB Morph Pose Import
 
 Open a model in the Asset Database, choose **Import GLB mesh**, select a native triangle donor and upload a GLB. The inventory states when saved morph poses will be baked. Existing Review/Apply, Current/Proposed previews, section mapping, retained original GLB/recipe, one-step Undo/Redo and Save/Open remain the authoring workflow. Scale, rotation, offset, source scene and donor edits require fresh Review.
 

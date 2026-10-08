@@ -1,4 +1,4 @@
-# Sparse saved GLB morph pose import
+# Sparse Saved GLB Morph Pose Import
 
 The model **Import GLB mesh** workflow now accepts sparse FLOAT VEC3 POSITION/NORMAL/TANGENT target deltas. Upload, Review Current/Proposed, Apply, retained original GLB/settings, one history command and Save/Open use the existing SDK services. No additional manual conversion is required. Donor, scene, scale, origin and rotation changes still invalidate Apply.
 

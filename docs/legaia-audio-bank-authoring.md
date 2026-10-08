@@ -38,7 +38,7 @@ fast-attack samples, and wide/400 px layouts. Existing counter-model native orac
 evidence remains applicable; no fresh native Build or full campaign was run.
 Private evidence: `local-output/sdk-20260909/audio-envelope-audition-20261007/`.
 
-## Paired ADSR word authoring - accepted offline (2026-10-06)
+## Paired ADSR word authoring - offline checks passed (2026-10-06)
 
 **Bank parameter editor -> Packed tone record -> adsr1 / adsr2 -> Edit ADSR word pair** stages both native u16 words together. Both words have raw inputs and structured fields, with ADSR2 bit 13 held by structured edits. Review submits the same qualified tone's ADSR1/ADSR2 in canonical order, shows both reviewed values and uses the complete reviewed pair in the counter plot. Local drafts never become Proposed before Review. Apply commits the pair through one existing bank command and one history entry; Undo/Redo, Save/Open, paired Discard and paired retail staging retain the same ownership boundary. Invalid companion words or structured fields block Review, and pending pair/raw/structured/navigation controls lock. Source changes withdraw both word controls and the preview until Refresh.
 
@@ -49,7 +49,7 @@ All 185 client suites and 184 editor syntax checks passed in 22.11 seconds. Focu
 Normal native Build independently verified the complete audio overlay in both directory and ZIP, with integrity/current-input acceptance and unchanged document/history. Native entry SHA-256 `f07a49ae93ce014b2c91cbd2d4ba0bbedbdd285c7852d5c9b88f479e3f1c8626`; package SHA-256 `96ed72cd4225a64ffb0dde19c1e5529ccd76dc2708631e03999f42e798cb511f`. Retained runtime/precompile sources still match the accepted stability baseline. Evidence: `local-output/sdk-20260909/audio-adsr-pair-20261007/acceptance.json`, `browser.json`, `native-proof.json`, `build-proof.json`, `node.json`, logs and screenshots. This is not a new full Python campaign. No game launch, runtime attachment, installation or full-disc export occurred. Manual gameplay remains deferred, development stays solo and the full SDK goal remains active.
 
 
-## ADSR envelope-counter comparison - accepted offline (2026-10-06)
+## ADSR envelope-counter comparison - offline checks passed (2026-10-06)
 
 **Bank parameter editor -> Packed tone record -> adsr1 / adsr2 -> Show envelope counter preview** now plots separate Retail, Current and reviewed Proposed register-word pairs. The unselected companion word stays in the same qualified layer; a local draft never becomes Proposed before native Review. The preview begins at zero on modeled key-on, advances at 44.1kHz and applies an explicit key-off at 250, 500, 1000 or 2000 ms inside a 2500 ms window. Source word identities and project state are unchanged. Discard removes Proposed, stale/closed views release model/cache ownership, and hide/show controls and a scoped resize observer repaint a readable narrow-width canvas. Plot samples are downsampled with bounded min/max spans and a continuous counter curve; each simulated window is bounded to five seconds maximum.
 
@@ -59,7 +59,7 @@ Acceptance: all 185 client suites and 184 editor syntax checks passed in 21.86 s
 
 The private muted retail editor passed actual Retail/Current/Reviewed Proposed plots, explicit key-off, a stationary Proposed release, local-draft exclusion, immutable Review/Discard, hide/close and wide/400px layouts without page errors or launch requests. Final wide and narrow counter screenshots were inspected. Project document/history, saved content, complete Current native audio entry and Build input key stayed exact; native entry SHA-256 `2763446be4afa339ba8e6a10266e9216a96162608138e2f7f635894c37a60b40`. Retained runtime/precompile stability source hashes still match their accepted baseline. Evidence: `local-output/sdk-20260909/audio-envelope-preview-20261006/acceptance.json`, `node.json`, `oracle-proof.json`, `oracle-cases.json`, `browser.json`, `native-proof.json`, logs and screenshots. The previous ADSR authoring milestone's native package remains independently accepted; this readonly preview does not claim a fresh game Build or full Python campaign. No game launch, runtime attachment, mod installation or full-disc export occurred. Audible behavior and general runtime instrument semantics remain deferred; the full SDK goal stays active and development remains solo.
 
-## Structured ADSR register-word editing - accepted offline (2026-10-06)
+## Structured ADSR register-word editing - offline checks passed (2026-10-06)
 
 **Bank parameter editor -> Packed tone record -> adsr1 / adsr2** now decodes the selected native u16 word into structured envelope fields. ADSR1 exposes attack mode/shift/step, decay shift and sustain-level code; ADSR2 exposes sustain mode/direction/shift/step and release mode/shift. Each Retail/Current/Reviewed Proposed layer displays its decoded fields alongside the raw word. Structured controls stage one local word through the existing source-qualified Review -> Apply command, history and persistence flow. Invalid values block Review; pending controls lock; Discard, Retail staging, raw-word edits and stale/closed views synchronize or withdraw the structured controls. ADSR2's reserved bit 13 stays held by structured edits; intentional raw u16 authoring remains available.
 

@@ -1,4 +1,4 @@
-# Numeric scene-camera inspector
+# Numeric Scene Camera Inspector
 
 Open **Camera coordinates** in the scene viewport toolbar. Read the current target X/Y/Z, camera distance, yaw and pitch in degrees, and perspective/orthographic projection. Edit these values and choose **Set viewport camera**. The tool changes the viewport camera only; it does not move entities, change imported or authored transforms, attach to the runtime, or write guest memory.
 

@@ -1,6 +1,6 @@
 # Testing
 
-## NPC-owned script effect colors - accepted offline (2026-10-06)
+## NPC-owned script effect colors - offline checks passed (2026-10-06)
 
 **Select an authored NPC -> Edit NPC effect colors** now exposes its qualified retail donor's EFFECT sub0 RGB bytes and signed intensity. Own color stages a complete typed target; unchecking restores the donor span. Retail and Current values remain separate from local input. Fresh Review verifies exact five-byte native audits and Apply stores NPC-owned edits in one history step. Invalid input blocks Review, changed drafts withdraw proposals, Discard restores Current, and source changes withdraw the controls until the dialog is reopened. No color-space, host rendering, runtime effect, actor context or scheduling semantics are inferred.
 
@@ -13,7 +13,7 @@ All 36 affected Python checks passed with no skips in 25.29 seconds, including e
 Additional retained-input checks passed captured preset Save/Open, portable v10 transfer Apply, reviewed instance one-step history/Undo/Redo/Save/Open, repetition and actual native comparison/client qualification. Retained runtime/precompile source hashes still match the accepted stability baseline. Evidence: `local-output/sdk-20260909/npc-effect-colors-20261007/acceptance.json`, `python.json`, `node.json`, `browser.json`, `native-proof.json`, `extra-proof.json`, `extra-client.json`, `transfer-proof.json`, logs and screenshots. No new full Python campaign, game launch, runtime attachment, installation or full-disc export occurred. Manual visual effects/gameplay remain deferred; development stays solo and the full SDK goal is active.
 
 
-## Paired ADSR word authoring - accepted offline (2026-10-06)
+## Paired ADSR word authoring - offline checks passed (2026-10-06)
 
 **Bank parameter editor -> Packed tone record -> adsr1 / adsr2 -> Edit ADSR word pair** stages both native u16 words together. Both words have raw inputs and structured fields, with ADSR2 bit 13 held by structured edits. Review submits the same qualified tone's ADSR1/ADSR2 in canonical order, shows both reviewed values and uses the complete reviewed pair in the counter plot. Local drafts never become Proposed before Review. Apply commits the pair through one existing bank command and one history entry; Undo/Redo, Save/Open, paired Discard and paired retail staging retain the same ownership boundary. Invalid companion words or structured fields block Review, and pending pair/raw/structured/navigation controls lock. Source changes withdraw both word controls and the preview until Refresh.
 
@@ -24,7 +24,7 @@ All 185 client suites and 184 editor syntax checks passed in 22.11 seconds. Focu
 Normal native Build independently verified the complete audio overlay in both directory and ZIP, with integrity/current-input acceptance and unchanged document/history. Native entry SHA-256 `f07a49ae93ce014b2c91cbd2d4ba0bbedbdd285c7852d5c9b88f479e3f1c8626`; package SHA-256 `96ed72cd4225a64ffb0dde19c1e5529ccd76dc2708631e03999f42e798cb511f`. Retained runtime/precompile sources still match the accepted stability baseline. Evidence: `local-output/sdk-20260909/audio-adsr-pair-20261007/acceptance.json`, `browser.json`, `native-proof.json`, `build-proof.json`, `node.json`, logs and screenshots. This is not a new full Python campaign. No game launch, runtime attachment, installation or full-disc export occurred. Manual gameplay remains deferred, development stays solo and the full SDK goal remains active.
 
 
-## ADSR envelope-counter comparison - accepted offline (2026-10-06)
+## ADSR envelope-counter comparison - offline checks passed (2026-10-06)
 
 **Bank parameter editor -> Packed tone record -> adsr1 / adsr2 -> Show envelope counter preview** now plots separate Retail, Current and reviewed Proposed register-word pairs. The unselected companion word stays in the same qualified layer; a local draft never becomes Proposed before native Review. The preview begins at zero on modeled key-on, advances at 44.1kHz and applies an explicit key-off at 250, 500, 1000 or 2000 ms inside a 2500 ms window. Source word identities and project state are unchanged. Discard removes Proposed, stale/closed views release model/cache ownership, and hide/show controls and a scoped resize observer repaint a readable narrow-width canvas. Plot samples are downsampled with bounded min/max spans and a continuous counter curve; each simulated window is bounded to five seconds maximum.
 
@@ -34,7 +34,7 @@ Acceptance: all 185 client suites and 184 editor syntax checks passed in 21.86 s
 
 The private muted retail editor passed actual Retail/Current/Reviewed Proposed plots, explicit key-off, a stationary Proposed release, local-draft exclusion, immutable Review/Discard, hide/close and wide/400px layouts without page errors or launch requests. Final wide and narrow counter screenshots were inspected. Project document/history, saved content, complete Current native audio entry and Build input key stayed exact; native entry SHA-256 `2763446be4afa339ba8e6a10266e9216a96162608138e2f7f635894c37a60b40`. Retained runtime/precompile stability source hashes still match their accepted baseline. Evidence: `local-output/sdk-20260909/audio-envelope-preview-20261006/acceptance.json`, `node.json`, `oracle-proof.json`, `oracle-cases.json`, `browser.json`, `native-proof.json`, logs and screenshots. The previous ADSR authoring milestone's native package remains independently accepted; this readonly preview does not claim a fresh game Build or full Python campaign. No game launch, runtime attachment, mod installation or full-disc export occurred. Audible behavior and general runtime instrument semantics remain deferred; the full SDK goal stays active and development remains solo.
 
-## Structured ADSR register-word editing - accepted offline (2026-10-06)
+## Structured ADSR register-word editing - offline checks passed (2026-10-06)
 
 **Bank parameter editor -> Packed tone record -> adsr1 / adsr2** now decodes the selected native u16 word into structured envelope fields. ADSR1 exposes attack mode/shift/step, decay shift and sustain-level code; ADSR2 exposes sustain mode/direction/shift/step and release mode/shift. Each Retail/Current/Reviewed Proposed layer displays its decoded fields alongside the raw word. Structured controls stage one local word through the existing source-qualified Review -> Apply command, history and persistence flow. Invalid values block Review; pending controls lock; Discard, Retail staging, raw-word edits and stale/closed views synchronize or withdraw the structured controls. ADSR2's reserved bit 13 stays held by structured edits; intentional raw u16 authoring remains available.
 
@@ -44,7 +44,7 @@ Acceptance: all 184 client suites and 183 editor syntax checks passed in 21.01 s
 
 Save/Open and independent full-entry construction proved that only the intended two tone words changed and all other saved fields/native bytes survived, including the existing Current SEQ/WAV edits. Normal private Build integrity passed; its directory and ZIP overlay both match the entire independently constructed entry, SHA-256 `2763446be4afa339ba8e6a10266e9216a96162608138e2f7f635894c37a60b40`. Package SHA-256 `6f7917476ef60101c3c845abbc5c516ebd0f5c22305af8be6d7108cbac06a3ee`. Build left document/history inputs unchanged; retained runtime/precompile stability source hashes still match their accepted baseline. Evidence: `local-output/sdk-20260909/audio-adsr-editor-20261006/acceptance.json`, `node.json`, `python.json`, `browser.json`, `native-proof.json`, `build-proof.json`, logs and inspected wide/narrow screenshots. No game launch, runtime attachment, mod installation or full-disc export occurred. Audible behavior and runtime assignment remain deferred; the full SDK goal stays active and development remains solo.
 
-## Current note to Retail bank record navigation - accepted offline (2026-10-06)
+## Current note to Retail bank record navigation - offline checks passed (2026-10-06)
 
 **Sequence operand editor -> Inspect Current encoded bank links** now opens the exact Retail program slot, packed tone page/row or bounded sample span from each encoded candidate. The source bank inspector focuses one verified record; **Show all source rows** restores the table, including unused program slots. Its existing parameter editor qualifies Retail/Current/Reviewed Proposed separately at the selected tone/slot, and its sample editor remains available at the exact source sample index. Current sample hashes are never substituted for Retail hashes: navigation takes the Retail bank identity from the source Asset Database record and freshly qualifies the bank through the existing API. Missing identities, malformed selections and out-of-range records are refused; no packed-page/program equivalence or runtime instrument assignment is inferred.
 
@@ -54,7 +54,7 @@ Acceptance: all 183 client suites and 182 editor syntax checks passed in 21.39 s
 
 Fresh native readback and Save/Open proved unchanged project document/history/saved content, complete Current audio entry and Build input key. Retail bank SHA-256 `56ca3b0be30b19b4173f0a42a47bf9da72803f7ae6af3fd78f9829908482ed82` and Current bank SHA-256 `3e2cd444fb6d20a5a650ebe434473482249aa50e4dd39c6ad73433ef0d13b072` were explicitly distinct. Evidence: `local-output/sdk-20260909/note-bank-navigation-20261006/acceptance.json`, `node.json`, `python.json`, `browser.json`, `native-proof.json`, browser log and wide/narrow/parameter screenshots. Retained runtime/precompile source hashes still match their accepted baseline. This is offline editor workflow acceptance; native Build and gameplay revalidation were not required for this navigation-only change. Synthesis, runtime instruments and gameplay remain unverified; the full SDK goal stays active and development remains solo.
 
-## Request-local WAV reference qualification - accepted offline (2026-10-06)
+## Request-local WAV reference qualification - offline checks passed (2026-10-06)
 
 Project-wide asset references now qualify retained WAV inputs and compose Current native sample bindings once per request, then share detached proofs across scene adapters and imported-only comparisons. Previously each imported scene repeated both operations twice; 64 scenes could reconstruct the same project audio bindings 128 times. `sdk/audio_reference_snapshot.py` uses navigation-independent persistent project identity, without a global or persisted cache. Before publication it rereads every retained WAV, verifies each unique original native carrier and bank hash/ownership, and checks project identity again. Scene membership, availability, edge identities, historical/Current proof contracts and runtime limitations stay unchanged. The private snapshot is not an HTTP input or an authoring command.
 
@@ -62,7 +62,7 @@ Acceptance: all 51 affected retail-enabled Python tests passed in 80.98 seconds 
 
 The private muted editor passed project Asset Database refresh, historical and Current native/WAV reference navigation, exact WAV download, dialog closure and wide/400px layouts without page errors or game launch requests. Document/history/build inputs stayed unchanged; the five retained runtime/precompile stability source hashes still match their accepted baseline. Evidence: `local-output/sdk-20260909/audio-reference-snapshot-20261006/acceptance.json`, `python.json`, `node.json`, `retail.json`, both graph snapshots, `browser.json`, `server-acceptance.json` and screenshots. This is focused offline reference inspection acceptance; no fresh full Python campaign, native Build or gameplay verification was required for this query-only change. Gameplay verification remains deferred and the broad SDK goal stays active.
 
-## Retained animation translation range offsets - accepted offline (2026-10-06)
+## Retained animation translation range offsets - offline checks passed (2026-10-06)
 
 **Edit retained content -> Frame sequence tools -> Stage translation offset** now shifts the selected rigid object's X/Y/Z translation across an inclusive output frame range. The base is the effective frozen captured donor plus the current frame mapping and local channel drafts, so inherited axes can be shifted without first authoring every frame. Exact integer deltas use -4095..4095; every resulting axis must fit native signed twelve-bit -2048..2047. Any overflow rejects the entire operation. Zero axes preserve inheritance and do not add channels; rotations, other objects/frames, mapping, opaque channel data, header and trailer remain held. These are native rigid object-local channels, not world-space placement or a general skeleton retargeter.
 
@@ -74,7 +74,7 @@ The private muted headless editor passed actual Asset Database navigation, inher
 
 Evidence: `local-output/sdk-20260909/animation-record-offset-20261006/acceptance.json`, `python.json`, `node.json`, `browser.json`, `server-acceptance.json`, `build-readback.json`, and wide/narrow/Proposed pose screenshots. This is focused offline authoring/native package acceptance, not a fresh full Python campaign or gameplay acceptance. No game launch, runtime attachment, mod installation or full-disc export occurred. Gameplay appearance, scheduling and timing remain deferred, and the broad SDK goal remains active.
 
-## Current authored WAV dependencies - accepted offline (2026-10-06)
+## Current authored WAV dependencies - offline checks passed (2026-10-06)
 
 The retained WAV inspector now separates historical capture receipts from Current authored native sample bindings. Inspection contract `legaia.audio-input-inspection.v2` adds `current_bindings`: native asset/sample, capture and binding scenes, receipt identity, authored binding hash, retail/Current full-entry hashes, Current sample hash and exact native byte span. `sdk/audio_input_bindings.py` qualifies the saved sample binding against retail ownership, reconstructs its reviewed WAV candidate, composes all Current audio edits and checks that the resulting sample bytes match the retained candidate. The global resource/sample budgets remain 32; no runtime voice, bank residency, playback pitch or instrument identity is inferred.
 
@@ -84,7 +84,7 @@ Acceptance: all 57 affected retail-enabled Python tests passed in 67.33 seconds 
 
 The private muted headless editor proof passed separate Historical/Current sections and hashes, exact WAV recovery, wide/400px layout, close disposal, both graph edge kinds and WAV/native/WAV reference navigation. Project document, undo/redo stacks and authored Build key stayed unchanged. Evidence: `local-output/sdk-20260909/audio-input-current-bindings-20261006/acceptance.json`, `python.json`, `node.json`, `browser.json`, `server-acceptance.json`, and screenshots. No game was launched or attached, no Build installed and no full disc exported. This is offline native dependency acceptance; a fresh full Python campaign and existing manual gameplay gates remain deferred, and the full SDK goal remains active.
 
-## Retained WAV inputs in the Asset Database - accepted offline (2026-10-06)
+## Retained WAV inputs in the Asset Database - offline checks passed (2026-10-06)
 
 Retained WAV inputs now have one `audio-input://legaia/wav/<content-sha256>` Asset Database identity per exact blob, shared across historical receipts and imported capture scenes. Inventory and read-only inspection/download verify the canonical project file, mono 16-bit PCM rate/frame extent, receipt ownership, capture-disc identity and fresh project source key. Files are requalified before publication; missing, changed, stale or foreign inputs fail closed. The inspector presents duration, rate, file identity and historical native sample targets, and downloads the exact original bytes after independent client hash/RIFF/PCM verification.
 

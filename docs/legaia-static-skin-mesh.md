@@ -1,4 +1,4 @@
-# Static weighted GLB skin pose import
+# Static Weighted GLB Skin Pose Import
 
 Open a model in the Asset Database, choose **Import GLB mesh**, select a native triangle donor and upload the GLB. The file inventory identifies selected static skin records and explains that their poses will be baked into geometry. **Review mesh import** shows the resulting Current/Proposed native geometry; **Apply reviewed mesh** uses the existing source-bound receipt and one history command. Source scene, section, scale, origin, rotation, donor and allocation choices retain their existing review invalidation behavior. The original weighted GLB and its recipe remain in the model's retained mesh-input library for recovery and reimport.
 
