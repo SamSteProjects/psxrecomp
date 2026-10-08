@@ -43,8 +43,8 @@ def authored_spans(metadata,entity_id,retail,generated,draft):
             qualification_record=bytes(restored)
             _graph_candidate(a,qualification_record,retail['script_offset'],source_graph,selector_baseline)
         except NativeError as error:raise ProjectError('NPC branch comparison graph is not source-qualified') from error
-    spans=[];occupied=set();movement_expected={};facing_expected={};flags_expected={};selectors_expected={};colors_expected={};prefix='script://'+draft['donor_entity_id'].removeprefix('scene://')+'/'
-    for key,category in [('npc_appearance_changes','initial_appearance'),('npc_dialogue_changes','own_dialogue'),('npc_wait_changes','own_wait'),('npc_movement_changes','own_movement'),('npc_facing_changes','own_facing'),('npc_flags_changes','own_flag'),('npc_system_flags_changes','own_system_flag'),('npc_branches_changes','own_branch'),('npc_model_selectors_changes','own_model_selector'),('npc_effect_colors_changes','own_effect_color'),('npc_transitions_changes','own_transition')]:
+    spans=[];occupied=set();movement_expected={};facing_expected={};flags_expected={};selectors_expected={};colors_expected={};animation_expected={};prefix='script://'+draft['donor_entity_id'].removeprefix('scene://')+'/'
+    for key,category in [('npc_appearance_changes','initial_appearance'),('npc_dialogue_changes','own_dialogue'),('npc_wait_changes','own_wait'),('npc_movement_changes','own_movement'),('npc_facing_changes','own_facing'),('npc_flags_changes','own_flag'),('npc_system_flags_changes','own_system_flag'),('npc_branches_changes','own_branch'),('npc_model_selectors_changes','own_model_selector'),('npc_effect_colors_changes','own_effect_color'),('npc_transitions_changes','own_transition'),('npc_animation_operands_changes','own_animation_operand')]:
         value=metadata.get(key)
         if value is None:continue
         if not isinstance(value,dict) or not isinstance(value.get('changes'),list) or len(value['changes'])>8192:
@@ -160,6 +160,26 @@ def authored_spans(metadata,entity_id,retail,generated,draft):
                     raise ProjectError('NPC effect color comparison differs from its decoded source operand')
                 header_end=pc+(3 if expected['target_context'] is not None else 2)
                 if a[pc:header_end]!=b[pc:header_end]:raise ProjectError('NPC effect color comparison dispatch or sub-op differs')
+                before,after=bytes.fromhex(expected['before_hex']),bytes.fromhex(expected['after_hex'])
+            elif category=='own_animation_operand':
+                from importer.animation_operand_authoring import patch_animation_operands_target
+                from importer.core import ImportError as NativeError
+                owner=row.get('animation_operand_id');pc=row.get('pc')
+                if (type(pc) is not int or not 0<=pc<=65535 or owner!=prefix+f'animation-operands/{pc:04x}' or
+                    row.get('donor_entity_id')!=draft['donor_entity_id'] or
+                    draft.get('animation_operands',{}).get('donor_entity_id')!=draft['donor_entity_id']):
+                    raise ProjectError('NPC animation comparison differs from its source owner')
+                requested=draft.get('animation_operands',{}).get('entries',{}).get(owner)
+                if owner not in animation_expected:
+                    try:
+                        _,animation_expected[owner]=patch_animation_operands_target(a,retail['script_offset'],pc,requested,base_offset=retail['byte_offset'])
+                        patch_animation_operands_target(qualification_record,generated['script_offset'],pc,requested)
+                    except NativeError as error:raise ProjectError('NPC animation comparison target is not qualified') from error
+                expected=next((r for r in animation_expected[owner] if r['field']==row.get('field')),None)
+                if expected is None or any(type(row.get(k)) is not type(v) or row[k]!=v for k,v in expected.items() if k!='decoded_byte_offset') or source_at!=expected['decoded_byte_offset']:
+                    raise ProjectError('NPC animation comparison differs from its decoded source operand')
+                header_end=pc+(3 if expected['target_context'] is not None else 2)
+                if a[pc:header_end]!=b[pc:header_end]:raise ProjectError('NPC animation comparison dispatch or selector differs')
                 before,after=bytes.fromhex(expected['before_hex']),bytes.fromhex(expected['after_hex'])
             elif category=='own_transition':
                 from importer.transition_authoring import patch_transition_entry
