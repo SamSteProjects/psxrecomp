@@ -11,3 +11,11 @@ export function validateModelUserSelection(state,modelId,sceneId,expected){
   if(state.scene?.id!==sceneId||ids.length<2||ids.length>128||JSON.stringify(ids)!==JSON.stringify(expected)||ids.some(id=>{const entity=entities.find(row=>row.id===id);return !entity||(entity.components?.ActorAppearance?.effective?.asset_id??entity.components?.ModelRenderer?.asset_id)!==modelId;}))throw new Error('Model users changed or differ from the active imported scene');
   return ids.slice();
 }
+
+// Cloning inherits Retail record/script bytes, independently of authored appearance.
+export function retailModelDonors(state,modelId,sceneId){
+  if(typeof modelId!=='string'||!modelId||state.scene?.id!==sceneId||!state.scenes?.some(scene=>scene.id===sceneId)||!Array.isArray(state.model_references))throw new Error('Retail donor source scene is unavailable');
+  const ids=state.model_references.filter(row=>row.target_id===modelId&&row.scene_id===sceneId&&row.kind==='initial_model_assignment'&&row.imported===true).map(row=>row.source_id).sort();
+  if(new Set(ids).size!==ids.length||ids.some(id=>typeof id!=='string'||!id.startsWith(sceneId+'/actors/')||!state.scene.entities.some(entity=>entity.id===id&&entity.components?.ActorAppearance?.imported?.asset_id===modelId)))throw new Error('Retail model donors have ambiguous or mismatched source identities');
+  return ids;
+}

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {modelUsageContext,effectiveModelUsers,validateModelUserSelection} from '../editor/model-user-selection.js';
+import {modelUsageContext,effectiveModelUsers,validateModelUserSelection,retailModelDonors} from '../editor/model-user-selection.js';
 const scene='scene://fixture',model='asset://model',ids=[scene+'/actors/0001',scene+'/actors/0002'];
 const refs=ids.map(source_id=>({source_id,scene_id:scene,target_id:model,kind:'initial_model_assignment',effective:true}));
 const state={project:{path:'project'},scenes:[{id:scene}],model_references:[...refs,{...refs[0],source_id:scene+'/actors/0003',effective:false},{...refs[0],source_id:'authored-actor://draft',kind:'draft_initial_model_assignment'}],scene:{id:scene,entities:ids.map(id=>({id,components:{ActorAppearance:{effective:{asset_id:model}}}}))}};
@@ -10,3 +10,16 @@ const duplicate=structuredClone(state);duplicate.model_references.push(refs[0]);
 assert.throws(()=>effectiveModelUsers(state,model,'missing'));assert.throws(()=>validateModelUserSelection(state,model,scene,[ids[1],ids[0]]));
 const detached=validateModelUserSelection(state,model,scene,ids);detached.pop();assert.equal(ids.length,2);
 console.log('Effective initial-model groups exclude retail-only/drafts, bind active source owners and reject changed/ambiguous usage.');
+
+const retail=structuredClone(state);
+retail.scene.entities.forEach(entity=>entity.components.ActorAppearance.imported={asset_id:model});
+retail.model_references=ids.map(source_id=>({source_id,scene_id:scene,target_id:model,kind:'initial_model_assignment',imported:true,effective:false}));
+retail.model_references.push({...retail.model_references[0],source_id:'authored-actor://draft',kind:'draft_initial_model_assignment'});
+retail.model_references.push({...retail.model_references[0],source_id:scene+'/actors/0003',imported:false,effective:true});
+assert.deepEqual(retailModelDonors(retail,model,scene),ids);
+const donors=retailModelDonors(retail,model,scene);donors.pop();assert.equal(retailModelDonors(retail,model,scene).length,2);
+assert.deepEqual(retailModelDonors(retail,'unassigned-model',scene),[]);
+assert.throws(()=>retailModelDonors(retail,model,'other-scene'));
+const retailMismatch=structuredClone(retail);retailMismatch.scene.entities[0].components.ActorAppearance.imported.asset_id='other';assert.throws(()=>retailModelDonors(retailMismatch,model,scene));
+const ambiguous=structuredClone(retail);ambiguous.model_references.push(ambiguous.model_references[0]);assert.throws(()=>retailModelDonors(ambiguous,model,scene));
+console.log('NPC model donors retain Retail ownership despite authored appearance, exclude drafts and reject stale or ambiguous sources.');

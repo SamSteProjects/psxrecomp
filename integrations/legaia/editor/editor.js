@@ -102,7 +102,7 @@ import {mountSceneCameraInspector} from '/scene-camera-inspector.js';
 import {appendPresetImport,presetExportButton} from '/preset-files.js';
 import {openActorPresetReview} from '/actor-preset-review.js';
 import {ANIMATION_PRESET_SCOPE,presetScopeLabel} from '/preset-animation.js';
-import {modelUsageContext,effectiveModelUsers,validateModelUserSelection} from '/model-user-selection.js';
+import {modelUsageContext,effectiveModelUsers,validateModelUserSelection,retailModelDonors} from '/model-user-selection.js';
 import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,renderComponentDetails,renderComponentActions,bindComponentActions} from '/component-inspector.js';
 import {mountInspectorComponentFilter} from '/inspector-component-filter.js';
 import {mountInspectorSections,inspectorSectionSnapshot} from '/inspector-sections.js';
@@ -2186,6 +2186,9 @@ function renderAssets(){
       const assign=document.createElement('button');assign.type='button';assign.dataset.assetAction='appearance';assign.dataset.assetPlacementAction=record.id;assign.style.cssText='grid-column:1 / -1;white-space:normal;text-align:left';assign.textContent='Choose donor appearance';assign.setAttribute('aria-label','Choose donor appearance for '+record.id);
       assign.refreshPlacementAction=()=>{assign.disabled=busy||!current()||!canEditAppearance()||!selected()&&!selectedNpcDraft()||currentPlacementSelection().length>1&&actorGroupSelection.length<2;const target=actorGroupSelection.length>=2?{name:actorGroupSelection.length+' imported actors'}:selectedNpcDraft()??selected();assign.title=target?'Choose a verified model/animation donor pair for '+target.name:'Select one imported actor or NPC draft first.';};
       assign.onclick=()=>{if(assign.disabled||!current())return;if(actorGroupSelection.length>=2)actorGroupAppearance.open(record.id);else if(selectedNpcDraft())openNpcAppearanceInspector(npcDraftSelection,record.id);else openAppearanceOptions(selected(),record.id);};row.append(action,assign);
+      const create=document.createElement('button');create.type='button';create.dataset.assetAction='create-npc';create.dataset.assetPlacementAction=record.id;create.style.cssText='grid-column:1 / -1;white-space:normal;text-align:left';create.textContent='Create NPC from model';create.setAttribute('aria-label','Create NPC from '+record.id);
+      create.refreshPlacementAction=()=>{create.disabled=true;try{if(busy||!current()||!canEdit()||!state.capabilities?.actor_candidate_inspection)throw Error('Use a current imported model in Edit mode with the Project disc available.');const ids=retailModelDonors(state,record.id,record.sceneId);create.disabled=!ids.length;create.title=ids.length?`Choose from ${ids.length} Retail donors; script and initial animation are inherited. Placement is explicit.`:'No imported Retail actor uses this model in the active scene.';}catch(error){create.title=error.message;}};
+      create.onclick=()=>{if(create.disabled||!current())return;try{openModelNpcCreation(record,current);}catch(error){notify(error.message,true);}};row.append(create);
     }
     list.append(row);
   }
@@ -3833,7 +3836,7 @@ const scriptOffset=value=>Number.isInteger(value)?'0x'+value.toString(16).toUppe
 function openNpcDrafts(focusId=null){
   if(busy)return;
   const dialog=document.createElement('dialog');dialog.id='npc-drafts-dialog';
-  dialog.innerHTML='<h2>NPC drafts</h2><p>Project-local new NPCs. Changes support Undo/Redo; Save persists them. Drafts appear in the viewport; playable builds are not yet available.</p><p class="dialog-error" role="alert"></p><button type="button">Close</button>';
+  dialog.innerHTML='<h2>NPC drafts</h2><p>Project-local new NPCs. Changes support Undo/Redo; Save persists them. Drafts appear in the viewport. Review Build assesses supported native serialization; spawning, scheduling and gameplay remain unverified.</p><p class="dialog-error" role="alert"></p><button type="button">Close</button>';
   dialog.querySelector('button').onclick=()=>dialog.close();
   dialog.addEventListener('close',()=>dialog.remove(),{once:true});
   const drafts=Object.entries(state.actor_drafts??{});
@@ -3855,20 +3858,42 @@ function openNpcDrafts(focusId=null){
   document.body.append(dialog);dialog.showModal();
 }
 
-async function openActorCandidate(entity){
+function openModelNpcCreation(record,rowCurrent){
+  if(busy||!canEdit())return;
+  const key=resourceStateKey(),source=state.project_copy_source_key,ids=retailModelDonors(state,record.id,record.sceneId);
+  if(!ids.length)return;
+  let withdrawn=false;
+  const fresh=()=>!withdrawn&&canEdit()&&rowCurrent()&&key===resourceStateKey()&&source===state.project_copy_source_key&&JSON.stringify(ids)===JSON.stringify(retailModelDonors(state,record.id,record.sceneId));
+  const dialog=document.createElement('dialog');dialog.id='model-npc-donor-dialog';
+  dialog.innerHTML='<h2>Create NPC from Model</h2><p>Choose a Retail actor donor. The new NPC inherits its native record, script and initial animation, even if that actor has authored overrides. Inspect the candidate and choose name and X/Z placement next. Runtime script behavior and gameplay remain unverified.</p><label>Retail NPC donor<select aria-label="Retail NPC donor"><option value="">Choose a donor…</option></select></label><p class="dialog-error" role="alert"></p><button type="button" data-review>Inspect NPC creation candidate</button><button type="button" data-close>Close NPC donor choice</button>';
+  const select=dialog.querySelector('select'),review=dialog.querySelector('[data-review]'),error=dialog.querySelector('.dialog-error');
+  for(const id of ids){const entity=entities().find(row=>row.id===id),option=document.createElement('option');option.value=id;option.textContent=`${entity.name} · ${id}`;select.append(option);}
+  const refresh=()=>{let current=false;try{current=fresh();}catch{}if(!current){withdrawn=true;select.replaceChildren();select.disabled=true;error.textContent='Project, scene or Retail model donors changed. Reopen NPC creation.';}review.disabled=busy||!current||!ids.includes(select.value);};
+  select.onchange=refresh;
+  review.onclick=()=>{refresh();if(review.disabled)return;const entity=entities().find(row=>row.id===select.value);dialog.close();openActorCandidate(entity,record.id);};
+  dialog.querySelector('[data-close]').onclick=()=>dialog.close();
+  const timer=setInterval(refresh,250);dialog.addEventListener('close',()=>{clearInterval(timer);dialog.remove();},{once:true});document.body.append(dialog);refresh();dialog.showModal();
+}
+async function openActorCandidate(entity,modelAssetId=null){
   if(busy)return;
-  const sceneId=state.scene?.id,controller=new AbortController();
-  const dialog=document.createElement('dialog');
-  dialog.innerHTML='<h2>NPC creation candidate</h2><p>Inspecting the retail donor…</p><button>Close</button>';
+  const sceneId=state.scene?.id,key=resourceStateKey(),source=state.project_copy_source_key,controller=new AbortController();
+  let withdrawn=false;
+  const fresh=()=>!withdrawn&&state.scene?.id===sceneId&&key===resourceStateKey()&&source===state.project_copy_source_key&&(modelAssetId===null||canEdit()&&retailModelDonors(state,modelAssetId,sceneId).includes(entity.id));
+  if(!fresh())return;
+  const dialog=document.createElement('dialog');dialog.id='actor-candidate-dialog';
+  const withdraw=()=>{withdrawn=true;controller.abort();dialog.querySelector('p').textContent='Project, scene or donor source changed. Reopen NPC creation.';dialog.querySelectorAll('input,button:not([data-close])').forEach(control=>control.disabled=true);};
+  const timer=setInterval(()=>{try{if(!fresh())withdraw();}catch{withdraw();}},250);
+  dialog.innerHTML='<h2>NPC creation candidate</h2><p>Inspecting the retail donor…</p><button data-close>Close</button>';
   dialog.querySelector('button').onclick=()=>dialog.close();
-  dialog.addEventListener('close',()=>{controller.abort();dialog.remove();},{once:true});
+  dialog.addEventListener('close',()=>{clearInterval(timer);controller.abort();dialog.remove();},{once:true});
   document.body.append(dialog);dialog.showModal();
   try{
     const response=await fetch('/api/actor-candidate-inspection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id}),signal:controller.signal});
     const report=await response.json();if(!response.ok||report.error)throw new Error(report.error||'Candidate inspection failed');
     if(!dialog.open)return;
     if(report.entity_id!==entity.id)throw new Error('Candidate identity mismatch');
-    if(state.scene?.id!==sceneId)throw new Error('Active scene changed; inspect this donor again');
+    if(!fresh())throw new Error('Project, scene or donor source changed; inspect this donor again');
+    if(modelAssetId!==null&&report.donor_dependencies?.model?.asset_semantic_id!==modelAssetId)throw new Error('Retail donor model differs from the selected model');
     const rows=report.actor.script_coverage.records;
     const containerStatus=report.container.supported===false?`unavailable (${report.container.reason})`:`${report.container.growth_bytes} bytes`;
     dialog.querySelector('p').textContent=`${entity.name}: ${report.includes_project_overrides ? "retail donor with authored X/Z placement" : "retail donor at imported placement"}; other project overrides are excluded. This inspection does not create an NPC. ${report.actor.reached_spawn_changes.length} decoded spawn references need updates; ${rows.filter(row=>row.coverage!=='decoded_supported_paths').length} scripts remain partial. Container growth: ${containerStatus}. Overlapping archive entries: ${report.archive.overlapping_entries.length}. This donor-only prototype does not assess complete project Build readiness. Use Review Build for serialization status; spawning, scheduling and gameplay remain unverified.`;
@@ -3884,13 +3909,14 @@ async function openActorCandidate(entity){
     form.elements.x.value=donorPosition.x;form.elements.z.value=donorPosition.z;
     form.onsubmit=async event=>{
       event.preventDefault();if(busy)return;
-      if(state.scene?.id!==sceneId){form.querySelector('.dialog-error').textContent='Active scene changed; inspect this donor again';return;}
+      if(!fresh()||!canEdit()){withdraw();return;}
       await api('/api/command',{type:'create_actor_draft',donor_entity_id:entity.id,name:form.elements.name.value,position:{x:Number(form.elements.x.value),z:Number(form.elements.z.value)}},{dialog,success:'NPC draft created. Save persists it; Review Build assesses native serialization.'});
     };
+    if(!canEdit())form.querySelectorAll('input,button').forEach(control=>control.disabled=true);
     if(!state.actor_drafts?.[entity.id])dialog.append(form);
     const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='Technical evidence';pre.textContent=JSON.stringify(report,null,2);details.append(summary,pre);dialog.append(details);
     const inspect=document.createElement('button');inspect.textContent='Inspect donor script';
-    inspect.onclick=()=>{if(busy)return;if(state.scene?.id!==sceneId){dialog.querySelector('p').textContent='Active scene changed; inspect this donor again';return;}dialog.close();openActorScript(entities().find(item=>item.id===(report.donor_entity_id??entity.id))??entity);};
+    inspect.onclick=()=>{if(busy)return;if(!fresh()){withdraw();return;}dialog.close();openActorScript(entities().find(item=>item.id===(report.donor_entity_id??entity.id))??entity);};
     dialog.append(inspect);
     const dependencies=report.donor_dependencies;
     if(dependencies){
@@ -3898,7 +3924,7 @@ async function openActorCandidate(entity){
       info.textContent=`Donor model: ${dependencies.model?.asset_semantic_id??'unresolved'}. Initial animations: ${(dependencies.animations??[]).map(a=>`${a.semantic_id} (${a.frame_count} frames, ${a.channel_count} channels)`).join(', ')||'unavailable'}. Scripts may select other assets at runtime.`;
       dialog.append(info);
       const assetId=dependencies.model?.asset_semantic_id;
-      if(assetId){const model=document.createElement('button');model.textContent='Preview donor model';model.onclick=()=>{if(busy)return;if(state.scene?.id!==sceneId){info.textContent='Active scene changed; inspect this donor again';return;}dialog.close();openModel(assetId);};dialog.append(model);}
+      if(assetId){const model=document.createElement('button');model.textContent='Preview donor model';model.onclick=()=>{if(busy)return;if(!fresh()){withdraw();return;}dialog.close();openModel(assetId);};dialog.append(model);}
     }
   }catch(error){if(dialog.open)dialog.querySelector('p').textContent=String(error.message||error);}
 }
