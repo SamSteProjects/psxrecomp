@@ -42,5 +42,10 @@ try{
   assert.equal(tree(control.dialog).find(n=>n.tagName==='select').children.length,1);
   assert.equal(await action(control,'review').onclick(),true);assert.equal(calls.at(-1).body.record_id,id);assert.equal(await action(control,'apply').onclick(),true);assert.equal(applied,2);
   control=await openAnimationRecordLibrary({...settings,retainedRecord:{...row(),active:false}});assert.equal(await control.ready,false);assert.equal(action(control,'review').disabled,true);assert.equal(action(control,'apply').disabled,true);control.dispose();
+  context={...initial};delay=null;const assigned={scene_id:initial.sceneId,record_id:id,record_sha256:row().record_sha256,model_asset_id:asset};
+  control=await openAnimationRecordLibrary({...settings,retainedRecord:row(),assignment:assigned,duplicateOnly:true});await control.ready;
+  assert.equal(tree(control.dialog).find(n=>n.tagName==='h2').textContent,'Duplicate assigned clip');assert.equal(action(control,'review').hidden,true);const prior=calls.length;assert.equal(await action(control,'review').onclick(),false);assert.equal(await action(control,'assign').onclick(),false);assert.equal(calls.length,prior);assert.equal(await action(control,'duplicate').onclick(),true);assert.equal(await action(control,'apply').onclick(),true);assert.equal(calls.at(-1).path,'/api/animation-record-duplicate');
+  control=await openAnimationRecordLibrary({...settings,entityId:entity.replace('0011','0012'),retainedRecord:row(),assignment:assigned,duplicateOnly:true});assert.equal(await control.ready,true);control.dispose();
+  for(const change of [{record_id:'wrong'},{record_sha256:'0'.repeat(64)},{model_asset_id:'wrong'},{scene_id:'scene://other'}])await assert.rejects(openAnimationRecordLibrary({...settings,retainedRecord:row(),assignment:{...assigned,...change},duplicateOnly:true}),/exact active record/);
 }finally{for(const [k,v] of Object.entries(old)){if(v===undefined)delete globalThis[k];else globalThis[k]=v;}}
 console.log('Saved clip library provenance, exact lifecycle review, explicit Apply, retained preview Return and stale/late/close guards passed.');

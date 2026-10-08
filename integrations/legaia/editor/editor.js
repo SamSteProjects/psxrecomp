@@ -3536,6 +3536,7 @@ function renderInspector(){
     'preview-initial-animation':{run:()=>openModel(components.ActorAppearance.effective.asset_id,'authored-initial-animation',entity.id)},
     'edit-actor-animation-glb':{requiresEdit:true,canRun:()=>Boolean(components.ActorAllocatedAnimation?.authored?.record_id)||components.Animation?.preview_support?.supported===true,run:()=>inspectAnimationGlb(entity)},
     'manage-allocated-clips':{requiresEdit:true,canRun:()=>state.capabilities?.actor_animation_assignment===true,run:()=>inspectSavedAnimationRecords(entity)},
+    'duplicate-allocated-initial-animation':{requiresEdit:true,canRun:()=>Boolean(components.ActorAllocatedAnimation?.authored?.record_id),run:()=>inspectAssignedAnimationDuplicate(entity)},
     'preview-allocated-initial-animation':{canRun:()=>Boolean(components.ActorAllocatedAnimation?.authored?.record_id),run:()=>openModel(components.ActorAllocatedAnimation.authored.model_asset_id,'authored-initial-animation',entity.id)},
     'inspect-model':{run:()=>openModel(components.ModelRenderer.asset_id)},
     'inspect-script':{run:({componentId}={})=>openActorScript(entity,false,null,null,null,componentId)},
@@ -3637,6 +3638,16 @@ async function inspectSavedAnimationRecords(entity,retainedRecord=null,assetId=n
       if(model!==data||!$('model-dialog').open)throw new Error($('model-error').textContent||'Could not open saved allocated clip.');
       $('model-dialog').addEventListener('close',()=>{if(model===data&&scenePose?.preview!==data)returnToEditor();},{once:true});
     }});
+}
+async function inspectAssignedAnimationDuplicate(entity){
+  if(busy||!canEdit())return;
+  const getContext=()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:selected()?.id===entity.id?state.scene_preview_source_key:null});
+  let row;setBusy(true);
+  try{row=await resolveActorAnimationGlbTarget({entityId:entity.id,getActor:()=>selected(),getContext});if(!row)throw Error('The actor has no assigned allocated clip.');}
+  catch(error){notify(error.message,true);return;}finally{setBusy(false);}
+  animationRecordLibrary?.dispose();animationRecordEntityId=entity.id;animationRecordAssetId=null;
+  try{animationRecordLibrary=await openAnimationRecordLibrary({entityId:entity.id,retainedRecord:row,duplicateOnly:true,assignment:entity.components.ActorAllocatedAnimation.authored,getContext,busy:()=>busy,setBusy,onError:error=>notify(error.message,true),
+    onApplied:next=>{state=next;render();notify('Assigned clip duplicated. Original assignment retained; the new clip is active and unassigned. Save project to persist.');}});}catch(error){notify(error.message,true);}
 }
 async function inspectAnimationAllocation(entity){
   if(busy||state.project.mode!=='edit')return;

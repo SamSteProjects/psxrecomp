@@ -8,7 +8,7 @@ class InspectorSchema(unittest.TestCase):
         positions=[p for p in component['properties'] if p['id'] in ('x','z')]
         self.assertTrue(all(p['path'][:3]==['authoredRecord','authored','position'] for p in positions))
         self.assertTrue(all(p['state']=='authored-through-command' for p in positions))
-        self.assertEqual([action['id'] for action in component['actions']],['select-asset-actor','edit-npc-appearance','edit-npc-branches','edit-npc-model-selectors','edit-npc-effect-colors','edit-npc-flags','edit-npc-facing','edit-npc-movement','edit-npc-waits','edit-npc-dialogue','inspect-npc-build-script','inspect-npc-current-script','inspect-npc-donor-script','inspect-npc-donor-model','edit-npc-transitions','edit-npc-system-flags','reset-npc-script'])
+        self.assertEqual([action['id'] for action in component['actions']],['select-asset-actor','edit-npc-appearance','edit-npc-branches','edit-npc-model-selectors','edit-npc-effect-colors','edit-npc-flags','edit-npc-facing','edit-npc-movement','edit-npc-waits','edit-npc-dialogue','inspect-npc-build-script','inspect-npc-current-script','inspect-npc-donor-script','inspect-npc-donor-model','edit-npc-animation-operands','edit-npc-transitions','edit-npc-system-flags','reset-npc-script'])
         self.assertEqual(next(a for a in component['actions'] if a['id']=='inspect-npc-donor-model')['when'],['authoredRecord','model_reference','target_id'])
         self.assertEqual(next(a for a in component['actions'] if a['id']=='inspect-npc-donor-model')['capability'],'model_preview')
         component['properties'][0]['path'].clear();self.assertEqual(inspector_schema()['components']['AssetNpcDraft']['properties'][0]['path'],['id'])
@@ -151,6 +151,7 @@ class InspectorSchema(unittest.TestCase):
         self.assertEqual(actions[1]['when'],['authored','record_id'])
         self.assertNotIn('requires_edit',actions[1])
         self.assertEqual(actions[2],dict(id='edit-actor-animation-glb',label='Edit assigned clip through GLB',capability='actor_animation_authoring',requires_edit=True,when=['authored','record_id']))
+        self.assertEqual(actions[3],dict(id='duplicate-allocated-initial-animation',label='Duplicate assigned clip...',capability='actor_animation_assignment',requires_edit=True,when=['authored','record_id']))
         definition['properties'][0]['label']='changed'
         self.assertEqual(inspector_schema()['components']['ActorAllocatedAnimation']['properties'][0]['label'],'Retained clip')
 
