@@ -2,6 +2,9 @@ import {decodeNpcDonorScript,renderNpcScriptContents} from './npc-donor-script.j
 import {canonicalScriptMetadata,scriptFlowReportHash} from './script-flow-identity.js';
 import {decodeNpcMovementSource,openNpcMovement} from './npc-movement.js';
 import {decodeNpcSystemFlagsSource,openNpcSystemFlags} from './npc-system-flags.js';
+import {decodeNpcWaitSource,openNpcWaits} from './npc-waits.js';
+import {decodeNpcFacingSource,openNpcFacing} from './npc-facing.js';
+import {decodeNpcFlagsSource,openNpcFlags} from './npc-flags.js';
 const same=(a,b)=>JSON.stringify(canonicalScriptMetadata(a))===JSON.stringify(canonicalScriptMetadata(b));
 const hash=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
 async function recordHash(hex){if(typeof hex!=='string'||!hex.length||hex.length>131072||hex.length%2||!/^[a-f0-9]+$/.test(hex))throw Error('Current NPC record bytes are invalid.');const bytes=Uint8Array.from(hex.match(/../g),v=>parseInt(v,16));return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(v=>v.toString(16).padStart(2,'0')).join('');}
@@ -24,6 +27,34 @@ export function npcCurrentSystemSelection(value,source,pc,state){
  if(state.project?.mode!=='edit'||state.capabilities?.npc_system_selector_authoring!==true||value.schema_version!=='legaia.npc-current-script.v1'||value.project_source_key!==selectors.project_source_key||!same(value.draft,selectors.draft)||!row||!instruction||row.mnemonic!==instruction.mnemonic||row.source_record_sha256!==value.donor.inspection.record.sha256||row.effective_values.index!==instruction.operands?.index||instruction.target_context!==null)throw Error('Select an independently qualified Current NPC system selector in Edit mode.');
  return {entity_id:value.entity_id,system_flag_id:row.semantic_id,pc:row.pc,values:structuredClone(row.effective_values)};
 }
+const operandFamilies={
+ waits:{label:'Edit selected NPC wait',route:'/api/npc-waits-source',capability:'actor_wait_authoring',decode:decodeNpcWaitSource,open:openNpcWaits,field:'duration_ticks'},
+ facing:{label:'Edit selected NPC facing',route:'/api/npc-facing-source',capability:'actor_facing_authoring',decode:decodeNpcFacingSource,open:openNpcFacing,field:'sector'},
+ flags:{label:'Edit selected NPC flag bit',route:'/api/npc-flags-source',capability:'actor_flag_authoring',decode:decodeNpcFlagsSource,open:openNpcFlags,field:'bit'}
+};
+export function npcCurrentOperandSelection(value,source,pc,state,family){
+ const editor=operandFamilies[family];if(!editor)throw Error('Unsupported Current NPC operand family.');
+ const accepted=editor.decode(source,value.entity_id,state),row=accepted.options.targets.find(r=>r.pc===pc),instruction=[...value.inspection.instructions,...(value.inspection.unvisited_instructions??[])].find(r=>r.pc===pc);
+ if(state.project?.mode!=='edit'||state.capabilities?.[editor.capability]!==true||value.schema_version!=='legaia.npc-current-script.v1'||value.project_source_key!==accepted.project_source_key||!same(value.draft,accepted.draft)||!row||!instruction||row.mnemonic!==instruction.mnemonic||row.source_record_sha256!==value.donor.inspection.record.sha256||row.target_context!==instruction.target_context)throw Error('Select an independently qualified Current NPC operand in Edit mode.');
+ const raw=instruction.raw_hex,known=value.donor.inspection.instructions.find(r=>r.pc===pc);
+ if(!known||known.mnemonic!==instruction.mnemonic||known.length!==instruction.length||typeof raw!=='string'||!/^[a-f0-9]+$/.test(raw)||raw.length!==instruction.length*2||raw!==value.inspection.record.raw_hex.slice(pc*2,(pc+instruction.length)*2))throw Error('Current operand span differs from its source instruction.');
+ const bytes=Uint8Array.from(raw.match(/../g),v=>parseInt(v,16)),header=bytes[0]&128?2:1,op=bytes[0]&127;
+ if(instruction.target_context!==(header===2?bytes[1]:null))throw Error('Current operand dispatch differs from its native header.');
+ let operand;
+ if(family==='waits'){
+  if(op!==0x4a||bytes.length!==header+2)throw Error('Current wait encoding is unresolved.');operand=bytes[header]|bytes[header+1]<<8;
+ }else if(family==='flags'){
+  const [bank,operation]=instruction.mnemonic.split('_'),opcode=0x2b+['LFLAG','GFLAG','CFLAG'].indexOf(bank)*3+['SET','CLEAR','TEST'].indexOf(operation);
+  if(op!==opcode||bytes.length!==header+1||(bytes[header]&224)!==(row.before_raw&224))throw Error('Current flag preservation bits or opcode differ.');operand=bytes[header]&31;
+ }else{
+  if(!row.effective_supported||instruction.operands?.parked_target)throw Error('Current facing operand is unsupported.');
+  const npc=instruction.mnemonic==='NPC_RUN',relative=header+(npc?3:0);
+  if(op!==(npc?0x4c:0x38)||bytes.length!==header+(npc?5:2)||npc&&(bytes[header]!==0x51||(bytes[header+1]&127)===127&&(bytes[header+2]&127)===127)||!npc&&(bytes[header+1]&127)!==0||(bytes[relative]&240)!==(row.before_raw&240))throw Error('Current facing preservation bits or opcode differ.');operand=bytes[relative]&15;
+ }
+ if(family!=='facing'&&operand!==instruction.operands?.[editor.field])throw Error('Current decoded operand differs from its native bytes.');
+ if(operand!==row.effective_values[editor.field])throw Error('Current NPC operand differs from its qualified authoring source.');
+ return {entity_id:value.entity_id,operand_id:row.semantic_id,pc:row.pc,values:structuredClone(row.effective_values)};
+}
 export function openNpcCurrentScript({entityId,getState,isBusy,renderInstructions,showTargets,focusPc,targetSettings=null,canEdit=()=>false,api}){
  if(isBusy())return;const state=getState(),key=state.project_copy_source_key,draft=structuredClone(state.actor_drafts?.[entityId]);if(!draft||draft.scene_id!==state.scene?.id)return;
  const dialog=document.createElement('dialog');dialog.id='npc-current-script-dialog';dialog.style.cssText='width:min(900px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;overflow-wrap:anywhere';
@@ -39,7 +70,8 @@ export function openNpcCurrentScript({entityId,getState,isBusy,renderInstruction
   const tools=document.createElement('section');tools.dataset.currentNpcEdit='';dialog.querySelector('[data-content]').before(tools);
   const editors=[
    {label:'Edit selected NPC destination',route:'/api/npc-movement-source',capability:'actor_movement_authoring',decode:decodeNpcMovementSource,select:npcCurrentMovementSelection,open:openNpcMovement},
-   {label:'Edit selected NPC system selector',route:'/api/npc-system-flags-source',capability:'npc_system_selector_authoring',decode:decodeNpcSystemFlagsSource,select:npcCurrentSystemSelection,open:openNpcSystemFlags}
+   {label:'Edit selected NPC system selector',route:'/api/npc-system-flags-source',capability:'npc_system_selector_authoring',decode:decodeNpcSystemFlagsSource,select:npcCurrentSystemSelection,open:openNpcSystemFlags},
+   ...Object.entries(operandFamilies).map(([family,editor])=>({...editor,select:(value,source,pc,state)=>npcCurrentOperandSelection(value,source,pc,state,family)}))
   ];
   for(const editor of editors){editor.button=document.createElement('button');editor.button.type='button';editor.button.textContent=editor.label;editor.note=document.createElement('p');editor.note.className='field-note';editor.pending=true;editor.source=null;editor.failure='';tools.append(editor.button,editor.note);
    editor.selection=()=>{try{if(current()&&canEdit()&&!isBusy()&&!editor.pending&&editor.source)return editor.select(value,editor.source,selectedPc,getState());}catch{}return null;};

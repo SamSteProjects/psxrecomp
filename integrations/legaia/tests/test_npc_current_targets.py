@@ -36,10 +36,13 @@ class CurrentTargets(unittest.TestCase):
                 from sdk.server import EditorServer
                 from sdk.npc_movement import source
                 from sdk.npc_system_flags import source as system_source
+                from sdk.npc_waits import source as wait_source
+                from sdk.npc_facing import source as facing_source
+                from sdk.npc_flags import source as flags_source
                 server=EditorServer(('127.0.0.1',0),p,runtime_port=65533)
                 try:state=server.state()
                 finally:server.server_close()
-                (root/'retail.json').write_text(json.dumps(dict(entity_id=identity,state=state,report=report,movement=source(p,identity),system_flags=system_source(p,identity))),encoding='utf-8')
+                (root/'retail.json').write_text(json.dumps(dict(entity_id=identity,state=state,report=report,movement=source(p,identity),system_flags=system_source(p,identity),waits=wait_source(p,identity),facing=facing_source(p,identity),flags=flags_source(p,identity))),encoding='utf-8')
 
 
 if __name__=='__main__':unittest.main()
