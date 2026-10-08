@@ -180,6 +180,7 @@ class EditorServer(ThreadingHTTPServer):
         except (RetailImportError, OSError):
             state["scene_preview_source_key"] = None
         state["capabilities"]["scene_preview"] = bool(state["scene_preview_source_key"])
+        state["capabilities"]["actor_position_preview"] = bool(state["scene_preview_source_key"] and self.project.mode == "edit")
         for asset in state["assets"] + state["active_scene_assets"]:
             asset["animation_support"] = animation_capabilities(asset)
         from importer.scene_animation import actor_animation_capabilities
@@ -3383,6 +3384,26 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Scene animation requires an explicit representation and current source key')
                     self._json(200, self.server.scene_animation_preview(body['representation'], body['source_key']))
                     return
+                if route in ('/api/actor-position-review','/api/actor-position-scene'):
+                    from .actor_position_preview import review,proposal_view,qualify_instances
+                    from .project_copy import source_key as project_key
+                    from .scene_preview import source_key as position_scene_key
+                    from importer.scene_animation import load_scene_actor_animation_catalog
+                    from importer.environment import load_environment_preview_catalog
+                    from .terrain_preview import terrain_preview
+                    project=self.server.project
+                    fields={'entity_id','position','project_source_key'}
+                    if set(body)!=(fields if route.endswith('-review') else fields|{'review_key'}):raise ProjectError('Position preview requires exact reviewed fields')
+                    report=review(project,{key:body[key] for key in fields})
+                    if route.endswith('-review'):
+                        self._json(200,report);return
+                    if body['review_key']!=report['review_key']:raise ProjectError('Position review changed before scene projection')
+                    def position_document(view):
+                        return self.server.scene_previews.preview(view,lambda asset,*args,**kwargs:self.server.model_preview(asset,*args,effective_shape=True,project_view=view,**kwargs),load_scene_actor_animation_catalog,load_environment_preview_catalog,terrain_preview)
+                    current=position_document(project);proposed=position_document(proposal_view(project,report))
+                    result=qualify_instances(current,proposed,report)
+                    if project_key(project)!=report['project_source_key'] or position_scene_key(project)!=report['scene_preview_source_key']:raise ProjectError('Project changed during position scene projection')
+                    self._json(200,result);return
                 if route in ("/api/scene-preview", "/api/export/scene"):
                     exporting = route == "/api/export/scene"
                     if set(body) - ({'representation', 'source_key', 'entity_id'} if exporting else {'representation'}):
