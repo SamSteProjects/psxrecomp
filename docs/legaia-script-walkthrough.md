@@ -1,5 +1,7 @@
 # Source Script Walkthrough
 
+The shared hypothetical sandbox also supports [Local Flag Mask Simulation](legaia-script-local-masks.md) for normal `4C 35/36`, with partial unknown-bit preservation, visible mask traces and existing Back/scenario replay. Other field-state host effects remain unsupported.
+
 Open a script resource in the Asset Database, choose **Inspect script**, expand **Instruction paths**, then **Walk through source instructions**. This walkthrough uses the verified Retail source report already shown in that workspace. It shares selected boundaries with the instruction table and branch inspector, while retaining its own trace.
 
 Choose **Start at source entry**, or select a decoded instruction and choose **Start at selected instruction**. Each **Follow** button identifies one encoded successor and its condition label. Clicking it records your explicit choice. Conditions and flags are not evaluated, and waits, movement, dialogue, effects and external resumption do not execute. This is a source inspection tool, not a game VM or authenticated runtime trace. The branch workspace also supports separate Current and reviewed Proposed walkthroughs, described below.

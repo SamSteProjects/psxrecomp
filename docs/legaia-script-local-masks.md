@@ -1,0 +1,15 @@
+# Local Flag Mask Simulation
+
+The shared script sandbox now steps normal `4C 35` and `4C 36` field-state instructions. Open a script resource, inspect its instruction paths, select a qualified instruction, and start **Simulate hypothetical flag words**. Step applies a temporary local mask; Run uses the same operation and stops at existing boundaries or temporary breakpoints. The trace shows the AND/OR masks, resulting value and known bits. Back restores the complete preceding state. No imported, authored or live values change.
+
+`4C 35` computes `(local & 0xFF7F) | 0x020A`; `4C 36` computes `local | 0x028A`. Both advance two bytes. Unknown inputs stay unknown except forced bits: bits 1, 3 and 9 become set, and bit 7 becomes clear/set respectively. Global/context flags and the hypothetical wait accumulator remain unchanged. Extended actor contexts and all other field-state suboperations remain unsupported; host and scheduler effects are not inferred.
+
+Decoder reports retain the encoded bytes and add literal mask metadata for these two selectors. The sandbox validates that metadata and the exact continuation before applying effects. This changes the hash of reports containing either selector: previously saved scenarios with an older report hash must be recreated after fresh inspection. Scenario v1/v2 schemas are unchanged; ordinary instruction recipes replay these operations, and v2 bit assumptions still replay separately.
+
+## Evidence and Remaining Validation
+
+The intended Andrew reference pin remains `d6e64c68ede25813d35db20980da82a1a025549b`, in `crates/engine-vm/src/field/step/menu_ctrl/nibble_3_4.rs`. Its local flag formulas agree with fresh private Retail PROT[897] evidence (load `0x801CE818`, SHA-256 `216f846db5ab085a295cef4064747380a06c995caa3e1b2773e78a1d349f126b`). Outer nibble-3 and inner selector-5/6 table pointers reach handlers `0x801E0F84` and `0x801E0F9C`. Each loads/stores a halfword at context `+0x62`, advances PC by two, applies literal masks, and stores in the shared-return jump delay slot. Tests retain only structural assertions; no disc payload is committed.
+
+On 2026-10-07, 13 Python tests passed, including the actual private Retail handler check and existing branch decoder tests. Six Node suites passed. New coverage checks both operations against independent bit operations for every possible 16-bit word, partial unknown state, unchanged other banks/wait state, malformed metadata and extended context refusal, exact Back, breakpoint stops, v1/v2 scenario replay, changed-report refusal, and a mounted UI trace with stale/disposal guards. The first decoder test expectation omitted the existing `encoded_hex` operand; that expectation was corrected before the passing run. `git diff --check` passed.
+
+Actual editor browser workflow and visual inspection for this addition are still pending. No game, runtime attachment, native Build, installation or disc export ran. This is focused offline test evidence, not gameplay acceptance or full VM completion. The full SDK goal remains active, with solo implementation continuing.

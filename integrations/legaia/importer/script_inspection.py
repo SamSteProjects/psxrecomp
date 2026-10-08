@@ -398,6 +398,13 @@ def _instruction(data: bytes, pc: int) -> dict:
         elif 0x30 <= sub <= 0x3F:
             size, mnemonic = 1, "FIELD_STATE_CONTROL"
             args = {"sub_op": sub, "can_yield": sub in (0x30, 0x31, 0x37)}
+            if sub in (0x35, 0x36):
+                # Retail PROT[897] 801E0F84/801E0F9C: LHU/SH ctx+62,
+                # PC+2, literal AND/OR, including the jump delay-slot store.
+                args.update(flag_word="actor_local_flags",
+                            and_mask=0xFF7F if sub == 0x35 else 0xFFFF,
+                            or_mask=0x020A if sub == 0x35 else 0x028A,
+                            runtime_effect="not_evaluated")
         elif sub == 0x49:
             # Retail outer4 advances adjusted PC6 before sub9. All
             # flag-selected field4A/global-delta writes and ramp exits

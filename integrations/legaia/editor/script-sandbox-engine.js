@@ -50,6 +50,13 @@ export function createScriptFlagSandbox(report){
       else next=row.pc+2;
      }else{b.value=(op==='SET'?b.value|flag:b.value&~flag)>>>0;b.known=(b.known|flag)>>>0;next=row.pc+2;}
     }
+   }else if(row.mnemonic==='FIELD_STATE_CONTROL'){
+    const andMask=a?.sub_op===0x35?0xff7f:0xffff,orMask=a?.sub_op===0x35?0x020a:0x028a;
+    if(row.opcode!==0x4c||row.length!==2||![0x35,0x36].includes(a?.sub_op)||a.can_yield!==false||a.flag_word!=='actor_local_flags'||a.and_mask!==andMask||a.or_mask!==orMask||a.runtime_effect!=='not_evaluated'||row.successors.length!==1||row.successors[0].pc!==row.pc+2||row.successors[0].condition!=='encoded_continuation'){status='unsupported';reason='Field-state instruction is outside the qualified local flag masks.';}
+    else{
+     const b=state.banks.local;effect={operation:'local_flag_mask',bank:'local',and_mask:andMask,or_mask:orMask};
+     b.value=((b.value&andMask)|orMask)&65535;b.known=(b.known|(~andMask&65535)|orMask)&65535;next=row.pc+2;
+    }
    }else if(row.mnemonic==='WAIT_FRAMES'){
     const target=a?.duration_ticks;
     if(row.opcode!==0x4a||row.length!==3||!Number.isSafeInteger(target)||target<0||target>32767||a.timing_units!=='host_frame_delta_ticks'||a.accumulator_width!=='signed16'||row.successors.length!==1||row.successors[0].pc!==row.pc+3||row.successors[0].condition!=='encoded_continuation'){status='unsupported';reason='Wait instruction metadata or target exceeds qualified signed16 timing semantics.';}

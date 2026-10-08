@@ -1,5 +1,9 @@
 # Legaia SDK validation plan
 
+## Local Flag Mask Simulation (2026-10-07)
+
+Focused offline checks passed: `test_script_local_masks.py` plus existing branch decode (13 Python tests with private Retail evidence enabled), and six sandbox Node suites including `test_script_local_masks.mjs`. Exhaustive 16-bit known inputs, partial unknown state, unchanged other banks/wait, metadata/context refusal, Back, breakpoints, v1/v2 replay and mounted UI trace are covered. Actual editor browser/visual workflow remains pending; gameplay is deferred. See [scope and evidence](legaia-script-local-masks.md). No native Build or game ran.
+
 ## NPC-owned script effect colors - offline checks passed (2026-10-06)
 
 **Select an authored NPC -> Edit NPC effect colors** now exposes its qualified retail donor's EFFECT sub0 RGB bytes and signed intensity. Own color stages a complete typed target; unchecking restores the donor span. Retail and Current values remain separate from local input. Fresh Review verifies exact five-byte native audits and Apply stores NPC-owned edits in one history step. Invalid input blocks Review, changed drafts withdraw proposals, Discard restores Current, and source changes withdraw the controls until the dialog is reopened. No color-space, host rendering, runtime effect, actor context or scheduling semantics are inferred.
