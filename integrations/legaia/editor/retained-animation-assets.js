@@ -64,9 +64,9 @@ export function retainedAnimationAssignedTarget(record,state,entityId){
   const row=retainedAnimationAssignedActors(record,state).find(row=>row.id===entityId);
   if(!row)throw new Error('Choose a verified authored initial assignment for this clip.');return row.id;
 }
-export function openRetainedAnimationAsset({record,getState,busy,onPreview,onModel,onActor,onEdit=null,onGlb=null,onLifecycle=null,onAssign=null,onName=null,getAssignmentTarget=()=>null,onError=()=>{}}){
+export function openRetainedAnimationAsset({record,getState,busy,onPreview,onModel,onActor,onEdit=null,onGlb=null,onLifecycle=null,onAssign=null,onName=null,onNameApplied=null,getAssignmentTarget=()=>null,onError=()=>{}}){
   if(busy())return;
-  const data=decodeRetainedAnimationAsset(record),initial=getState(),key=initial.scene_preview_source_key,scene=initial.scene?.id,path=initial.project?.path;
+  const data=decodeRetainedAnimationAsset(record),initial=getState(),key=initial.scene_preview_source_key,scene=initial.scene?.id,path=initial.project?.path,mode=initial.project?.mode;
   if(!hash(key)||scene!=='scene://'+data.semantic_id.split('/')[2])throw new Error('Retained clip requires its current scene source.');
   const dialog=document.createElement('dialog');dialog.id='retained-animation-asset-dialog';dialog.className='project-dialog';
   const add=(tag,text,parent=dialog)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;parent.append(node);return node;};
@@ -110,7 +110,15 @@ export function openRetainedAnimationAsset({record,getState,busy,onPreview,onMod
   const validName=()=>{const value=nameField.value;return value.trim().length>=1&&value.trim().length<=80&&!/[\u0000-\u001f\u007f\ud800-\udfff]/u.test(value);};
   function refreshName(){const old=initial.animation_labels?.[data.semantic_id]?.name;nameField.disabled=busy()||pending||!current();saveName.disabled=nameField.disabled||!validName()||nameField.value.trim()===old;clearName.disabled=nameField.disabled||old===undefined;}
   nameField.oninput=()=>refreshName();
-  async function applyName(clear){try{guard();if(names.hidden||!clear&&!validName())throw Error('Enter a clip name with 1–80 characters without controls.');pending=true;refreshName();const request={type:clear?'clear_animation_label':'set_animation_label',asset_id:data.semantic_id,expected_source_key:key,expected_labels_key:initial.animation_labels_key,...(clear?{}:{name:nameField.value.trim()})};if(await onName(request))dialog.close();}catch(e){if(dialog.open)status.textContent=e.message;onError(e);}finally{pending=false;if(dialog.open)refreshName();}}
+  async function applyName(clear){
+    try{
+      guard();if(names.hidden||!clear&&!validName())throw Error('Enter a clip name with 1–80 characters without controls.');pending=true;refreshName();
+      const request={type:clear?'clear_animation_label':'set_animation_label',asset_id:data.semantic_id,expected_source_key:key,expected_labels_key:initial.animation_labels_key,...(clear?{}:{name:nameField.value.trim()})};
+      if(!await onName(request))return;
+      const state=getState(),handoff=dialog.open&&state.project?.path===path&&state.project?.mode===mode&&state.scene?.id===scene&&state.scene_preview_source_key===key;
+      dialog.close();if(handoff&&typeof onNameApplied==='function')await onNameApplied(structuredClone(request));
+    }catch(e){if(dialog.open)status.textContent=e.message;onError(e);}finally{pending=false;if(dialog.open)refreshName();}
+  }
   saveName.onclick=()=>applyName(false);clearName.onclick=()=>applyName(true);
   const details=add('details');add('summary','Retained source and provenance',details);add('pre',JSON.stringify(data,null,2),details).className='diagnostic-detail';
   let controller=null,pending=false;
