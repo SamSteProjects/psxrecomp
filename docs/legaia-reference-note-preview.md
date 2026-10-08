@@ -26,3 +26,5 @@ Actual private Retail carrier0877 loop and one-pass workflows passed Retail/Curr
 The final expanded browser pass also verified reviewed center+12 and encoded shift255 (signed −1 cent) proposals for both loop and one-pass samples, exact displayed reference registers, enabled preview and Discard/reset without state changes. Passing extended evidence is in `local-output/sdk-20260909/audio-note-pitch-20261007/qualified-tuning/`.
 
 Evidence is retained in `local-output/sdk-20260909/audio-note-pitch-20261007/`, including complete WAV/PCM readback, browser captures and source-preservation proof. Full audio driver/mix and manual gameplay verification remain unfinished; the full SDK goal remains active.
+
+Current sequence notes can now open an explicitly selected encoded tone candidate with Current selected and the source key prefilled; see [Current Note Candidate Audition](legaia-note-candidate-audition.md). The base rate remains a separate explicit choice.
