@@ -1,5 +1,5 @@
 from hashlib import sha256
-import json,unittest
+import json,struct,unittest
 from unittest.mock import patch
 from importer.model_json import export_shape_json,import_shape_json,scale_shape_vertices_axes
 from importer.core import ImportError
@@ -12,6 +12,25 @@ from test_model_primitive_workflow import ASSET,http_server
 class VertexAxisScalingTests(unittest.TestCase):
     def fixture(self):
         h=fixtures.ModelPrimitiveProjectWorkflow();h.setUp();self.addCleanup(h.doCleanups);return h,h.project
+
+    def test_explicit_pivot_literal_bytes_history_and_atomic_refusal(self):
+        h,p=self.fixture();key=sha256(h.source).hexdigest();before=h.snapshot()
+        expected=bytearray(h.source);vertex_offset=12+struct.unpack_from('<I',h.source,12)[0]
+        struct.pack_into('<hhh',expected,vertex_offset,-5,-5,-8)
+        struct.pack_into('<hhh',expected,vertex_offset+8,10,-5,-8)
+        candidate,report=p._prepare_model_object(ASSET,0,'vertex_axis_scaling',dict(indices=[0,1],percents=[150,75,125],pivot=[10,-20,30]),key)
+        self.assertEqual(candidate,bytes(expected));self.assertEqual(h.snapshot(),before)
+        from importer.model_json import scale_shape_vertices
+        uniform=bytearray(h.source);struct.pack_into('<hhh',uniform,vertex_offset,-5,10,-15);struct.pack_into('<hhh',uniform,vertex_offset+8,10,10,-15)
+        self.assertEqual(scale_shape_vertices(h.source,h.source,key,0,[0,1],150,[10,-20,30]),bytes(uniform))
+        for pivot in [[],[0],[0,0],[0,0,0,0],[True,0,0],[0.5,0,0],[32768,0,0],[-32769,0,0],['0',0,0],None]:
+            with self.assertRaises(ImportError):scale_shape_vertices_axes(h.source,h.source,key,0,[0,1],[150,75,125],pivot)
+            self.assertEqual(h.snapshot(),before)
+        with self.assertRaises(ImportError):scale_shape_vertices_axes(h.source,h.source,key,0,[0,1],[1000,1000,1000],[-32768,32767,0])
+        self.assertEqual(h.snapshot(),before)
+        p.scale_model_vertices_axes(ASSET,0,[0,1],[150,75,125],[10,-20,30],key)
+        self.assertEqual(h.effective(),bytes(expected));p.undo();self.assertEqual(h.effective(),h.source);p.redo();self.assertEqual(h.effective(),bytes(expected))
+        unchanged=h.snapshot();p.scale_model_vertices_axes(ASSET,0,[0,1],[100,100,100],[-32768,32767,0],sha256(expected).hexdigest());self.assertEqual(h.snapshot(),unchanged)
 
     def test_native_subset_rounding_history_noop_and_rejections(self):
         h,p=self.fixture();before=h.snapshot();doc=json.loads(export_shape_json(h.source))
@@ -36,7 +55,7 @@ class VertexAxisScalingTests(unittest.TestCase):
         with self.assertRaisesRegex(ImportError,'signed16'):scale_shape_vertices_axes(overflow,overflow,sha256(overflow).hexdigest(),0,[0],[200,100,100],'origin')
 
     def test_http_review_scene_and_exact_apply(self):
-        h,p=self.fixture();body=dict(asset_id=ASSET,object_index=0,indices=[0,1],percents=[150,75,125],pivot='origin',expected_sha256=sha256(h.source).hexdigest());before=h.snapshot()
+        h,p=self.fixture();body=dict(asset_id=ASSET,object_index=0,indices=[0,1],percents=[150,75,125],pivot=[10,-20,30],expected_sha256=sha256(h.source).hexdigest());before=h.snapshot()
         with http_server(p) as (server,post),patch.object(server,'model_preview',side_effect=lambda asset,prepared=None,**kwargs:prepared):
             review=dict(asset_id=ASSET,object_index=0,operation='vertex_axis_scaling',values={k:body[k] for k in ('indices','percents','pivot')},expected_sha256=body['expected_sha256'])
             status,report=post('/api/model-object-preview',review);self.assertEqual(status,200);self.assertEqual(report['values'],review['values']);self.assertEqual(h.snapshot(),before)
@@ -47,7 +66,7 @@ class VertexAxisScalingTests(unittest.TestCase):
     def test_allocated_rows_keep_ownership(self):
         h=allocations.VectorAllocationProjectTests();self.addCleanup(h.doCleanups);p,asset=h.fixture();source=model_vector_allocation.source(p,asset,'a'*64);requests=h.requests();report=model_vector_allocation.review(p,asset,requests,source['effective_sha256'],'a'*64)
         p.apply_model_vector_allocations(asset,requests,source['effective_sha256'],'a'*64,report['proposed_sha256']);current=model_vector_allocation.source(p,asset,'a'*64)
-        p.scale_model_vertices_axes(asset,0,[0,source['objects'][0]['vertex_count']],[150,75,125],'center',current['effective_sha256']);after=model_vector_allocation.source(p,asset,'a'*64)
+        p.scale_model_vertices_axes(asset,0,[0,source['objects'][0]['vertex_count']],[150,75,125],[10,-20,30],current['effective_sha256']);after=model_vector_allocation.source(p,asset,'a'*64)
         self.assertEqual(after['allocated_vector_count'],current['allocated_vector_count']);self.assertEqual(after['objects'],current['objects']);self.assertEqual(after['retail_preview'],current['retail_preview']);p.undo();self.assertEqual(model_vector_allocation.source(p,asset,'a'*64)['effective_sha256'],current['effective_sha256']);p.redo();self.assertEqual(model_vector_allocation.source(p,asset,'a'*64)['effective_sha256'],after['effective_sha256'])
 
     def test_axis_independence_uniform_equivalence_and_array_contract(self):

@@ -141,23 +141,26 @@ def rotate_shape_vertices(original: bytes, effective: bytes, expected_sha256: st
 
 
 def scale_shape_vertices(original: bytes, effective: bytes, expected_sha256: str,
-                         object_index: int, indices: list[int], percent: int, pivot: str) -> bytes:
+                         object_index: int, indices: list[int], percent: int, pivot: str | list[int]) -> bytes:
     """Uniform selected-row scale; exact half-unit pivot and signed word rounding."""
-    if type(percent) is not int or not 1 <= percent <= 1000 or pivot not in ('origin','center'):
-        raise ImportError('Vertex group scale requires integer percent1..1000 and origin or center pivot')
+    if type(percent) is not int or not 1 <= percent <= 1000:
+        raise ImportError('Vertex group scale requires integer percent1..1000')
     return scale_shape_vertices_axes(original,effective,expected_sha256,object_index,indices,[percent]*3,pivot)
 
 
 def scale_shape_vertices_axes(original: bytes, effective: bytes, expected_sha256: str,
-                              object_index: int, indices: list[int], percents: list[int], pivot: str) -> bytes:
+                              object_index: int, indices: list[int], percents: list[int], pivot: str | list[int]) -> bytes:
     """Independent positive axis scales; preserve layout, topology and normals."""
+    explicit_pivot=(isinstance(pivot,list) and len(pivot)==3 and
+                    all(type(value) is int and -32768 <= value <= 32767 for value in pivot))
+    named_pivot=isinstance(pivot,str) and pivot in ('origin','center')
     if (not isinstance(percents,list) or len(percents)!=3 or
             any(type(value) is not int or not 1 <= value <= 1000 for value in percents) or
-            pivot not in ('origin','center')):
-        raise ImportError('Vertex axis scale requires three integer percentages1..1000 and origin or center pivot')
+            not (named_pivot or explicit_pivot)):
+        raise ImportError('Vertex axis scale requires three integer percentages1..1000 and origin, center or signed16 XYZ pivot')
     qualified=translate_shape_vertices(original,effective,expected_sha256,object_index,indices,[0,0,0])
     document=json.loads(export_shape_json(qualified));vertices=document['objects'][object_index]['vertices']
-    twice_pivot=[0,0,0] if pivot=='origin' else [min(vertices[i][a] for i in indices)+max(vertices[i][a] for i in indices) for a in range(3)]
+    twice_pivot=[value*2 for value in pivot] if isinstance(pivot,list) else [0,0,0] if pivot=='origin' else [min(vertices[i][a] for i in indices)+max(vertices[i][a] for i in indices) for a in range(3)]
     for i in indices:
         scaled=[]
         for a,value in enumerate(vertices[i]):

@@ -3,7 +3,7 @@
 Move model geometry now offers Uniform (the default) or Per axis scaling for
 selected vertex groups. Per axis accepts independent X/Y/Z integer percentages
 from 1 through 1000. A value of 100 leaves that axis unchanged. The pivot is the
-object-local origin or the selected group's bounds center. Source Y points down.
+object-local origin, the selected group's bounds center or explicit source XYZ. Source Y points down.
 
 The exact half-unit center is retained through calculation. Each result rounds
 to the nearest signed16 native word, halfway away from zero. Overflow on any
@@ -59,3 +59,15 @@ setup failure is retained separately. Private evidence is under
 No runtime source change, game launch, runtime attachment, mod install, full-disc
 export or full test campaign occurred. Native readback proves delivery of bytes;
 gameplay appearance remains deferred. Development stays solo; the SDK goal is active.
+
+## Explicit Source Scale Pivot
+
+In **Move model geometry**, select **Selected vertex group**, enter the indices and choose Uniform or Per axis scaling. Under **Pivot**, choose **Explicit source XYZ** and enter Pivot X/Y/Z as signed16 integers (-32768 through 32767). These are object-local source coordinates with positive Y down, rather than scene or actor coordinates. Choose **Stage group scale**, inspect Draft/Current/Retail and the single/all-instance scene comparison, then Apply or Discard. Editing the group, percentages or pivot is locked while a draft is pending. The original origin/center choices and Uniform default remain available.
+
+The existing `pivot` request field accepts either `origin`, `center` or an exact three-integer XYZ array. No new command, project schema or runtime scale property is introduced. Uniform and per-axis scaling share the same native word arithmetic, retain half-unit bounds-center precision and round nearest with ties away from zero. Selected coordinate overflow, malformed/boolean/fractional/out-of-range pivots and stale hashes reject before publishing a replacement. Only selected vertex XYZ words change; normal words, padding, topology, material data, other objects, allocated row ownership and imported provenance remain fixed. Scaling a group does not recalculate normals or alter actor placement.
+
+Offline checks passed on 2026-10-08: eight focused Python cases, two Node suites, JavaScript syntax and Python AST checks passed. New coverage includes independently literal expected uniform/per-axis bytes around (10,-20,30), untouched bytes, invalid pivot arrays and overflow refusal, extreme-pivot 100% no-op, allocation ownership, HTTP source/scene Review/Apply and history. The movement Node suite retains its existing origin/center behavior checks.
+
+A private native Town01 editor workflow used model0000, object0, vertices0/1/2, percentages150/75/125 and explicit pivot (10,-20,30). Draft/Discard, invalid percentage refusal, source layers, single/all-instance scene Review/Return, one Apply, Undo/Redo and Save/independent Open passed. The browser produced no page errors or game-launch requests; desktop and 400 px captures were inspected without horizontal overflow. Independent source-table arithmetic matched the entire candidate model, and all thirteen changed byte offsets belonged to the selected XYZ spans. Normal/padding/topology bytes stayed exact. A private data-package Build passed complete containing-section readback from both directory and ZIP, with package SHA-256 `9dac9f73697fa86b56ea4f3ddd0f56eb3708f24829c5def5c013f915dc28f21b`. Final Undo/Save restored the original project document, model and imported evidence with one legitimate Redo entry. Source/reference assets were not modified.
+
+Evidence: `local-output/sdk-20260909/vertex-explicit-scale-pivot-20261008/` (`browser.json`, `native-proof.json`, `cleanup.json`, screenshots and private package). The initial browser locator matched both the pivot selector and its new coordinate controls; changing it to an exact selector preceded the passing run. No game, runtime attachment, native recompilation, installation or disc export ran. Lighting/appearance in gameplay remains deferred; the full SDK goal remains active and solo work continues.
