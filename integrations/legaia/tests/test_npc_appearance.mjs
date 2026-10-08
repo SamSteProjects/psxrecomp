@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {decodeNpcAppearanceSource,decodeNpcAppearanceReview,decodeNpcAppearanceScene} from '../editor/npc-appearance.js';
+import {decodeNpcAppearanceSource,decodeNpcAppearanceReview,decodeNpcAppearanceScene,npcAppearanceChoices} from '../editor/npc-appearance.js';
 const id='authored-actor://00000000-0000-4000-8000-000000000001',script='scene://town01/actors/man-p1/0012',witness='scene://town01/actors/man-p1/0040',key='a'.repeat(64),draft={scene_id:'scene://town01',donor_entity_id:script,name:'Resident',position:{x:128,z:256},dialogue:{donor_entity_id:script,runs:{'script://town01/actors/man-p1/0012/dialogue/0048/run/0049':'Hello'}}},state={actor_drafts:{[id]:draft},scene:{id:draft.scene_id,entities:[{id:script},{id:witness}]},project_copy_source_key:key};
 const source={schema_version:'legaia.npc-appearance-source.v1',entity_id:id,scene_id:draft.scene_id,project_source_key:key,draft,options:{supported:true,source:{decoded_man_sha256:'b'.repeat(64)},options:[{donor_entity_id:witness,asset_id:'asset://town01/models/scene-tmd/0092',animation_id:9,label:'Witness'}]},gameplay_verified:false,runtime_binding:'not_asserted'};
 assert.deepEqual(decodeNpcAppearanceSource(source,id,state),source);
@@ -15,3 +15,6 @@ const target={...row,evidence:{...row.evidence,appearance:'independent appearanc
 assert.deepEqual(decodeNpcAppearanceScene(response,review,state,base,source),scene);
 for(const mutate of [v=>v.scene.entities[0].position.x++,v=>v.scene.entities[0].donor_entity_id=witness,v=>v.scene.entities[1].kind='changed',v=>v.scene.entities[0].asset_id='wrong',v=>v.scene_preview_source_key='f'.repeat(64),v=>v.scene.assets.push({...v.scene.assets[0]})]){const v=structuredClone(response);mutate(v);assert.throws(()=>decodeNpcAppearanceScene(v,review,state,base,source));}
 console.log('Detached appearance scene identity, retained placement/script and unrelated geometry guards pass.');
+
+const choices=npcAppearanceChoices(source,'asset://town01/models/scene-tmd/0092');assert.equal(choices.length,1);choices[0].label='Detached';assert.equal(source.options.options[0].label,'Witness');assert.deepEqual(npcAppearanceChoices(source,'asset://town01/models/scene-tmd/unknown'),[]);assert.deepEqual(npcAppearanceChoices(source),source.options.options);for(const id of [42,'scene://town01',true])assert.throws(()=>npcAppearanceChoices(source,id));
+console.log('Model-filtered NPC witnesses retain detached native pairs and explicit unknown/invalid model refusal.');
