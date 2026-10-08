@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {decodeNpcCurrentScript,npcCurrentMovementSelection,npcCurrentSystemSelection,npcCurrentOperandSelection,npcCurrentBranchSelection,npcCurrentDialogueSelection} from '../editor/npc-current-script.js';
+import {decodeNpcCurrentScript,npcCurrentMovementSelection,npcCurrentSystemSelection,npcCurrentOperandSelection,npcCurrentBranchSelection,npcCurrentDialogueSelection,npcCurrentEffectSelection} from '../editor/npc-current-script.js';
 assert(process.argv[2],'Fresh Retail Current and movement qualification required');
 const f=JSON.parse(fs.readFileSync(process.argv[2],'utf8')),before=structuredClone(f),current=await decodeNpcCurrentScript(f.report,f.entity_id,f.state);
 const selected=npcCurrentMovementSelection(current,f.movement,35,f.state);assert.equal(selected.entity_id,f.entity_id);assert.equal(selected.movement_id,'script://town01/actors/man-p1/0011/movement/0023');assert.deepEqual(selected.values,{x:64,z:16384,move_id:13});
@@ -37,3 +37,10 @@ if(process.argv[4]){const m=JSON.parse(fs.readFileSync(process.argv[4],'utf8')),
 console.log('Current branch words, source glyph spans and signed model selectors qualify exact ownership, bytes and selection.');
 
 if(process.argv[5]){const menu=JSON.parse(fs.readFileSync(process.argv[5],'utf8')),report=await decodeNpcCurrentScript(menu.report,menu.entity_id,menu.state),row=menu.dialogue.options.runs.find(r=>r.kind==='menu_label');assert(npcCurrentDialogueSelection(report,menu.dialogue,row.menu_pc,menu.state).run_ids.includes(row.semantic_id));}
+
+assert.throws(()=>npcCurrentEffectSelection(current,f.effect_colors,35,f.state));
+if(process.argv[6]){const color=JSON.parse(fs.readFileSync(process.argv[6],'utf8')),report=await decodeNpcCurrentScript(color.report,color.entity_id,color.state),row=color.effect_colors.options.targets[0];assert.deepEqual(npcCurrentEffectSelection(report,color.effect_colors,row.pc,color.state).values,row.effective_values);
+ for(const change of [s=>s.project.mode='live',s=>s.capabilities.actor_effect_color_authoring=false,s=>s.project_copy_source_key='a'.repeat(64)]){const state=structuredClone(color.state);change(state);assert.throws(()=>npcCurrentEffectSelection(report,color.effect_colors,row.pc,state));}
+ for(const change of [s=>s.options.targets[0].source_record_sha256='a'.repeat(64),s=>s.options.targets[0].decoded_byte_offset++,s=>s.options.targets[0].effective_values.red=(s.options.targets[0].effective_values.red+1)%256]){const source=structuredClone(color.effect_colors);change(source);assert.throws(()=>npcCurrentEffectSelection(report,source,row.pc,color.state));}
+ const forged=structuredClone(report);forged.inspection.instructions.find(r=>r.pc===row.pc).raw_hex='00'.repeat(forged.inspection.instructions.find(r=>r.pc===row.pc).length);assert.throws(()=>npcCurrentEffectSelection(forged,color.effect_colors,row.pc,color.state));}
+console.log('Current RGB/intensity editing binds native opcode/selector/dispatch, exact span, source owner and effective signed operands.');

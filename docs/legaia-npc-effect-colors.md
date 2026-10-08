@@ -1,5 +1,7 @@
 # NPC-owned script effect colors
 
+Current inspection now opens the reviewed color editor at a selected qualified instruction and returns to fresh Current inspection after Apply or cancellation. The2026-10-08 private Town0b workflow qualified exact five-byte delivery, history/persistence and wide/400 px controls; see [Current NPC Effect Color Editing](legaia-npc-current-script.md) for scope, evidence and remaining rendering/gameplay limits.
+
 ## NPC-owned script effect colors - offline checks passed (2026-10-06)
 
 **Select an authored NPC -> Edit NPC effect colors** now exposes its qualified retail donor's EFFECT sub0 RGB bytes and signed intensity. Own color stages a complete typed target; unchecking restores the donor span. Retail and Current values remain separate from local input. Fresh Review verifies exact five-byte native audits and Apply stores NPC-owned edits in one history step. Invalid input blocks Review, changed drafts withdraw proposals, Discard restores Current, and source changes withdraw the controls until the dialog is reopened. No color-space, host rendering, runtime effect, actor context or scheduling semantics are inferred.

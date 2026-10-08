@@ -42,10 +42,11 @@ class CurrentTargets(unittest.TestCase):
                 from sdk.npc_branches import source as branches_source
                 from sdk.npc_dialogue import source as dialogue_source
                 from sdk.npc_model_selectors import source as model_source
+                from sdk.npc_effect_colors import source as color_source
                 server=EditorServer(('127.0.0.1',0),p,runtime_port=65533)
                 try:state=server.state()
                 finally:server.server_close()
-                (root/'retail.json').write_text(json.dumps(dict(entity_id=identity,state=state,report=report,movement=source(p,identity),system_flags=system_source(p,identity),waits=wait_source(p,identity),facing=facing_source(p,identity),flags=flags_source(p,identity),branches=branches_source(p,identity),dialogue=dialogue_source(p,identity),model_selectors=model_source(p,identity))),encoding='utf-8')
+                (root/'retail.json').write_text(json.dumps(dict(entity_id=identity,state=state,report=report,movement=source(p,identity),system_flags=system_source(p,identity),waits=wait_source(p,identity),facing=facing_source(p,identity),flags=flags_source(p,identity),branches=branches_source(p,identity),dialogue=dialogue_source(p,identity),model_selectors=model_source(p,identity),effect_colors=color_source(p,identity))),encoding='utf-8')
 
 
 if __name__=='__main__':unittest.main()
