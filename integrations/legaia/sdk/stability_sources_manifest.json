@@ -1,0 +1,49 @@
+{
+  "schema_version": "legaia.stability-source-manifest.v1",
+  "basis_revision": "6f51eaaeee47b305bc4e12b8c7a892be90043348",
+  "execution_evidence_date": "2026-10-04",
+  "release_reference_revision": "3ac7d410bf3da25f64a1e013ff8a99f7d3c694fa",
+  "comparison_receipt_sha256": "4c89199551af9db7fe7f3e69c8bbfbb8b79b853795c55fd9a1e112e17bd7fa84",
+  "files": [
+    {
+      "path": "runtime/src/main.cpp",
+      "category": "source_sha256",
+      "expected_sha256": "815585896574dbb67b9a1b135eee47e3dc0245f114b70c747b0b4152c0163904"
+    },
+    {
+      "path": "runtime/src/recomp_audio_drc.h",
+      "category": "source_sha256",
+      "expected_sha256": "8ae350015a3ce1fe38eeb1718e4ed67f7f251274f32a7243b17a19bc5a40c5b9"
+    },
+    {
+      "path": "runtime/psx_static_overlay_parts.cmake",
+      "category": "source_sha256",
+      "expected_sha256": "a4e8a287dbc9c1fd416d2189bedee923ca6fcc3556e09e76886f9457028f551b"
+    },
+    {
+      "path": "runtime/src/overlay_loader.c",
+      "category": "source_sha256",
+      "expected_sha256": "fccb080e7368129db734460a0d58845091dbe968639ea3f5f9cef336de156653"
+    },
+    {
+      "path": "tools/compile_overlays.py",
+      "category": "source_sha256",
+      "expected_sha256": "84ede1f20f434a15270d0432dea217243b762a404b3713ef97bb49be91ab7f0f"
+    },
+    {
+      "path": "tools/tests/test_static_overlay_build.py",
+      "category": "fixture_sha256",
+      "expected_sha256": "29321755b476364acb701f1f3b3aa91c61d79f6fe8db5263c58d33e6835ab7bc"
+    },
+    {
+      "path": "runtime/tests/test_overlay_restore_runtime.py",
+      "category": "fixture_sha256",
+      "expected_sha256": "41fb3f69a0bbaf14fb0e20a1d9b893569c2b9966c40c83a94d069739e6207c20"
+    },
+    {
+      "path": "runtime/tests/test_audio_output_health.py",
+      "category": "fixture_sha256",
+      "expected_sha256": "ee9154ac91f3bc69ebcbd6956b92d14d46c55bfef855ae36a5be43046d21be8f"
+    }
+  ]
+}

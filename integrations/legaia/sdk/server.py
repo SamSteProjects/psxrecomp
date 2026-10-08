@@ -787,6 +787,13 @@ class EditorHandler(BaseHTTPRequestHandler):
             if route == "/api/run/status":
                 self._json(200, {"run": self.server.runs.status()})
                 return
+            if route == "/api/sdk-stability-sources":
+                from .stability_sources import audit_stability_sources
+                try:
+                    self._json(200, audit_stability_sources())
+                except (ValueError, OSError):
+                    self._json(503, {"error": "Recorded SDK stability manifest is unavailable or invalid."})
+                return
             if route == "/api/state":
                 self._json(200, self.server.state())
                 return
@@ -955,6 +962,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-placement-users.js": ("model-placement-users.js", "text/javascript"),
                  "/animation-placement-users.js": ("animation-placement-users.js", "text/javascript"),
                  "/animation-contributions.js": ("animation-contributions.js", "text/javascript"),
+                 "/sdk-stability-sources.js": ("sdk-stability-sources.js", "text/javascript"),
                  "/command-history.js": ("command-history.js", "text/javascript"),
                  "/project-changes.js": ("project-changes.js", "text/javascript"),
                  "/preset-files.js": ("preset-files.js", "text/javascript"),

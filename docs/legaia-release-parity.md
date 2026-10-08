@@ -1,5 +1,11 @@
 # Legaia stability and release parity
 
+## SDK Source Inclusion Diagnostic — 2026-10-07
+
+The current checkout still matches all eight recorded source/fixture hashes from the October 6 inclusion receipt and October 4 execution checkpoint. This fresh comparison is now available through SDK Diagnostics and a read-only GET endpoint, with a downloadable timestamped metadata receipt. See [Check Recorded SDK Stability Source Inclusion](legaia-stability-source-diagnostic.md). No missing justified patch or target-source drift was found in this inspected set.
+
+Three Python cases, Node report qualification and actual browser/independent eight-file SHA-256 readback passed. Source checking did not execute runtime fixtures or establish current binary/sibling-release identity. No runtime implementation changed or game ran. Existing startup/audio, FMV, field/cross-scene restore and other manual acceptance boundaries remain open. Private evidence: local-output/sdk-20260909/stability-source-diagnostic-20261007/qualified/.
+
 ## Source inclusion refresh - 2026-10-06
 
 At SDK revision `6f51eaaeee47b305bc4e12b8c7a892be90043348`, all five retained runtime/precompile source hashes and all three stability fixture hashes still match the accepted October 4 evidence. This is a read-only inclusion comparison, not fresh execution or complete release/runtime equivalence. The local release reference remains recorded as `3ac7d410bf3da25f64a1e013ff8a99f7d3c694fa`; no fresh sibling source HEAD is asserted.
