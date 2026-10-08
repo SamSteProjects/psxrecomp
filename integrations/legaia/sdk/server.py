@@ -838,6 +838,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-range.js": ("animation-range.js", "text/javascript"),
                  "/project-settings.js": ("project-settings.js", "text/javascript"),
                  "/asset-reference-trace.js": ("asset-reference-trace.js", "text/javascript"),
+                 "/audio-sequence-replacement.js": ("audio-sequence-replacement.js", "text/javascript"),
                  "/asset-references.js": ("asset-references.js", "text/javascript"),
                  "/audio-sequence.js": ("audio-sequence.js", "text/javascript"),
                  "/audio-sequence-midi.js": ("audio-sequence-midi.js", "text/javascript"),
@@ -2203,6 +2204,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('MIDI removal Review requires exact Current receipt and freshness fields')
                     from .audio_midi_sources import review_removal
                     self._json(200,review_removal(self.server.project,**body));return
+                if route == '/api/audio-sequence-replacement-review':
+                    if set(body)!={'asset_id','expected_entry_sha256','expected_authoring_key','midi_base64'}:
+                        raise ProjectError('Replacement review requires exact source, freshness and upload fields')
+                    from .audio_sequence_replacement import review
+                    self._json(200,review(self.server.project,**body));return
                 if route == '/api/audio-sequence-midi-review':
                     if set(body)!={'asset_id','expected_entry_sha256','expected_authoring_key','midi_base64'}:
                         raise ProjectError('MIDI Review requires exact native source, freshness and upload fields')
