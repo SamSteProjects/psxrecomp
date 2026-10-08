@@ -3303,6 +3303,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route=='/api/npc-script-reset-review':
                     from .npc_script_reset import review
                     self._json(200,review(self.server.project,body));return
+                if route=='/api/npc-animation-operands-source':
+                    from .npc_animation_operands import source
+                    if set(body)!={'entity_id'}:raise ProjectError('NPC animation source requires identity only')
+                    self._json(200,source(self.server.project,body['entity_id']));return
+                if route=='/api/npc-animation-operands-review':
+                    from .npc_animation_operands import review
+                    self._json(200,review(self.server.project,body));return
                 if route=='/api/npc-effect-colors-source':
                     from .npc_effect_colors import source
                     if set(body)!={'entity_id'}:raise ProjectError('NPC effect color source requires identity only')

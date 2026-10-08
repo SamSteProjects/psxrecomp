@@ -41,6 +41,10 @@ def inspect(project, entity_id):
                     raise ProjectError('NPC effect preview overlaps another authored operand')
                 working[at] = after
         candidate = bytes(working)
+    if 'animation_operands' in draft:
+        from .script_animation_operands import context as animation_context, compose
+        adapter=animation_context(project,owner)
+        candidate,_=compose(adapter,context._man,candidate,draft['animation_operands']['entries'])
     if 'branches' in draft:
         candidate, _ = context.patch_composed(candidate, draft['branches']['entries'])
         decoded = context.inspect_owner(owner, candidate)

@@ -24,6 +24,8 @@ def capture(project,command):
     if set(command)!={'type','entity_id','name'} or command['type']!='create_npc_preset' or not isinstance(command['entity_id'],str) or command['entity_id'] not in project.actor_drafts or len(project.actor_templates)>=128:
         raise ProjectError('NPC capture requires an existing draft and space in the preset library')
     draft=deepcopy(project.actor_drafts[command['entity_id']]);project._validate_actor_draft(command['entity_id'],draft)
+    if 'animation_operands' in draft:
+        raise ProjectError('NPC animation argument preset transfer is pending; capture would omit owned edits')
     key=source_key(project)
     if 'transitions' in draft:
         from .npc_transitions import validate

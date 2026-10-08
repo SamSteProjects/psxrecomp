@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';import fs from 'node:fs';
 import {decodeNpcScriptResetSource,decodeNpcScriptResetReview} from '../editor/npc-script-reset.js';
-const id='authored-actor://fixture',key='a'.repeat(64),families=['dialogue','waits','movement','facing','flags','system_flags','branches','model_selectors','effect_colors','transitions'];
+const id='authored-actor://fixture',key='a'.repeat(64),families=['dialogue','waits','movement','facing','flags','system_flags','branches','model_selectors','effect_colors','transitions','animation_operands'];
 const draft={scene_id:'scene://fixture',donor_entity_id:'scene://fixture/actors/man-p1/0001',name:'NPC',position:{x:128,z:256},waits:{entries:{one:{duration_ticks:12}}},facing:{entries:{two:{sector:4}}}};
 const state={scene:{id:draft.scene_id},project_copy_source_key:key,actor_drafts:{[id]:draft}},scope={scope:'project_metadata',native_byte_preview:false,runtime_binding:'not_asserted',gameplay_verified:false};
 const source={schema_version:'legaia.npc-script-reset-source.v1',entity_id:id,scene_id:draft.scene_id,project_source_key:key,draft,families:families.map(f=>({id:f,owned_count:['waits','facing'].includes(f)?1:0})),...scope};
