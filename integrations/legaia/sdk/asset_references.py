@@ -163,7 +163,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
             if available:nodes[identifier]['available']=True
         else:nodes[identifier]=value
         if len(nodes)>16384:raise ProjectError('Asset reference node limit exceeded')
-    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None,allocated_evidence=None,retained_evidence=None,wav_evidence=None,current_wav_evidence=None,npc_script_evidence=None,npc_flag_evidence=None,midi_evidence=None):
+    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None,allocated_evidence=None,retained_evidence=None,wav_evidence=None,current_wav_evidence=None,npc_script_evidence=None,npc_flag_evidence=None,midi_evidence=None,current_midi_evidence=None):
         if source not in nodes or target not in nodes:raise ProjectError('Asset reference has an unavailable structural endpoint')
         value=dict(source_id=source,target_id=target,kind=kind,scene_id=scene,layer=layer,runtime_binding='not_asserted')
         if pc is not None:value['pc']=pc
@@ -191,6 +191,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
         if retained_evidence is not None:
             value['retained_capture_evidence']=deepcopy(retained_evidence)
             value['source_catalog_key']=catalog['source_key']
+        if current_midi_evidence is not None:value['current_midi_binding_evidence']=deepcopy(current_midi_evidence)
         if midi_evidence is not None:value['midi_input_evidence']=deepcopy(midi_evidence)
         if wav_evidence is not None:value['wav_input_evidence']=deepcopy(wav_evidence)
         if current_wav_evidence is not None:value['current_wav_binding_evidence']=deepcopy(current_wav_evidence)
@@ -294,6 +295,15 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
             proof={key:deepcopy(receipt[key]) for key in ('receipt_key','midi_sha256','source_scene_id','candidate_sequence_sha256')}
             proof.update(native_asset_id=target,disc_sha256=receipt['source_record']['disc_sha256'],entry_sha256=receipt['source_record']['entry_sha256'],sequence_sha256=receipt['source_record']['sequence_sha256'],relationship='historical_capture_target',input_usage='not_asserted')
             edge(target,identity,'retained_midi_sequence_input',scene,'authored',midi_evidence=proof)
+
+    for proof in audio_snapshot.midi_bindings():
+        if proof['binding_scene_id']!=scene:continue
+        native_id,midi_id=proof['native_asset_id'],proof['midi_asset_id'];native=audio_records.get(native_id)
+        if native is not None and native.get('source_record',{}).get('sha256')!=proof['binding']['source_record']['entry_sha256']:
+            raise ProjectError('Current MIDI replacement differs from its qualified native catalog entry')
+        node(native_id,'audio',scene,available=native is not None)
+        node(midi_id,'audio',scene,midi_inputs['assets'][midi_id]['name'])
+        edge(native_id,midi_id,'current_native_sequence_midi_binding',scene,'effective',current_midi_evidence=proof)
 
     for proof in audio_snapshot.bindings():
         if proof['binding_scene_id']!=scene:continue

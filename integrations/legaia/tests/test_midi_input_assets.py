@@ -32,7 +32,7 @@ class MidiAssets(unittest.TestCase):
         def check(expected):
             before=deepcopy((self.project._document(),self.project.undo_stack,self.project.redo_stack))
             value=inspect(self.project,identifier,source_key(self.project),include_midi=True)
-            self.assertEqual(value['schema_version'],'legaia.midi-input-inspection.v2')
+            self.assertEqual(value['schema_version'],'legaia.midi-input-inspection.v3')
             row=value['current_comparisons'][0];body,current,_,record,_=_current(self.project,self.identifier,self.entry_hash)
             start,size=_layout(body,current,record)
             self.assertEqual(row['current_entry_sha256'],sha256(current).hexdigest())
@@ -56,6 +56,42 @@ class MidiAssets(unittest.TestCase):
         self.assertNotEqual(row['current_sequence_offset'],receipt['source_record']['sequence_offset'])
         self.project.undo();check(True);self.project.redo();check(True)
         self.project.save();self.project=ProjectService.open(self.project.root);check(True)
+
+    def test_active_replacement_shared_identity_clear_recovery_and_tamper(self):
+        from sdk.sequence_replacement_authoring import review
+        from sdk.audio_authoring import source_key as native_key,_current
+        from sdk.asset_references import inspect_project
+        from importer.audio_sequence_replacement import sequence_span
+        from hashlib import sha256
+        from sdk.project import ProjectService
+        raw,_=self.retain();receipt=next(iter(self.project.audio_midi_sources.values()));identifier=PREFIX+receipt['midi_sha256']
+        args=dict(asset_id=self.identifier,expected_entry_sha256=self.entry_hash,expected_authoring_key=native_key(self.project),midi_base64=base64.b64encode(raw).decode())
+        result=review(self.project,**args);self.project.command(dict(type='set_audio_sequence_replacement',review_key=result['review_key'],**args))
+        before=deepcopy((self.project._document(),self.project.undo_stack,self.project.redo_stack))
+        snap=inventory(self.project);self.assertEqual(list(snap['assets']),[identifier]);self.assertEqual(len(snap['receipts'][identifier]),1)
+        dto=inspect(self.project,identifier,source_key(self.project),include_midi=True);proof=dto['current_replacement_bindings'][0]
+        body=_current(self.project,self.identifier,self.entry_hash)[1];at,size=sequence_span(body)
+        self.assertEqual(proof['current_sequence_sha256'],sha256(body[at:at+size]).hexdigest());self.assertEqual((proof['current_sequence_offset'],proof['sequence_size_bytes']),(at,size))
+        self.assertEqual(dto['current_binding'],'verified_authored_sequence_replacement');self.assertEqual(base64.b64decode(dto['midi_base64']),raw)
+        graph=inspect_project(self.project,identifier);kinds={e['kind'] for e in graph['incoming']}
+        self.assertTrue({'retained_midi_sequence_input','current_native_sequence_midi_binding'}<=kinds)
+        self.assertEqual(before,(self.project._document(),self.project.undo_stack,self.project.redo_stack))
+        self.project.command(dict(type='clear_audio_sequence_replacement',asset_id=self.identifier,expected_entry_sha256=self.entry_hash,expected_authoring_key=native_key(self.project)))
+        self.assertEqual(inspect(self.project,identifier,source_key(self.project))['current_replacement_bindings'],[])
+        self.project.undo();self.assertEqual(self.project._document(),before[0])
+        self.project.audio_midi_sources={}
+        dto=inspect(self.project,identifier,source_key(self.project),include_midi=True);self.assertFalse(dto['historical_inputs']);self.assertEqual(dto['receipts'],[])
+        self.assertEqual(dto['record']['source_record']['relative_path'],'Authored/Audio/SequenceReplacements/'+receipt['midi_sha256']+'.mid')
+        self.assertEqual(base64.b64decode(dto['midi_base64']),raw)
+        self.project.save();self.project=ProjectService.open(self.project.root)
+        self.assertEqual(inspect(self.project,identifier,source_key(self.project))['current_replacement_bindings'],dto['current_replacement_bindings'])
+        path=self.project.root/dto['record']['source_record']['relative_path'];path.write_bytes(bytes([raw[0]^1])+raw[1:])
+        try:
+            with self.assertRaises(ProjectError):inventory(self.project)
+            with self.assertRaises(ProjectError):inspect_project(self.project,identifier)
+        finally:path.write_bytes(raw)
+        self.project.command(dict(type='clear_audio_sequence_replacement',asset_id=self.identifier,expected_entry_sha256=self.entry_hash,expected_authoring_key=native_key(self.project)))
+        self.assertEqual(inventory(self.project)['assets'],{});self.assertEqual(path.read_bytes(),raw)
 
     def test_stale_unknown_removed_and_changed_content_refuse(self):
         raw,_=self.retain();r=next(iter(self.project.audio_midi_sources.values()));identifier=PREFIX+r['midi_sha256']

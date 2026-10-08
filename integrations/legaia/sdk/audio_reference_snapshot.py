@@ -19,6 +19,8 @@ class AudioReferenceSnapshot:
         self._inputs = inventory(project)
         from .midi_input_assets import inventory as midi_inventory
         self._midi_inputs = midi_inventory(project)
+        from .midi_replacement_bindings import current as current_midi
+        self._midi_bindings = current_midi(project,self._midi_inputs)
         self._bindings = current(project, self._inputs)
         self._sources = {}
         for proof in self._bindings:
@@ -37,6 +39,9 @@ class AudioReferenceSnapshot:
 
     def midi_inputs(self):
         return deepcopy(self._midi_inputs)
+
+    def midi_bindings(self):
+        return deepcopy(self._midi_bindings)
 
     def bindings(self):
         return deepcopy(self._bindings)
