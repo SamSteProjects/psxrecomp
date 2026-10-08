@@ -2,7 +2,7 @@
 
 In Move model geometry, choose Selected vertex group, then Custom angle under
 Turn. Enter degrees from -360 through 360 and choose Rotate group X, Y or Z.
-Origin and Group bounds center pivots remain available. The editor reports the
+Origin, Group bounds center and Explicit source XYZ pivots are available. The editor reports the
 actual quantized angle; Apply commits the draft as one normal project change.
 
 Degrees round to the nearest 1/4096 turn, with signed half ties away from zero,
@@ -56,3 +56,15 @@ Private evidence stays in
 `local-output/sdk-20260909/vertex-angle-rotation-20261007/`.
 No full regression campaign was repeated. Gameplay verification remains
 deferred; development stays solo and the full SDK goal stays active.
+
+## Explicit Source Rotation Pivot
+
+Selected vertex group rotation now offers **Explicit source XYZ** under **Pivot**. Enter three signed16 object-local source coordinates (-32768 through 32767), choose a quarter turn or Custom angle, then Rotate group X/Y/Z. Source positive Y points down. The pivot does not represent an actor or scene position. Draft/Current/Retail layers, single/all-instance scene comparison, explicit Apply/Discard, Undo/Redo and Save/Open use the existing rotation workflow. Pivot controls lock while a draft is pending.
+
+The existing `pivot` field accepts either `origin`, `center` or an exact three-integer XYZ array for both rotation operations. Scaling and rotation share bounded pivot validation and doubled-coordinate pivot calculation in each language. Custom angles retain their existing Q30/BigInt arithmetic and 1/4096-turn quantization; quarter turns agree exactly at cardinal angles. All output words round nearest with ties away from zero. Invalid arrays, booleans, fractional/out-of-range coordinates, stale sources and coordinate overflow refuse the entire change. Only selected XYZ words change. Normals, padding, topology, unselected rows, other objects, allocated row ownership and imported evidence remain fixed. No actor heading, skeleton pivot or runtime rotation field is inferred.
+
+Offline checks passed on 2026-10-08: 23 focused Python cases and three Node suites passed, along with JavaScript syntax and Python AST checks. Added tests compare entire native models against independently literal expected quarter-turn and 45-degree results around (10,-20,30); cover X/Y/Z cardinal parity, malformed arrays, overflow, extreme-pivot zero-angle no-op, history and allocated-row ownership. Existing rotation, angle and scale regressions passed after the shared pivot refactor.
+
+A private native Town01 browser check staged/discarded a quarter turn and applied a custom Y45-degree rotation for object0 vertices0/1/2 around (10,-20,30). Local draft/Discard, invalid-angle refusal, source layers, single/all-instance scene Review/Return, one Apply, Undo/Redo and Save/independent Open passed. Desktop and 400 px captures were inspected without horizontal overflow or browser page errors. An independent floating-point 45-degree calculation matched this fixture's entire native model; nine changed byte offsets belonged only to the selected XYZ spans. This fixture comparison complements the literal-word/cardinal tests and does not claim exhaustive equivalence to integer angle arithmetic for every input.
+
+A private data-package Build passed full containing-section readback from directory and ZIP, with package SHA-256 `c0c5f73e833642caeb6bc931f8cfe20208a291cfe08ec2e4bd9486acaf773e01`. Final Undo/Save restored the original project document, model and imported evidence with one legitimate Redo entry. Evidence: `local-output/sdk-20260909/vertex-explicit-rotation-pivot-20261008/` (`native-proof.json`, `cleanup.json`, `edit.json`, browser log, screenshots and private package). No game, runtime attachment, native recompilation, installation or disc export ran. Gameplay lighting/appearance remains deferred; the full SDK goal is active and solo work continues.
