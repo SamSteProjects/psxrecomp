@@ -148,6 +148,7 @@ import {mountWorldmapGeometry} from '/worldmap-geometry.js';
 import {mountWorldPlacements} from '/worldmap-placement-editor.js';
 import {openAudioSequence} from '/audio-sequence.js';
 import {openAudioInput} from '/audio-input-assets.js';
+import {openMidiInput} from '/midi-input-assets.js';
 import {openAudioBank} from '/audio-bank.js';
 import {mountProjectAssets,projectAssetVariant,qualifyProjectCatalogVariant} from '/project-assets.js';
 import {captureRuntimeReview,parseRuntimeReview,compareRuntimeReviews,historicalRuntimePositions,historicalRuntimeComparisonPositions,historicalSampleHits,MAX_REVIEW_BYTES} from '/runtime-review.js';
@@ -1877,6 +1878,7 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
     button.onclick=()=>{if(busy||key!==state.asset_reference_source_key)return;assetDetails.close();openAssetReferences({record,initialScope:record.sceneId&&record.sceneId!==state.scene?.id?'project':'active',getState:()=>state,busy:()=>busy,onError:error=>notify(error.message,true),onNavigate:async node=>{
       if(!node.available||!(state.scenes??[]).some(scene=>scene.id===node.scene_id))throw new Error('Reference source scene is not imported.');
       if(node.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:node.scene_id}))return;
+      if(node.kind==='audio'&&node.id.startsWith('audio-input://legaia/midi/')){openMidiInput({record:{id:node.id},getContext:()=>({assetId:node.id,projectPath:state.project?.path,sourceKey:state.project_assets_source_key}),busy:()=>busy,onError:error=>notify(error.message,true)});return;}
       if(node.kind==='audio'&&node.id.startsWith('audio-input://legaia/wav/')){openAudioInput({record:{id:node.id},getContext:()=>({assetId:node.id,projectPath:state.project?.path,sourceKey:state.project_assets_source_key}),busy:()=>busy,onError:error=>notify(error.message,true)});return;}
       if(!['actor','model','scene'].includes(node.kind))await refreshResources();
       const target=assetRecords().find(item=>item.id===node.id);if(!target)throw new Error('Referenced asset is absent from the current catalog.');showAssetDetails(target);
@@ -2003,6 +2005,7 @@ async function resolveProjectAsset(record){
 async function activateAsset(record,action=null){
   if(busy)return;
   try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
+  if(record.data?.source_kind==='retained_midi_input'&&(action==='inspect-midi-input'||action===null)){openMidiInput({record,getContext:()=>({assetId:record.id,projectPath:state.project?.path,sourceKey:state.project_assets_source_key}),busy:()=>busy,onError:error=>notify(error.message,true)});return;}
   if(action==='inspect-audio-input'||action===null&&record.data?.source_kind==='retained_wav_input'){openAudioInput({record,getContext:()=>({assetId:record.id,projectPath:state.project?.path,sourceKey:state.project_assets_source_key}),busy:()=>busy,onError:error=>notify(error.message,true)});return;}
   if(action==='inspect-audio-bank'){openAudioBank({record,canEdit:()=>state.project?.mode==='edit',apply:api,getAuthoringKey:()=>state.project_copy_source_key,getContext:()=>({assetId:record.id,sceneId:state.scene?.id,projectPath:state.project?.path,sourceKey:state.scene_preview_source_key,entryHash:record.data?.source_record?.sha256,bankHash:record.data?.bank_inspection?.bank_sha256}),busy:()=>busy,onError:error=>notify(error.message,true)});return;}
   if(action==='inspect-audio-sequence'){openAudioSequence({record,getContext:()=>({assetId:record.id,sceneId:state.scene?.id,projectPath:state.project?.path,sourceKey:state.scene_preview_source_key,entryHash:record.data?.source_record?.sha256}),busy:()=>busy,canEdit,apply:api,getAuthoringKey:()=>state.project_copy_source_key,onError:error=>notify(error.message,true)});return;}

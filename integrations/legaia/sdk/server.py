@@ -843,6 +843,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/audio-sequence-midi.js": ("audio-sequence-midi.js", "text/javascript"),
                  "/audio-sequence-midi-import.js": ("audio-sequence-midi-import.js", "text/javascript"),
                  "/audio-sequence-authoring.js": ("audio-sequence-authoring.js", "text/javascript"),
+                 "/midi-input-assets.js": ("midi-input-assets.js", "text/javascript"),
                  "/audio-input-assets.js": ("audio-input-assets.js", "text/javascript"),
                  "/audio-note-links.js": ("audio-note-links.js", "text/javascript"),
                  "/audio-note-timeline.js": ("audio-note-timeline.js", "text/javascript"),
@@ -2159,6 +2160,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('WAV retention requires exact reviewed source and input fields')
                     self.server.project.command(dict(type='retain_audio_sample_allocation_source' if route=='/api/audio-sample-allocation-source-retain' else 'retain_audio_sample_source',**body))
                     self._json(200,self.server.state());return
+                if route in ('/api/midi-input-inspection','/api/midi-input-download'):
+                    if set(body)!={'asset_id','expected_source_key'}:raise ProjectError('MIDI asset inspection requires exact project source and asset identities')
+                    from .midi_input_assets import inspect
+                    self._json(200,inspect(self.server.project,**body,include_midi=route=='/api/midi-input-download'));return
                 if route in ('/api/audio-input-inspection', '/api/audio-input-download'):
                     if set(body) != {'asset_id', 'expected_source_key'}:
                         raise ProjectError('WAV asset inspection requires exact project source and asset identities')
