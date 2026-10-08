@@ -46,7 +46,7 @@ export function createScriptFlagSandbox(report){
      const b=state.banks[bank],flag=(2**bit)>>>0;effect={bank,bit,operation:op.toLowerCase()};
      if(op==='TEST'){
       if((b.known&flag)===0){status='unknown_flag';reason='The tested hypothetical bit is unknown.';}
-      else if((b.value&flag)===0){status='flag_wait';reason='Test waits at this PC while the hypothetical bit is clear; external resume is not simulated.';}
+      else if((b.value&flag)===0){status='flag_wait';reason='Test waits at this PC while the hypothetical bit is clear; supply an explicit hypothetical bit assumption to re-evaluate it.';}
       else next=row.pc+2;
      }else{b.value=(op==='SET'?b.value|flag:b.value&~flag)>>>0;b.known=(b.known|flag)>>>0;next=row.pc+2;}
     }
@@ -77,5 +77,15 @@ export function createScriptFlagSandbox(report){
   if(['ready','waiting_ticks'].includes(state.status)&&history.length===limit){state.status='step_limit';state.reason='Bounded sandbox step limit reached.';history.at(-1).after=clone(state);}
   return snapshot();
  }
- return {snapshot,start,step:()=>step(),tick(delta){if(state?.status!=='waiting_ticks')throw Error('Only a staged frame wait can consume a hypothetical tick.');return step(delta,true);},has:pc=>nodes.has(pc),back(){if(history.length)state=history.pop().before;return snapshot();},reset(){state=null;initial=null;history=[];return snapshot();},run(){while(state?.status==='ready'&&history.length<limit)step();return snapshot();}};
+ function assumeFlag(bank,bit,value){
+  if(!state||!['ready','flag_wait','unknown_flag'].includes(state.status))throw Error('Only ready or flag-blocked sandboxes accept hypothetical bit assumptions.');
+  if(!Object.hasOwn(widths,bank)||!Number.isSafeInteger(bit)||bit<0||bit>=widths[bank]||![true,false,null].includes(value))throw Error('Supply a known bank, an in-range bit and set, clear or unknown assumption.');
+  if(history.length>=limit)throw Error('Bounded sandbox step limit reached.');
+  const before=clone(state),b=state.banks[bank],flag=(2**bit)>>>0;
+  b.value=(value===true?b.value|flag:b.value&~flag)>>>0;b.known=(value===null?b.known&~flag:b.known|flag)>>>0;
+  state.status='ready';state.reason=null;
+  if(history.length+1===limit){state.status='step_limit';state.reason='Bounded sandbox step limit reached.';}
+  history.push({before,after:clone(state),mnemonic:null,effect:{operation:'assume_flag',bank,bit,value}});return snapshot();
+ }
+ return {snapshot,start,assumeFlag,step:()=>step(),tick(delta){if(state?.status!=='waiting_ticks')throw Error('Only a staged frame wait can consume a hypothetical tick.');return step(delta,true);},has:pc=>nodes.has(pc),back(){if(history.length)state=history.pop().before;return snapshot();},reset(){state=null;initial=null;history=[];return snapshot();},run(){while(state?.status==='ready'&&history.length<limit)step();return snapshot();}};
 }
