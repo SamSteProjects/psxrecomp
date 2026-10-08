@@ -883,7 +883,7 @@ function setBusy(value) {
   if($('shape-materials'))$('shape-materials').disabled=value||Boolean(shapeDraft)||state.project?.mode!=='edit'||!state.capabilities?.model_material_authoring;
   savedActorSelections?.synchronize();savedSceneSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();synchronizeHistoricalPositions();
 }
-async function api(path, payload, {dialog,success}={}) {
+async function api(path, payload, {dialog,success,signal}={}) {
   if(busy) return false;
   if(sceneAnimationController?.active()&&path!=='/api/selection'){
     if(['/api/scene','/api/project/open','/api/project/new','/api/import','/api/mode'].includes(path))sceneAnimationController.stop();
@@ -900,8 +900,9 @@ async function api(path, payload, {dialog,success}={}) {
   if(dialog) dialog.querySelector('.dialog-error').textContent='';
   try {
     if(liveFollow.pending)await liveFollow.pending;
-    const response=await fetch(path,{method:payload===undefined?'GET':'POST',headers:payload===undefined?{}:{'Content-Type':'application/json'},body:payload===undefined?undefined:JSON.stringify(payload)});
+    const response=await fetch(path,{method:payload===undefined?'GET':'POST',headers:payload===undefined?{}:{'Content-Type':'application/json'},body:payload===undefined?undefined:JSON.stringify(payload),signal});
     const data=await response.json();
+    if(signal?.aborted)throw new Error('Initial project-state request was cancelled.');
     if(!response.ok || data.error) throw new Error(typeof data.error==='string'?data.error:JSON.stringify(data.error ?? data));
     if(!data.project || !('scene' in data)) throw new Error('Project service returned an invalid state response.');
     if(path==='/api/selection'){sceneResourceSelection=null;clearEnvironmentGroupSelection();pendingEntityFrame=null;environmentSelection=null;npcDraftSelection=null;clearActorGroupSelection();actorGroupRangeAnchor=payload?.entity_id??null;}state=data; render();
@@ -5334,7 +5335,7 @@ arrivalGizmo=mountPlacementGizmo({host:$('viewport-wrap'),idPrefix:'arrival-plac
   onError:message=>{arrivalStatus.textContent=message;}
 });
 
-api('/api/state');
+export async function initializeEditor({signal}={}){if(!await api('/api/state',undefined,{signal}))throw new Error($('status').textContent||'Initial project state could not be loaded.');return true;}
 
 worldmapControls=mountWorldmapAuthoring({after:$('resource-refresh'),
   getContext:()=>state.capabilities?.worldmap_authoring?{projectPath:state.project?.path,mode:state.project?.mode,worldmapKey:state.worldmap_authoring_state_key}:null,

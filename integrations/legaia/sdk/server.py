@@ -798,6 +798,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 self._json(200, self.server.state())
                 return
         files = {"/": ("index.html", "text/html"), "/editor.js": ("editor.js", "text/javascript"),
+                 "/editor-startup.js": ("editor-startup.js", "text/javascript"),
                  "/text-font.js": ("text-font.js", "text/javascript"),
                  "/group-appearance.js": ("group-appearance.js", "text/javascript"),
                  "/actor-selection-sets.js": ("actor-selection-sets.js", "text/javascript"),
