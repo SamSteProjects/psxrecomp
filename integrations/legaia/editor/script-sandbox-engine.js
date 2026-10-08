@@ -50,6 +50,15 @@ export function createScriptFlagSandbox(report){
       else next=row.pc+2;
      }else{b.value=(op==='SET'?b.value|flag:b.value&~flag)>>>0;b.known=(b.known|flag)>>>0;next=row.pc+2;}
     }
+   }else if(/^SYSFLAG_(SET|CLEAR|TEST)$/.test(row.mnemonic)){
+    const op=row.mnemonic.slice(8),index=a?.index,route={SET:5,CLEAR:6,TEST:7}[op],test=op==='TEST',target=Number.isSafeInteger(a?.delta)?(row.pc+2+a.delta)&65535:null;
+    const edges=row.successors,qualifiedEdges=test?edges.length===2&&edges[0].condition==='flag_set'&&edges[0].pc===target&&edges[1].condition==='flag_clear'&&edges[1].pc===row.pc+4:edges.length===1&&edges[0].condition==='encoded_continuation'&&edges[0].pc===row.pc+2;
+    if(!Number.isSafeInteger(row.opcode)||row.opcode<0||row.opcode>127||row.opcode>>4!==route||row.length!==(test?4:2)||!Number.isSafeInteger(index)||index<0||index>4095||index>>8!==(row.opcode&15)||test&&(!Number.isSafeInteger(a?.delta)||a.delta< -32768||a.delta>32767)||!qualifiedEdges){status='unsupported';reason='System flag metadata or encoded successor is not qualified.';}
+    else{
+     const flags=state.system_flags??={},known=Object.hasOwn(flags,index),value=known?flags[index]:null;
+     if(test){effect={bank:'system',bit:index,operation:'branch_test',tested_value:value,successor_index:value===null?null:value?0:1};if(value===null){status='unknown_flag';reason='System selector is unknown. Supply an explicit hypothetical system bit assumption, then step again.';}else next=edges[effect.successor_index].pc;}
+     else{flags[index]=op==='SET';effect={bank:'system',bit:index,operation:op.toLowerCase()};next=row.pc+2;}
+    }
    }else if(row.mnemonic==='FIELD_STATE_CONTROL'){
     const andMask=a?.sub_op===0x35?0xff7f:0xffff,orMask=a?.sub_op===0x35?0x020a:0x028a;
     if(row.opcode!==0x4c||row.length!==2||![0x35,0x36].includes(a?.sub_op)||a.can_yield!==false||a.flag_word!=='actor_local_flags'||a.and_mask!==andMask||a.or_mask!==orMask||a.runtime_effect!=='not_evaluated'||row.successors.length!==1||row.successors[0].pc!==row.pc+2||row.successors[0].condition!=='encoded_continuation'){status='unsupported';reason='Field-state instruction is outside the qualified local flag masks.';}
@@ -86,10 +95,11 @@ export function createScriptFlagSandbox(report){
  }
  function assumeFlag(bank,bit,value){
   if(!state||!['ready','flag_wait','unknown_flag'].includes(state.status))throw Error('Only ready or flag-blocked sandboxes accept hypothetical bit assumptions.');
-  if(!Object.hasOwn(widths,bank)||!Number.isSafeInteger(bit)||bit<0||bit>=widths[bank]||![true,false,null].includes(value))throw Error('Supply a known bank, an in-range bit and set, clear or unknown assumption.');
+  if(!(Object.hasOwn(widths,bank)||bank==='system')||!Number.isSafeInteger(bit)||bit<0||bit>=(bank==='system'?4096:widths[bank])||![true,false,null].includes(value))throw Error('Supply a known bank, an in-range bit and set, clear or unknown assumption.');
   if(history.length>=limit)throw Error('Bounded sandbox step limit reached.');
-  const before=clone(state),b=state.banks[bank],flag=(2**bit)>>>0;
-  b.value=(value===true?b.value|flag:b.value&~flag)>>>0;b.known=(value===null?b.known&~flag:b.known|flag)>>>0;
+  const before=clone(state);
+  if(bank==='system'){const flags=state.system_flags??={};if(value===null)delete flags[bit];else flags[bit]=value;}
+  else{const b=state.banks[bank],flag=(2**bit)>>>0;b.value=(value===true?b.value|flag:b.value&~flag)>>>0;b.known=(value===null?b.known&~flag:b.known|flag)>>>0;}
   state.status='ready';state.reason=null;
   if(history.length+1===limit){state.status='step_limit';state.reason='Bounded sandbox step limit reached.';}
   history.push({before,after:clone(state),mnemonic:null,effect:{operation:'assume_flag',bank,bit,value}});return snapshot();

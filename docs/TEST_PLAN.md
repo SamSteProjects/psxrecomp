@@ -1,5 +1,9 @@
 # Legaia SDK validation plan
 
+## Hypothetical System Flags (2026-10-07)
+
+Focused offline checks passed: 13 Python tests with private Retail helper evidence, seven Node suites and three JS syntax checks. All 4096 normal selectors, partial Unknown state, both encoded TEST edges, exact Back, v3 replay/legacy refusal and malformed/source guards are covered. Actual Town01 actor0010 selector326 browser checks passed Unknown/set/clear, PC49/20, Back and freshly qualified Save/reopen/replay. Wide/400 px captures inspected; complete project/history/files/native key unchanged. Earlier harness readiness failures retained. No native Build or game ran. See [scope and remaining native/story limits](legaia-script-system-flags.md).
+
 ## Previously Skipped Retail Workflows (2026-10-07)
 
 The intended private model scene-proposal and composed Town01 NPC package checks now both pass with zero skips. Fresh private copies and the original fixtures retained exact documents/native keys/non-Build file hashes. The normal NPC package passed independent descriptor/MAN/neighbor/spawn-index readback. This closes the two specialized skips recorded by the October 6 checkpoint, without claiming a new complete regression run or gameplay acceptance. See [exact tests, source and evidence](legaia-specialized-offline-checks.md).

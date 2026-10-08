@@ -1,5 +1,7 @@
 # Source Script Walkthrough
 
+Normal system flag SET/CLEAR/TEST now supports [Hypothetical System Flag Simulation](legaia-script-system-flags.md), with sparse Unknown inputs, explicit selector assumptions, encoded branch evaluation, Back and version-3 scenario replay. This does not change native or live story state.
+
 The shared hypothetical sandbox also supports [Local Flag Mask Simulation](legaia-script-local-masks.md) for normal `4C 35/36`, with partial unknown-bit preservation, visible mask traces and existing Back/scenario replay. Other field-state host effects remain unsupported.
 
 Open a script resource in the Asset Database, choose **Inspect script**, expand **Instruction paths**, then **Walk through source instructions**. This walkthrough uses the verified Retail source report already shown in that workspace. It shares selected boundaries with the instruction table and branch inspector, while retaining its own trace.
