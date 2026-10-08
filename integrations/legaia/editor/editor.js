@@ -1,3 +1,4 @@
+import {decodeSceneCatalog} from '/scene-catalog.js';
 import {openSequenceReplacement} from '/sequence-replacement-authoring.js';
 import {animationChannelAuthoringTarget,validateImportedChannelHandoff,validateRetainedChannelHandoff} from '/animation-channel-authoring.js';
 import {createAnimationChannelGraph} from '/animation-channel-graph.js';
@@ -1153,10 +1154,10 @@ for(const id of ['import-button','empty-import']) $(id).onclick=()=>{if(!$('disc
 $('project-form').onsubmit=async event=>{event.preventDefault();await api('/api/project/new',{name:$('project-name-input').value,path:$('project-path-input').value},{dialog:$('project-dialog'),success:'Project created.'});};
 $('open-project').onclick=async()=>{if(!$('project-path-input').reportValidity())return;await api('/api/project/open',{path:$('project-path-input').value},{dialog:$('project-dialog'),success:'Project opened.'});};
 const sceneCatalog=document.createElement('section');sceneCatalog.id='import-scene-catalog';
-sceneCatalog.innerHTML='<h3>Find a scene</h3><label>Name prefix<input id="catalog-prefix" placeholder="town, dolk, station…" spellcheck="false"></label><div class="dialog-actions"><button type="button" id="catalog-search">Read scene catalog</button><button type="button" id="catalog-previous" disabled>Previous</button><button type="button" id="catalog-next" disabled>Next</button></div><p id="catalog-status" role="status">Scans 16 structural blocks per page. Placement support does not establish complete models or gameplay compatibility.</p><div id="catalog-scenes"></div>';
+sceneCatalog.innerHTML='<h3>Find a scene</h3><label>Name prefix<input id="catalog-prefix" placeholder="town, dolk, station…" spellcheck="false"></label><div class="dialog-actions"><button type="button" id="catalog-search">Read scene catalog</button><button type="button" id="catalog-previous" disabled>Previous</button><button type="button" id="catalog-next" disabled>Next</button></div><p id="catalog-status" role="status">Checks 16 structural blocks per page for metadata import readiness. Rendering and gameplay remain unverified.</p><div id="catalog-scenes"></div>';
 $('scene-input').parentElement.before(sceneCatalog);
 let catalogGeneration=0,catalogOffset=0,catalogNext=null;
-function clearSceneCatalog(){catalogGeneration++;catalogOffset=0;catalogNext=null;$('catalog-status').textContent='Read the catalog for the current disc path and name prefix. Placement support does not verify models or gameplay.';$('catalog-scenes').replaceChildren();$('catalog-previous').disabled=true;$('catalog-next').disabled=true;}
+function clearSceneCatalog(){catalogGeneration++;catalogOffset=0;catalogNext=null;$('catalog-status').textContent='Read the catalog for the current disc path and name prefix. Catalog checks metadata import readiness; rendering and gameplay remain unverified.';$('catalog-scenes').replaceChildren();$('catalog-previous').disabled=true;$('catalog-next').disabled=true;}
 $('disc-input').addEventListener('input',clearSceneCatalog);$('catalog-prefix').oninput=clearSceneCatalog;
 $('import-dialog').addEventListener('close',clearSceneCatalog);
 async function readSceneCatalog(offset=0){
@@ -1166,14 +1167,15 @@ async function readSceneCatalog(offset=0){
   const generation=++catalogGeneration;setBusy(true);$('catalog-search').disabled=true;$('catalog-previous').disabled=true;$('catalog-next').disabled=true;$('catalog-scenes').replaceChildren();$('catalog-status').textContent='Reading verified retail scene blocks…';
   try{
     const response=await fetch('/api/scene-catalog',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({disc,prefix,offset})});
-    const result=await response.json();if(!response.ok||result.error)throw new Error(result.error||'Scene catalog failed');
+    let result=await response.json();if(!response.ok||result.error)throw new Error(result.error||'Scene catalog failed');
     if(generation!==catalogGeneration||!$('import-dialog').open)return;
-    if(result.schema_version!=='legaia.scene-catalog.v1'||!Array.isArray(result.scenes)||!Array.isArray(result.unsupported_blocks)||result.scenes.length+result.unsupported_blocks.length>16||(result.next_offset!==null&&(!Number.isInteger(result.next_offset)||result.next_offset<=offset)))throw new Error('Invalid scene catalog response');
+    result=decodeSceneCatalog(result,offset,prefix);
     catalogOffset=offset;catalogNext=result.next_offset;
-    $('catalog-status').textContent=`${result.scenes.length} placement-readable scenes · ${result.unsupported_blocks.length} unsupported blocks · scanned ${result.scanned_blocks} at offset ${offset} of ${result.total_blocks}. Models and gameplay are not verified by this scan.`;
+    $('catalog-status').textContent=`${result.scenes.filter(row=>row.import_status==='supported').length} ready to import - ${result.scenes.filter(row=>row.import_status!=='supported').length} placement-only scenes - ${result.unsupported_blocks.length} unsupported blocks - scanned ${result.scanned_blocks} at offset ${offset} of ${result.total_blocks}. Model slots and actor references checked; rendering and gameplay remain unverified.`;
     for(const scene of result.scenes){
       const button=document.createElement('button');button.type='button';button.className='catalog-scene';button.textContent=`${scene.name} · ${scene.actor_count} actors · ${scene.man_source_kind==='raw_streaming_man'?'Streaming field':scene.man_source_kind==='descriptor_man'?'Compressed field':'Source format unknown'}`;button.title=scene.semantic_id;
-      button.onclick=()=>{$('scene-input').value=scene.name;$('catalog-status').textContent=`Selected ${scene.name}. Use Import scene to add it to the project.`;};$('catalog-scenes').append(button);
+      const status=document.createElement('p');status.textContent=scene.import_status==='supported'?`Metadata import ready · ${scene.scene_model_count} scene models · ${scene.global_model_count} global models · ${scene.unresolved_actor_model_count} unresolved actor model references`:`Placement readable · Import unavailable: ${scene.import_reason}`;
+      button.disabled=scene.import_status!=='supported';button.onclick=()=>{if(scene.import_status!=='supported')return;$('scene-input').value=scene.name;$('catalog-status').textContent=`Selected ${scene.name}. Use Import scene to add it to the project. Rendering and gameplay remain unverified.`;};$('catalog-scenes').append(button,status);
     }
     if(result.unsupported_blocks.length){const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Unsupported structural blocks';details.append(summary);for(const block of result.unsupported_blocks){const row=document.createElement('p');row.textContent=`${block.name}: ${block.reason}`;details.append(row);}$('catalog-scenes').append(details);}
   }catch(error){if(generation===catalogGeneration)$('catalog-status').textContent=String(error.message);}

@@ -1025,6 +1025,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-operands.js": ("script-operands.js", "text/javascript"),
                  "/script-effect-colors.js": ("script-effect-colors.js", "text/javascript"),
                  "/script-animation-operands.js": ("script-animation-operands.js", "text/javascript"),
+                 "/scene-catalog.js": ("scene-catalog.js", "text/javascript"),
                  "/script-branches.js": ("script-branches.js", "text/javascript"),
                  "/system-flag-selectors.js": ("system-flag-selectors.js", "text/javascript"),
                  "/source-build-script.js": ("source-build-script.js", "text/javascript"),

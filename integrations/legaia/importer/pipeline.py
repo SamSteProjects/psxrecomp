@@ -494,10 +494,11 @@ def list_scenes(
     """Inspect at most `limit` CDNAME blocks for bounded MAN placements.
 
     Pagination is over structural block labels, including unsupported blocks.
-    A discovered scene is placement-readable; model-pool resolution is checked
-    by `import_scene`, not implied by this inexpensive catalog probe.
+    Placement and full metadata-import readiness are reported separately.
+    Native model qualification shares the actual import path; rendering and
+    gameplay are not established by this catalog.
     """
-    if offset < 0 or not 1 <= limit <= 128:
+    if type(offset) is not int or not 0 <= offset <= 65536 or type(limit) is not int or not 1 <= limit <= 128 or not isinstance(prefix,str) or len(prefix)>64:
         raise ImportError("scene catalog requires offset >= 0 and 1 <= limit <= 128")
     with _disc_context(disc) as (_image, digest, mapping, archive):
         labels = [name for name in mapping.values() if name.startswith(prefix)]
@@ -509,19 +510,28 @@ def list_scenes(
                 from .man_source import read_man_source
                 source=read_man_source(archive,start,end,scene)
                 parsed=source.parsed
+                readiness=dict(import_status='unsupported',import_reason=None,model_resolution_status='unavailable',scene_model_count=None,global_model_count=None,unresolved_actor_model_count=None)
+                try:
+                    metadata=_scene_metadata(digest,archive,start,end,scene,source)
+                    models=metadata['assets']['models']
+                    unresolved=sum(actor['model_reference']['resolution_status']!='resolved' for actor in metadata['actors'])
+                    readiness.update(import_status='supported',model_resolution_status='unresolved' if unresolved else 'resolved',scene_model_count=sum(m['model_pool']=='scene_tmd' for m in models),global_model_count=sum(m['model_pool']=='global_special' for m in models),unresolved_actor_model_count=unresolved)
+                except ImportError as exc:
+                    readiness['import_reason']=str(exc)
                 scenes.append({
                     "semantic_id": f"scene://{scene}", "name": scene,
                     "prot_entry_start": start, "prot_entry_end_exclusive": end,
                     "bundle_entry": source.entry_index, "actor_count": len(parsed.actors),
                     "man_source_kind":source.kind,
-                    "placement_status": "supported", "model_resolution_status": "not_checked",
+                    "placement_status": "supported", **readiness,
                 })
             except ImportError as exc:
                 unsupported.append({"name": scene, "reason": str(exc)})
         return {
-            "schema_version": "legaia.scene-catalog.v1",
+            "schema_version": "legaia.scene-catalog.v2",
             "source": {"disc_identity": f"sha256:{digest}", "serial": "SCUS-94254"},
             "scenes": scenes, "unsupported_blocks": unsupported,
+            "offset":offset,"limit":limit,"qualification":"metadata_import_not_rendering_or_gameplay",
             "scanned_blocks": len(selected), "total_blocks": len(labels),
             "next_offset": offset + len(selected) if offset + len(selected) < len(labels) else None,
         }
@@ -533,28 +543,32 @@ def import_scene(disc: Path | str, scene: str = SUPPORTED_SCENE) -> dict[str, An
         start, end = _bounded_scene_range(archive, mapping, scene)
         from .man_source import read_man_source
         source=read_man_source(archive,start,end,scene)
-        raw=source.kind=='raw_streaming_man'
-        bundle,descriptor,consumed,parsed=source.bundle,source.descriptor,source.encoded_size,source.parsed
-        from .core import streaming_scene_tmd_pool
-        scene_models = streaming_scene_tmd_pool(archive, start, end) if raw else scene_tmd_pool(archive, start, end)
-        global_models = global_special_tmd_pool(archive)
-        if (not raw and not scene_models) or not global_models:
-            raise ImportError(f"unsupported scene {scene!r}: model pools did not enumerate structural assets")
-        return project_metadata(
-            disc_digest=digest,
-            scene=scene,
-            bundle_entry=source.entry_index,
-            table_offset=bundle.table_offset if bundle else 0,
-            descriptor_index=descriptor.index if descriptor else 0,
-            descriptor_offset=descriptor.data_offset if descriptor else 0,
-            descriptor_size=len(source.payload),
-            compressed_consumed=consumed,
-            parsed_man=parsed,
-            scene_models=scene_models,
-            global_models=global_models,
-            raw_man_source=source if raw else None,
-        )
+        return _scene_metadata(digest,archive,start,end,scene,source)
 
+
+def _scene_metadata(digest,archive,start,end,scene,source):
+    """One native qualification path for Import and scene catalog readiness."""
+    raw=source.kind=='raw_streaming_man'
+    bundle,descriptor,consumed,parsed=source.bundle,source.descriptor,source.encoded_size,source.parsed
+    from .core import streaming_scene_tmd_pool
+    scene_models = streaming_scene_tmd_pool(archive, start, end) if raw else scene_tmd_pool(archive, start, end)
+    global_models = global_special_tmd_pool(archive)
+    if (not raw and not scene_models) or not global_models:
+        raise ImportError(f"unsupported scene {scene!r}: model pools did not enumerate structural assets")
+    return project_metadata(
+        disc_digest=digest,
+        scene=scene,
+        bundle_entry=source.entry_index,
+        table_offset=bundle.table_offset if bundle else 0,
+        descriptor_index=descriptor.index if descriptor else 0,
+        descriptor_offset=descriptor.data_offset if descriptor else 0,
+        descriptor_size=len(source.payload),
+        compressed_consumed=consumed,
+        parsed_man=parsed,
+        scene_models=scene_models,
+        global_models=global_models,
+        raw_man_source=source if raw else None,
+    )
 
 def write_metadata(path: Path, value: dict[str, Any]) -> None:
     validate_metadata_only(value)
