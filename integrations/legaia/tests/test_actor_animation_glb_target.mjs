@@ -10,6 +10,9 @@ function reset(){actor={id:entity,components:{ActorAllocatedAnimation:{authored:
 const settings={entityId:entity,getActor:()=>actor,getContext:()=>context,fetcher:async(path,request)=>{calls.push({path,body:JSON.parse(request.body)});return {ok:true,json:async()=>library()};}};
 reset();assert.deepEqual(await resolveActorAnimationGlbTarget(settings),row);
 assert.deepEqual(calls,[{path:'/api/animation-record-library',body:{scene_id:initial.sceneId,expected_source_key:initial.sourceKey}}]);
+reset();let reorderedReply;const reordered=resolveActorAnimationGlbTarget({...settings,fetcher:()=>new Promise(resolve=>reorderedReply=resolve)});
+actor.components.ActorAllocatedAnimation.authored=Object.fromEntries(Object.entries(actor.components.ActorAllocatedAnimation.authored).reverse());
+reorderedReply({ok:true,json:async()=>library()});assert.deepEqual(await reordered,row);
 reset();actor.components={};assert.equal(await resolveActorAnimationGlbTarget(settings),null);assert.equal(calls.length,0);
 reset();actor.id=donor;await assert.rejects(resolveActorAnimationGlbTarget(settings),/Selected actor/);assert.equal(calls.length,0);
 for(const mutate of [v=>v.scene_id='scene://town02',v=>v.extra=true]){reset();mutate(actor.components.ActorAllocatedAnimation.authored);await assert.rejects(resolveActorAnimationGlbTarget(settings),/invalid/);assert.equal(calls.length,0);}

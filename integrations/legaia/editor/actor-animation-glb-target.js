@@ -1,7 +1,8 @@
 import {animationGlbContext} from './animation-glb.js';
 import {decodeAnimationRecordLibrary} from './animation-record-library.js';
 
-const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
+const same=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
 const assignment=actor=>actor?.components?.ActorAllocatedAnimation?.authored??null;
 
 // Resolve only the assigned UUID. A retained capture may belong to another

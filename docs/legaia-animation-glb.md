@@ -1,5 +1,9 @@
 # Source-bound animation GLB authoring
 
+## Assigned Animation GLB Routing
+
+Actors with an assigned allocated clip already open the retained-record GLB editor through the Inspector. The 2026-10-08 routing fix compares assignment fields by value, so equivalent JSON key order changes no longer falsely reject a pending request. Changed identities/hashes/models and stale project/scene/mode still refuse. The lower-level imported-clip API now directs callers to that editor and explicitly preserves the assignment. Focused Node routing/regression and Python refusal/syntax checks passed; no game, runtime attachment or Build ran. Evidence: `local-output/sdk-20260909/assigned-animation-glb-routing-20261008/`.
+
 Both actor and retained GLB editors support optional [Native and External Animation Pose Influence](legaia-animation-pose-influence.md), with separate translation and rotation weights against each current native frame after optional reference alignment. Controls participate in Review and retained source recipes. Gameplay verification remains deferred.
 
 ## Import motion from an external joint rig

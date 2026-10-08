@@ -29,7 +29,7 @@ def _snapshot(project, entity_id: str, fps: float) -> dict:
     if actor is None:
         raise ProjectError('Animation GLB authoring requires an imported actor in the active scene')
     if 'ActorAllocatedAnimation' in project.overrides.get(entity_id,{}):
-        raise ProjectError('Allocated initial clip GLB interchange is not implemented; clear its assignment before exporting an imported clip')
+        raise ProjectError('Assigned allocated clips use the retained-record GLB editor. Edit the assigned record through the Inspector; keep its assignment intact.')
     key = source_key(project)
     if not key:
         raise ProjectError('Animation GLB authoring requires a verified scene source')
