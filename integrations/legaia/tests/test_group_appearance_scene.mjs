@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {decodeGroupAppearanceScene} from '../editor/group-appearance.js';
+import {decodeGroupAppearanceScene,groupAppearanceChoices} from '../editor/group-appearance.js';
 const row=id=>({entity_id:id,asset_id:'old',source_actor_id:id,appearance_authored:false,renderable:true,geometry_key:'old',position:{x:128,y:null,z:256},model_to_scene:[1,0,0,128]});
 const current={schema:'legaia.scene-preview.v1',scene_id:'scene',source_key:'source',coordinate_system:'source',position_to_display:[1],entities:['a','b','c'].map(row),assets:[{geometry_key:'old',asset_id:'old',preview:{vertices:[[1,2,3]]}}]};
 const report={scene_id:'scene',review_key:'review',donor_entity_id:'donor',targets:[{entity_id:'a'},{entity_id:'b'}],options:[{donor_entity_id:'donor',asset_id:'new'}]};
@@ -26,3 +26,5 @@ for(const mutate of [r=>r.scene.entities[0].source_actor_id='other-witness',r=>r
 }
 assert.throws(()=>decodeGroupAppearanceScene(retained,report,current));
 console.log('A retained verified initial-animation witness survives same-model appearance proposals; changed or fabricated witnesses reject.');
+
+const pairs=[{donor_entity_id:'one',asset_id:'asset://one',animation_id:9},{donor_entity_id:'two',asset_id:'asset://two',animation_id:10}];assert.deepEqual(groupAppearanceChoices(pairs,'asset://one'),[pairs[0]]);assert.deepEqual(groupAppearanceChoices(pairs,'asset://unknown'),[]);assert.deepEqual(groupAppearanceChoices(pairs),pairs);const detached=groupAppearanceChoices(pairs,'asset://one');detached[0].animation_id=11;assert.equal(pairs[0].animation_id,9);for(const id of [true,42,'scene://one'])assert.throws(()=>groupAppearanceChoices(pairs,id));console.log('Group model filters retain detached verified pairs, original discovery and explicit unknown/invalid identity refusal.');

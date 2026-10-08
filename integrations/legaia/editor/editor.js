@@ -1304,7 +1304,7 @@ actorGroupTools.querySelector('[data-review-components]').onclick=()=>{
   };
   groupComponentDialog.showModal();if(components.length)select.onchange();else{select.disabled=true;note.textContent+=' This group has no supported authored components.';}
 };
-mountGroupAppearance({after:actorGroupTools.querySelector('[data-review-components]'),getState:()=>state,getSelection:()=>actorGroupSelection,isBusy:()=>busy,canEdit,setBusy,api,
+const actorGroupAppearance=mountGroupAppearance({after:actorGroupTools.querySelector('[data-review-components]'),getState:()=>state,getSelection:()=>actorGroupSelection,isBusy:()=>busy,canEdit,setBusy,api,
   canInspectScene:()=>sceneModelsReady()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection,
   getScenePreview:()=>scenePreview,
   inspectScene:(proposed,report,returnToReview)=>{
@@ -2184,8 +2184,8 @@ function renderAssets(){
       action.refreshPlacementAction=()=>{action.disabled=true;action.textContent='Select editable instances';try{const ids=members();action.textContent=`Select editable instances (${ids.length})`;action.disabled=!ids.length;action.title='Includes qualified hidden placements; excludes unsupported source cells and runtime-only objects.';}catch(error){action.title=error.message;}};
       action.onclick=async()=>{if(action.disabled)return;try{const ids=members(),focus=ids.includes(visibilitySelection())?visibilitySelection():ids[0];if(await selectCurrentModelPlacementGroup(record.id,focus,current)){frameSceneSelection();document.querySelector('.workspace-tabs [data-panel="inspector"]').click();}}catch(error){notify(error.message,true);}};
       const assign=document.createElement('button');assign.type='button';assign.dataset.assetAction='appearance';assign.dataset.assetPlacementAction=record.id;assign.style.cssText='grid-column:1 / -1;white-space:normal;text-align:left';assign.textContent='Choose donor appearance';assign.setAttribute('aria-label','Choose donor appearance for '+record.id);
-      assign.refreshPlacementAction=()=>{assign.disabled=busy||!current()||!canEditAppearance()||!selected()&&!selectedNpcDraft()||currentPlacementSelection().length>1;const target=selectedNpcDraft()??selected();assign.title=target?'Choose a verified model/animation donor pair for '+target.name:'Select one imported actor or NPC draft first.';};
-      assign.onclick=()=>{if(assign.disabled||!current())return;if(selectedNpcDraft())openNpcAppearanceInspector(npcDraftSelection,record.id);else openAppearanceOptions(selected(),record.id);};row.append(action,assign);
+      assign.refreshPlacementAction=()=>{assign.disabled=busy||!current()||!canEditAppearance()||!selected()&&!selectedNpcDraft()||currentPlacementSelection().length>1&&actorGroupSelection.length<2;const target=actorGroupSelection.length>=2?{name:actorGroupSelection.length+' imported actors'}:selectedNpcDraft()??selected();assign.title=target?'Choose a verified model/animation donor pair for '+target.name:'Select one imported actor or NPC draft first.';};
+      assign.onclick=()=>{if(assign.disabled||!current())return;if(actorGroupSelection.length>=2)actorGroupAppearance.open(record.id);else if(selectedNpcDraft())openNpcAppearanceInspector(npcDraftSelection,record.id);else openAppearanceOptions(selected(),record.id);};row.append(action,assign);
     }
     list.append(row);
   }
