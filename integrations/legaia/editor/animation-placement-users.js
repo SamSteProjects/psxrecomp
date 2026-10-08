@@ -16,8 +16,32 @@ export function animationPlacementIdsForAsset(rows,assetId,eligible,sceneId){
   return mergeScenePlacementSelection([],ids,eligible);
 }
 
+export function draftAnimationPlacementIds(bindings,references,drafts,sceneId,eligible){
+  if(!Array.isArray(bindings)||bindings.length>MAX_SOURCE_ENTITIES||!Array.isArray(references)||references.length>2048||!drafts||typeof drafts!=='object'||Array.isArray(drafts)||Object.keys(drafts).length>128||typeof sceneId!=='string'||!sceneId||!(eligible instanceof Set))throw Error('NPC initial animation evidence is unavailable.');
+  const pairs=new Set();
+  for(const binding of bindings){
+    if(typeof binding?.actor_semantic_id!=='string'||!binding.actor_semantic_id.startsWith(sceneId+'/actors/')||typeof binding.model_asset_semantic_id!=='string'||!binding.model_asset_semantic_id||!Number.isInteger(binding.initial_animation_id)||binding.initial_animation_id<1||binding.initial_animation_id>255)throw Error('NPC animation catalog binding is unresolved.');
+    const pair=JSON.stringify([binding.actor_semantic_id,binding.model_asset_semantic_id]);if(pairs.has(pair))throw Error('NPC animation catalog binding is duplicated.');pairs.add(pair);
+  }
+  const seen=new Set(),ids=[];
+  for(const ref of references){
+    if(ref?.kind!=='draft_initial_model_assignment'||ref.scene_id!==sceneId)continue;
+    const draft=drafts[ref.source_id],donor=draft?.appearance?.donor_entity_id??draft?.donor_entity_id;
+    if(typeof ref.source_id!=='string'||!ref.source_id.startsWith('authored-actor://')||seen.has(ref.source_id)||draft?.scene_id!==sceneId||ref.effective!==true||ref.imported!==false||ref.runtime_binding!=='not_asserted'||ref.effective_donor_id!==donor||typeof ref.target_id!=='string'||!ref.target_id)throw Error('NPC animation reference differs from its current retail witness.');
+    seen.add(ref.source_id);
+    if(pairs.has(JSON.stringify([donor,ref.target_id]))&&eligible.has(ref.source_id))ids.push(ref.source_id);
+  }
+  return mergeScenePlacementSelection([],ids,eligible);
+}
+
+export function currentAnimationPlacementIds(context,assetId){
+  const imported=animationPlacementIdsForAsset(context.rows,assetId,context.eligible,context.sceneId);
+  const drafts=draftAnimationPlacementIds(context.bindings??[],context.references??[],context.drafts??{},context.sceneId,context.eligible);
+  return mergeScenePlacementSelection([],imported.concat(drafts),context.eligible);
+}
+
 export function mountAnimationPlacementUsers(host,options){
   return mountModelPlacementUsers(host,{...options,kind:'animation',
-    resolveIds:context=>animationPlacementIdsForAsset(context.rows,options.assetId,context.eligible,context.sceneId),
-    description:'Current initial animation assignments of imported actors in the active authored scene, including hidden actors. NPC drafts, imported usage, shared channel contributions and runtime script-selected clips remain separate.'});
+    resolveIds:context=>currentAnimationPlacementIds(context,options.assetId),
+    description:'Current initial animation assignments of imported actors and verified NPC draft retail witnesses in the active authored scene, including hidden actors. Imported usage, shared channel contributions and runtime script-selected clips remain separate.'});
 }

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {animationPlacementIdsForAsset,mountAnimationPlacementUsers} from '../editor/animation-placement-users.js';
+import {animationPlacementIdsForAsset,mountAnimationPlacementUsers,draftAnimationPlacementIds,currentAnimationPlacementIds} from '../editor/animation-placement-users.js';
 const scene='scene://fixture',asset='animation://fixture/scene-anm/0000';
 const actor=(number,clip)=>({id:scene+'/actors/'+number,components:{ActorAnimation:{imported:{animation_asset_id:asset},effective:{animation_asset_id:clip}}}});
 const rows=[actor('a',asset),actor('b',asset),actor('c','animation://fixture/authored-record/clip'),actor('d',null)],eligible=new Set(rows.map(r=>r.id)),before=structuredClone(rows);
@@ -15,3 +15,12 @@ assert.match(button.textContent,/actors \(2\)/);assert('selectCurrentAnimationAc
 const pending=button.onclick();assert(held());await button.onclick();assert.equal(calls,1);context={...context,rows:[actor('a',null),...rows.slice(1)]};assert(!held());release();await pending;
 fresh=false;control.synchronize();assert(button.disabled);fresh=true;control.synchronize();assert(!button.disabled);control.dispose();assert(button.disabled);await button.onclick();assert.equal(calls,1);
 console.log('Effective initial clip identities, allocated clips, imported/current separation, eligibility, source ambiguity, selection bound and stale/pending/disposed action ownership passed.');
+
+const npc='authored-actor://npc',model='asset://fixture/model',bindings=[{actor_semantic_id:rows[0].id,model_asset_semantic_id:model,initial_animation_id:1}],drafts={[npc]:{scene_id:scene,donor_entity_id:rows[0].id}},references=[{source_id:npc,scene_id:scene,kind:'draft_initial_model_assignment',target_id:model,effective_donor_id:rows[0].id,effective:true,imported:false,runtime_binding:'not_asserted'}],members=new Set([...eligible,npc]);
+assert.deepEqual(draftAnimationPlacementIds(bindings,references,drafts,scene,members),[npc]);
+assert.deepEqual(currentAnimationPlacementIds({rows,sceneId:scene,eligible:members,bindings,references,drafts},asset),[npc,...rows.slice(0,2).map(r=>r.id)].sort());
+const changed=structuredClone(drafts);changed[npc].appearance={donor_entity_id:rows[1].id};assert.throws(()=>draftAnimationPlacementIds(bindings,references,changed,scene,members));
+assert.deepEqual(draftAnimationPlacementIds(bindings,[{...references[0],effective_donor_id:rows[1].id}],changed,scene,members),[]);
+for(const refs of [[references[0],references[0]],[{...references[0],target_id:null}],[{...references[0],runtime_binding:'observed'}]])assert.throws(()=>draftAnimationPlacementIds(bindings,refs,drafts,scene,members));
+assert.throws(()=>draftAnimationPlacementIds([...bindings,bindings[0]],references,drafts,scene,members));assert.deepEqual(draftAnimationPlacementIds(bindings,references,drafts,scene,new Set(eligible)),[]);
+console.log('NPC catalog/model/donor witness join, independent appearance, unmatched and ineligible drafts, duplicate and contradictory evidence refusal passed.');

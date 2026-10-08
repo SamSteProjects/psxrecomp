@@ -83,7 +83,7 @@ import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {parseHierarchyQuery,hierarchyMatches,matchingActorIds} from '/hierarchy-query.js';
 import {mountHierarchyNavigation} from '/hierarchy-navigation.js';
 import {mountModelPlacementUsers} from '/model-placement-users.js';
-import {mountAnimationPlacementUsers,animationPlacementIdsForAsset} from '/animation-placement-users.js';
+import {mountAnimationPlacementUsers,currentAnimationPlacementIds} from '/animation-placement-users.js';
 import {mountHierarchyGroups,revealHierarchyEntities,matchingHierarchyPlacementIds} from '/hierarchy-groups.js';
 import {captureSceneViewHierarchy} from '/hierarchy-views.js';
 import {mountSceneToolDrawer} from '/scene-tool-drawer.js';
@@ -1851,8 +1851,8 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
     getContext:()=>canSelectHierarchyMatches()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!wallSelectMode?{projectPath:state.project.path,sceneId:state.scene.id,sourceKey:state.scene_preview_source_key,projectSourceKey:state.project_copy_source_key,rows:activeScenePreview().entities,eligible:scenePlacementEligible()}:null,
     onSelect:async(ids,current)=>{const active=visibilitySelection(),focus=ids.includes(active)?active:ids[0];if(await selectCurrentModelPlacementGroup(record.id,focus,current)&&current())assetDetails.close();},onError:error=>notify(error.message,true)});
   if(record.type==='animation')assetPlacementSelection=mountAnimationPlacementUsers(evidence,{assetId:record.id,current:exportCurrent,busy:()=>busy,
-    getContext:()=>canSelectHierarchyMatches()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!wallSelectMode?{projectPath:state.project.path,sceneId:state.scene.id,sourceKey:state.scene_preview_source_key,projectSourceKey:state.project_copy_source_key,rows:entities(),eligible:scenePlacementEligible()}:null,
-    onSelect:async(ids,current)=>{const active=visibilitySelection(),focus=ids.includes(active)?active:ids[0];const held=()=>current()&&JSON.stringify(ids)===JSON.stringify(animationPlacementIdsForAsset(entities(),record.id,scenePlacementEligible(),state.scene.id));if(await selectCurrentPlacementGroup(ids,focus,held)&&held())assetDetails.close();},onError:error=>notify(error.message,true)});
+    getContext:()=>canSelectHierarchyMatches()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!wallSelectMode?{projectPath:state.project.path,sceneId:state.scene.id,sourceKey:state.scene_preview_source_key,projectSourceKey:state.project_copy_source_key,rows:entities(),eligible:scenePlacementEligible(),drafts:state.actor_drafts,references:state.model_references.filter(ref=>ref.scene_id===state.scene.id),bindings:record.data?.bindings??[]}:null,
+    onSelect:async(ids,current)=>{const active=visibilitySelection(),focus=ids.includes(active)?active:ids[0];const held=()=>current()&&JSON.stringify(ids)===JSON.stringify(currentAnimationPlacementIds({rows:entities(),eligible:scenePlacementEligible(),sceneId:state.scene.id,drafts:state.actor_drafts,references:state.model_references.filter(ref=>ref.scene_id===state.scene.id),bindings:record.data?.bindings??[]},record.id));if(await selectCurrentPlacementGroup(ids,focus,held)&&held())assetDetails.close();},onError:error=>notify(error.message,true)});
   const source=isAuthored?(record.authoredRecord.source_record ?? record.data?.source_record ?? record.data?.components?.RetailMetadata ?? {note:'No additional imported provenance is attached to this authored record.'}):record.data;
   $('asset-source-data').textContent=JSON.stringify(source,null,2);
   if(record.projectMembership){
