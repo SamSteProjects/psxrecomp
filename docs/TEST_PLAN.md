@@ -2,7 +2,7 @@
 
 ## Local Flag Mask Simulation (2026-10-07)
 
-Focused offline checks passed: `test_script_local_masks.py` plus existing branch decode (13 Python tests with private Retail evidence enabled), and six sandbox Node suites including `test_script_local_masks.mjs`. Exhaustive 16-bit known inputs, partial unknown state, unchanged other banks/wait, metadata/context refusal, Back, breakpoints, v1/v2 replay and mounted UI trace are covered. Actual editor browser/visual workflow remains pending; gameplay is deferred. See [scope and evidence](legaia-script-local-masks.md). No native Build or game ran.
+Focused offline checks passed: `test_script_local_masks.py` plus existing branch decode (13 Python tests with private Retail evidence enabled), and six sandbox Node suites including `test_script_local_masks.mjs`. Exhaustive 16-bit known inputs, partial unknown state, unchanged other banks/wait, metadata/context refusal, Back, breakpoints, v1/v2 replay and mounted UI trace are covered. Production-panel browser fixture trace/Back/breakpoint/Save/reload/replay and wide/400 px captures passed; real private editor startup and unchanged project checks passed. Fixture qualification is fixed, and all 52 Town01 actor reports lack the normal selectors, so Retail-scene workflow remains unverified; gameplay is deferred. See [scope and evidence](legaia-script-local-masks.md). No native Build or game ran.
 
 ## NPC-owned script effect colors - offline checks passed (2026-10-06)
 
