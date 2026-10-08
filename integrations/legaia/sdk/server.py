@@ -998,6 +998,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-owner-inspector.js": ("script-owner-inspector.js", "text/javascript"),
                  "/component-references.js": ("component-references.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
+                 "/npc-creation-selection.js": ("npc-creation-selection.js", "text/javascript"),
                  "/model-placement-users.js": ("model-placement-users.js", "text/javascript"),
                  "/animation-placement-users.js": ("animation-placement-users.js", "text/javascript"),
                  "/animation-contributions.js": ("animation-contributions.js", "text/javascript"),

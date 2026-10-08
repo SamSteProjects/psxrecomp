@@ -102,6 +102,7 @@ import {mountSceneCameraInspector} from '/scene-camera-inspector.js';
 import {appendPresetImport,presetExportButton} from '/preset-files.js';
 import {openActorPresetReview} from '/actor-preset-review.js';
 import {ANIMATION_PRESET_SCOPE,presetScopeLabel} from '/preset-animation.js';
+import {captureNpcCreation,createdNpcSelection} from '/npc-creation-selection.js';
 import {modelUsageContext,effectiveModelUsers,validateModelUserSelection,retailModelDonors} from '/model-user-selection.js';
 import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,renderComponentDetails,renderComponentActions,bindComponentActions} from '/component-inspector.js';
 import {mountInspectorComponentFilter} from '/inspector-component-filter.js';
@@ -1599,7 +1600,7 @@ async function refreshScenePreview(){
     if(failures.length)notify(`${failures.length} model assets could not be rendered; their placement markers remain available.`,true);
     renderHierarchy();renderInspector();
     const waiting=pendingEntityFrame;pendingEntityFrame=null;
-    if(waiting&&waiting.key===key&&waiting.scene===state.scene?.id&&waiting.project===state.project?.path&&waiting.revision===cameraRevision&&!drag)frame(waiting.entity);
+    if(waiting&&waiting.key===key&&waiting.scene===state.scene?.id&&waiting.project===state.project?.path&&waiting.projectSource===state.project_copy_source_key&&waiting.selection===hierarchySelectedIdentity()&&waiting.revision===cameraRevision&&!drag)frame(waiting.entity);
     else if(!preserveCamera&&revision===cameraRevision&&!drag)frame();else draw();
   }catch(error){if(error.name!=='AbortError'&&sceneRequestKey()===key){sceneFailedKey=key;sceneError=error.message;scenePendingKey=null;if(!preserveCamera)sceneRenderer?.clear();renderInspector();notify(error.message,true);}}
   finally{if(sceneAbort===controller){sceneAbort=null;scenePendingKey=null;updateSceneBadge();sceneAnimationController?.updateState();draw();}}
@@ -3910,7 +3911,9 @@ async function openActorCandidate(entity,modelAssetId=null){
     form.onsubmit=async event=>{
       event.preventDefault();if(busy)return;
       if(!fresh()||!canEdit()){withdraw();return;}
-      await api('/api/command',{type:'create_actor_draft',donor_entity_id:entity.id,name:form.elements.name.value,position:{x:Number(form.elements.x.value),z:Number(form.elements.z.value)}},{dialog,success:'NPC draft created. Save persists it; Review Build assesses native serialization.'});
+      const command={type:'create_actor_draft',donor_entity_id:entity.id,name:form.elements.name.value,position:{x:Number(form.elements.x.value),z:Number(form.elements.z.value)}},capture=captureNpcCreation(state,command);
+      if(!await api('/api/command',command,{dialog,success:'NPC draft created. Save persists it; Review Build assesses native serialization.'}))return;
+      try{const id=createdNpcSelection(state,capture);selectNpcDraft(id);frameNpcDraft();revealHierarchyButton.click();document.querySelector('.workspace-tabs [data-panel="inspector"]').click();}catch(error){notify(error.message,true);}
     };
     if(!canEdit())form.querySelectorAll('input,button').forEach(control=>control.disabled=true);
     if(!state.actor_drafts?.[entity.id])dialog.append(form);
@@ -4352,7 +4355,7 @@ function renderDialogueAuthoring(){
 function frame(entity){
   pendingEntityFrame=null;
   if(entity&&modelsEnabled&&state.capabilities?.scene_preview&&state.scene_preview_source_key&&!scenePreviewCurrent()&&!sceneError){
-    pendingEntityFrame={entity,key:sceneRequestKey(),scene:state.scene?.id,project:state.project?.path,revision:cameraRevision};
+    pendingEntityFrame={entity,key:sceneRequestKey(),scene:state.scene?.id,project:state.project?.path,projectSource:state.project_copy_source_key,selection:hierarchySelectedIdentity(),revision:cameraRevision};
     return;
   }
   const points=entity?[position(entity)]:(sceneLayers.actors?entities().filter(e=>!hiddenSceneEntities().has(e.id)).map(position):[]);
