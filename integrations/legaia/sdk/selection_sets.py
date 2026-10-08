@@ -2,6 +2,7 @@
 from copy import deepcopy
 import uuid
 from .project import ProjectError, digest
+from .metadata_text import metadata_name
 
 COMMANDS = {'create_actor_selection_set', 'rename_actor_selection_set',
             'update_actor_selection_set', 'delete_actor_selection_set'}
@@ -27,6 +28,7 @@ def validate(project, identifier, value):
             not isinstance(value['scene_id'], str) or value['scene_id'] not in project.imports or
             value['import_sha256'] != digest(project.imports[value['scene_id']])):
         raise ProjectError('Saved selection differs from its imported scene binding')
+    metadata_name(value['name'], 'Saved selection name')
     if value['actor_ids'] != members(project, value['scene_id'], value['actor_ids']):
         raise ProjectError('Saved selection members must use canonical source identity order')
 

@@ -3,6 +3,7 @@ from copy import deepcopy
 import re
 import uuid
 from .project import ProjectError, digest
+from .metadata_text import metadata_name
 
 COMMANDS = {'create_script_bookmark', 'rename_script_bookmark', 'update_script_bookmark', 'delete_script_bookmark'}
 
@@ -19,6 +20,7 @@ def validate(project, identifier, value):
             not isinstance(value['source_record_sha256'],str) or not re.fullmatch('[0-9a-f]{64}',value['source_record_sha256']) or
             not isinstance(value['mnemonic'],str) or not 1 <= len(value['mnemonic']) <= 128):
         raise ProjectError('Script bookmark has invalid source metadata')
+    metadata_name(value['name'], 'Script bookmark name')
     if project._dialogue_document(value['owner_id'])['scene']['semantic_id'] != value['scene_id']:
         raise ProjectError('Script bookmark owner differs from its imported scene')
 

@@ -7,6 +7,7 @@ import struct
 from hashlib import sha256
 from .project import ProjectError, digest
 from .hierarchy_views import hierarchy
+from .metadata_text import metadata_name
 
 COMMANDS = {'create_scene_view', 'rename_scene_view', 'update_scene_view', 'delete_scene_view'}
 
@@ -114,6 +115,7 @@ def validate(project, identifier, value):
             not isinstance(value['scene_id'], str) or value['scene_id'] not in project.imports or
             value['import_sha256'] != digest(project.imports[value['scene_id']])):
         raise ProjectError('Scene view differs from its imported scene binding')
+    metadata_name(value['name'], 'Scene view name')
     display(value['display'])
     _visibility(project, value['scene_id'], value['display'])
 

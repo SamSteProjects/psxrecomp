@@ -5,6 +5,7 @@ import uuid
 
 from .project import ProjectError, digest
 from .project_copy import source_key
+from .metadata_text import metadata_name
 
 COMMANDS = {'create_scene_selection_set', 'rename_scene_selection_set',
             'update_scene_selection_set', 'delete_scene_selection_set'}
@@ -43,12 +44,7 @@ def _members(project, scene, identifiers, *, require_available=False):
 
 
 def _name(value):
-    if not isinstance(value, str):
-        raise ProjectError('Selection set name must be text')
-    value = value.strip()
-    if not 1 <= len(value) <= 80 or any(ord(c) < 32 or ord(c) == 127 for c in value):
-        raise ProjectError('Selection set name requires 1..80 printable characters')
-    return value
+    return metadata_name(value, 'Selection set name')
 
 
 def validate(project, identifier, value):
