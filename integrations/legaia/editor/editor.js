@@ -2183,7 +2183,9 @@ function renderAssets(){
       const members=()=>{if(!current()||!canSelectHierarchyMatches()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||wallSelectMode)throw Error('Use the current authored scene with a qualified model source.');return modelPlacementIdsForAsset(activeScenePreview().entities,record.id,scenePlacementEligible());};
       action.refreshPlacementAction=()=>{action.disabled=true;action.textContent='Select editable instances';try{const ids=members();action.textContent=`Select editable instances (${ids.length})`;action.disabled=!ids.length;action.title='Includes qualified hidden placements; excludes unsupported source cells and runtime-only objects.';}catch(error){action.title=error.message;}};
       action.onclick=async()=>{if(action.disabled)return;try{const ids=members(),focus=ids.includes(visibilitySelection())?visibilitySelection():ids[0];if(await selectCurrentModelPlacementGroup(record.id,focus,current)){frameSceneSelection();document.querySelector('.workspace-tabs [data-panel="inspector"]').click();}}catch(error){notify(error.message,true);}};
-      row.append(action);
+      const assign=document.createElement('button');assign.type='button';assign.dataset.assetAction='appearance';assign.dataset.assetPlacementAction=record.id;assign.style.cssText='grid-column:1 / -1;white-space:normal;text-align:left';assign.textContent='Choose donor appearance';assign.setAttribute('aria-label','Choose donor appearance for '+record.id);
+      assign.refreshPlacementAction=()=>{assign.disabled=busy||!current()||!canEditAppearance()||!selected()||currentPlacementSelection().length>1;assign.title=selected()?'Choose a verified model/animation donor pair for '+selected().name:'Select one imported actor first.';};
+      assign.onclick=()=>{if(assign.disabled||!current())return;openAppearanceOptions(selected(),record.id);};row.append(action,assign);
     }
     list.append(row);
   }
@@ -3786,22 +3788,28 @@ async function openAnimationChannels(entity,initialChannel=null){
   }catch(error){if(animationEditDialog.open)animationEditDialog.querySelector('p').textContent=String(error.message);}finally{setBusy(false);}
 }
 const appearanceDialog=document.createElement('dialog');appearanceDialog.id='appearance-dialog';document.body.append(appearanceDialog);
-async function openAppearanceOptions(entity){
-  if(busy||!canEditAppearance())return;setBusy(true);
+async function openAppearanceOptions(entity,modelAssetId=null){
+  if(busy||!canEditAppearance()||appearanceDialog.open||!entity)return;
+  const key=resourceStateKey(),source=state.project_copy_source_key,fresh=()=>key===resourceStateKey()&&source===state.project_copy_source_key&&selected()?.id===entity.id&&canEditAppearance();
+  if(!fresh())return;setBusy(true);
   appearanceDialog.innerHTML=`<div class="dialog-heading"><h2>Choose donor appearance</h2><button id="close-appearance" aria-label="Close donor appearance">×</button></div><p>Target: ${escapeHTML(entity.name)}. Assign a model and animation together from a verified imported donor.</p><p class="field-note">The existing actor keeps its placement and script. Structural pairing does not prove that the actor’s behavior will work with the new appearance.</p><div id="appearance-options"><p>Verifying available donor pairs…</p></div><p class="dialog-error" role="alert"></p>`;
-  $('close-appearance').onclick=()=>appearanceDialog.close();appearanceDialog.showModal();
+  $('close-appearance').onclick=()=>appearanceDialog.close();
+  if(modelAssetId){const filter=document.createElement('p');filter.className='field-note';filter.textContent='Model asset: '+modelAssetId+'. Only verified donor pairs using this model are listed; model and initial animation are assigned together.';$('appearance-options').before(filter);}
+  appearanceDialog.showModal();
+  const withdraw=()=>{if(!appearanceDialog.open||fresh())return;const host=$('appearance-options');if(host)host.textContent='Project, scene or selected actor changed. Reopen donor appearance selection.';};
+  const timer=setInterval(withdraw,200);appearanceDialog.addEventListener('close',()=>clearInterval(timer),{once:true});
   try{
     const response=await fetch('/api/actor-appearance-options',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id})});
-    const result=await response.json();if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Could not verify donor appearances');if(!appearanceDialog.open)return;
+    const result=await response.json();if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Could not verify donor appearances');if(!appearanceDialog.open)return;if(!fresh()){withdraw();return;}
     if(!Array.isArray(result.options)||result.options.some(option=>typeof option.donor_entity_id!=='string'||typeof option.asset_id!=='string'))throw new Error('Appearance service returned an invalid donor list.');
-    const options=result.options,available=result.supported&&options.length;
-    $('appearance-options').innerHTML=available?'<form id="appearance-form"><label>Imported donor actor<select id="appearance-donor" required aria-label="Donor appearance"><option value="">Choose a verified donor…</option></select></label><div id="appearance-donor-details"></div><div class="dialog-actions"><button type="submit" id="apply-appearance" class="accent" data-appearance-edit data-unavailable="true" disabled>Apply donor appearance</button></div></form>':`<p>${escapeHTML(result.reason ?? 'No supported donor appearances are available for this actor.')}</p>`;
+    const options=modelAssetId?result.options.filter(option=>option.asset_id===modelAssetId):result.options,available=result.supported&&options.length;
+    $('appearance-options').innerHTML=available?'<form id="appearance-form"><label>Imported donor actor<select id="appearance-donor" required aria-label="Donor appearance"><option value="">Choose a verified donor…</option></select></label><div id="appearance-donor-details"></div><div class="dialog-actions"><button type="submit" id="apply-appearance" class="accent" data-appearance-edit data-unavailable="true" disabled>Apply donor appearance</button></div></form>':`<p>${escapeHTML(result.reason ?? (modelAssetId?'No verified donor pair uses this model for the selected actor.':'No supported donor appearances are available for this actor.'))}</p>`;
     const details=document.createElement('details');details.className='appearance-evidence';details.innerHTML='<summary>Verified options and limitations</summary><pre class="diagnostic-detail"></pre>';details.querySelector('pre').textContent=JSON.stringify(result,null,2);$('appearance-options').append(details);
     if(available){
       for(const option of options){const entry=document.createElement('option');entry.value=option.donor_entity_id;entry.textContent=`${option.label ?? option.donor_entity_id}${option.unchanged?' (same imported pair)':''}`;$('appearance-donor').append(entry);}
-      const refresh=()=>{const option=options.find(item=>item.donor_entity_id===$('appearance-donor').value);$('apply-appearance').dataset.unavailable=String(!option);$('apply-appearance').disabled=busy||!canEditAppearance()||!option;$('appearance-donor-details').innerHTML=option?`${property('Donor ID',option.donor_entity_id)}${property('Model asset',option.asset_id)}${property('Animation ID',option.animation_id)}`:'';};
+      const refresh=()=>{if(!fresh()){withdraw();return;}const option=options.find(item=>item.donor_entity_id===$('appearance-donor').value);$('apply-appearance').dataset.unavailable=String(!option);$('apply-appearance').disabled=busy||!canEditAppearance()||!option;$('appearance-donor-details').innerHTML=option?`${property('Donor ID',option.donor_entity_id)}${property('Model asset',option.asset_id)}${property('Animation ID',option.animation_id)}`:'';};
       $('appearance-donor').onchange=refresh;$('appearance-donor').value=entity.components.ActorAppearance?.authored?.donor_entity_id ?? '';refresh();
-      $('appearance-form').onsubmit=async event=>{event.preventDefault();const donor=$('appearance-donor').value;if(options.some(option=>option.donor_entity_id===donor))await api('/api/command',{type:'set_actor_appearance',entity_id:entity.id,donor_entity_id:donor},{dialog:appearanceDialog,success:'Authored appearance assigned.'});};
+      $('appearance-form').onsubmit=async event=>{event.preventDefault();if(!fresh()){withdraw();return;}const donor=$('appearance-donor').value;if(options.some(option=>option.donor_entity_id===donor))await api('/api/command',{type:'set_actor_appearance',entity_id:entity.id,donor_entity_id:donor},{dialog:appearanceDialog,success:'Authored appearance assigned.'});};
     }
   }catch(error){if(appearanceDialog.open)appearanceDialog.querySelector('.dialog-error').textContent=error.message;}finally{setBusy(false);}
 }
