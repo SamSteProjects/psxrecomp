@@ -1,0 +1,21 @@
+# Temporary Sandbox Breakpoints
+
+Retail, Current and reviewed Proposed script walkthroughs share temporary sandbox breakpoints. Select a decoded boundary, choose **Set breakpoint at selection**, then start or resume **Simulate until boundary**. The sandbox stops before executing a breakpoint PC. The instruction’s effects, history and source remain untouched by the pause.
+
+Run at an existing breakpoint stays there. Choose **Simulate one instruction** to continue explicitly, or remove that breakpoint. **Go to sandbox breakpoint** selects the corresponding source boundary without changing simulation state. Multiple points are sorted by PC; at most 64 distinct decoded PCs are allowed. Unsupported effects, undecoded continuations, flag waits, explicit tick waits and the shared 256-step limit retain their existing stop behavior.
+
+**Reset flag sandbox** resets the hypothetical execution while retaining this inspector’s breakpoints. **Remove breakpoint at selection** removes one; **Clear sandbox breakpoints** removes all. Changed source context and inspector disposal clear the temporary set. Busy or pending source requalification locks breakpoint editing and navigation.
+
+Breakpoints are editor controls, not native debugger state, project changes, instruction edits or executed scenario steps. Scenario Save independently replays only the actual instruction/tick/assumption recipe. It does not serialize breakpoint PCs or manufacture a pause event. Existing version-1 and version-2 files and their source qualification remain unchanged. Reopening an inspector starts with no breakpoints; a loaded scenario restores its execution state without restoring navigation stops.
+
+The shared engine accepts a bounded breakpoint array for Run, validates the complete set before any action and stops while its state is still ready. No pause marker is added to state or history, preserving exact Back and scenario replay. The mounted inspector owns the temporary set and forwards selection through the existing source-inspection service. No new server endpoint, persistence collection, opcode semantics or runtime operation is added.
+
+## Verification
+
+Focused coverage includes initial and later stops, pause before flag effects, repeated Run with no extra history, explicit Step continuation, exact Back, saved recipe/replay, malformed/duplicate/undecoded breakpoint refusal without partial mutation, bounded loops, retained unvisited source boundaries, the 64-point limit, navigation that preserves state and busy/pending/stale/reset/disposal behavior. Existing flag, wait, assumption, scenario, Retail/authored walkthrough and source-flow suites also pass.
+
+This extends the offline script workspace. It does not establish native instruction scheduling, host effects, cross-context execution, story behavior or gameplay equivalence. The full SDK goal remains active, with manual gameplay verification deferred.
+
+Actual private Town01 actor0002 Retail checks in `local-output/sdk-20260909/script-sandbox-breakpoints-20261007/qualified-utf8/` passed NOP at `0x000B` → stop before CFLAG_SET at `0x000C`, leaving the context word and known mask untouched. An explicit Step set bit 2 and reached the second stop at `0x000E`; repeated Run added no history, and Back restored the exact prior unknown state. Source-qualified Save produced a v1 one-instruction recipe with no breakpoint metadata; source inspector close/reopen and independent Load replay matched. Pending qualification locked breakpoint controls/navigation. Reset/Clear, wide/400 px layout and close disposal passed. Complete project document/history/files and native Build key stayed unchanged; Open matched, with no browser errors or command/Build/Run requests. Helpers terminated.
+
+Earlier harness attempts are retained: a missed readiness gate, a full-page reload stalled at Connecting to local project service, a hidden parent-resource button after closing the script inspector, and Windows cp1252 console printing of a successful browser message. The final workflow waits for readiness, reopens the resource card before its inspector and prints escaped diagnostic JSON. It qualifies inspector close/reopen, not full-page reload behavior; the reload stall remains unqualified. No game ran.
