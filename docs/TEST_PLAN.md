@@ -1,5 +1,9 @@
 # Legaia SDK validation plan
 
+## Previously Skipped Retail Workflows (2026-10-07)
+
+The intended private model scene-proposal and composed Town01 NPC package checks now both pass with zero skips. Fresh private copies and the original fixtures retained exact documents/native keys/non-Build file hashes. The normal NPC package passed independent descriptor/MAN/neighbor/spawn-index readback. This closes the two specialized skips recorded by the October 6 checkpoint, without claiming a new complete regression run or gameplay acceptance. See [exact tests, source and evidence](legaia-specialized-offline-checks.md).
+
 ## Local Flag Mask Simulation (2026-10-07)
 
 Focused offline checks passed: `test_script_local_masks.py` plus existing branch decode (13 Python tests with private Retail evidence enabled), and six sandbox Node suites including `test_script_local_masks.mjs`. Exhaustive 16-bit known inputs, partial unknown state, unchanged other banks/wait, metadata/context refusal, Back, breakpoints, v1/v2 replay and mounted UI trace are covered. Production-panel browser fixture trace/Back/breakpoint/Save/reload/replay and wide/400 px captures passed; real private editor startup and unchanged project checks passed. Fixture qualification is fixed, and all 52 Town01 actor reports lack the normal selectors, so Retail-scene workflow remains unverified; gameplay is deferred. See [scope and evidence](legaia-script-local-masks.md). No native Build or game ran.

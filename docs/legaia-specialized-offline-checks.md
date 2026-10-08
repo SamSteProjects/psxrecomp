@@ -1,0 +1,14 @@
+# Specialized Retail Workflow Checks
+
+Two checks left skipped by the October 6 integrated checkpoint now pass against fresh private copies of their intended fixtures. They ran at source `6a2c08a4de96e4da59d1d0b4f896d9c896851847` on October 7, 2026, without a game launch. Both completed in 23.28 seconds, with no failures, errors or skips. This supersedes only the two recorded specialized skips; it does not replace the older integrated suite with a fresh full-suite result.
+
+| Check | Workflow and evidence |
+|---|---|
+| `test_model_mesh_scene_preview_retail.RetailMeshScenePreview.test_reviewed_replacement_uses_actual_scene_and_preserves_authored_inputs` | Opens the retained Retail-backed authored model project. The real scene endpoint returns renderable Town01 model0036 instances. GLB replacement Review and the scene-proposal endpoint agree on the review identity, full proposed triangle count and all matching instances. Project/history and retained input bytes stay unchanged. No scene geometry or server response is substituted. |
+| `test_npc_build.RetailNPCPackage.test_normal_package_reopens_changed_descriptor_and_preserves_source` | Opens the composed Town01 fixture and passes normal Build readiness. Builds an actual temporary package, verifies manifest payload/preimage hashes and owned spans, reopens the scene descriptor and compressed MAN, and checks partition growth, exact donor-clone position bytes and shifted spawn indices. Nonselected descriptors/resources, PROT TOC and authored inputs stay unchanged. The report retains unverified runtime allocation and live validation flags. |
+
+The model reference was `local-output/sdk-20260909/retail-glb-group-build-20261004/parent/project`; the NPC reference was `local-output/sdk-20260909/npc-normal-build-20261002/parent/browser-project`. Each was copied without Build/output artifacts under `local-output/sdk-20260909/specialized-offline-20261007/`. Source fixtures were never edited. Before/after checks matched complete saved project documents, native authored-state keys and every non-Build file hash in both copies, plus reference fixture hashes. The temporary NPC package was removed by the test's temporary-directory cleanup. No installer, disc exporter, runtime attachment or game process ran.
+
+Evidence: `local-output/sdk-20260909/specialized-offline-20261007/result.json`, `tests.log`, and `run.py`. These are private local evidence and contain paths to user-owned material; no proprietary payload is committed. The helper exited successfully, and the HTTP test server closed through its context manager.
+
+Gameplay appearance, NPC allocation/behavior, animation cadence, cross-scene restoration and confirmed live coordinate/identity correlation remain separate manual gates. The broad SDK goal stays active; these two passing checks establish specific offline workflows only.
