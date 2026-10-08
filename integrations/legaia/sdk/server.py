@@ -219,6 +219,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_dialogue_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_wait_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_effect_color_authoring"] = bool(self.project.disc_path)
+        state['capabilities']['npc_transition_authoring'] = bool(self.project.disc_path)
         state['capabilities']['npc_system_selector_authoring'] = bool(self.project.disc_path)
         state['capabilities']['npc_script_reset'] = bool(self.project.imports)
         state["capabilities"]["actor_movement_authoring"] = bool(self.project.disc_path)
@@ -833,6 +834,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/npc-facing.js": ("npc-facing.js", "text/javascript"),
                  "/npc-waits.js": ("npc-waits.js", "text/javascript"),
                  "/npc-effect-colors.js": ("npc-effect-colors.js", "text/javascript"),
+                 "/npc-transitions.js": ("npc-transitions.js", "text/javascript"),
                  "/npc-script-reset.js": ("npc-script-reset.js", "text/javascript"),
                  "/npc-movement.js": ("npc-movement.js", "text/javascript"),
                  "/npc-appearance.js": ("npc-appearance.js", "text/javascript"),

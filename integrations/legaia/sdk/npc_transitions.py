@@ -34,6 +34,10 @@ def source(project, identifier):
     context.patch(entries)
     from importer.transition_authoring import reference_entry_interpretation
     for row in options['transitions']:
+        record_offset,record,_=context._source.verified_record(draft['donor_entity_id'])
+        instruction=_instruction(record,row['pc'])
+        row.update(mnemonic=instruction['mnemonic'],target_context=instruction['target_context'],
+            instruction_length=instruction['length'],raw_instruction_hex=instruction['raw_hex'],record_byte_offset=record_offset)
         row['authored_values']=deepcopy(entries.get(row['semantic_id']))
         row['effective_values']=dict(row['values'],**entries.get(row['semantic_id'],{}))
         row['effective_interpretation']=reference_entry_interpretation(row['effective_values'])

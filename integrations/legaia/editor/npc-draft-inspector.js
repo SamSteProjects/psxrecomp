@@ -14,6 +14,7 @@ export function renderNpcDraftInspector(schema,snapshot,previewState){
 }
 
 export const npcScriptActionButtons={
+  'edit-npc-transitions':'npc-transitions-button',
   'edit-npc-dialogue':'npc-dialogue-button','edit-npc-facing':'npc-facing-button',
   'edit-npc-model-selectors':'npc-model-selectors-button','edit-npc-flags':'npc-flags-button',
   'edit-npc-system-flags':'npc-system-flags-button','edit-npc-branches':'npc-branches-button','edit-npc-effect-colors':'npc-effect-colors-button',
