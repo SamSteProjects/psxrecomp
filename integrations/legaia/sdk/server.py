@@ -946,6 +946,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-vector-allocation.js": ("model-vector-allocation.js", "text/javascript"),
                  "/model-vertex-move.js": ("model-vertex-move.js", "text/javascript"),
                  "/model-vertex-sequence.js": ("model-vertex-sequence.js", "text/javascript"),
+                 "/model-vertex-sequence-view.js": ("model-vertex-sequence-view.js", "text/javascript"),
                  "/model-vertex-marquee.js": ("model-vertex-marquee.js", "text/javascript"),
                  "/model-vertex-connectivity.js": ("model-vertex-connectivity.js", "text/javascript"),
                  "/model-group-allocation.js": ("model-group-allocation.js", "text/javascript"),

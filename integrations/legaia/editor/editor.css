@@ -352,3 +352,5 @@
 #model-vertex-sequence-dialog{width:min(780px,calc(100vw - 28px))}#model-vertex-sequence-dialog ol{max-height:240px;overflow:auto;padding-left:24px}#model-vertex-sequence-dialog li{overflow-wrap:anywhere;margin:8px 0}#model-vertex-sequence-dialog input,#model-vertex-sequence-dialog select,#model-vertex-sequence-dialog button{max-width:100%;box-sizing:border-box}
 
 #model-vertex-sequence-dialog .dialog-actions{flex-wrap:wrap;justify-content:flex-start}#model-vertex-sequence-dialog .dialog-actions button{white-space:normal;text-align:left}
+
+.sequence-preview-viewport{height:260px;position:relative;border:1px solid var(--line);background:#10181b}.sequence-preview-viewport canvas{width:100%;height:100%;display:block;touch-action:none}.sequence-preview-viewport [data-points]{position:absolute;inset:0;pointer-events:none;background:transparent}#model-vertex-sequence-dialog [data-sequence-preview]{margin:12px 0}#model-vertex-sequence-dialog [data-sequence-preview] .vertex-move-controls{flex-wrap:wrap}
