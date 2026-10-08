@@ -3183,6 +3183,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route=='/api/npc-model-selectors-review':
                     from .npc_model_selectors import review
                     self._json(200,review(self.server.project,body));return
+                if route=='/api/npc-system-flags-source':
+                    from .npc_system_flags import source
+                    if set(body)!={'entity_id'}:raise ProjectError('NPC system selectors source requires identity only')
+                    self._json(200,source(self.server.project,body['entity_id']));return
+                if route=='/api/npc-system-flags-review':
+                    from .npc_system_flags import review
+                    self._json(200,review(self.server.project,body));return
                 if route=='/api/npc-flags-source':
                     from .npc_flags import source
                     if set(body)!={'entity_id'}:raise ProjectError('NPC flags source requires identity only')

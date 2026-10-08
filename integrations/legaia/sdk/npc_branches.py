@@ -13,7 +13,8 @@ from .project_copy import source_key
 
 def effective_man(project,draft,context):
     candidate=bytearray(context._man);occupied=set()
-    adapters=[('dialogue',project._dialogue_context,'runs'),('movement',project._movement_context,'entries'),('facing',project._facing_context,'entries'),('flags',project._flag_context,'entries'),('waits',project._wait_context,'entries'),('model_selectors',project._model_selector_context,'entries')]
+    from .npc_system_flags import context_for
+    adapters=[('dialogue',project._dialogue_context,'runs'),('movement',project._movement_context,'entries'),('facing',project._facing_context,'entries'),('flags',project._flag_context,'entries'),('system_flags',lambda owner: context_for(project,owner),'entries'),('waits',project._wait_context,'entries'),('model_selectors',project._model_selector_context,'entries')]
     for field,factory,key in adapters:
         if field not in draft:continue
         adapter=factory(draft['donor_entity_id'])
@@ -29,9 +30,17 @@ def effective_man(project,draft,context):
     return bytes(candidate)
 
 
+def branch_context(project,draft):
+    context=project._branch_context(draft['donor_entity_id'])
+    if 'system_flags' in draft:
+        from importer.branch_authoring import BranchAuthoringContext
+        context=BranchAuthoringContext(context._source,system_selectors=draft['system_flags']['entries'])
+    return context
+
+
 def qualify(project,draft):
     validate(project,draft)
-    context=project._branch_context(draft['donor_entity_id'])
+    context=branch_context(project,draft)
     return context.patch_composed(effective_man(project,draft,context),draft['branches']['entries'])
 
 
@@ -49,7 +58,7 @@ def source(project, identifier):
     if project.mode != 'edit' or not isinstance(draft, dict) or draft['scene_id'] != project.active_scene:
         raise ProjectError('NPC branches require an active-scene draft in Edit mode')
     project._validate_actor_draft(identifier, draft);key = source_key(project)
-    context = project._branch_context(draft['donor_entity_id'])
+    context = branch_context(project,draft)
     options = context.options(draft['donor_entity_id'])
     entries = draft.get('branches', {}).get('entries', {})
     if set(entries) - {r['semantic_id'] for r in options['targets']}:
@@ -76,7 +85,7 @@ def review(project, request):
     project._validate_actor_draft(request['entity_id'], proposed)
     if set(request['entries']) - {r['semantic_id'] for r in report['options']['targets']}:
         raise ProjectError('NPC branch entry is not qualified by its script donor')
-    context=project._branch_context(draft['donor_entity_id'])
+    context=branch_context(project,proposed)
     _, changes = context.patch_composed(effective_man(project,proposed,context),request['entries'])
     if source_key(project) != report['project_source_key']:
         raise ProjectError('Project changed during NPC branch review')
@@ -110,7 +119,26 @@ def patch_project(project, scene_id, context, candidate, allocations):
             continue
         validate(project, draft)
         requests.append(dict(draft_id=row['draft_id'], **deepcopy(draft['branches'])))
-    return patch_allocated_branches(context, candidate, allocations, requests) if requests else (candidate, None)
+    if not requests:
+        return candidate,None
+    # Retain candidate-wide ownership and target budgets before splitting the
+    # requests into their independently qualified selector baselines.
+    allocated_scripts(context,candidate,allocations,requests)
+    # Different NPCs may share a donor but own different selectors. Qualify
+    # a separate native baseline per clone rather than sharing donor edits.
+    original_candidate=candidate;combined=None
+    for request in requests:
+        from importer.branch_authoring import BranchAuthoringContext
+        draft=project.actor_drafts[request['draft_id']]
+        selected=BranchAuthoringContext(context._source,system_selectors=draft.get('system_flags',{}).get('entries',{}))
+        candidate,audit=patch_allocated_branches(selected,candidate,allocations,[request])
+        if combined is None:
+            combined=audit
+        else:
+            combined['changes'].extend(audit['changes'])
+    combined['candidate_man_sha256']=sha256(original_candidate).hexdigest()
+    combined['result_man_sha256']=sha256(candidate).hexdigest()
+    return candidate,combined
 
 
 

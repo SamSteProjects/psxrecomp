@@ -140,6 +140,12 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
             from importer.facing_authoring import load_facing_authoring_context
             npc_facing_context=load_facing_authoring_context(project.disc_path,scene)
             candidate,npc_facing_audit=patch_npc_facing(project,scene_id,npc_facing_context,candidate,actor_audit)
+        npc_system_flags_audit=None
+        if any('system_flags' in item for item in project.actor_drafts.values() if item['scene_id']==scene_id):
+            from .npc_system_flags import patch_project as patch_npc_system_flags
+            from importer.system_flag_authoring import load_system_flag_authoring_context
+            npc_system_flags_context=load_system_flag_authoring_context(project.disc_path,scene)
+            candidate,npc_system_flags_audit=patch_npc_system_flags(project,scene_id,npc_system_flags_context,candidate,actor_audit)
         npc_flags_audit=None
         if any('flags' in item for item in project.actor_drafts.values() if item['scene_id']==scene_id):
             from .npc_flags import patch_project as patch_npc_flags
@@ -286,7 +292,7 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
         floor_height_changes=floor_height_changes, existing_actor_placement_changes=placements, existing_actor_dialogue_changes=dialogue_changes, map_changes=map_audit,
         model_changes=model_audit, texture_changes=texture_audit, animation_changes=animation_audit, branch_changes=branch_changes, transition_changes=transition_changes, movement_changes=movement_changes, flag_changes=flag_changes, system_flag_changes=system_flag_changes, wait_changes=wait_changes, effect_color_changes=effect_color_changes, model_selector_changes=model_selector_changes, facing_changes=facing_changes, existing_actor_appearance_changes=appearance_changes,
         actor_changes=actor_audit, actor_pool_evidence=pool_evidence, man_padding_bytes=padding,
-        existing_actor_allocated_animation_changes=allocated_changes,npc_dialogue_changes=npc_dialogue_audit,npc_appearance_changes=npc_appearance_audit,npc_wait_changes=npc_wait_audit,npc_movement_changes=npc_movement_audit,npc_facing_changes=npc_facing_audit,npc_flags_changes=npc_flags_audit,npc_branches_changes=npc_branches_audit,npc_model_selectors_changes=npc_model_selectors_audit,npc_effect_colors_changes=npc_effect_colors_audit,
+        existing_actor_allocated_animation_changes=allocated_changes,npc_dialogue_changes=npc_dialogue_audit,npc_appearance_changes=npc_appearance_audit,npc_wait_changes=npc_wait_audit,npc_movement_changes=npc_movement_audit,npc_facing_changes=npc_facing_audit,npc_flags_changes=npc_flags_audit,npc_system_flags_changes=npc_system_flags_audit,npc_branches_changes=npc_branches_audit,npc_model_selectors_changes=npc_model_selectors_audit,npc_effect_colors_changes=npc_effect_colors_audit,
         final_man_sha256=sha256(candidate).hexdigest(), gameplay_verified=False,
         _asset_patches=patches,
         _rebuild_request=dict(entry_index=carrier.entry_index, chunk_header_offset=carrier.chunk_header_offset,

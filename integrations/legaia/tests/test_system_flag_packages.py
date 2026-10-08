@@ -30,7 +30,7 @@ def record(man,partition,index):
 
 @unittest.skipUnless(os.environ.get('LEGAIA_DISC_BIN'),'Private Retail disc required')
 class SystemSelectorPackages(unittest.TestCase):
-    def qualify(self,scene,append):
+    def qualify(self,scene,append,npc_index=None):
         disc=os.environ['LEGAIA_DISC_BIN']
         with tempfile.TemporaryDirectory() as directory,_disc_context(disc) as (_,_,mapping,archive):
             document=import_scene(disc,scene);p=ProjectService(Path(directory));p.import_metadata(document,disc)
@@ -64,6 +64,18 @@ class SystemSelectorPackages(unittest.TestCase):
                 donor=next(a for a in document['actors'] if a['semantic_id']==actor['owner_id'])
                 position={k:donor['imported_transform']['position'][k] for k in ('x','z')}
                 p.command(dict(type='create_actor_draft',donor_entity_id=actor['owner_id'],position=position,name='Selector delivery probe'))
+                if npc_index is not None:
+                    from sdk.npc_system_flags import review as npc_review
+                    identifier=next(iter(p.actor_drafts))
+                    request=dict(entity_id=identifier,entries={actor['semantic_id']:{'index':npc_index}})
+                    proposed=npc_review(p,request)
+                    p.command(dict(type='set_actor_draft_system_flags',**request,review_key=proposed['review_key']))
+                    p.command(dict(type='create_npc_preset',entity_id=identifier,name='Retail system selector preset'))
+                    from sdk.template_files import export_file
+                    exported=export_file(p,next(iter(p.actor_templates)))
+                    self.assertEqual(exported['schema_version'],'legaia.npc-preset-file.v11')
+                    if os.environ.get('LEGAIA_SYSTEM_PACKAGE_EVIDENCE'):
+                        (Path(os.environ['LEGAIA_SYSTEM_PACKAGE_EVIDENCE'])/f'{scene}-preset.json').write_text(json.dumps(exported),encoding='utf-8')
                 # Adding one P1 owner shifts global P2 indices by one. Construct
                 # those reached opcode44 byte edits directly, without the writer.
                 from importer.trigger_scripts import _p2_entry
@@ -94,14 +106,29 @@ class SystemSelectorPackages(unittest.TestCase):
                     actual=record(emitted.payload,row['partition'],row['record_index']);wanted=record(bytes(expected),row['partition'],row['record_index'])
                     self.assertEqual(actual,wanted,f"{scene} original partition {row['partition']} record {row['record_index']}: first differences {[i for i,(a,b) in enumerate(zip(actual,wanted)) if a!=b][:12]}")
                 clone_index=read_man_layout(source.payload)['partition_counts'][1]
-                self.assertEqual(record(emitted.payload,1,clone_index),donor_record)
+                clone_expected=bytearray(donor_record)
+                if npc_index is not None:
+                    pc=actor['pc'];clone_expected[pc:pc+2]=bytes(((donor_record[pc]&0xf0)|(npc_index>>8),npc_index&255))
+                self.assertEqual(record(emitted.payload,1,clone_index),bytes(clone_expected))
             self.assertEqual(before,(p._document(),p.imports,p.undo_stack,p.redo_stack))
             self.assertEqual(metadata,(p.root/'project.legaia.json').read_bytes())
             self.assertEqual(ProjectService.open(p.root)._document(),p._document())
             self.assertTrue(verify_build(p,Path(built['audit']).parent.name)['matches_current_inputs'])
+            if npc_index is not None:
+                from sdk.npc_script_compare import compare
+                comparison=compare(p,identifier,Path(built['audit']).parent.name)
+                self.assertEqual([s['category'] for s in comparison['authored_spans']],['own_system_flag'])
+                if os.environ.get('LEGAIA_SYSTEM_PACKAGE_EVIDENCE'):
+                    from sdk.build_history import list_builds
+                    state=p.state()
+                    from sdk.project_copy import source_key
+                    from sdk.build import authored_state_key
+                    state.update(project_copy_source_key=source_key(p),build_review_source_key=authored_state_key(p))
+                    entry=next(b for b in list_builds(p)['builds'] if b['id']==Path(built['audit']).parent.name)
+                    (Path(os.environ['LEGAIA_SYSTEM_PACKAGE_EVIDENCE'])/f'{scene}-comparison.json').write_text(json.dumps(dict(comparison=comparison,state=state,entry=entry,entity_id=identifier)),encoding='utf-8')
             if os.environ.get('LEGAIA_SYSTEM_PACKAGE_EVIDENCE'):
                 dest=Path(os.environ['LEGAIA_SYSTEM_PACKAGE_EVIDENCE']);dest.mkdir(parents=True,exist_ok=True)
-                (dest/f"{scene}-{'appended' if append else 'normal'}.json").write_text(json.dumps(dict(scene=scene,append=append,bindings=bindings,carrier=emitted.kind,delivery=delivery,source_man_sha256=hashlib.sha256(source.payload).hexdigest(),emitted_man_sha256=hashlib.sha256(emitted.payload).hexdigest(),package_sha256=built['sha256'],full_man_equal=not append,all_original_records_equal=append,clone_inherits_retail=append,project_imports_history_unchanged=True,save_open_matches=True,gameplay_verified=False),indent=2),encoding='utf-8')
+                (dest/f"{scene}-{'npc-owned' if npc_index is not None else 'appended' if append else 'normal'}.json").write_text(json.dumps(dict(scene=scene,append=append,npc_index=npc_index,bindings=bindings,carrier=emitted.kind,delivery=delivery,source_man_sha256=hashlib.sha256(source.payload).hexdigest(),emitted_man_sha256=hashlib.sha256(emitted.payload).hexdigest(),package_sha256=built['sha256'],full_man_equal=not append,all_original_records_equal=append,clone_inherits_retail=append and npc_index is None,clone_matches_literal=True,project_imports_history_unchanged=True,save_open_matches=True,gameplay_verified=False),indent=2),encoding='utf-8')
 
     def test_complete_normal_compressed_and_streaming_packages(self):
         for scene in ('town01','dolk2'):
@@ -110,6 +137,10 @@ class SystemSelectorPackages(unittest.TestCase):
     def test_appended_compressed_and_streaming_packages_preserve_original_p2_and_clone(self):
         for scene in ('town01','dolk2'):
             with self.subTest(scene=scene):self.qualify(scene,True)
+
+    def test_npc_owned_compressed_and_streaming_packages_keep_donor_separate(self):
+        for scene in ('town01','dolk2'):
+            with self.subTest(scene=scene):self.qualify(scene,True,npc_index=2048)
 
 
 if __name__=='__main__':unittest.main()

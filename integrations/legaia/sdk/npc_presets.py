@@ -11,7 +11,7 @@ def validate(project, identifier, value):
     if (value.get('scope')!=SCOPE or not isinstance(source,dict) or set(source)!={'disc_identity','scene_id','entity_id','capture_draft_id','import_sha256'} or
         not isinstance(components,dict) or set(components)!={'Transform','NpcDraft'} or
         not isinstance(components['Transform'],dict) or set(components['Transform'])!={'position'} or
-        not isinstance(components['NpcDraft'],dict) or (set(components['NpcDraft'])-{'name','donor_entity_id','dialogue','appearance','waits','movement','facing','flags','branches','model_selectors','effect_colors'} or not {'name','donor_entity_id'}<=set(components['NpcDraft']))):
+        not isinstance(components['NpcDraft'],dict) or (set(components['NpcDraft'])-{'name','donor_entity_id','dialogue','appearance','waits','movement','facing','flags','system_flags','branches','model_selectors','effect_colors'} or not {'name','donor_entity_id'}<=set(components['NpcDraft']))):
         raise ProjectError('NPC preset requires exact frozen donor/placement and source fields')
     if any(not isinstance(source[k],str) or not source[k] for k in source):
         raise ProjectError('NPC preset provenance fields must be nonempty strings')
@@ -34,6 +34,9 @@ def capture(project,command):
     if 'branches' in draft:
         from .npc_branches import qualify
         qualify(project,draft)
+    if 'system_flags' in draft:
+        from .npc_system_flags import source as system_source
+        system_source(project,command['entity_id'])
     if 'flags' in draft:
         from .npc_flags import source as flags_source
         flags_source(project,command['entity_id'])
@@ -55,7 +58,7 @@ def capture(project,command):
     if any(row['name'].casefold()==name.casefold() for row in project.actor_templates.values()):raise ProjectError('A preset already uses that name')
     identifier='template://'+str(uuid.uuid4());document=project.imports[draft['scene_id']]
     value=dict(id=identifier,name=name,scope=SCOPE,source=dict(scene_id=draft['scene_id'],entity_id=draft['donor_entity_id'],capture_draft_id=command['entity_id'],disc_identity=document['source']['disc_identity'],import_sha256=digest(document)),
-               components=dict(Transform=dict(position=draft['position']),NpcDraft=dict(name=draft['name'],donor_entity_id=draft['donor_entity_id'],**{k:deepcopy(draft[k]) for k in ('dialogue','appearance','waits','movement','facing','flags','branches','model_selectors','effect_colors') if k in draft})))
+               components=dict(Transform=dict(position=draft['position']),NpcDraft=dict(name=draft['name'],donor_entity_id=draft['donor_entity_id'],**{k:deepcopy(draft[k]) for k in ('dialogue','appearance','waits','movement','facing','flags','system_flags','branches','model_selectors','effect_colors') if k in draft})))
     project._validate_template(identifier,value)
     if source_key(project)!=key:raise ProjectError('Project changed during NPC preset capture')
     project.actor_templates[identifier]=value
@@ -91,6 +94,10 @@ def review(project,request):
         from .npc_facing import qualify
         candidate['facing']=deepcopy(template['components']['NpcDraft']['facing'])
         qualify(project,candidate,candidate['facing']['entries'])
+    if 'system_flags' in template['components']['NpcDraft']:
+        from .npc_system_flags import qualify
+        candidate['system_flags']=deepcopy(template['components']['NpcDraft']['system_flags'])
+        qualify(project,candidate)
     if 'flags' in template['components']['NpcDraft']:
         candidate['flags']=deepcopy(template['components']['NpcDraft']['flags'])
         project._flag_context(candidate['donor_entity_id']).patch(candidate['flags']['entries'])

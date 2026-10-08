@@ -8,7 +8,100 @@ from importer.man_layout import read_man_layout
 from importer.script_inspection import inspect_record
 from importer.system_flag_authoring import patch_system_flag_selector
 from .npc_script_allocation import allocated_scripts
-from .project import ProjectError
+from .project import ProjectError, digest
+from .project_copy import source_key
+
+
+def context_for(project, owner):
+    from importer.system_flag_authoring import SystemFlagAuthoringContext
+    return SystemFlagAuthoringContext(project._dialogue_context(owner))
+
+
+def validate(project, draft):
+    if 'system_flags' not in draft:
+        return
+    value = draft['system_flags']
+    if (not isinstance(value, dict) or set(value) != {'donor_entity_id', 'entries'}
+            or value['donor_entity_id'] != draft['donor_entity_id']):
+        raise ProjectError('NPC system selectors belong to their script donor; clear them before changing donor')
+    from .system_flags import validate as validate_component
+    validate_component(project, draft['donor_entity_id'], {'entries': value['entries']})
+
+
+def qualify(project, draft):
+    validate(project, draft)
+    return context_for(project, draft['donor_entity_id']).patch(draft.get('system_flags', {}).get('entries', {}))
+
+
+def source(project, identifier):
+    draft = project.actor_drafts.get(identifier) if isinstance(identifier, str) else None
+    if project.mode != 'edit' or not isinstance(draft, dict) or draft['scene_id'] != project.active_scene:
+        raise ProjectError('NPC system selectors require an active-scene draft in Edit mode')
+    project._validate_actor_draft(identifier, draft)
+    key = source_key(project); context = context_for(project, draft['donor_entity_id'])
+    options = context.options(draft['donor_entity_id'])
+    entries = draft.get('system_flags', {}).get('entries', {})
+    if set(entries) - {r['semantic_id'] for r in options['targets']}:
+        raise ProjectError('Current NPC system selectors are not source-qualified')
+    qualify(project, draft)
+    for row in options['targets']:
+        row['authored_values'] = deepcopy(entries.get(row['semantic_id']))
+        row['effective_values'] = deepcopy(entries.get(row['semantic_id'], row['values']))
+    if key != source_key(project):
+        raise ProjectError('Project changed during NPC system selector inspection')
+    return dict(schema_version='legaia.npc-system-flags-source.v1', entity_id=identifier,
+        scene_id=draft['scene_id'], project_source_key=key, draft=deepcopy(draft), options=options,
+        gameplay_verified=False, runtime_variable_identity='not_asserted', story_meaning='not_asserted')
+
+
+def review(project, request):
+    if not isinstance(request, dict) or set(request) != {'entity_id', 'entries'} or not isinstance(request['entries'], dict):
+        raise ProjectError('NPC system selector Review requires identity and complete typed entries')
+    report = source(project, request['entity_id']); draft = report['draft']; proposed = deepcopy(draft)
+    if request['entries']:
+        proposed['system_flags'] = dict(donor_entity_id=draft['donor_entity_id'], entries=deepcopy(request['entries']))
+    else:
+        proposed.pop('system_flags', None)
+    project._validate_actor_draft(request['entity_id'], proposed)
+    if set(request['entries']) - {r['semantic_id'] for r in report['options']['targets']}:
+        raise ProjectError('NPC system selector entry is not qualified by its script donor')
+    _, changes = qualify(project, proposed)
+    if 'branches' in proposed:
+        from .npc_branches import qualify as qualify_branches
+        qualify_branches(project, proposed)
+    if source_key(project) != report['project_source_key']:
+        raise ProjectError('Project changed during NPC system selector Review')
+    return dict(schema_version='legaia.npc-system-flags-review.v1', entity_id=request['entity_id'],
+        project_source_key=report['project_source_key'], request=deepcopy(request), current=draft,
+        proposed=proposed, changes=changes,
+        review_key=digest(dict(source=report['project_source_key'], request=request, algorithm='npc-system-selectors.v1')),
+        gameplay_verified=False, runtime_variable_identity='not_asserted', story_meaning='not_asserted')
+
+
+def apply(project, command):
+    if set(command) != {'type', 'entity_id', 'entries', 'review_key'}:
+        raise ProjectError('NPC system selector Apply requires exact reviewed fields')
+    report = review(project, {k: command[k] for k in ('entity_id', 'entries')})
+    if command['review_key'] != report['review_key']:
+        raise ProjectError('NPC system selector inputs changed; Review again')
+    if report['current'] == report['proposed']:
+        return
+    project.actor_drafts[command['entity_id']] = deepcopy(report['proposed'])
+    project.undo_stack.append(dict(target='actor_drafts', entity_id=command['entity_id'],
+        before=deepcopy(report['current']), after=deepcopy(report['proposed'])))
+    project.redo_stack.clear()
+
+
+def patch_project(project, scene_id, context, candidate, allocations):
+    requests = []
+    for row in allocations['drafts']:
+        draft = project.actor_drafts[row['draft_id']]
+        if draft['scene_id'] != scene_id:
+            raise ProjectError('NPC system selector allocation belongs to another scene')
+        if 'system_flags' in draft:
+            validate(project, draft)
+            requests.append(dict(draft_id=row['draft_id'], **deepcopy(draft['system_flags'])))
+    return patch_allocated_system_flags(context, candidate, allocations, requests) if requests else (candidate, None)
 
 
 def patch_allocated_system_flags(context, candidate, allocations, requests):

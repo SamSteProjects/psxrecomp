@@ -17,9 +17,11 @@ NPC_FLAGS_SCHEMA='legaia.npc-preset-file.v7'
 NPC_BRANCHES_SCHEMA='legaia.npc-preset-file.v8'
 NPC_MODEL_SELECTORS_SCHEMA='legaia.npc-preset-file.v9'
 NPC_EFFECT_COLORS_SCHEMA='legaia.npc-preset-file.v10'
+NPC_SYSTEM_FLAGS_SCHEMA='legaia.npc-preset-file.v11'
 MAX_NPC_DIALOGUE_BYTES=512*1024
 
 def _file_schema(scope,components=None):
+    if scope=='npc-draft-preset-v1' and isinstance(components,dict) and isinstance(components.get('NpcDraft'),dict) and 'system_flags' in components['NpcDraft']:return NPC_SYSTEM_FLAGS_SCHEMA
     if scope=='npc-draft-preset-v1' and isinstance(components,dict) and isinstance(components.get('NpcDraft'),dict) and 'effect_colors' in components['NpcDraft']:return NPC_EFFECT_COLORS_SCHEMA
     if scope=='npc-draft-preset-v1' and isinstance(components,dict) and isinstance(components.get('NpcDraft'),dict) and 'model_selectors' in components['NpcDraft']:return NPC_MODEL_SELECTORS_SCHEMA
     if scope=='npc-draft-preset-v1' and isinstance(components,dict) and isinstance(components.get('NpcDraft'),dict) and 'branches' in components['NpcDraft']:return NPC_BRANCHES_SCHEMA
@@ -51,9 +53,9 @@ def parse(content):
     try:
         value=json.loads(content,object_pairs_hook=_pairs,parse_constant=_constant)
     except (ValueError,RecursionError) as exc:raise ProjectError('Invalid preset JSON') from exc
-    if not isinstance(value,dict) or set(value)!={'schema_version','source_import_sha256','template'} or value['schema_version'] not in (SCHEMA,ANIMATED_SCHEMA,NPC_SCHEMA,NPC_DIALOGUE_SCHEMA,NPC_APPEARANCE_SCHEMA,NPC_WAITS_SCHEMA,NPC_MOVEMENT_SCHEMA,NPC_FACING_SCHEMA,NPC_FLAGS_SCHEMA,NPC_BRANCHES_SCHEMA,NPC_MODEL_SELECTORS_SCHEMA,NPC_EFFECT_COLORS_SCHEMA):
+    if not isinstance(value,dict) or set(value)!={'schema_version','source_import_sha256','template'} or value['schema_version'] not in (SCHEMA,ANIMATED_SCHEMA,NPC_SCHEMA,NPC_DIALOGUE_SCHEMA,NPC_APPEARANCE_SCHEMA,NPC_WAITS_SCHEMA,NPC_MOVEMENT_SCHEMA,NPC_FACING_SCHEMA,NPC_FLAGS_SCHEMA,NPC_BRANCHES_SCHEMA,NPC_MODEL_SELECTORS_SCHEMA,NPC_EFFECT_COLORS_SCHEMA,NPC_SYSTEM_FLAGS_SCHEMA):
         raise ProjectError('Unsupported preset file fields or schema')
-    if size>(MAX_NPC_DIALOGUE_BYTES if value['schema_version'] in (NPC_DIALOGUE_SCHEMA,NPC_APPEARANCE_SCHEMA,NPC_WAITS_SCHEMA,NPC_MOVEMENT_SCHEMA,NPC_FACING_SCHEMA,NPC_FLAGS_SCHEMA,NPC_BRANCHES_SCHEMA,NPC_MODEL_SELECTORS_SCHEMA,NPC_EFFECT_COLORS_SCHEMA) else MAX_FILE_BYTES):raise ProjectError('Preset file exceeds its schema size bound')
+    if size>(MAX_NPC_DIALOGUE_BYTES if value['schema_version'] in (NPC_DIALOGUE_SCHEMA,NPC_APPEARANCE_SCHEMA,NPC_WAITS_SCHEMA,NPC_MOVEMENT_SCHEMA,NPC_FACING_SCHEMA,NPC_FLAGS_SCHEMA,NPC_BRANCHES_SCHEMA,NPC_MODEL_SELECTORS_SCHEMA,NPC_EFFECT_COLORS_SCHEMA,NPC_SYSTEM_FLAGS_SCHEMA) else MAX_FILE_BYTES):raise ProjectError('Preset file exceeds its schema size bound')
     source_hash=value['source_import_sha256']
     if not isinstance(source_hash,str) or len(source_hash)!=64 or any(c not in '0123456789abcdef' for c in source_hash):
         raise ProjectError('Preset requires a source import SHA256')
@@ -84,6 +86,9 @@ def _verify_source(project,template):
     dialogue=template['components'].get('NpcDraft',{}).get('dialogue')
     if dialogue is not None:project._dialogue_context(dialogue['donor_entity_id']).patch(dialogue['runs'])
     npc=template['components'].get('NpcDraft',{})
+    if 'system_flags' in npc:
+        from .npc_system_flags import qualify
+        qualify(project,npc)
     if 'flags' in npc:project._flag_context(npc['donor_entity_id']).patch(npc['flags']['entries'])
     if 'facing' in npc:
         from .npc_facing import qualify
