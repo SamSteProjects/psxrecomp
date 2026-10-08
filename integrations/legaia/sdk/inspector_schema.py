@@ -360,6 +360,7 @@ def inspector_schema():
             ('system-flags','Edit NPC system selectors...','npc_system_selector_authoring'),
             ('branches','Edit NPC script branches...','actor_branch_authoring'),
             ('effect-colors','Edit NPC effect colors...','actor_effect_color_authoring'),
+            ('animation-operands','Edit NPC Animation Arguments...','npc_animation_operand_authoring'),
             ('transitions','Edit NPC transition arrivals...','npc_transition_authoring'),
             ('waits','Edit NPC wait targets...','actor_wait_authoring'),
             ('movement','Edit NPC script movement...','actor_movement_authoring')]]
@@ -382,6 +383,7 @@ def inspector_schema():
                  'Retail source identity, authored metadata and saved generated script are separate. No runtime identity, execution, visibility or effect is inferred.',
                  'Review each family before Apply. Use saved Build comparison for emitted bytes; clearing one family leaves other owned edits intact.']}
     asset_actions=schema['components']['AssetNpcDraft']['actions']
+    asset_actions.append({'id':'edit-npc-animation-operands','label':'Edit NPC Animation Arguments','capability':'npc_animation_operand_authoring','when':['authoredRecord','donor_entity_id']})
     asset_actions.append({'id':'edit-npc-transitions','label':'Edit NPC Transition Arrivals','capability':'npc_transition_authoring','when':['authoredRecord','donor_entity_id']})
     asset_actions.insert(next(i for i,a in enumerate(asset_actions) if a['id']=='edit-npc-flags'),
         {'id':'edit-npc-effect-colors','label':'Edit NPC effect colors','capability':'actor_effect_color_authoring',

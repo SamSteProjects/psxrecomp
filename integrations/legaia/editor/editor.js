@@ -111,6 +111,7 @@ import {mountScriptOwnerInspector} from '/script-owner-inspector.js';
 import {openNpcBuildScript} from './npc-build-script.js';
 import {openNpcDialogue} from './npc-dialogue.js';
 import {openNpcWaits} from './npc-waits.js';
+import {openNpcAnimationOperands} from './npc-animation-operands.js';
 import {openNpcEffectColors} from './npc-effect-colors.js';
 import {openNpcTransitions} from './npc-transitions.js';
 import {renderEffectColorAuthoring} from './script-effect-colors.js';
@@ -2048,6 +2049,7 @@ async function activateAsset(record,action=null){
   if(action==='edit-npc-appearance'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC appearance target changed. Reopen Asset Details.');openNpcAppearanceInspector(record.id);return;}
   if(action==='edit-npc-dialogue'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC dialogue target changed. Reopen Asset Details.');openNpcDialogue({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api});return;}
   if(action==='reset-npc-script'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC reset target changed. Reopen Asset Details.');openNpcScriptReset({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api});return;}
+  if(action==='edit-npc-animation-operands'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw Error('NPC animation target changed. Reopen Asset Details.');openNpcAnimationOperands({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api});return;}
   if(action==='edit-npc-effect-colors'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC color target changed. Reopen Asset Details.');openNpcEffectColors({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api});return;}
   if(action==='edit-npc-transitions'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC arrival target changed. Reopen Asset Details.');openNpcTransitions({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api,onPreview:openNpcArrivalDestination});return;}
   if(action==='edit-npc-facing'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC facing target changed. Reopen Asset Details.');openNpcFacing({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api});return;}
@@ -3305,7 +3307,7 @@ function renderInspector(){
       current:()=>npcDraftSelection===id&&state.actor_drafts?.[id]?.scene_id===state.scene?.id,
       handlers:{'reset-npc-script':()=>openNpcScriptReset(scriptOptions),'edit-npc-dialogue':()=>openNpcDialogue(scriptOptions),'edit-npc-facing':()=>openNpcFacing(scriptOptions),
         'edit-npc-model-selectors':()=>openNpcModelSelectors(scriptOptions),'edit-npc-flags':()=>openNpcFlags(scriptOptions),'edit-npc-system-flags':()=>openNpcSystemFlags(scriptOptions),
-        'edit-npc-branches':()=>openNpcBranches(scriptOptions),'edit-npc-effect-colors':()=>openNpcEffectColors(scriptOptions),
+        'edit-npc-animation-operands':()=>openNpcAnimationOperands(scriptOptions),'edit-npc-branches':()=>openNpcBranches(scriptOptions),'edit-npc-effect-colors':()=>openNpcEffectColors(scriptOptions),
         'edit-npc-transitions':()=>openNpcTransitions(scriptOptions),
         'edit-npc-waits':()=>openNpcWaits(scriptOptions),'edit-npc-movement':()=>openNpcMovement({...scriptOptions,showTargets:showNpcMovementTargets}),
         'inspect-npc-build-script':()=>openNpcBuildScript({...scriptOptions,renderInstructions:appendScriptInstructions}),

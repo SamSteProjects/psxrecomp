@@ -8,6 +8,7 @@ import {decodeNpcFlagsSource,openNpcFlags} from './npc-flags.js';
 import {decodeNpcModelSelectorsSource,openNpcModelSelectors} from './npc-model-selectors.js';
 import {decodeNpcBranchesSource,openNpcBranches} from './npc-branches.js';
 import {decodeNpcDialogueSource,openNpcDialogue} from './npc-dialogue.js';
+import {decodeNpcAnimationOperandSource,openNpcAnimationOperands,npcCurrentAnimationSelection} from './npc-animation-operands.js';
 import {decodeNpcEffectColorSource,openNpcEffectColors} from './npc-effect-colors.js';
 import {decodeNpcTransitionsSource,openNpcTransitions} from './npc-transitions.js';
 const same=(a,b)=>JSON.stringify(canonicalScriptMetadata(a))===JSON.stringify(canonicalScriptMetadata(b));
@@ -125,6 +126,7 @@ export function openNpcCurrentScript({entityId,getState,isBusy,renderInstruction
    {label:'Edit selected NPC system selector',route:'/api/npc-system-flags-source',capability:'npc_system_selector_authoring',decode:decodeNpcSystemFlagsSource,select:npcCurrentSystemSelection,open:openNpcSystemFlags},
    {label:'Edit selected NPC branch',route:'/api/npc-branches-source',capability:'actor_branch_authoring',decode:decodeNpcBranchesSource,select:npcCurrentBranchSelection,open:openNpcBranches},
    {label:'Edit selected NPC dialogue',route:'/api/npc-dialogue-source',capability:'actor_dialogue_authoring',decode:decodeNpcDialogueSource,select:npcCurrentDialogueSelection,open:openNpcDialogue},
+   {label:'Edit Selected NPC Animation Arguments',route:'/api/npc-animation-operands-source',capability:'npc_animation_operand_authoring',decode:decodeNpcAnimationOperandSource,select:npcCurrentAnimationSelection,open:openNpcAnimationOperands},
    {label:'Edit selected NPC effect color',route:'/api/npc-effect-colors-source',capability:'actor_effect_color_authoring',decode:decodeNpcEffectColorSource,select:npcCurrentEffectSelection,open:openNpcEffectColors},
    {label:'Edit selected NPC arrival',route:'/api/npc-transitions-source',capability:'npc_transition_authoring',decode:decodeNpcTransitionsSource,select:npcCurrentTransitionSelection,open:openNpcTransitions},
    ...Object.entries(operandFamilies).map(([family,editor])=>({...editor,select:(value,source,pc,state)=>npcCurrentOperandSelection(value,source,pc,state,family)}))

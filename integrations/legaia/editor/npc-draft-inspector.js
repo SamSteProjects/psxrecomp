@@ -17,6 +17,7 @@ export const npcScriptActionButtons={
   'edit-npc-transitions':'npc-transitions-button',
   'edit-npc-dialogue':'npc-dialogue-button','edit-npc-facing':'npc-facing-button',
   'edit-npc-model-selectors':'npc-model-selectors-button','edit-npc-flags':'npc-flags-button',
+  'edit-npc-animation-operands':'npc-animation-operands-button',
   'edit-npc-system-flags':'npc-system-flags-button','edit-npc-branches':'npc-branches-button','edit-npc-effect-colors':'npc-effect-colors-button',
   'edit-npc-waits':'npc-waits-button','edit-npc-movement':'npc-movement-button',
   'inspect-npc-current-script':'npc-current-script-button',
