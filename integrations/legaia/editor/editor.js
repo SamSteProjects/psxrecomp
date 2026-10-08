@@ -1177,7 +1177,7 @@ async function readSceneCatalog(offset=0){
     for(const scene of result.scenes){
       const button=document.createElement('button');button.type='button';button.className='catalog-scene';button.textContent=`${scene.name} · ${scene.actor_count} actors · ${scene.man_source_kind==='raw_streaming_man'?'Streaming field':scene.man_source_kind==='descriptor_man'?'Compressed field':'Source format unknown'}`;button.title=scene.semantic_id;
       const status=document.createElement('p');status.textContent=scene.import_status==='supported'?`Metadata import ready · ${scene.scene_model_count} scene models · ${scene.global_model_count} global models · ${scene.unresolved_actor_model_count} unresolved actor model references`:`Placement readable · Import unavailable: ${scene.import_reason}`;
-      button.disabled=scene.import_status!=='supported';button.onclick=()=>{if(scene.import_status!=='supported')return;$('scene-input').value=scene.name;$('catalog-status').textContent=`Selected ${scene.name}. Use Import scene to add it to the project. Rendering and gameplay remain unverified.`;};const preview=document.createElement('button');preview.type='button';preview.textContent='Preview '+scene.name+' before import';preview.disabled=scene.import_status!=='supported';preview.onclick=()=>{if(busy||generation!==catalogGeneration||scene.import_status!=='supported')return;const identity=result.source.disc_identity;$('import-dialog').close();openCatalogScenePreview({disc,scene:scene.name,discIdentity:identity,getState:()=>state,busy:()=>busy,onImport:body=>api('/api/import',body,{success:'Previewed scene imported.'}),onError:error=>notify(error.message,true)});};$('catalog-scenes').append(button,status,preview);
+      button.disabled=scene.import_status!=='supported';button.onclick=()=>{if(scene.import_status!=='supported')return;$('scene-input').value=scene.name;$('catalog-status').textContent=`Selected ${scene.name}. Use Import scene to add it to the project. Rendering and gameplay remain unverified.`;};const preview=document.createElement('button');preview.type='button';preview.textContent='Preview '+scene.name+' before import';preview.disabled=scene.import_status!=='supported';preview.onclick=()=>{if(busy||generation!==catalogGeneration||scene.import_status!=='supported')return;const identity=result.source.disc_identity;$('import-dialog').close();openCatalogScenePreview({disc,scene:scene.name,discIdentity:identity,getState:()=>state,busy:()=>busy,onImport:importCatalogPreviewSelection,onError:error=>notify(error.message,true)});};$('catalog-scenes').append(button,status,preview);
     }
     if(result.unsupported_blocks.length){const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Unsupported structural blocks';details.append(summary);for(const block of result.unsupported_blocks){const row=document.createElement('p');row.textContent=`${block.name}: ${block.reason}`;details.append(row);}$('catalog-scenes').append(details);}
   }catch(error){if(generation===catalogGeneration)$('catalog-status').textContent=String(error.message);}
@@ -1324,6 +1324,22 @@ const actorBatchTool=mountActorPlacementBatch({getState:()=>state,getEntities:en
     const points=[];for(const [id,proposed] of inspection.positions){const entity=entities().find(item=>item.id===id);if(!entity)continue;const original=activeScenePreview()?.entities.find(item=>item.entity_id===id)?.display_position;if(original)points.push(original);points.push(proposed);}
     if(!points.length)return;const min={},max={};for(const axis of ['x','y','z']){min[axis]=Math.min(...points.map(p=>p[axis]));max[axis]=Math.max(...points.map(p=>p[axis]));camera.target[axis]=(min[axis]+max[axis])/2;}camera.distance=Math.max(200,Math.hypot(max.x-min.x,max.y-min.y,max.z-min.z)*1.5);cameraRevision++;draw();
   }});
+async function importCatalogPreviewSelection(body,selection){
+  if(!await api('/api/import',body,{success:'Previewed scene imported.'})||!selection)return;
+  const scene='scene://'+body.scene,key=sceneRequestKey(),project=state.project?.path,source=state.project_copy_source_key;
+  const fresh=()=>state.project?.mode==='edit'&&state.scene?.id===scene&&state.project?.path===project&&state.project_copy_source_key===source&&sceneRequestKey()===key;
+  if(!fresh())return;
+  const actor=entities().find(e=>e.id===selection.entity_id);
+  if(actor){if(!await api('/api/selection',{entity_id:actor.id})||!fresh())return;frame(actor);revealHierarchyButton.click();document.querySelector('.workspace-tabs [data-panel="inspector"]').click();notify('Scene imported. Previewed actor selected in the Project.');return;}
+  if(selection.kind!=='environment'){notify('Scene imported; previewed instance has no supported Project inspector.',true);return;}
+  if(!modelsEnabled){notify('Scene imported; enable scene models to select the previewed environment instance.',true);return;}
+  const deadline=performance.now()+30000;
+  while(fresh()&&!scenePreviewCurrent()&&scenePendingKey===key&&performance.now()<deadline)await new Promise(resolve=>setTimeout(resolve,50));
+  if(!fresh())return;
+  const environment=environmentEntities().find(e=>e.entity_id===selection.entity_id);
+  if(!environment||busy){notify('Scene imported; previewed environment selection is unavailable. Retry models and select it in the hierarchy.',true);return;}
+  selectEnvironment(environment.entity_id);$('frame-selected').click();revealHierarchyButton.click();document.querySelector('.workspace-tabs [data-panel="inspector"]').click();notify('Scene imported. Previewed environment instance selected in the Project.');
+}
 $('history-button').onclick=()=>{if(!busy)openCommandHistory();};
 $('undo-button').onclick=()=>api('/api/undo',{});
 $('redo-button').onclick=()=>api('/api/redo',{});
