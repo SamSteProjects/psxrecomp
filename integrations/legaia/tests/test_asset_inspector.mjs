@@ -29,7 +29,7 @@ assert.equal(Object.keys(assetInspectorRegistry({type:'unknown'},()=>{})).length
 console.log('Asset inspector descriptor/type registry, capability filtering and stale/busy read-only dispatch passed.');
 
 const npcId='authored-actor://00000000-0000-4000-8000-000000000001',npc={id:npcId,type:'actor',sceneId:'scene://town01',authoredRecord:{id:npcId,kind:'actor',draft:true,name:'Resident',scene_id:'scene://town01',donor_entity_id:'scene://town01/actors/man-p1/0011',authored:{name:'Resident',scene_id:'scene://town01',donor_entity_id:'scene://town01/actors/man-p1/0011',position:{x:128,z:256}}}},npcSchema={...schema,authored_asset_inspectors:{npc_draft:'AssetNpcDraft'}};
-assert.equal(assetInspectorDefinition(npcSchema,npc),'AssetNpcDraft');assert.deepEqual(Object.keys(assetInspectorRegistry(npc,()=>{})),['select-asset-actor','inspect-npc-donor-script','inspect-npc-build-script','edit-npc-branches','edit-npc-model-selectors','edit-npc-flags','reset-npc-script','edit-npc-effect-colors','edit-npc-dialogue','edit-npc-waits','edit-npc-facing','edit-npc-movement','edit-npc-appearance']);
+assert.equal(assetInspectorDefinition(npcSchema,npc),'AssetNpcDraft');assert.deepEqual(Object.keys(assetInspectorRegistry(npc,()=>{})),['select-asset-actor','inspect-npc-donor-script','inspect-npc-build-script','inspect-npc-current-script','edit-npc-transitions','edit-npc-system-flags','edit-npc-branches','edit-npc-model-selectors','edit-npc-flags','reset-npc-script','edit-npc-effect-colors','edit-npc-dialogue','edit-npc-waits','edit-npc-facing','edit-npc-movement','edit-npc-appearance']);
 for(const edit of [r=>r.id='scene://retail/actor',r=>r.sceneId='scene://other',r=>r.authoredRecord.draft='true',r=>r.authoredRecord.authored.name='Other',r=>r.authoredRecord.authored.donor_entity_id='other',r=>r.authoredRecord.authored.position.x=32]){const bad=structuredClone(npc);edit(bad);assert.throws(()=>assetInspectorDefinition(npcSchema,bad));}
 assert.throws(()=>assetInspectorDefinition(schema,npc));
 console.log('NPC authored asset classification, source/placement coherence and qualified donor-script action registry passed.');
@@ -44,3 +44,21 @@ console.log('NPC donor-model navigation requires a coherent recorded SDK assignm
 const linkedSchema={...npcSchema,components:{...npcSchema.components,AssetNpcDraft:{layout:'read-only-properties',properties:[],actions:[{id:'select-asset-actor',capability:'project_navigation'},{id:'inspect-npc-donor-model',capability:'model_preview',when:['authoredRecord','model_reference','target_id']}]}}},linkedRegistry=assetInspectorRegistry(linkedNpc,()=>{});
 assert.deepEqual(registeredActions(linkedSchema,'AssetNpcDraft',linkedNpc,{project_navigation:true,model_preview:false},linkedRegistry,false).map(a=>a.id),['select-asset-actor']);
 assert.equal(registeredActions(linkedSchema,'AssetNpcDraft',linkedNpc,{project_navigation:true,model_preview:true},linkedRegistry,false).length,2);
+
+// Exercise the actual server descriptor, including every currently shipped NPC action.
+if(process.argv[2]){
+ const {readFileSync}=await import('node:fs');const serverSchema=JSON.parse(readFileSync(process.argv[2],'utf8'));
+ const declared=serverSchema.components.AssetNpcDraft.actions;
+ const capabilities=Object.fromEntries(declared.map(a=>[a.capability,true]));
+ const actual=registeredActions(serverSchema,'AssetNpcDraft',linkedNpc,capabilities,linkedRegistry,false);
+ assert.deepEqual(actual.map(a=>a.id),declared.map(a=>a.id));
+ for(const id of ['inspect-npc-current-script','edit-npc-transitions','edit-npc-system-flags']){
+  assert(Object.hasOwn(linkedRegistry,id));assert(!Object.hasOwn(assetInspectorRegistry({type:'actor'},()=>{}),id));
+  assert.equal(registeredActions(serverSchema,'AssetNpcDraft',linkedNpc,{...capabilities,[declared.find(a=>a.id===id).capability]:false},linkedRegistry,false).some(a=>a.id===id),false);
+ }
+ const malformed=structuredClone(serverSchema);malformed.components.AssetNpcDraft.actions.push({...declared[0]});
+ assert.throws(()=>registeredActions(malformed,'AssetNpcDraft',linkedNpc,capabilities,linkedRegistry,false));
+ malformed.components.AssetNpcDraft.actions=Array.from({length:33},(_,i)=>({id:'unknown-'+i,capability:'none'}));
+ assert.throws(()=>registeredActions(malformed,'AssetNpcDraft',linkedNpc,capabilities,linkedRegistry,false));
+ console.log('Actual NPC Asset Details schema actions, donor gating, capability filtering and bounded/duplicate refusal passed.');
+}

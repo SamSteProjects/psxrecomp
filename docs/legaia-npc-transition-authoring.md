@@ -55,3 +55,7 @@ A fresh private Map02 donor0002 PC53 browser workflow passed invalid X65 refusal
 Evidence: `local-output/sdk-20260909/npc-arrival-coordinates-20261008/`; `qualified/native-reference.json` retains the native encoder oracle, and `readable/` retains final UI evidence. No native Build, game, runtime attachment, install or disc export ran. Gameplay and direct Retail streaming arrival delivery remain unverified. Full SDK goal active, solo work continues.
 
 The final document/original undo stack/imports were restored with one retained Redo entry. Save/Open matched, helpers closed, page errors were absent and checked source hashes stayed unchanged. The complete SDK objective remains active; this coordinate editor is one verified workflow within it.
+
+## Asset References
+
+[NPC Arrival References](legaia-npc-arrival-references.md) now expose independent Retail/Current arrival dependencies and exact donor-PC navigation from NPC Asset Details, including active and Project scope. These recorded relations do not establish route activation or runtime travel.

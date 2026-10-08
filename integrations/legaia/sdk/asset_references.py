@@ -163,7 +163,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
             if available:nodes[identifier]['available']=True
         else:nodes[identifier]=value
         if len(nodes)>16384:raise ProjectError('Asset reference node limit exceeded')
-    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None,allocated_evidence=None,retained_evidence=None,wav_evidence=None,current_wav_evidence=None,npc_script_evidence=None,npc_flag_evidence=None,midi_evidence=None,current_midi_evidence=None):
+    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None,allocated_evidence=None,retained_evidence=None,wav_evidence=None,current_wav_evidence=None,npc_script_evidence=None,npc_flag_evidence=None,npc_transition_evidence=None,midi_evidence=None,current_midi_evidence=None):
         if source not in nodes or target not in nodes:raise ProjectError('Asset reference has an unavailable structural endpoint')
         value=dict(source_id=source,target_id=target,kind=kind,scene_id=scene,layer=layer,runtime_binding='not_asserted')
         if pc is not None:value['pc']=pc
@@ -200,6 +200,9 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
             value['source_catalog_key']=catalog['source_key']
         if npc_flag_evidence is not None:
             value['npc_flag_operand_evidence']=deepcopy(npc_flag_evidence)
+            value['source_catalog_key']=catalog['source_key']
+        if npc_transition_evidence is not None:
+            value['npc_transition_arrival_evidence']=deepcopy(npc_transition_evidence)
             value['source_catalog_key']=catalog['source_key']
         value['id']=digest(value);edges[value['id']]=value
         if len(edges)>32768:raise ProjectError('Asset reference edge limit exceeded')
@@ -253,7 +256,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
     # An authored clone retains a recorded retail source; it is not the
     # generated script, and a relationship cannot establish live execution.
     from .npc_script_references import evidence as npc_script_evidence
-    npc_flag_owners={};npc_flag_sites=set();npc_flag_consumed={}
+    npc_flag_owners={};npc_flag_sites=set();npc_flag_consumed={};npc_arrival_owners={};npc_arrival_consumed={}
     for owner,draft in sorted(project.actor_drafts.items()):
         if draft['scene_id']!=scene:continue
         target='script://'+draft['donor_entity_id'].removeprefix('scene://')
@@ -264,6 +267,10 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
         proof=npc_script_evidence(draft,records[0],scene)
         if proof is None:unresolved+=1;continue
         edge(owner,target,'draft_script_donor',scene,'authored',npc_script_evidence=proof)
+        if any(r['kind']=='transition' and r.get('owner_id')==draft['donor_entity_id'] for r in catalog['records']) and project.disc_path:
+            from .npc_transition_references import targets
+            context,qualified=targets(project,draft)
+            npc_arrival_owners.setdefault(draft['donor_entity_id'],[]).append((owner,draft,proof,context,qualified))
         if 'flags' in draft:
             from .npc_flags import validate as validate_npc_flags
             validate_npc_flags(project,draft)
@@ -428,6 +435,12 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
             if destination is not None:
                 node(destination,'scene',destination,name,destination in project.imports)
                 edge(identity,destination,'transition_destination_source',scene,'decoded',reference['pc'],transition_evidence=proof)
+            from .npc_transition_references import binding as arrival_binding
+            for owner,draft,donor,context,qualified in npc_arrival_owners.get(record['owner_id'],[]):
+                arrival=arrival_binding(draft,donor,record,script,context,qualified)
+                if arrival is None:continue
+                edge(owner,identity,'npc_script_transition_arrival',scene,'authored',reference['pc'],npc_transition_evidence=arrival)
+                if arrival['authored_values'] is not None:npc_arrival_consumed.setdefault(owner,set()).add(arrival['operand_id'])
             # The source-script pass already counts each unresolved name once.
         elif kind=='animation':
             if identity in reference_clips:
@@ -493,6 +506,8 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
         for owner,draft,_,_,_ in owners:
             for family in ('flags','system_flags'):
                 unresolved+=len(set(draft.get(family,{}).get('entries',{}))-npc_flag_consumed.get(owner,set()))
+    for owner,draft in project.actor_drafts.items():
+        if draft['scene_id']==scene:unresolved+=len(set(draft.get('transitions',{}).get('entries',{}))-npc_arrival_consumed.get(owner,set()))
     if own_audio_snapshot:audio_snapshot.verify(project)
     if _full_graph:
         for identity,value in nodes.items():

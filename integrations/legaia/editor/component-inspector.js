@@ -66,7 +66,7 @@ export function renderComponentDetails(schema,id,component){
 
 export function registeredActions(schema,id,component,capabilities,registry,editable=false){
   const definition=componentDefinition(schema,id),actions=definition.actions??[];
-  if(actions.length>16||new Set(actions.map(a=>a.id)).size!==actions.length)throw new Error('Invalid inspector actions');
+  if(actions.length>32||new Set(actions.map(a=>a.id)).size!==actions.length)throw new Error('Invalid inspector actions');
   return actions.filter(a=>Object.hasOwn(registry,a.id)&&capabilities?.[a.capability]===true&&(!a.when||at(component,a.when))).map(a=>({id:a.id,label:a.label,requiresEdit:a.requires_edit===true||registry[a.id].requiresEdit===true,disabled:(a.requires_edit===true||registry[a.id].requiresEdit===true)&&!editable}));
 }
 export function renderComponentActions(schema,id,component,capabilities,registry,editable=false){
