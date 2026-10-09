@@ -388,7 +388,17 @@ def _instruction(data: bytes, pc: int) -> dict:
     elif op == 0x4C:
         need(1)
         sub = data[operand]
-        if 0x10 <= sub <= 0x1F:
+        if 0x00 <= sub <= 0x0F or 0x20 <= sub <= 0x2F:
+            # Pinned menu_ctrl.rs and Retail PROT897 outer handlers:
+            # 801E0C70 advances adjusted PC2; 801E0EB8 routes all paths
+            # through801DF098, which also advances2 before returning.
+            # Dispatch extension is already included in the header.
+            size = 1
+            mnemonic = 'PARTY_LEADER_REQUEST' if sub < 0x10 else 'PARTY_VIEW_SWAP_REQUEST'
+            args = {'sub_op': sub, 'party_selector': sub & 7,
+                    'party_binding': 'runtime_party_identity_unresolved',
+                    'runtime_effect': 'not_evaluated'}
+        elif 0x10 <= sub <= 0x1F:
             # Pinned menu_ctrl.rs outer nibble1 consumes five payload bytes
             # and advances unconditionally after the host call.
             size, mnemonic = 6, "MENU_CTRL_SUB1"
