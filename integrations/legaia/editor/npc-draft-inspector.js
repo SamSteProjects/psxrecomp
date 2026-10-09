@@ -1,5 +1,5 @@
 import {npcDonorModel} from './asset-inspector.js';
-import {componentDefinition,renderComponentProperties,renderComponentDetails,renderComponentActions,bindComponentActions} from './component-inspector.js';
+import {componentDefinition,renderComponentSection,renderComponentActions,bindComponentActions} from './component-inspector.js';
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // Read SDK snapshots only. The NPC authoring adapter owns commands and validation.
 export function renderNpcDraftInspector(schema,snapshot,previewState){
@@ -9,7 +9,7 @@ export function renderNpcDraftInspector(schema,snapshot,previewState){
     const definition=componentDefinition(schema,id);
     if(definition.layout!=='read-only-properties'||definition.properties.some(p=>p.authoring))throw new Error('NPC draft snapshot properties must be read only.');
     const note=id==='NpcDraftPreview'?`<p class="field-note" data-npc-preview-state="${previewState}" role="status">${escape(status[previewState])}</p>`:'';
-    return `<section class="component" data-npc-draft-component="${id}"><h3>${escape(definition.label)}${definition.units?` <small>${escape(definition.units)}</small>`:''}</h3>${note}${renderComponentProperties(schema,id,snapshot)}${renderComponentDetails(schema,id,snapshot)}</section>`;
+    return renderComponentSection(schema,id,snapshot,{attributes:{'data-npc-draft-component':id},decorate:parts=>note+parts.properties+parts.actions+parts.details});
   }).join('');
 }
 

@@ -26,14 +26,15 @@ export function renderComponentProperties(schema,id,component,editable=false,ref
   return `<div data-component-content="${escape(id)}">${renderPropertyContent(schema,id,component,editable,referenceNavigation)}</div>`;
 }
 // Section extensions are local renderer callbacks, never executable SDK metadata.
-export function renderComponentSection(schema,id,component,{editable=false,propertyEditable=false,referenceNavigation=false,capabilities={},registry={},headingLevel=3,attributes={},decorate=null}={}){
+export function renderComponentSection(schema,id,component,{editable=false,propertyEditable=false,referenceNavigation=false,capabilities={},registry={},headingLevel=3,attributes={},classes=[],decorate=null}={}){
   const definition=componentDefinition(schema,id);
+  if(!Array.isArray(classes)||classes.length>4||new Set(classes).size!==classes.length||classes.some(value=>typeof value!=='string'||! /^[a-z][a-z0-9-]{0,63}$/.test(value)||value==='component'))throw Error('Invalid component section style classes.');
   if(![3,4].includes(headingLevel)||typeof editable!=='boolean'||typeof propertyEditable!=='boolean'||typeof referenceNavigation!=='boolean'||!attributes||Array.isArray(attributes)||typeof attributes!=='object'||Object.keys(attributes).length>8||Object.entries(attributes).some(([key,value])=>!/^data-[a-z][a-z-]*$/.test(key)||key==='data-inspector-component-section'||typeof value!=='string'||value.length>1024)||decorate!==null&&typeof decorate!=='function')throw Error('Invalid component section renderer options.');
   const parts={properties:renderComponentProperties(schema,id,component,editable&&propertyEditable,referenceNavigation),actions:renderComponentActions(schema,id,component,capabilities,registry,editable),details:renderComponentDetails(schema,id,component)};
   const body=decorate===null?parts.properties+parts.actions+parts.details:decorate(Object.freeze(parts));
   if(typeof body!=='string')throw Error('Component section extension must return rendered content.');
   const extra=Object.entries(attributes).map(([key,value])=>` ${key}="${escape(value)}"`).join('');
-  return `<section class="component" data-inspector-component-section="${escape(id)}"${extra}><h${headingLevel}>${escape(definition.label??id)}${definition.units?` <small>${escape(definition.units)}</small>`:''}</h${headingLevel}>${body}</section>`;
+  return `<section class="${['component',...classes].join(' ')}" data-inspector-component-section="${escape(id)}"${extra}><h${headingLevel}>${escape(definition.label??id)}${definition.units?` <small>${escape(definition.units)}</small>`:''}</h${headingLevel}>${body}</section>`;
 }
 function renderPropertyContent(schema,id,component,editable=false,referenceNavigation=false){
   const definition=componentDefinition(schema,id);

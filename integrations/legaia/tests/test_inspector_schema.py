@@ -1,6 +1,16 @@
 import unittest
 from sdk.inspector_schema import inspector_schema
 class InspectorSchema(unittest.TestCase):
+    def test_registered_actor_section_evidence_and_notes_are_metadata_only(self):
+        schema=inspector_schema();appearance=schema['components']['ActorAppearance'];model=schema['components']['ModelRenderer']
+        self.assertEqual(appearance['details'],[{'label':'Appearance evidence and limits','path':[]}])
+        self.assertEqual(model['units'],'Imported reference');self.assertEqual(model['layout'],'read-only-properties')
+        self.assertTrue(any('placement markers' in note for note in model['notes']))
+        self.assertFalse(any('authoring' in prop for prop in model['properties']))
+        appearance['details'].clear();model['notes'].clear()
+        self.assertTrue(inspector_schema()['components']['ActorAppearance']['details'])
+        self.assertTrue(inspector_schema()['components']['ModelRenderer']['notes'])
+
     def test_npc_draft_asset_schema_is_authored_metadata_with_qualified_navigation(self):
         schema=inspector_schema();self.assertEqual(schema['authored_asset_inspectors'],{'npc_draft':'AssetNpcDraft'})
         component=schema['components']['AssetNpcDraft'];self.assertEqual(component['layout'],'read-only-properties')
