@@ -49,6 +49,6 @@ class ActorLookupBranch(unittest.TestCase):
                 self.assertEqual(built,bytes(expected));self.assertEqual(len(receipts),1);self.assertEqual(receipts[0]['condition'],'actor_lookup_missing')
                 self.assertEqual(receipts[0]['byte_length'],2);self.assertEqual(receipts[0]['after_target_pc'],fallthrough)
         # Retain unrelated unsupported bytes as an explicit stop, never recover by scanning.
-        report=inspect_record(b'\x4c\xeb\x00\x02\x00\x4c\xe6'+bytes(6),0)
+        report=inspect_record(b'\x4c\xeb\x00\x02\x00\x4c\xe7'+bytes(6),0)
         self.assertEqual(report['status'],'partial');self.assertEqual(len(report['instructions']),1)
-        self.assertIn('0xe6',report['stops'][0]['reason'])
+        self.assertIn('0xe7',report['stops'][0]['reason'])

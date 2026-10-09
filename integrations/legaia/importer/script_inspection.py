@@ -698,6 +698,17 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "on_lookup_miss": "no_field_copy",
                     "source_lookup": "0x8003C83C", "actor_binding": "runtime_lookup_unresolved",
                     "runtime_effect": "not_evaluated"}
+        elif sub == 0xE6:
+            # Retail801E32E8 reads signed words at sub-op+1/+3/+5
+            # through8003CE9C, calls801D8280, then advances adjusted PC8.
+            # SCUS8003CEAC/CEB4 sign-extend the little-endian word.
+            size, mnemonic = 7, "FIELD_THREE_WORD_REQUEST"
+            need(size)
+            args = {"sub_op": sub,
+                    "signed_words": list(struct.unpack_from("<hhh", data, operand + 1)),
+                    "parameter_semantics": "runtime_word_meanings_unresolved",
+                    "runtime_binding": "helper_owned_state_unresolved",
+                    "runtime_effect": "not_evaluated"}
         elif sub == 0xEB:
             # Retail801E34DC advances adjusted PC5 before actor lookup.
             # On miss,801E360C loads the word at sub-op+2, subtracts2,
