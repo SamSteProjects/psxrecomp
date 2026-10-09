@@ -1,4 +1,4 @@
-import {renderComponentProperties,renderComponentDetails,renderComponentActions,bindComponentActions} from './component-inspector.js';
+import {renderComponentSection,bindComponentActions} from './component-inspector.js';
 const kinds={ControllerSystemFlags:'system-flag',ControllerBranches:'branch',ControllerTileRects:'tile-rect',ControllerFades:'fade',ControllerTableCopies:'table-copy',ControllerWordTriplets:'word-triplet',ControllerThreeWords:'three-word',ControllerSceneBytes:'scene-byte',ControllerBgm:'bgm',ControllerFiveWords:'five-word',ControllerGlobalBytes:'global-byte',ControllerPartySelectors:'party-selector',ControllerFlagBits:'flag-bit'};
 const hash=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 export function controllerOwnerComponents(record,sceneId){
@@ -25,7 +25,7 @@ export function mountControllerOwnerInspector(host,{record,schema,capabilities,c
  const actions={'inspect-controller-component':{requiresEdit:true,run:({componentId})=>onInspect(componentId,components[componentId].first_pc)}};
  for(const [id,value] of Object.entries(components)){
   if(!schema?.components?.[id])throw Error('Controller component Inspector metadata is unavailable.');
-  const part=document.createElement('section');part.className='component';const title=document.createElement('h4');title.textContent=schema.components[id].label;part.append(title);const content=document.createElement('div');content.innerHTML=renderComponentProperties(schema,id,value,false,true)+renderComponentActions(schema,id,value,capabilities,actions,editable())+renderComponentDetails(schema,id,value);part.append(content);section.append(part);
+  const content=document.createElement('div');content.innerHTML=renderComponentSection(schema,id,value,{referenceNavigation:true,capabilities,registry:actions,editable:editable(),headingLevel:4});section.append(content);
  }
  host.append(section);bindComponentActions(section,actions,{current,editable,busy,onError});return section;
 }
