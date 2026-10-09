@@ -163,7 +163,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
             if available:nodes[identifier]['available']=True
         else:nodes[identifier]=value
         if len(nodes)>16384:raise ProjectError('Asset reference node limit exceeded')
-    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None,allocated_evidence=None,retained_evidence=None,wav_evidence=None,current_wav_evidence=None,npc_script_evidence=None,npc_flag_evidence=None,npc_transition_evidence=None,midi_evidence=None,current_midi_evidence=None):
+    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None,allocated_evidence=None,retained_evidence=None,wav_evidence=None,current_wav_evidence=None,npc_script_evidence=None,npc_flag_evidence=None,npc_transition_evidence=None,midi_evidence=None,current_midi_evidence=None,controller_evidence=None):
         if source not in nodes or target not in nodes:raise ProjectError('Asset reference has an unavailable structural endpoint')
         value=dict(source_id=source,target_id=target,kind=kind,scene_id=scene,layer=layer,runtime_binding='not_asserted')
         if pc is not None:value['pc']=pc
@@ -204,6 +204,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
         if npc_transition_evidence is not None:
             value['npc_transition_arrival_evidence']=deepcopy(npc_transition_evidence)
             value['source_catalog_key']=catalog['source_key']
+        if controller_evidence is not None:value['controller_source_evidence']=deepcopy(controller_evidence)
         value['id']=digest(value);edges[value['id']]=value
         if len(edges)>32768:raise ProjectError('Asset reference edge limit exceeded')
     for scene,document in sorted(project.imports.items()):
@@ -233,8 +234,11 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
         if ref['imported']:edge(ref['source_id'],ref['target_id'],'initial_model',ref['scene_id'])
         if ref['effective']:edge(ref['source_id'],ref['target_id'],'effective_initial_model',ref['scene_id'],'effective')
     scene=project.active_scene
-    reference_clips={};source_scripts={};transition_ids=set();trigger_ids=set()
+    reference_clips={};source_scripts={};transition_ids=set();trigger_ids=set();controller_ids=set()
     for record in catalog['records']:
+        if record['kind']=='controller':
+            if record['id'] in controller_ids:raise ProjectError('Duplicate scene controller source ownership')
+            controller_ids.add(record['id'])
         if record['kind']=='script':source_scripts.setdefault(record['id'],[]).append(record)
         if record['kind']=='transition':
             if record['id'] in transition_ids:raise ProjectError('Duplicate transition reference identity')
@@ -349,7 +353,11 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
             raise ProjectError('Authored trigger reference is absent from the verified catalog')
     for record in catalog['records']:
         identity=record['id'];kind=record['kind']
-        if kind=='script':
+        if kind=='controller':
+            from .controller_references import controller_source_evidence
+            proof=controller_source_evidence(record,scene,project.imports[scene])
+            edge(scene,identity,'scene_entry_controller_source',scene,'decoded',controller_evidence=proof)
+        elif kind=='script':
             actor=record.get('actor_semantic_id')
             if actor in nodes:edge(actor,identity,'actor_script_record',scene,'decoded')
             elif actor is not None:unresolved+=1
