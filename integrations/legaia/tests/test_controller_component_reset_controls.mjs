@@ -11,7 +11,7 @@ for(const [component,schema_version] of Object.entries(CONTROLLER_SNAPSHOT_SCHEM
  assert.throws(()=>decodeControllerComponentReset(proof,{...snapshot,targets:[]},component));
  const noBytes={...proof,current_record_sha256:hash,changed_decoded_byte_offsets:[],native_bytes_changed:false};assert.equal(decodeControllerComponentReset(noBytes,{...snapshot,current_record_sha256:hash},component).native_bytes_changed,false);
 }
-console.log('All eleven component reset Reviews preserve source binding, authored entries, detached evidence and explicit byte changes.');
+console.log('All thirteen component reset Reviews preserve source binding, authored entries, detached evidence and explicit byte changes.');
 class Node{constructor(tag){this.tag=tag;this.children=[];this.dataset={};this.style={};this.value='';}append(...nodes){for(const n of nodes){n.parent=this;this.children.push(n);if(this.tag==='select'&&!this.value)this.value=n.value;}}prepend(n){n.parent=this;this.children.unshift(n);}setAttribute(name,value){this[name]=value;}remove(){this.parent.children=this.parent.children.filter(n=>n!==this);}}
 globalThis.document={createElement:tag=>new Node(tag)};
 const component='ControllerPartySelectors',snapshot={schema_version:CONTROLLER_SNAPSHOT_SCHEMAS[component],owner_id:owner,state_key:hash,source_record_sha256:hash,current_record_sha256:other,source_report:{},current_report:{},targets:[{semantic_id:entry,authored_values:{value:7}}]};

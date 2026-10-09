@@ -17,7 +17,8 @@ from test_project_workflow import synthetic_scene
 
 FIELDS = {
     'ControllerSystemFlags': ('system-flag/0005', {'index':4095}),
-    'ControllerBranches': ('branch/0067', {'target_pc':7}),
+    'ControllerBgm': ('bgm/0067', {'encoded_id':65535}),
+    'ControllerBranches': ('branch/006b', {'target_pc':7}),
     'ControllerTileRects': ('tile-rect/0007', dict(column_start=1,row_start=2,column_end=3,row_end=4,value=255)),
     'ControllerFades': ('fade/000e', dict(selector=1,signed_words=[1,2,3])),
     'ControllerTableCopies': ('table-copy/0017', dict(signed_words=list(range(1,17)))),
@@ -34,7 +35,7 @@ class ControllerFlowSource(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.p=ProjectService(Path(self.temp.name));self.p.import_metadata(synthetic_scene())
-        src,_=source(b'\x61\x23\x4c\x83\x01\x02\x03\x04\x05\x4c\x90\x00'+bytes(6)+b'\x4c\x9e'+bytes(32)+b'\x4c\xd8\x00'+bytes(6)+b'\x4c\xe6'+bytes(6)+b'\x43\x11'+bytes(10)+b'\x43\x03'+bytes(8)+b'\x4c\xdf\x01\x4c\x2a\x2e\xe2\x26\x9d\xff')
+        src,_=source(b'\x61\x23\x4c\x83\x01\x02\x03\x04\x05\x4c\x90\x00'+bytes(6)+b'\x4c\x9e'+bytes(32)+b'\x4c\xd8\x00'+bytes(6)+b'\x4c\xe6'+bytes(6)+b'\x43\x11'+bytes(10)+b'\x43\x03'+bytes(8)+b'\x4c\xdf\x01\x4c\x2a\x2e\xe2\x35\x34\x12\x80\x26\x99\xff')
         self.context=ControllerSystemFlagAuthoringContext(src)
         for name,value in [('importer.pipeline._disc_context',nullcontext()),('sdk.resources._verify',None),('sdk.controller_system_flags.load_controller_system_flag_context',self.context)]:
             mock=patch(name,return_value=value);mock.start();self.addCleanup(mock.stop)
@@ -46,7 +47,7 @@ class ControllerFlowSource(unittest.TestCase):
     def state(self):
         return deepcopy((self.p._document(),self.p.imports,self.p.undo_stack,self.p.redo_stack))
 
-    def test_all_twelve_current_proposed_reset_sources_and_js_hashes(self):
+    def test_all_thirteen_current_proposed_reset_sources_and_js_hashes(self):
         before=self.state();hashes=[]
         self.assertEqual(set(FIELDS),dict(FAMILIES).keys())
         for component,name in FAMILIES:
@@ -71,7 +72,7 @@ class ControllerFlowSource(unittest.TestCase):
                 self.assertEqual(module.snapshot(self.p,OWNER)['current_report'],current['current_report'])
         self.assertEqual(before,self.state())
         path=Path(self.temp.name)/'hashes.json';path.write_text(json.dumps(hashes,ensure_ascii=False),encoding='utf-8')
-        subprocess.run(['C:/Program Files/nodejs/node.exe',str(Path(__file__).with_suffix('.mjs')),str(path)],check=True)
+        subprocess.run(['C:/Program Files/nodejs/node.exe',str(Path(__file__).with_suffix('.mjs')),str(path),str(len(hashes))],check=True)
 
     def test_foreign_stale_unreviewed_and_current_proposal_refuse(self):
         component='ControllerFlagBits';operand,value=self.binding(component)

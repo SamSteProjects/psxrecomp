@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {controllerOwnerComponents,controllerAssetSourceHash} from '../editor/controller-owner-inspector.js';
 const scene='scene://fixture',id='script://fixture/controllers/man-p1/0000',hash='a'.repeat(64);
-const kinds={ControllerSystemFlags:'system-flag',ControllerBranches:'branch',ControllerTileRects:'tile-rect',ControllerFades:'fade',ControllerTableCopies:'table-copy',ControllerWordTriplets:'word-triplet',ControllerThreeWords:'three-word',ControllerSceneBytes:'scene-byte',ControllerFiveWords:'five-word',ControllerGlobalBytes:'global-byte',ControllerPartySelectors:'party-selector'};
+const kinds={ControllerSystemFlags:'system-flag',ControllerBranches:'branch',ControllerTileRects:'tile-rect',ControllerFades:'fade',ControllerTableCopies:'table-copy',ControllerWordTriplets:'word-triplet',ControllerThreeWords:'three-word',ControllerSceneBytes:'scene-byte',ControllerBgm:'bgm',ControllerFlagBits:'flag-bit',ControllerFiveWords:'five-word',ControllerGlobalBytes:'global-byte',ControllerPartySelectors:'party-selector'};
 for(const [family,kind] of Object.entries(kinds)){
  const record={id,kind:'controller',scene_id:scene,authored:{[family]:{source_record_sha256:hash,entries:{[id+'/'+kind+'/0010']:{value:1},[id+'/'+kind+'/0005']:{value:2}}}}};
  const components=controllerOwnerComponents(record,scene);assert.equal(components[family].authored_instruction_count,2);assert.equal(components[family].first_pc,5);components[family].entries[id+'/'+kind+'/0005'].value=9;assert.equal(record.authored[family].entries[id+'/'+kind+'/0005'].value,2);
@@ -11,4 +11,4 @@ for(const [family,kind] of Object.entries(kinds)){
  const empty=structuredClone(record);empty.authored[family].entries={};assert.deepEqual(controllerOwnerComponents(empty,scene),{});
 }
 assert.equal(controllerAssetSourceHash({data:{source_record:{sha256:hash}}}),hash);assert.throws(()=>controllerAssetSourceHash({}));
-console.log('All eleven controller Inspector projections retain stable ownership, detached entries, bounded PCs and matching Retail source hashes.');
+console.log('All thirteen controller Inspector projections retain stable ownership, detached entries, bounded PCs and matching Retail source hashes.');

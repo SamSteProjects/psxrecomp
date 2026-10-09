@@ -99,4 +99,8 @@ def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
         from .controller_flag_bit_build import compose_flag_bits
         result,bit_changes=compose_flag_bits(context,owner,components,result,[*previous,*changes],appended=appended)
         changes.extend(bit_changes)
+    if 'ControllerBgm' in components:
+        from .controller_bgm_build import compose_bgm
+        result,bgm_changes=compose_bgm(context,owner,components,result,[*previous,*changes],appended=appended)
+        changes.extend(bgm_changes)
     return result,changes

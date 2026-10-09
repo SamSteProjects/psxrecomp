@@ -2169,6 +2169,10 @@ class ProjectService:
             from .controller_party_selectors import apply
             apply(self,command)
             return
+        if command.get('type') == 'set_controller_bgm':
+            from .controller_bgm import apply
+            apply(self, command)
+            return
         if command.get('type') == 'set_controller_scene_byte':
             from .controller_scene_bytes import apply
             apply(self, command)

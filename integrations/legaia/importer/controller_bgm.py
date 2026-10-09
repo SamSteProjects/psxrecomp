@@ -12,7 +12,7 @@ LIMITATIONS=[
  'Only reached BGM instructions on controller paths without decoder stops are candidates.',
  'The u16 argument is an encoded host request ID, not a verified music asset association.',
  'The dispatch byte, extended context, continuations, record lengths and other bytes remain unchanged.',
- 'Native serialization foundation only; project/editor/Build integration remains pending.',
+ 'Project/editor Review/Apply and native Build support the encoded argument; audible playback remains unverified.',
  'Host dispatch, scheduling, audible playback and gameplay remain unverified.']
 
 def validate_bgm_values(values):

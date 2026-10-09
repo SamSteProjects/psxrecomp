@@ -8,6 +8,7 @@ export const CONTROLLER_BUILD_TARGETS={
  'controller-table-copy-operands-only':['ControllerTableCopies','table-copy','script.table_copy_operands'],
  'controller-word-triplet-operands-only':['ControllerWordTriplets','word-triplet','script.word_triplet_operands'],
  'controller-three-word-operands-only':['ControllerThreeWords','three-word','script.three_word_operands'],
+ 'controller-bgm-operand-only':['ControllerBgm','bgm','script.bgm_operand'],
  'controller-scene-byte-operand-only':['ControllerSceneBytes','scene-byte','script.scene_byte_operand'],
  'controller-five-word-operands-only':['ControllerFiveWords','five-word','script.five_word_operands'],
  'controller-global-byte-operands-only':['ControllerGlobalBytes','global-byte','script.global_byte_operands'],

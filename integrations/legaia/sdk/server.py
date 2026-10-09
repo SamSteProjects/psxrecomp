@@ -209,6 +209,7 @@ class EditorServer(ThreadingHTTPServer):
         state['controller_tile_source_key']=state['controller_selector_source_key']
         state['controller_fade_source_key']=state['controller_selector_source_key']
         state['controller_table_source_key']=state['controller_selector_source_key']
+        state['controller_bgm_source_key']=state['controller_selector_source_key']
         state['controller_scene_byte_source_key']=state['controller_selector_source_key']
         state['controller_party_selector_source_key']=state['controller_selector_source_key']
         state['controller_flag_bit_source_key']=state['controller_selector_source_key']
@@ -274,6 +275,7 @@ class EditorServer(ThreadingHTTPServer):
         state['capabilities']['controller_tile_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_fade_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_table_authoring']=state['capabilities']['scene_controller_inspection']
+        state['capabilities']['controller_bgm_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_scene_byte_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_operand_files']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_component_reset']=state['capabilities']['scene_controller_inspection']
@@ -1090,6 +1092,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/controller-fades.js": ("controller-fades.js", "text/javascript"),
                  "/controller-tables.js": ("controller-tables.js", "text/javascript"),
                  "/controller-authoring-availability.js": ("controller-authoring-availability.js", "text/javascript"),
+                 "/controller-bgm.js": ("controller-bgm.js", "text/javascript"),
                  "/controller-scene-bytes.js": ("controller-scene-bytes.js", "text/javascript"),
                  "/controller-hierarchy.js": ("controller-hierarchy.js", "text/javascript"),
                  "/controller-navigation.js": ("controller-navigation.js", "text/javascript"),
@@ -1355,6 +1358,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!=expected or not isinstance(body['entity'],str):raise ProjectError('Controller party selector request requires exact inputs')
                     from .controller_party_selectors import snapshot,review
                     self._json(200,snapshot(self.server.project,body['entity']) if route=='/api/controller-party-selectors' else review(self.server.project,body['entity'],body['operand_id'],body['value']));return
+                if route in ('/api/controller-bgm','/api/controller-bgm-review'):
+                    expected={'entity'} if route=='/api/controller-bgm' else {'entity','operand_id','value'}
+                    if set(body)!=expected or not isinstance(body['entity'],str):raise ProjectError('Controller BGM request requires exact inputs')
+                    from .controller_bgm import snapshot,review
+                    self._json(200,snapshot(self.server.project,body['entity']) if route=='/api/controller-bgm' else review(self.server.project,body['entity'],body['operand_id'],body['value']));return
                 if route in ('/api/controller-scene-bytes','/api/controller-scene-byte-review'):
                     expected={'entity'} if route=='/api/controller-scene-bytes' else {'entity','operand_id','value'}
                     if set(body)!=expected or not isinstance(body['entity'],str):raise ProjectError('Controller scene-state byte request requires exact inputs')

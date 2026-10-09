@@ -15,6 +15,7 @@ const operands={
  ControllerThreeWords:['three-word',v=>exact(v,['signed_words'])&&words(v.signed_words,3)],
  ControllerFiveWords:['five-word',v=>exact(v,['signed_words'])&&words(v.signed_words,5)],
  ControllerGlobalBytes:['global-byte',v=>exact(v,['byte_values','parameters_i16'])&&Array.isArray(v.byte_values)&&v.byte_values.length===4&&v.byte_values.every(b=>int(b,0,255))&&words(v.parameters_i16,2)],
+ ControllerBgm:['bgm',v=>exact(v,['encoded_id'])&&int(v.encoded_id,0,65535)],
  ControllerSceneBytes:['scene-byte',v=>exact(v,['value'])&&int(v.value,0,255)],
  ControllerPartySelectors:['party-selector',v=>exact(v,['party_selector'])&&int(v.party_selector,0,7)],
  ControllerFlagBits:['flag-bit',v=>exact(v,['bit'])&&int(v.bit,0,31)],

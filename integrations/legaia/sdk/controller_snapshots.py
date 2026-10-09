@@ -17,6 +17,7 @@ FAMILIES = (
     ('ControllerWordTriplets', 'controller_word_triplets'),
     ('ControllerThreeWords', 'controller_three_words'),
     ('ControllerSceneBytes', 'controller_scene_bytes'),
+    ('ControllerBgm', 'controller_bgm'),
     ('ControllerFiveWords', 'controller_five_words'),
     ('ControllerGlobalBytes', 'controller_global_bytes'),
     ('ControllerPartySelectors', 'controller_party_selectors'),

@@ -12,4 +12,4 @@ for(const [scope,[component,kind,field]] of Object.entries(CONTROLLER_BUILD_TARG
  const changed=structuredClone(records);changed[0].authored[component].entries[operand]={other:1};assert.throws(()=>controllerBuildTarget(change,scenes,changed));
 }
 assert.equal(controllerBuildTarget({owner_id:'scene://fixture/actors/man-p1/0001'},scenes,[]),null);
-console.log('All twelve controller Build scopes bind source owner, field, operand PC, scene and unchanged authored values without mutation.');
+console.log('All thirteen controller Build scopes bind source owner, field, operand PC, scene and unchanged authored values without mutation.');

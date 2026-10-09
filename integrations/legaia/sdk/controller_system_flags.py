@@ -54,6 +54,9 @@ def validate_components(project,owner,components):
         elif family=='ControllerWordTriplets':
             from .controller_word_triplets import validate as validate_triplets
             checked=validate_triplets(project,owner,value)
+        elif family=='ControllerBgm':
+            from .controller_bgm import validate as validate_bgm
+            checked=validate_bgm(project,owner,value)
         elif family=='ControllerSceneBytes':
             from .controller_scene_bytes import validate as validate_scene_bytes
             checked=validate_scene_bytes(project,owner,value)
@@ -114,6 +117,9 @@ def compose(context,owner,components):
     if 'ControllerFlagBits' in components:
         from .controller_flag_bits import compose as compose_flag_bits
         current=compose_flag_bits(context._source,current,components['ControllerFlagBits']['entries'])
+    if 'ControllerBgm' in components:
+        from .controller_bgm import compose as compose_bgm
+        current=compose_bgm(context._source,current,components['ControllerBgm']['entries'])
     return current
 
 

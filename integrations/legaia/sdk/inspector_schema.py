@@ -104,6 +104,7 @@ def inspector_schema():
         ('ControllerWordTriplets', 'Controller Word Triplets'),
         ('ControllerThreeWords', 'Controller Three Words'),
         ('ControllerSceneBytes', 'Controller Scene-State Bytes'),
+        ('ControllerBgm', 'Controller BGM Arguments'),
         ('ControllerFiveWords', 'Controller Five Words'),
         ('ControllerGlobalBytes', 'Controller Global Bytes'),
         ('ControllerPartySelectors', 'Controller Party Selectors'),

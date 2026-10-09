@@ -8,6 +8,7 @@ import {decodeControllerFadeSnapshot} from './controller-fades.js';
 import {decodeControllerTableCopySnapshot} from './controller-tables.js';
 import {decodeControllerWordTripletSnapshot} from './controller-word-triplets.js';
 import {decodeControllerThreeWordSnapshot} from './controller-three-words.js';
+import {decodeControllerBgmSnapshot} from './controller-bgm.js';
 import {decodeControllerSceneByteSnapshot} from './controller-scene-bytes.js';
 import {decodeControllerFiveWordSnapshot} from './controller-five-words.js';
 import {decodeControllerGlobalByteSnapshot} from './controller-global-bytes.js';
@@ -21,6 +22,7 @@ const families={
  ControllerTableCopies:['table','Table Copies',decodeControllerTableCopySnapshot],
  ControllerWordTriplets:['word-triplet','Word Triplets',decodeControllerWordTripletSnapshot],
  ControllerThreeWords:['three-word','Three Words',decodeControllerThreeWordSnapshot],
+ ControllerBgm:['bgm','BGM Arguments',decodeControllerBgmSnapshot],
  ControllerSceneBytes:['scene-byte','Scene-State Bytes',decodeControllerSceneByteSnapshot],
  ControllerFiveWords:['five-word','Five Words',decodeControllerFiveWordSnapshot],
  ControllerGlobalBytes:['global-byte','Global Bytes',decodeControllerGlobalByteSnapshot],
