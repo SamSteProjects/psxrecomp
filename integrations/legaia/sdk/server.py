@@ -1087,6 +1087,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/controller-five-words.js": ("controller-five-words.js", "text/javascript"),
                  "/controller-global-bytes.js": ("controller-global-bytes.js", "text/javascript"),
                  "/controller-workspace-snapshot.js": ("controller-workspace-snapshot.js", "text/javascript"),
+                 "/controller-authoring-navigator.js": ("controller-authoring-navigator.js", "text/javascript"),
                  "/controller-three-words.js": ("controller-three-words.js", "text/javascript"),
                  "/controller-word-triplets.js": ("controller-word-triplets.js", "text/javascript"),
                  "/controller-authoring-focus.js": ("controller-authoring-focus.js", "text/javascript"),

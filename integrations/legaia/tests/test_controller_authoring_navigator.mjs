@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {controllerAuthoringTargets} from '../editor/controller-authoring-navigator.js';
+const rows=[{pc:5,mnemonic:'ONE'},{pc:39,mnemonic:'TWO'}];let focuses=0;
+const controls=[{kind:'first',label:'First',canFocus:pc=>pc===39,focusPc:()=>{focuses++;}},{kind:'empty',label:'Empty',canFocus:()=>false,focusPc:()=>{focuses++;}}];
+const groups=controllerAuthoringTargets(rows,controls);assert.equal(groups.length,1);assert.equal(groups[0].control,controls[0]);assert.deepEqual(groups[0].rows,[{pc:39,mnemonic:'TWO'}]);assert.equal(focuses,0);
+groups[0].rows[0].pc=99;assert.equal(rows[1].pc,39);
+for(const bad of [[...rows,rows[0]],[{pc:-1,mnemonic:'BAD'}],[{pc:65536,mnemonic:'BAD'}],[{pc:'5',mnemonic:'BAD'}],[{pc:5,mnemonic:null}],Array(4097).fill(rows[0])])assert.throws(()=>controllerAuthoringTargets(bad,controls));
+assert.throws(()=>controllerAuthoringTargets(rows,[controls[0],controls[0]]));assert.throws(()=>controllerAuthoringTargets(rows,[{...controls[0],focusPc:null}]));
+assert.deepEqual(controllerAuthoringTargets([],controls),[]);assert.deepEqual(controllerAuthoringTargets(rows,[]),[]);
+console.log('Controller navigator uses qualified boundaries, omits empty controls, preserves rows and refuses malformed or duplicate sources.');
