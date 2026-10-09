@@ -7,6 +7,9 @@ from importer.controller_system_flags import load_controller_system_flag_context
 
 def collect(project,owner,components):
     value=validate_components(project,owner,components)
+    if 'ControllerPartySelectors' in value:
+        from .build import BuildError
+        raise BuildError('Controller party-selector native Build integration is pending')
     return scene_document(project,owner)['scene']['semantic_id'],value
 
 
@@ -14,6 +17,8 @@ def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
     from .build import BuildError
     owner=scene_id+'/controllers/man-p1/0000'
     components=validate_components(project,owner,project.overrides[owner])
+    if 'ControllerPartySelectors' in components:
+        raise BuildError('Controller party-selector native Build integration is pending')
     value=components.get(COMPONENT,dict(entries={}))
     scene=project.imports[scene_id]['scene']['name']
     context=load_controller_system_flag_context(project.disc_path,scene)

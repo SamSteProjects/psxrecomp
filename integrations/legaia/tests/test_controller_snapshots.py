@@ -21,7 +21,7 @@ class ControllerSnapshots(unittest.TestCase):
         with patch('sdk.resources._verify') as verify, patch('sdk.controller_system_flags.load_controller_system_flag_context',return_value=self.context()) as loader:
             value=snapshot(self.p,self.owner,state_key(self.p))
             self.assertEqual(verify.call_count,1);self.assertEqual(loader.call_count,1)
-        self.assertEqual(value['families'],expected);self.assertEqual(len(value['families']),10)
+        self.assertEqual(value['families'],expected);self.assertEqual(len(value['families']),11)
         self.assertTrue(value['read_only']);self.assertFalse(value['project_changed']);self.assertFalse(value['gameplay_verified'])
         self.assertEqual(before,(self.p._document(),self.p.imports,self.p.undo_stack,self.p.redo_stack))
         value['families']['ControllerGlobalBytes']['targets'][0]['values']['byte_values'][0]=42
@@ -50,7 +50,7 @@ class ControllerSnapshots(unittest.TestCase):
         def changed(project,owner):
             result=original(project,owner);project.mode='live';return result
         with patch.object(module,'snapshot',side_effect=changed):
-            with self.assertRaisesRegex(ProjectError,'changed during inspection'):snapshot(self.p,self.owner,state_key(self.p))
+            with self.assertRaisesRegex(ProjectError,'changed during shared preparation'):snapshot(self.p,self.owner,state_key(self.p))
         self.assertIsNone(_request_preparation.get())
 
     def test_family_binding_and_registry_completeness_refuse(self):

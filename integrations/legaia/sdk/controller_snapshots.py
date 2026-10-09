@@ -19,6 +19,7 @@ FAMILIES = (
     ('ControllerSceneBytes', 'controller_scene_bytes'),
     ('ControllerFiveWords', 'controller_five_words'),
     ('ControllerGlobalBytes', 'controller_global_bytes'),
+    ('ControllerPartySelectors', 'controller_party_selectors'),
 )
 
 
