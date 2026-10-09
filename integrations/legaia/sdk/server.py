@@ -337,8 +337,7 @@ class EditorServer(ThreadingHTTPServer):
                 animation = catalog.authored_bank_preview(actor, asset, overrides)
             else:
                 animation = catalog.animation_preview(actor, asset)
-            preview = self.model_preview(asset, prepared=animation.pop("geometry"))
-            preview["frames"] = animation.pop("frames")
+            preview = self.posed_model_preview(asset, animation)
             animation.update(source_clip_id=animation["clip_id"], clip_id="authored-channels" if representation == "authored" else "scene-header", entity_id=entity_id, representation=representation)
             preview["animation"] = animation
             preview["animation_support"] = {
@@ -681,6 +680,17 @@ class EditorServer(ThreadingHTTPServer):
         if source_key(self.project)!=key:
             raise ProjectError('Scene changed during texture proposal inspection')
         return report
+
+    def posed_model_preview(self, asset: dict, animation: dict) -> dict:
+        """Compose Current model content before posing every imported frame."""
+        from .scene_preview import source_key
+        key = source_key(self.project)
+        geometry = animation.pop('geometry')
+        geometry['frames'] = animation.pop('frames')
+        preview = self.model_preview(asset, prepared=geometry, effective_shape=True)
+        if source_key(self.project) != key:
+            raise ProjectError('Project changed during Current model pose preparation')
+        return preview
 
     def model_preview(self, asset: dict, clip_id: str | None = None, *, prepared: dict | None = None, effective_shape: bool = False, project_view=None, texture_catalog=None) -> dict:
         from importer.assets import load_model_preview
@@ -2923,8 +2933,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                         self._json(200, preview_import(self.server.project, body['entity_id'], payload, body['binding'], **selection))
                     elif route == '/api/animation-glb-pose-preview':
                         animation, asset = pose_import(self.server.project, body['entity_id'], payload, body['binding'], **selection)
-                        preview = self.server.model_preview(asset, prepared=animation.pop('geometry'))
-                        preview['frames'] = animation.pop('frames')
+                        preview = self.server.posed_model_preview(asset, animation)
                         animation.update(source_clip_id=body['binding']['animation_id'], clip_id='file-preview', entity_id=body['entity_id'])
                         preview['report'] = animation['proposal']
                         preview['animation'] = animation
@@ -3135,8 +3144,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Animation record requires valid base64') from exc
                     if route == '/api/animation-file-pose-preview':
                         animation, asset = self.server.project.animation_file_pose_preview(body['entity_id'], payload, body.get('format', 'record'))
-                        preview = self.server.model_preview(asset, prepared=animation.pop('geometry'))
-                        preview['frames'] = animation.pop('frames')
+                        preview = self.server.posed_model_preview(asset, animation)
                         animation.update(source_clip_id=animation['clip_id'], clip_id='file-preview', entity_id=body['entity_id'])
                         preview['animation'] = animation
                         preview['animation_support'] = {'supported': True, 'clips': [], 'evidence': 'proposed_file_not_applied_or_runtime_verified'}
@@ -3157,8 +3165,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if not key or body['expected_source_key'] != key:
                         raise ProjectError('Project changed; review interpolation again')
                     animation, asset = self.server.project.animation_channels_pose_preview(body['entity_id'], body['value'])
-                    preview = self.server.model_preview(asset, prepared=animation.pop('geometry'))
-                    preview['frames'] = animation.pop('frames')
+                    preview = self.server.posed_model_preview(asset, animation)
                     animation.update(source_clip_id=animation['clip_id'], clip_id='channel-preview', entity_id=body['entity_id'])
                     animation['proposal']['project_source_key'] = key
                     preview['animation'] = animation

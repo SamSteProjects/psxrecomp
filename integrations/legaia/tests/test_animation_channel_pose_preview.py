@@ -47,7 +47,7 @@ class ChannelPosePreview(unittest.TestCase):
                 with patch('sdk.scene_preview.source_key',return_value='b'*64):
                     self.assertEqual(post('/api/animation-channels-pose-preview',body)[0],400)
                 read.assert_not_called()
-                with patch('sdk.scene_preview.source_key',side_effect=['a'*64,'b'*64]):
+                with patch('sdk.scene_preview.source_key',side_effect=['a'*64,'a'*64,'a'*64,'b'*64]):
                     self.assertEqual(post('/api/animation-channels-pose-preview',body)[0],400)
                 read.assert_called_once_with('actor',{});read.reset_mock()
                 with patch('sdk.scene_preview.source_key',return_value='a'*64):
