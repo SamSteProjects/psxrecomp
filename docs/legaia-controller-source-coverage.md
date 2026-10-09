@@ -1,5 +1,13 @@
 # Controller Source Coverage Survey
 
+## Controller Operand Flow Source Contract — 2026-10-09
+
+The read-only `/api/controller-flow-source` endpoint qualifies Current or reviewed Proposed controller reports through the existing twelve-family registry. The dedicated `legaia.controller-flow-source.v1` receipt binds the exact controller owner, active Edit scene, component, imported document, Retail/current/effective record hashes, source state key, report hash and optional reviewed operand/value/Review key. Current requests refuse proposal fields. Proposed requests rerun Review rather than trusting a supplied report; changed values, foreign owners and stale or mid-read source changes refuse. Returned reports and values are detached from project state.
+
+Thirteen focused Python checks passed, including all twelve Current/Proposed/reset cases, composed authored/reset separation, exact HTTP inputs, source discontinuity refusal and Save/Open. Thirty-six fixture and twenty-six actual Cave01/Rikuroa2 report hashes matched `scriptFlowReportHash` in Node. Actual private HTTP checks qualified twelve Current families per scene and bit26 Proposed reports, refused stale/foreign/changed reviews and preserved complete project/history/imports with exact Save/Open. A fixture alias and a private harness target-key mismatch were corrected before the final passing run. Evidence: `local-output/sdk-20260909/controller-flow-source-20261009/`.
+
+This is source-contract groundwork. Current/Proposed scenario file validation, transfer and editor wiring remain pending, and existing branch scenario schemas remain unchanged. No browser UI change, native package Build, recomp compilation, runtime attachment, game, installation or disc export occurred. Runtime scheduling, story outcomes and gameplay remain unverified; the full SDK goal stays active and solo development continues.
+
 ## Controller Operand-Layer Sandbox — 2026-10-09
 
 The shared controller operand flow now offers Simulate Current and Simulate reviewed Proposed. This reaches all twelve mounted authoring families while reusing the existing bounded hypothetical engine: unsupported instructions and host/context/scheduler effects still stop explicitly. The UI does not imply that every family's native operation is simulated. Current uses applied native-derived report bytes; Proposed requires the accepted Review report, and local drafts are excluded.

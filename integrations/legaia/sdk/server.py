@@ -1369,6 +1369,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!=expected or not isinstance(body['entity'],str):raise ProjectError('Controller global-byte request requires exact inputs')
                     from .controller_global_bytes import snapshot,review
                     self._json(200,snapshot(self.server.project,body['entity']) if route=='/api/controller-global-bytes' else review(self.server.project,body['entity'],body['operand_id'],body['value']));return
+                if route=='/api/controller-flow-source':
+                    expected={'entity','component','layer','expected_source_key'}
+                    if body.get('layer')=='proposed':expected|={'operand_id','value','review_key'}
+                    if set(body)!=expected or not isinstance(body['entity'],str):raise ProjectError('Controller flow source requires exact layer inputs')
+                    from .controller_flow_source import qualify
+                    self._json(200,qualify(self.server.project,body['entity'],body['component'],body['layer'],body['expected_source_key'],**{k:body[k] for k in ('operand_id','value','review_key') if k in body}));return
                 if route=='/api/controller-workspace-snapshot':
                     if set(body)!={'entity','expected_source_key'} or not isinstance(body['entity'],str):raise ProjectError('Controller workspace snapshot requires exact inputs')
                     from .controller_snapshots import snapshot
