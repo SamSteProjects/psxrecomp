@@ -216,6 +216,7 @@ def inspector_schema():
             'actions': [{'id': action, 'label': action_label, 'capability': capability}],
         }
     schema['asset_inspectors']['audio'] = 'AssetAudio'
+    schema['components']['AssetModel']['actions'].append({'id':'edit-asset-materials','label':'Edit material bindings','capability':'model_material_authoring','requires_edit':True})
     for identifier in ('AssetModel', 'AssetAnimation'):
         schema['components'][identifier]['actions'] += [
             {'id':'find-retail-asset-actors','label':'Find Retail actor bindings','capability':'project_navigation'},

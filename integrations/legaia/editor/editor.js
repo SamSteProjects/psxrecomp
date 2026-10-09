@@ -2061,7 +2061,7 @@ function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false}={})
     const section=document.createElement('section');section.dataset.assetInspector=record.type;
     const context=resourceStateKey(),snapshot=JSON.stringify(record),contract=JSON.stringify([state.inspector_schema,state.capabilities]);
     const current=()=>assetDetails.open&&assetDetails.contains(section)&&context===resourceStateKey()&&contract===JSON.stringify([state.inspector_schema,state.capabilities])&&JSON.stringify(lookup().find(item=>item.id===record.id))===snapshot;
-    mountAssetInspector(section,{schema:state.inspector_schema,record,capabilities:state.capabilities,current,busy:()=>busy,
+    mountAssetInspector(section,{schema:state.inspector_schema,record,capabilities:state.capabilities,current,busy:()=>busy,canEdit,
       references:{records:lookup,discover:()=>refreshResources(),open:item=>{assetDetailsTrail.remember(record,assetDetailsTrailContext(),lookup);showAssetDetails(item,lookup,{keepTrail:true});}},
       activate:async (item,action)=>{if(!current())return;assetDetails.close();if(action==='inspect-landmark-destination'){const label=item.data?.destination_source_label;if(!label)return;$('import-button').click();$('catalog-prefix').value=label;clearSceneCatalog();$('catalog-search').click();}else await activateAsset(item,action);},onError:error=>notify(error.message,true)});
     const triggerBindingInspector=mountTriggerBindingInspector(section,{record,getState:()=>state,current,busy:()=>busy,onInspect:async node=>{
@@ -2192,6 +2192,12 @@ async function inspectControllerAsset(record,focusFlagPc=null){
 async function activateAsset(record,action=null){
   if(busy)return;
   try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
+  if(action==='edit-asset-materials'){
+    if(!canEdit()||!state.capabilities?.model_material_authoring||record.type!=='model'||shapeDraft||record.sceneId!==state.scene?.id)return;
+    const context=sceneRequestKey();await openModel(record.id,null,null,record.authoredRecord?'authored':'imported');
+    if(busy||!canEdit()||!$('model-dialog').open||modelAssetId!==record.id||modelSceneContext!==context||context!==sceneRequestKey())return;
+    await inspectModelMaterials();return;
+  }
   if(['find-retail-asset-actors','find-current-asset-actors'].includes(action)){
     try{
       if(busy||record.sceneId!==state.scene?.id||assetRecords(true).filter(row=>row.id===record.id&&row.type===record.type&&row.sceneId===record.sceneId).length!==1)throw Error('Asset source changed. Reopen its Details in the current scene.');
@@ -2457,7 +2463,7 @@ function renderSceneResourceInspector(record){
   const host=$('inspector'),key=resourceStateKey();host.replaceChildren();$('selection-summary').textContent=`${record.label} · Source resource`;
   const section=document.createElement('section');section.className='component scene-resource-inspector';section.dataset.sceneResource=record.id;host.append(section);
   const current=()=>host.contains(section)&&resourceKey===resourceStateKey()&&key===resourceStateKey()&&sceneResourceSelection===record.id;
-  mountAssetInspector(section,{schema:state.inspector_schema,record,capabilities:state.capabilities,current,busy:()=>busy,
+  mountAssetInspector(section,{schema:state.inspector_schema,record,capabilities:state.capabilities,current,busy:()=>busy,canEdit,
     references:{records:()=>assetRecords(true),discover:()=>refreshResources(),open:item=>showAssetDetails(item,()=>assetRecords(true))},
     activate:async (item,action)=>{if(current()&&!busy)await activateAsset(item,action);},onError:error=>notify(error.message,true)});
   if(record.type==='controller')mountControllerOwnerInspector(host,{record,schema:state.inspector_schema,capabilities:state.capabilities,current,editable:canEdit,busy:()=>busy,onInspect:(_component,pc)=>inspectControllerAsset(record,pc),onError:error=>notify(error.message,true)});

@@ -133,10 +133,12 @@ class InspectorSchema(unittest.TestCase):
             definition=schema['components'][identifier]
             self.assertEqual(definition['layout'],'read-only-properties')
             self.assertTrue(all('authoring' not in prop for prop in definition['properties']))
-            self.assertEqual(len(definition['actions']),4 if kind == 'trigger' else 5 if kind == 'audio' else 2 if kind in ('worldmap','region') else 3 if kind in ('model','animation') else 1)
+            self.assertEqual(len(definition['actions']),4 if kind == 'trigger' else 5 if kind == 'audio' else 2 if kind in ('worldmap','region') else 4 if kind == 'model' else 3 if kind == 'animation' else 1)
             if kind == 'audio':
                 self.assertEqual({a['id'] for a in definition['actions']}, {'inspect-midi-input','inspect-audio-input','inspect-audio-bank','edit-sequence-replacement','inspect-audio-sequence'})
             for action in definition['actions']:self.assertNotIn('command',action)
+        material=next(a for a in schema['components']['AssetModel']['actions'] if a['id']=='edit-asset-materials')
+        self.assertEqual(material,{'id':'edit-asset-materials','label':'Edit material bindings','capability':'model_material_authoring','requires_edit':True})
         self.assertEqual(schema['components']['AssetRegion']['actions'][1]['capability'],'field_region_authoring')
         schema['components']['AssetModel']['actions'][0]['label']='changed'
         self.assertEqual(inspector_schema()['components']['AssetModel']['actions'][0]['label'],'Inspect model')

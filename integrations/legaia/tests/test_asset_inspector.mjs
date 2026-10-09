@@ -70,3 +70,13 @@ if(process.argv[2]){
  assert.throws(()=>registeredActions(malformed,'AssetNpcDraft',linkedNpc,capabilities,linkedRegistry,false));
  console.log('Actual NPC Asset Details schema actions, donor gating, capability filtering and bounded/duplicate refusal passed.');
 }
+
+const editSchema=structuredClone(schema);editSchema.components.AssetModel.actions=[{id:'edit-asset-materials',label:'Edit material bindings',capability:'model_material_authoring',requires_edit:true}];
+assert.equal(registeredActions(editSchema,'AssetModel',record,{model_material_authoring:true},registry,false)[0].disabled,true);
+assert.equal(registeredActions(editSchema,'AssetModel',record,{model_material_authoring:true},registry,true)[0].disabled,false);
+assert.equal(registeredActions(editSchema,'AssetModel',record,{model_material_authoring:false},registry,true).length,0);
+assert.equal(assetInspectorRegistry({type:'texture'},()=>{})['edit-asset-materials'],undefined);
+const editButton={dataset:{inspectorAction:'edit-asset-materials',inspectorComponent:'AssetModel',inspectorEdit:'true'},disabled:false};let editMode=false,edited=0;
+bindComponentActions({querySelectorAll:()=>[editButton]},assetInspectorRegistry(record,()=>edited++),{current:()=>true,editable:()=>editMode,busy:()=>false,onError:e=>{throw e;}});
+await editButton.onclick();assert.equal(edited,0);editMode=true;await editButton.onclick();assert.equal(edited,1);editMode=false;await editButton.onclick();assert.equal(edited,1);
+console.log('Model material action requires explicit Edit eligibility and capability; texture assets and mode changes cannot dispatch it.');

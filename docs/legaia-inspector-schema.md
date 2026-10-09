@@ -825,3 +825,35 @@ and saved fixture files remained exact. Private evidence reuses
 `local-output/sdk-20260909/asset-material-bindings-20261009/` with an explicit
 `source_context_derived_not_retail` browser assertion. No game, runtime attachment
 or native Build occurred. Gameplay remains unverified; full SDK goal active.
+
+
+## Asset Material Editing Handoff — 2026-10-09
+
+Model Asset Details registers Edit material bindings through SDK action metadata,
+with `model_material_authoring` and explicit `requires_edit`. The shared asset
+inspector accepts a live Edit-eligibility callback, defaults to read-only eligibility,
+and rechecks it when dispatching. Property editing stays disabled in the metadata
+renderer. The handoff resolves project source membership, qualifies the source model
+through the existing preview, then opens the existing material editor. Pending shape
+files, changed source scenes and unavailable Edit eligibility refuse the handoff.
+No graph material index is guessed into a packet group or primitive selection.
+
+The existing editor retains its Retail/Current/Proposed values, semantic fields,
+source-bound Review/Apply, shared group ownership and normal history/persistence.
+This adds a product navigation path without adding a serializer or bypassing Review.
+
+Sixteen Python schema checks, two Node inspector suites, two JS syntax checks and
+schema AST passed. Focused checks verify the model-only registry, explicit capability
+and Edit gating, and refusal after eligibility changes. Actual muted Vell editor
+checks opened Asset Details, refused a retained action after changing client mode
+eligibility, then opened the exact model material source in Edit mode. A shared
+semitransparency draft produced a nonempty source-qualified Review audit with
+`project_changed=false`; explicit Apply became eligible. Discard/close preserved
+project/imports/history and every saved fixture file. Existing model/texture binding
+filters, counterpart/Back and synthetic paging guards also passed. Desktop/400px
+layouts were inspected, with zero page errors or authoring/scene/selection requests.
+The browser harness needed the desktop asset panel restored after its narrow check
+and the correct material-preview Review endpoint; both were fixed before the pass.
+Private evidence: `local-output/sdk-20260909/asset-material-edit-action-20261009/`.
+Apply, native Build and gameplay were not rerun for this navigation-only change.
+No game or runtime attachment occurred; the full SDK goal stays active.
