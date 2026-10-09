@@ -1138,10 +1138,7 @@ function sceneryGroupCenter(temporary=true){
   return Object.fromEntries(['x','y','z'].map(axis=>[axis,points.reduce((sum,p)=>sum+p[axis],0)/points.length]));
 }
 function frameEnvironmentGroup(report){
-  const rows=report?.targets??environmentGroupSelection.map(entity_id=>({entity_id})),view=sceneView();
-  const corners=rows.flatMap(row=>sceneRenderer?.bounds(view.positions,row.entity_id,new Set(),view.transforms)??[]);if(!corners.length)return;
-  for(const axis of ['x','y','z'])camera.target[axis]=(Math.min(...corners.map(p=>p[axis]))+Math.max(...corners.map(p=>p[axis])))/2;
-  camera.distance=Math.max(800,Math.hypot(...['x','y','z'].map(axis=>Math.max(...corners.map(p=>p[axis]))-Math.min(...corners.map(p=>p[axis]))))*1.5);cameraRevision++;draw();
+  return frameScenePlacementGroup({targets:report?.targets??environmentGroupSelection.map(entity_id=>({entity_id}))});
 }
 function frameEnvironment(){const item=selectedEnvironment();if(item)frame({id:item.entity_id,components:{Transform:{imported:{position:item.position}}}});}
 function canEditAppearance(){return !sceneAnimationController?.active()&&(state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.actor_appearance===true;}
@@ -1295,10 +1292,7 @@ function selectActorRange(id,add=false){
 }
 function frameActorGroupSelection(){
   if(busy||!scenePreviewCurrent()||!actorGroupSelection.length)return;
-  pendingEntityFrame=null;cancelViewportGesture();
-  const points=entities().filter(e=>actorGroupSelection.includes(e.id)).map(position),min={},max={};
-  for(const axis of ['x','y','z']){min[axis]=Math.min(...points.map(p=>p[axis]));max[axis]=Math.max(...points.map(p=>p[axis]));camera.target[axis]=(min[axis]+max[axis])/2;}
-  camera.distance=Math.max(300,Math.hypot(max.x-min.x,max.y-min.y,max.z-min.z)*1.5);cameraRevision++;draw();
+  return frameScenePlacementGroup({targets:actorGroupSelection.map(entity_id=>({entity_id}))});
 }
 actorGroupTools.querySelector('[data-frame-selection]').onclick=frameActorGroupSelection;
 actorGroupTools.querySelector('[data-review-selection]').onclick=()=>{if(!busy&&actorGroupSelection.length>=2)document.getElementById('actor-batch-button').click();};
