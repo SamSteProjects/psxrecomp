@@ -15,4 +15,5 @@ console.log('Asset resource discovery: once per source, explicit retry, busy/pen
 for(const query of ['type:animation','type:ani','type:audio name:bank','animation://town01/authored-record/example','id:script://town01/example'])assert(assetSearchNeedsResources('all',query),query);
 for(const query of ['', 'name:Walk','type:model','-type:animation','-animation://town01/example','provenance:animation://town01/example','type:', 'type:animation "unfinished','"type:animation"'])assert.equal(assetSearchNeedsResources('all',query),false,query);
 assert.equal(assetSearchNeedsResources('model','type:animation'),false);assert(assetSearchNeedsResources('animation',''));assert(assetSearchNeedsResources('authored',''));
+assert(resourceAssetCategories.has('controller'));assert(assetSearchNeedsResources('controller',''));assert(assetSearchNeedsResources('all','type:controller'));
 console.log('Explicit positive resource type and stable-ID searches discover in All; ordinary names, exclusions, malformed input and unrelated categories do not request catalog data.');

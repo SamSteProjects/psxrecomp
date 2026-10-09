@@ -1,6 +1,6 @@
 import {parseAssetQuery} from './asset-search.js';
 // Catalog loading follows user category selection; the loader owns source validation.
-export const resourceAssetCategories=new Set(['authored','audio','texture','animation','script','dialogue','flag','transition','collision','trigger','region','worldmap']);
+export const resourceAssetCategories=new Set(['authored','audio','texture','animation','script','controller','dialogue','flag','transition','collision','trigger','region','worldmap']);
 export function assetSearchNeedsResources(category,query){
   if(resourceAssetCategories.has(category))return true;
   if(category!=='all')return false;
