@@ -1,6 +1,7 @@
 import {controllerSnapshotRequest} from './controller-workspace-snapshot.js';
 import {compactControllerAuthoring} from './controller-authoring-availability.js';
 import {controllerAuthoringFocus} from './controller-authoring-focus.js';
+import {mountControllerOperandSimulation} from './controller-operand-flow.js';
 import {mountControllerBranchWalkthrough} from './script-branch-walkthrough.js';
 import {mountScriptFlowOverview} from './script-flow-overview.js';
 import {mountScriptNodeLayers} from './script-node-layers.js';
@@ -43,14 +44,16 @@ export function mountControllerBranches(host,{owner,getContext,busy,setBusy,api,
 
  let snapshot=null,accepted=null,pending=false,disposed=false,generation=0,abort=null;
  const fresh=()=>{try{return !disposed&&same(context,scriptBranchContext(getContext()));}catch{return false;}};
+ const simulation=mountControllerOperandSimulation(flowHost,{getContext,current:fresh,busy:()=>pending||busy(),selection:()=>Number(boundary.value),selectInstruction:chooseBoundary});
  const walkthrough=mountControllerBranchWalkthrough(flowHost,{owner,getContext,getProjectSourceKey,current:fresh,busy,selection:()=>Number(boundary.value),selectInstruction:chooseBoundary,onError,
   request:async(route,body,signal)=>{const response=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal}),raw=await response.json();if(!response.ok||raw.error)fail(raw.error||'Controller walkthrough source could not be verified.');return raw;},
   decodeSnapshot:decodeControllerBranchSnapshot,decodeReview:(raw,s,id,value)=>({review:decodeControllerBranchReview(raw,s,id,value)})});
  const row=()=>snapshot?.targets.find(t=>t.semantic_id===source.value);
  function invalidate(){generation++;abort?.abort();accepted=null;assessment.textContent='';drawFlow();}
- function updateState(){walkthrough.updateState();const disabled=!fresh()||context.mode!=='edit'||pending||busy()||!snapshot?.supported;source.disabled=destination.disabled=disabled;boundary.disabled=!fresh()||pending||busy()||!snapshot;buttons.review.disabled=disabled||!row();buttons.reset.disabled=disabled||!row()?.authored_value;buttons.discard.disabled=disabled;buttons.apply.disabled=disabled||!accepted||accepted.no_op; if(!fresh()){invalidate();section.hidden=true;}}
+ function updateState(){walkthrough.updateState();simulation.updateState();const disabled=!fresh()||context.mode!=='edit'||pending||busy()||!snapshot?.supported;source.disabled=destination.disabled=disabled;boundary.disabled=!fresh()||pending||busy()||!snapshot;buttons.review.disabled=disabled||!row();buttons.reset.disabled=disabled||!row()?.authored_value;buttons.discard.disabled=disabled;buttons.apply.disabled=disabled||!accepted||accepted.no_op; if(!fresh()){invalidate();section.hidden=true;}}
  function drawFlow(){
   walkthrough.sync(snapshot,accepted);
+  simulation.sync(snapshot,accepted);
   if(!fresh()||!snapshot){nodeLayers.clear('Controller flow source changed. Reopen inspection.');proposedHost.hidden=true;return;}
   const selected=Number(boundary.value);
   nodeLayers.update(snapshot.source_report,snapshot.current_report,accepted?.proposed_report??null,Number.isSafeInteger(selected)&&snapshot.destinations.some(d=>d.pc===selected)?selected:null);
@@ -63,9 +66,9 @@ export function mountControllerBranches(host,{owner,getContext,busy,setBusy,api,
  const ready=request('/api/controller-branches',{entity:owner},raw=>{snapshot=decodeControllerBranchSnapshot(raw,owner,context);for(const t of snapshot.targets){const o=el('option',`${pc(t.pc)} · ${t.mnemonic} · ${t.condition}`);o.value=t.semantic_id;source.append(o);}for(const d of snapshot.destinations){const o=el('option',`${pc(d.pc)} · ${d.mnemonic}`);o.value=String(d.pc);destination.append(o);const b=el('option',`${pc(d.pc)} · ${d.mnemonic}`);b.value=String(d.pc);boundary.append(b);}source.value=(snapshot.targets.find(t=>t.pc===focusPc)??snapshot.targets[0])?.semantic_id??'';render();status.textContent=snapshot.reason??`${snapshot.targets.length} qualified branches. Review before Apply.`;compactControllerAuthoring(section,snapshot,status);});
  boundary.onchange=()=>drawFlow();
  source.onchange=()=>{invalidate();render();};destination.onchange=()=>{invalidate();updateState();};
- async function review(value){const t=row();if(!t)return false;invalidate();return request('/api/controller-branch-review',{entity:owner,operand_id:t.semantic_id,value},raw=>{accepted=decodeControllerBranchReview(raw,snapshot,t.semantic_id,value);assessment.textContent=`Current ${pc(t.current_target_pc)} → Proposed ${pc(value?.target_pc??t.target_pc)}\n${accepted.changed_decoded_byte_offsets.length} changed bytes · ${accepted.newly_unreachable_source_pcs.length} newly unvisited boundaries · ${accepted.newly_reached_source_pcs.length} newly reached boundaries`;status.textContent=accepted.no_op?'No authored change.':'Review complete. Explicit Apply is required.';drawFlow();});}
+ async function review(value){const t=row();if(!t)return false;invalidate();return request('/api/controller-branch-review',{entity:owner,operand_id:t.semantic_id,value},raw=>{accepted=decodeControllerBranchReview(raw,snapshot,t.semantic_id,value);boundary.value=String(t.pc);assessment.textContent=`Current ${pc(t.current_target_pc)} → Proposed ${pc(value?.target_pc??t.target_pc)}\n${accepted.changed_decoded_byte_offsets.length} changed bytes · ${accepted.newly_unreachable_source_pcs.length} newly unvisited boundaries · ${accepted.newly_reached_source_pcs.length} newly reached boundaries`;status.textContent=accepted.no_op?'No authored change.':'Review complete. Explicit Apply is required.';drawFlow();});}
  buttons.review.onclick=()=>buttons.review.disabled?false:review({target_pc:Number(destination.value)});buttons.reset.onclick=()=>buttons.reset.disabled?false:review(null);buttons.discard.onclick=()=>{if(buttons.discard.disabled)return false;invalidate();render();return true;};
  buttons.apply.onclick=async()=>{if(buttons.apply.disabled||!fresh()||pending||busy())return false;const proposal=structuredClone(accepted),focus=row().pc;pending=true;updateState();try{const success=await api('/api/command',{type:'set_controller_branch',entity_id:owner,operand_id:proposal.operand_id,value:proposal.value,review_key:proposal.review_key});accepted=null;const now=getContext();if(success!==true||disposed||['projectPath','sceneId','mode'].some(k=>now[k]!==context[k]))return false;await reopen(focus);return true;}catch(e){if(!disposed){status.textContent=e.message;onError(e);}return false;}finally{pending=false;accepted=null;drawFlow();updateState();}};
  const navigation=controllerAuthoringFocus({current:()=>fresh()&&context.mode==='edit',busy:()=>pending||busy(),targets:()=>snapshot?.targets,source,select:target=>{invalidate();source.value=target.semantic_id;render();status.textContent='Source selected. Review before Apply.';}});
- return {...navigation,ready,updateState,hasDraft:()=>!!(accepted||pending||row()&&destination.value!==String(row().current_target_pc)),dispose(){if(disposed)return;disposed=true;invalidate();walkthrough.dispose();nodeLayers.dispose();currentFlow.dispose();proposedFlow.dispose();section.remove();}};
+ return {...navigation,ready,updateState,hasDraft:()=>!!(accepted||pending||row()&&destination.value!==String(row().current_target_pc)),dispose(){if(disposed)return;disposed=true;invalidate();simulation.dispose();walkthrough.dispose();nodeLayers.dispose();currentFlow.dispose();proposedFlow.dispose();section.remove();}};
 }

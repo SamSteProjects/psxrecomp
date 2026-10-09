@@ -1,6 +1,7 @@
 import {controllerSnapshotRequest} from './controller-workspace-snapshot.js';
 import {compactControllerAuthoring} from './controller-authoring-availability.js';
 import {controllerAuthoringFocus} from './controller-authoring-focus.js';
+import {mountControllerOperandSimulation} from './controller-operand-flow.js';
 // Persistent encoded operands; these controls do not read or write live story flags.
 import {scriptBranchContext} from './script-branches.js';
 const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
@@ -46,25 +47,28 @@ function mountSelectors(host,{protocol,owner,focusPc=null,getContext,busy,setBus
   let snapshot=null,accepted=null,active=null,pending=false,disposed=false,started=false,generation=0,controller=null,token=null,resolveReady;
   const ready=new Promise(resolve=>resolveReady=resolve);
   const current=()=>{try{return !disposed&&same(context,scriptBranchContext(getContext()));}catch{return false;}};
+  let simulationPc=null;
+  const simulation=protocol.schema==='legaia.controller-system-flags.v1'?mountControllerOperandSimulation(section,{getContext,current,busy:()=>pending||busy(),selection:()=>simulationPc,selectInstruction:pc=>{if(!current()||pending||busy())return false;simulationPc=pc;return true;}}):null;
   const row=()=>snapshot?.targets.find(t=>t.semantic_id===active);
   const choice=()=>{const v=drafts.has(active)?drafts.get(active):row()?{index:row().current_index}:undefined;return typeof v?.index==='string'?/^\d{1,4}$/.test(v.index)&&index(Number(v.index))?{index:Number(v.index)}:undefined:v;};
   const notify=()=>onDraftChange(new Map([...drafts].map(([k,v])=>[k,clone(v)])));
   const release=own=>{if(token===own){token=null;setBusy(false);}};
-  function invalidate(){generation++;controller?.abort();controller=null;accepted=null;assessment.textContent='';pending=false;if(token)release(token);}
-  function fields(){const t=row(),v=drafts.has(active)?drafts.get(active):choice();input.value=v===null?'':v?.index===undefined?'':String(v.index);layers.textContent=t?`Retail: ${t.values.index} · Current: ${t.current_index} · Authored: ${t.authored_values?.index??'none'}`:'';}
+  function invalidate(){generation++;controller?.abort();controller=null;accepted=null;assessment.textContent='';simulation?.sync(snapshot,null);pending=false;if(token)release(token);}
+  function fields(){const t=row(),v=drafts.has(active)?drafts.get(active):choice();simulationPc=t?.pc??null;input.value=v===null?'':v?.index===undefined?'':String(v.index);layers.textContent=t?`Retail: ${t.values.index} · Current: ${t.current_index} · Authored: ${t.authored_values?.index??'none'}`:'';}
   function updateState(){
     const fresh=current(),blocked=!fresh||pending||busy(),editable=fresh&&context.mode==='edit'&&!!row();
     if(!fresh){invalidate();status.textContent='Project, scene, mode or source changed. Reopen this script.';}
     selector.disabled=blocked||!snapshot?.targets.length;input.disabled=blocked||!editable;
     const v=choice();buttons.review.disabled=blocked||!editable||!value(v);buttons.reset.disabled=blocked||!editable||row()?.authored_values===null;buttons.discard.disabled=blocked||!drafts.size;
     buttons.apply.disabled=blocked||!editable||!accepted||!same(accepted.value,v)||accepted.no_op;
+    simulation?.sync(snapshot,accepted);
     if(!started&&fresh&&!busy()){started=true;void run(async(signal,valid)=>{const raw=await request(protocol.snapshotRoute,{entity:owner},signal);if(!valid())return false;snapshot=decodeSystemSelectorSnapshot(raw,owner,context,protocol.schema);for(const t of snapshot.targets){const option=el('option',`0x${t.pc.toString(16).toUpperCase().padStart(4,'0')} ${t.mnemonic}`);option.value=t.semantic_id;selector.append(option);}active=snapshot.targets.find(t=>drafts.has(t.semantic_id))?.semantic_id??snapshot.targets.find(t=>t.pc===focusPc)?.semantic_id??snapshot.targets[0]?.semantic_id;selector.value=active??'';status.textContent=snapshot.targets.length?`${snapshot.targets.length} source-qualified selectors`:raw.reason??'No qualified system selectors in this source.';fields();if(protocol.schema==='legaia.controller-system-flags.v1')compactControllerAuthoring(section,snapshot,status);return true;}).then(result=>{resolveReady?.(result);resolveReady=null;});}
   }
   async function request(route,body,signal){const response=await controllerSnapshotRequest(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal},initialSnapshot,'/api/controller-system-flag-selectors');const result=await response.json();if(!response.ok||result.error)fail(result.error??'System selector request failed.');return result;}
   async function run(work){if(!current()||pending||busy())return false;const ticket=++generation,own={};pending=true;controller=new AbortController();const signal=controller.signal;token=own;setBusy(true);error.textContent='';updateState();const valid=()=>current()&&ticket===generation&&!signal.aborted;try{return await work(signal,valid);}catch(e){if(valid()&&e.name!=='AbortError'){error.textContent=e.message;onError(e);}return false;}finally{if(ticket===generation){pending=false;controller=null;}release(own);if(!disposed)updateState();}}
   selector.onchange=()=>{if(selector.disabled)return;invalidate();active=selector.value;fields();updateState();};
   input.oninput=()=>{if(!current())return;invalidate();drafts.set(active,{index:input.value.slice(0,4)});error.textContent=value(choice())?'':'Enter a whole index from 0 to 4095.';notify();updateState();};
-  async function reviewChoice(v){return run(async(signal,valid)=>{const raw=await request(protocol.reviewRoute,{entity:owner,operand_id:active,value:v},signal);if(!valid())return false;accepted=decodeSystemSelectorReview(raw,snapshot,active,v);assessment.textContent=`Current: ${row().current_index}\nProposed: ${v===null?row().values.index:v.index}\nOperation and TEST destinations preserved.\n${accepted.no_op?'No authored change.':'Ready to apply the reviewed authored change.'}`;return true;});}
+  async function reviewChoice(v){return run(async(signal,valid)=>{const raw=await request(protocol.reviewRoute,{entity:owner,operand_id:active,value:v},signal);if(!valid())return false;accepted=decodeSystemSelectorReview(raw,snapshot,active,v);simulationPc=row().pc;assessment.textContent=`Current: ${row().current_index}\nProposed: ${v===null?row().values.index:v.index}\nOperation and TEST destinations preserved.\n${accepted.no_op?'No authored change.':'Ready to apply the reviewed authored change.'}`;return true;});}
   buttons.review.onclick=()=>buttons.review.disabled?false:reviewChoice(choice());
   buttons.reset.onclick=()=>{if(buttons.reset.disabled)return false;invalidate();drafts.set(active,null);notify();fields();return reviewChoice(null);};
   buttons.discard.onclick=()=>{if(buttons.discard.disabled)return false;invalidate();drafts.clear();notify();fields();updateState();return true;};
@@ -83,7 +87,7 @@ function mountSelectors(host,{protocol,owner,focusPc=null,getContext,busy,setBus
     finally{if(!disposed){pending=false;updateState();}}
   };
   const navigation=controllerAuthoringFocus({current:()=>current()&&context.mode==='edit',busy:()=>pending||busy(),targets:()=>snapshot?.targets,source:selector,select:target=>{invalidate();active=target.semantic_id;selector.value=active;fields();status.textContent='Source selected. Review before Apply.';updateState();}});
-  updateState();return {...navigation,ready,updateState,hasDraft:()=>drafts.size>0||!!accepted||pending,dispose(){if(disposed)return;disposed=true;invalidate();section.remove();resolveReady?.(false);resolveReady=null;}};
+  updateState();return {...navigation,ready,updateState,hasDraft:()=>drafts.size>0||!!accepted||pending,dispose(){if(disposed)return;disposed=true;invalidate();simulation?.dispose();section.remove();resolveReady?.(false);resolveReady=null;}};
 }
 
 export function mountSystemSelectors(host,options){return mountSelectors(host,{...options,protocol:{schema:'legaia.system-flag-authoring.v1',snapshotRoute:'/api/system-flag-selectors',reviewRoute:'/api/system-flag-selector-review',commandType:'set_system_flag_selector'}});}

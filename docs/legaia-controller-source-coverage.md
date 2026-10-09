@@ -1,5 +1,16 @@
 # Controller Source Coverage Survey
 
+## Twelve-Family Controller Scenario Workflow — 2026-10-09
+
+All twelve controller editor families now expose Current and independently reviewed Proposed hypothetical simulations with qualified version4 scenario save/replay. The shared simulation component is extracted from the operand-flow presentation and reused in the system-selector and branch panels without duplicating their existing comparisons or walkthroughs. Controller system selectors alone gain this UI; actor selector controls retain their existing presentation. Review recenters the simulation on the edited source operand. Local drafts never supply Proposed, and Discard/stale source/disposal withdraw simulations through the shared ownership guards.
+
+Five focused Python checks, twenty Node suites and five JS syntax checks passed. Thirty-six twelve-family fixture Current/Proposed/reset sources passed actual mounted simulation save/load, proof equality, review withdrawal, stale disposal and detached scenario replay. The extraction initially exposed an initialization-order issue and the selector fixture needed the DOM replaceChildren method; both were corrected before final focused checks. A private browser harness destination-label mismatch was corrected before final verification.
+
+Actual Cave01/Rikuroa2 browser workflows saved and replayed both layers for both newly integrated panels, refused Current recipes in Proposed, withdrew Discarded reviews and preserved exact Current provenance after drafts. Reviewed selectors1164/412 showed distinct hypothetical SET/CLEAR effects. Explicit system-selector assumptions16/322 made branch replay follow the literal encoded Current destinations and reviewed self-targets53/95; no actual story state or execution is inferred. Recipe starts were checked against the edited source PCs. Eight desktop/400-pixel captures passed visual review with zero page errors, overflow or authoring/Build/Run requests. Complete project/history/imports stayed unchanged and Save/Open matched. Evidence: `local-output/sdk-20260909/controller-final-families-20261009/`.
+
+No native Build, recomp compilation, runtime attachment, game, installation or disc export occurred. This completes the shared twelve-family controller scenario editor workflow, not the full SDK. Native scheduling, story effects, live identity/correlation, broad animation/asset coverage, release parity and gameplay verification remain open; the full goal stays active and solo work continues.
+
+
 ## Controller Operand Scenario Editor — 2026-10-09
 
 Current and independently reviewed Proposed simulations in the ten shared operand-family panels now save and load version4 controller scenarios. On each transfer the shared client checks authoritative project/scene/Edit/source state, requests an exact native flow receipt, verifies it against the accepted snapshot/review and selected report, and checks authoritative state again. The shared sandbox independently creates/replays the bounded hypothetical recipe, requalifies its receipt before export or replacing simulation state, and preserves the previous simulation on refusal. Ordinary stepping performs no source requests. Disposal aborts in-flight transfer; changed source or Proposed reviews withdraw their simulation.

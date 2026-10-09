@@ -16,7 +16,7 @@ const unreachable=snapshot();unreachable.current_report.instructions=[];
 assert.equal(decodeSystemSelectorSnapshot(unreachable,owner,context).targets.length,1);
 const unreachableReview=proposal();unreachableReview.current_report.instructions=[];unreachableReview.proposed_report.instructions=[];
 assert.equal(decodeSystemSelectorReview(unreachableReview,unreachable,operand,{index:4095}).value.index,4095);
-class Node{constructor(tag){this.children=[];this.attributes={};this.style={};this.dataset={};this.value='';this.textContent='';this.disabled=false;}append(...nodes){for(const n of nodes){n.parent=this;this.children.push(n);}}setAttribute(k,v){this.attributes[k]=v;}remove(){if(this.parent)this.parent.children=this.parent.children.filter(n=>n!==this);}}
+class Node{constructor(tag){this.children=[];this.attributes={};this.style={};this.dataset={};this.value='';this.textContent='';this.disabled=false;}append(...nodes){for(const n of nodes){n.parent=this;this.children.push(n);}}replaceChildren(...nodes){this.children=[];this.append(...nodes);}setAttribute(k,v){this.attributes[k]=v;}remove(){if(this.parent)this.parent.children=this.parent.children.filter(n=>n!==this);}}
 const tree=n=>[n,...n.children.flatMap(tree)],button=(host,id)=>tree(host).find(n=>n.dataset.systemAction===id),input=host=>tree(host).find(n=>n.attributes['aria-label']==='Proposed system selector index');
 let queue=[],ctx=structuredClone(context),busy=false,commands=[],drafts=[],errors=[],reopened=[];
 globalThis.document={createElement:tag=>new Node(tag)};
