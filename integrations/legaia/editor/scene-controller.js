@@ -1,3 +1,4 @@
+import {decodeControllerWorkspaceSnapshot} from './controller-workspace-snapshot.js';
 import {mountControllerGlobalBytes} from './controller-global-bytes.js';
 import {mountControllerFiveWords} from './controller-five-words.js';
 import {mountControllerSceneBytes} from './controller-scene-bytes.js';
@@ -104,62 +105,74 @@ export async function openSceneController({getState,busy,expectedAsset=null,focu
     const stateResponse=await fetch('/api/state',{signal}),state=await stateResponse.json();
     return stateResponse.ok&&fresh()&&state.project?.path===projectPath&&state.project?.mode==='edit'&&state.scene?.id===scene&&state.asset_reference_source_key===key;
    }});
+  let preloaded=null;
+  if(typeof api==='function'&&typeof setBusy==='function'&&initial.capabilities?.controller_workspace_snapshot){
+   if(busy())return;
+   setBusy(true);
+   try{
+    const response=await fetch('/api/controller-workspace-snapshot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity:scene+'/controllers/man-p1/0000',expected_source_key:initial.controller_selector_source_key}),signal:controller.signal}),value=await response.json();
+    if(!fresh())return;
+    if(!response.ok||value.error)throw Error(value.error||'Controller workspace preload failed.');
+    if(getState().controller_selector_source_key!==initial.controller_selector_source_key)throw Error('Controller workspace source changed during preload.');
+    preloaded=decodeControllerWorkspaceSnapshot(value,scene+'/controllers/man-p1/0000',initial.controller_selector_source_key);
+   }finally{setBusy(false);}
+  }
   if(typeof api==='function'&&typeof setBusy==='function'&&getState().capabilities?.controller_selector_authoring){
-   selectors=mountControllerSystemSelectors(content,{owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_selector_source_key}),busy,setBusy,api,onError,
+   selectors=mountControllerSystemSelectors(content,{initialSnapshot:preloaded?.ControllerSystemFlags??null,owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_selector_source_key}),busy,setBusy,api,onError,
     reopen:async pc=>{dialog.close();await openSceneController({getState,busy,api,setBusy,focusFlagPc:pc,onError});}});
   }
   if(selectors)await selectors.ready;
   if(!fresh())return;
   if(typeof api==='function'&&typeof setBusy==='function'&&getState().capabilities?.controller_branch_authoring){
-   branches=mountControllerBranches(content,{owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getProjectSourceKey:()=>getState().asset_reference_source_key,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_branch_source_key}),busy,setBusy,api,onError,
+   branches=mountControllerBranches(content,{initialSnapshot:preloaded?.ControllerBranches??null,owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getProjectSourceKey:()=>getState().asset_reference_source_key,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_branch_source_key}),busy,setBusy,api,onError,
     reopen:async pc=>{dialog.close();await openSceneController({getState,busy,api,setBusy,focusFlagPc:pc,onError});}});
   }
   if(branches)await branches.ready;
   if(!fresh())return;
   if(typeof api==='function'&&typeof setBusy==='function'&&getState().capabilities?.controller_tile_authoring){
-   tiles=mountControllerTileRects(content,{owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_tile_source_key}),busy,setBusy,api,onError,
+   tiles=mountControllerTileRects(content,{initialSnapshot:preloaded?.ControllerTileRects??null,owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_tile_source_key}),busy,setBusy,api,onError,
     reopen:async pc=>{dialog.close();await openSceneController({getState,busy,api,setBusy,focusFlagPc:pc,onError});}});
    await tiles.ready;
   }
   if(!fresh())return;
   if(typeof api==='function'&&typeof setBusy==='function'&&getState().capabilities?.controller_fade_authoring){
-   fades=mountControllerFades(content,{owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_fade_source_key}),busy,setBusy,api,onError,
+   fades=mountControllerFades(content,{initialSnapshot:preloaded?.ControllerFades??null,owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_fade_source_key}),busy,setBusy,api,onError,
     reopen:async pc=>{dialog.close();await openSceneController({getState,busy,api,setBusy,focusFlagPc:pc,onError});}});
    await fades.ready;
   }
   if(!fresh())return;
   if(typeof api==='function'&&typeof setBusy==='function'&&getState().capabilities?.controller_table_authoring){
-   tables=mountControllerTables(content,{owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_table_source_key}),busy,setBusy,api,onError,
+   tables=mountControllerTables(content,{initialSnapshot:preloaded?.ControllerTableCopies??null,owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_table_source_key}),busy,setBusy,api,onError,
     reopen:async pc=>{dialog.close();await openSceneController({getState,busy,api,setBusy,focusFlagPc:pc,onError});}});
    await tables.ready;
   }
   if(!fresh())return;
   if(typeof api==='function'&&typeof setBusy==='function'&&getState().capabilities?.controller_word_triplet_authoring){
-   triplets=mountControllerWordTriplets(content,{owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_word_triplet_source_key}),busy,setBusy,api,onError,
+   triplets=mountControllerWordTriplets(content,{initialSnapshot:preloaded?.ControllerWordTriplets??null,owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_word_triplet_source_key}),busy,setBusy,api,onError,
     reopen:async pc=>{dialog.close();await openSceneController({getState,busy,api,setBusy,focusFlagPc:pc,onError});}});
    await triplets.ready;
   }
   if(!fresh())return;
   if(typeof api==='function'&&typeof setBusy==='function'&&getState().capabilities?.controller_three_word_authoring){
-   threeWords=mountControllerThreeWords(content,{owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_three_word_source_key}),busy,setBusy,api,onError,
+   threeWords=mountControllerThreeWords(content,{initialSnapshot:preloaded?.ControllerThreeWords??null,owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_three_word_source_key}),busy,setBusy,api,onError,
     reopen:async pc=>{dialog.close();await openSceneController({getState,busy,api,setBusy,focusFlagPc:pc,onError});}});
    await threeWords.ready;
   }
   if(!fresh())return;
   if(typeof api==='function'&&typeof setBusy==='function'&&getState().capabilities?.controller_scene_byte_authoring){
-   sceneBytes=mountControllerSceneBytes(content,{owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_scene_byte_source_key}),busy,setBusy,api,onError,
+   sceneBytes=mountControllerSceneBytes(content,{initialSnapshot:preloaded?.ControllerSceneBytes??null,owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_scene_byte_source_key}),busy,setBusy,api,onError,
     reopen:async pc=>{dialog.close();await openSceneController({getState,busy,api,setBusy,focusFlagPc:pc,onError});}});
    await sceneBytes.ready;
   }
   if(!fresh())return;
   if(typeof api==='function'&&typeof setBusy==='function'&&getState().capabilities?.controller_five_word_authoring){
-   fiveWords=mountControllerFiveWords(content,{owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_five_word_source_key}),busy,setBusy,api,onError,
+   fiveWords=mountControllerFiveWords(content,{initialSnapshot:preloaded?.ControllerFiveWords??null,owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_five_word_source_key}),busy,setBusy,api,onError,
     reopen:async pc=>{dialog.close();await openSceneController({getState,busy,api,setBusy,focusFlagPc:pc,onError});}});
    await fiveWords.ready;
   }
   if(!fresh())return;
   if(typeof api==='function'&&typeof setBusy==='function'&&getState().capabilities?.controller_global_byte_authoring){
-   globalBytes=mountControllerGlobalBytes(content,{owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_global_byte_source_key}),busy,setBusy,api,onError,
+   globalBytes=mountControllerGlobalBytes(content,{initialSnapshot:preloaded?.ControllerGlobalBytes??null,owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_global_byte_source_key}),busy,setBusy,api,onError,
     reopen:async pc=>{dialog.close();await openSceneController({getState,busy,api,setBusy,focusFlagPc:pc,onError});}});
    await globalBytes.ready;
   }

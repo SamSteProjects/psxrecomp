@@ -1,3 +1,4 @@
+import {controllerSnapshotRequest} from './controller-workspace-snapshot.js';
 import {compactControllerAuthoring} from './controller-authoring-availability.js';
 import {controllerAuthoringFocus} from './controller-authoring-focus.js';
 // Persistent encoded operands; these controls do not read or write live story flags.
@@ -27,7 +28,7 @@ export function decodeSystemSelectorReview(raw,snapshot,operand,requested){
   return clone(raw);
 }
 const el=(tag,text='')=>{const n=document.createElement(tag);n.textContent=text;return n;};
-function mountSelectors(host,{protocol,owner,focusPc=null,getContext,busy,setBusy,api,reopen,onDraftChange=()=>{},initialDrafts=new Map(),onError=()=>{}}){
+function mountSelectors(host,{protocol,owner,focusPc=null,getContext,busy,setBusy,api,reopen,onDraftChange=()=>{},initialDrafts=new Map(),initialSnapshot=null,onError=()=>{}}){
   const context=scriptBranchContext(getContext());
   const prefix='script://'+owner.slice(8)+'/system-flag/';
   if(!owner.startsWith(context.sceneId+'/')||!(initialDrafts instanceof Map)||initialDrafts.size>1024||[...initialDrafts].some(([id,v])=>typeof id!=='string'||!id.startsWith(prefix)||!/^[0-9a-f]{4}$/.test(id.slice(prefix.length))||!(v===null||draft(v))))fail('System selector drafts require the source owner and bounded indices.');
@@ -59,7 +60,7 @@ function mountSelectors(host,{protocol,owner,focusPc=null,getContext,busy,setBus
     buttons.apply.disabled=blocked||!editable||!accepted||!same(accepted.value,v)||accepted.no_op;
     if(!started&&fresh&&!busy()){started=true;void run(async(signal,valid)=>{const raw=await request(protocol.snapshotRoute,{entity:owner},signal);if(!valid())return false;snapshot=decodeSystemSelectorSnapshot(raw,owner,context,protocol.schema);for(const t of snapshot.targets){const option=el('option',`0x${t.pc.toString(16).toUpperCase().padStart(4,'0')} ${t.mnemonic}`);option.value=t.semantic_id;selector.append(option);}active=snapshot.targets.find(t=>drafts.has(t.semantic_id))?.semantic_id??snapshot.targets.find(t=>t.pc===focusPc)?.semantic_id??snapshot.targets[0]?.semantic_id;selector.value=active??'';status.textContent=snapshot.targets.length?`${snapshot.targets.length} source-qualified selectors`:raw.reason??'No qualified system selectors in this source.';fields();if(protocol.schema==='legaia.controller-system-flags.v1')compactControllerAuthoring(section,snapshot,status);return true;}).then(result=>{resolveReady?.(result);resolveReady=null;});}
   }
-  async function request(route,body,signal){const response=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal});const result=await response.json();if(!response.ok||result.error)fail(result.error??'System selector request failed.');return result;}
+  async function request(route,body,signal){const response=await controllerSnapshotRequest(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal},initialSnapshot,'/api/controller-system-flag-selectors');const result=await response.json();if(!response.ok||result.error)fail(result.error??'System selector request failed.');return result;}
   async function run(work){if(!current()||pending||busy())return false;const ticket=++generation,own={};pending=true;controller=new AbortController();const signal=controller.signal;token=own;setBusy(true);error.textContent='';updateState();const valid=()=>current()&&ticket===generation&&!signal.aborted;try{return await work(signal,valid);}catch(e){if(valid()&&e.name!=='AbortError'){error.textContent=e.message;onError(e);}return false;}finally{if(ticket===generation){pending=false;controller=null;}release(own);if(!disposed)updateState();}}
   selector.onchange=()=>{if(selector.disabled)return;invalidate();active=selector.value;fields();updateState();};
   input.oninput=()=>{if(!current())return;invalidate();drafts.set(active,{index:input.value.slice(0,4)});error.textContent=value(choice())?'':'Enter a whole index from 0 to 4095.';notify();updateState();};

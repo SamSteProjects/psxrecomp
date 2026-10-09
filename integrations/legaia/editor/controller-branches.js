@@ -1,3 +1,4 @@
+import {controllerSnapshotRequest} from './controller-workspace-snapshot.js';
 import {compactControllerAuthoring} from './controller-authoring-availability.js';
 import {controllerAuthoringFocus} from './controller-authoring-focus.js';
 import {mountControllerBranchWalkthrough} from './script-branch-walkthrough.js';
@@ -20,7 +21,7 @@ export function decodeControllerBranchReview(raw,snapshot,id,value){
  return structuredClone(raw);
 }
 const el=(tag,label='')=>{const n=document.createElement(tag);n.textContent=label;return n;};
-export function mountControllerBranches(host,{owner,getContext,busy,setBusy,api,reopen,focusPc=null,getProjectSourceKey=()=>null,onError=()=>{}}){
+export function mountControllerBranches(host,{owner,getContext,busy,setBusy,api,reopen,focusPc=null,getProjectSourceKey=()=>null,initialSnapshot=null,onError=()=>{}}){
  const context=scriptBranchContext(getContext());
  if(owner!==context.sceneId+'/controllers/man-p1/0000')fail('Controller branches require their dedicated scene owner.');
  const section=el('section');section.dataset.controllerBranches='';section.style.overflowWrap='anywhere';
@@ -58,7 +59,7 @@ export function mountControllerBranches(host,{owner,getContext,busy,setBusy,api,
   if(accepted)proposedFlow.update(accepted.proposed_report);
  }
  function render(){const t=row();accepted=null;assessment.textContent='';destination.value=String(t?.current_target_pc??'');layers.textContent=t?`Retail ${pc(t.target_pc)} · Current ${pc(t.current_target_pc)} · Authored ${t.authored_value?pc(t.authored_value.target_pc):'None'}`:'';boundary.value=String(t?.pc??snapshot?.destinations[0]?.pc??'');drawFlow();updateState();}
- async function request(route,body,decode){if(!fresh()||pending||busy())return false;const own=++generation;pending=true;abort=new AbortController();setBusy(true);updateState();try{const r=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:abort.signal}),raw=await r.json();if(!fresh()||own!==generation)return false;if(!r.ok||raw.error)fail(raw.error||'Controller branch request failed');decode(raw);return true;}catch(e){if(fresh()&&own===generation&&e.name!=='AbortError'){status.textContent=e.message;onError(e);}return false;}finally{pending=false;setBusy(false);updateState();}}
+ async function request(route,body,decode){if(!fresh()||pending||busy())return false;const own=++generation;pending=true;abort=new AbortController();setBusy(true);updateState();try{const r=await controllerSnapshotRequest(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:abort.signal},initialSnapshot,'/api/controller-branches'),raw=await r.json();if(!fresh()||own!==generation)return false;if(!r.ok||raw.error)fail(raw.error||'Controller branch request failed');decode(raw);return true;}catch(e){if(fresh()&&own===generation&&e.name!=='AbortError'){status.textContent=e.message;onError(e);}return false;}finally{pending=false;setBusy(false);updateState();}}
  const ready=request('/api/controller-branches',{entity:owner},raw=>{snapshot=decodeControllerBranchSnapshot(raw,owner,context);for(const t of snapshot.targets){const o=el('option',`${pc(t.pc)} · ${t.mnemonic} · ${t.condition}`);o.value=t.semantic_id;source.append(o);}for(const d of snapshot.destinations){const o=el('option',`${pc(d.pc)} · ${d.mnemonic}`);o.value=String(d.pc);destination.append(o);const b=el('option',`${pc(d.pc)} · ${d.mnemonic}`);b.value=String(d.pc);boundary.append(b);}source.value=(snapshot.targets.find(t=>t.pc===focusPc)??snapshot.targets[0])?.semantic_id??'';render();status.textContent=snapshot.reason??`${snapshot.targets.length} qualified branches. Review before Apply.`;compactControllerAuthoring(section,snapshot,status);});
  boundary.onchange=()=>drawFlow();
  source.onchange=()=>{invalidate();render();};destination.onchange=()=>{invalidate();updateState();};
