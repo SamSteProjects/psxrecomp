@@ -2890,8 +2890,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .project import atomic_write
                     from importer.export import encode_model_glb, write_encoded_glb
                     animation, asset, binding = export_clip(self.server.project, body['entity_id'], body['clip_fps'])
-                    preview = self.server.model_preview(asset, prepared=animation.pop('geometry'))
-                    preview['frames'] = animation.pop('frames')
+                    preview = self.server.posed_model_preview(asset, animation)
                     preview['animation'] = animation
                     payload, audit = encode_model_glb(preview, clip_fps=body['clip_fps'])
                     check = preview_import(self.server.project, body['entity_id'], payload, binding)

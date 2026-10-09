@@ -36,6 +36,25 @@ def shifted(raw, *, node=0, frame=0, axis=0, amount=1):
 
 @unittest.skipUnless(os.environ.get('LEGAIA_DISC_BIN'), 'requires private retail disc')
 class AnimationGlbWorkflow(unittest.TestCase):
+    def test_current_mesh_export_keeps_native_channel_roundtrip(self):
+        from hashlib import sha256
+        from importer.assets import decode_tmd
+        with tempfile.TemporaryDirectory() as directory:
+            project=self.project(directory);owner='scene://town01/actors/man-p1/0011'
+            asset=project.animation_authoring_options(owner)['binding']['asset_semantic_id']
+            source=project._model_source(asset,project.active_scene)
+            project.translate_model_object(asset,0,[2,0,0],sha256(source).hexdigest())
+            current=decode_tmd(project.read_model_replacement(asset,project.model_overrides[asset]))
+            before=deepcopy((project._document(),project.imports,project.undo_stack,project.redo_stack))
+            with http_server(project) as (_,post):
+                exported=self.export(post,owner);raw=base64.b64decode(exported['glb_base64']);doc,payload=parse_glb(raw)
+                primitive=doc['meshes'][0]['primitives'][0];accessor=doc['accessors'][primitive['attributes']['POSITION']];view=doc['bufferViews'][accessor['bufferView']]
+                vertex=current['vertices'][current['triangles'][0][0]]
+                self.assertEqual(list(struct.unpack_from('<3f',payload,view.get('byteOffset',0)+accessor.get('byteOffset',0))),[vertex[0],-vertex[1],vertex[2]])
+                status,review=post('/api/animation-glb-preview',dict(entity_id=owner,glb_base64=exported['glb_base64'],binding=exported['binding']))
+                self.assertEqual(status,200,review);self.assertEqual(review['changed_axes'],0)
+            self.assertEqual((project._document(),project.imports,project.undo_stack,project.redo_stack),before)
+
     def project(self, directory, scene='town01'):
         project = ProjectService(Path(directory))
         project.disc_path = os.environ['LEGAIA_DISC_BIN']
