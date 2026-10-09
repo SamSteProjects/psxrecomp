@@ -227,6 +227,11 @@ def _instruction(data: bytes, pc: int) -> dict:
                           0x39: (1, "GIVE_ITEM"), 0x3A: (3, "ADD_MONEY"), 0x3B: (2, "SET_ITEM_COUNT"),
                           0x3C: (1, "PARTY_ADD"), 0x3D: (1, "PARTY_REMOVE"),
                           0x44: (1, "SPAWN_RECORD"), 0x4A: (2, "WAIT_FRAMES")}[op]
+        if op == 0x35:
+            need(3)
+            args = {'encoded_id': struct.unpack_from('<H', data, operand)[0],
+                    'sub_op': data[operand + 2], 'id_semantics': 'host_bgm_u16_argument',
+                    'runtime_effect': 'not_evaluated'}
         if op == 0x4A:
             need(2)
             args = {"duration_ticks": struct.unpack_from("<H", data, operand)[0],

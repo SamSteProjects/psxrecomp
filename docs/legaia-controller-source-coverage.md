@@ -1,5 +1,9 @@
 # Controller Source Coverage Survey
 
+## Controller BGM Argument Serialization — 2026-10-09
+
+[Controller BGM Argument Authoring](legaia-controller-bgm.md) now qualifies the fixed encoded u16 word on 271 reached sites across 96 source scenes, preserving dispatch and record/control-flow structure. Native serialization and relocated unchanged-record preimages are tested; project/command/editor/Build integration remains pending. The existing twelve-family workspace is unchanged. The zero-qualified-target controller wait boundary remains in force; no wait UI is invented. Full SDK/runtime/gameplay goals remain open.
+
 ## Twelve-Family Controller Scenario Workflow — 2026-10-09
 
 All twelve controller editor families now expose Current and independently reviewed Proposed hypothetical simulations with qualified version4 scenario save/replay. The shared simulation component is extracted from the operand-flow presentation and reused in the system-selector and branch panels without duplicating their existing comparisons or walkthroughs. Controller system selectors alone gain this UI; actor selector controls retain their existing presentation. Review recenters the simulation on the edited source operand. Local drafts never supply Proposed, and Discard/stale source/disposal withdraw simulations through the shared ownership guards.
