@@ -25,6 +25,24 @@ class ManSource:
                     chunk_header_offset=self.chunk_header_offset)
 
 
+def _qualify_controller_only_man(payload, parsed, scene):
+    """An actor-free scene still requires a bounded partition-1 controller.
+
+    This qualifies record ownership only; controller/P0 script semantics remain
+    unknown. Streaming containers retain their separate placement requirement.
+    """
+    if parsed.partition_counts[1] != 1:
+        raise ImportError(f'{scene}: MAN contains no actor placements or unique scene controller')
+    total = sum(parsed.partition_counts)
+    base = 0x2B + total * 3
+    section = base + int.from_bytes(payload[0x28:0x2B], 'little')
+    starts = [base + int.from_bytes(payload[0x2B + i * 3:0x2E + i * 3], 'little')
+              for i in range(total)]
+    if (not starts or len(set(starts)) != total
+            or any(not base <= start < section <= len(payload) for start in starts)):
+        raise ImportError(f'{scene}: controller-only MAN record ownership is invalid')
+
+
 def read_man_source(archive,start,end,scene):
     try:
         bundle,raw=find_scene_bundle(archive,start,end)
@@ -53,5 +71,5 @@ def read_man_source(archive,start,end,scene):
     payload,consumed=decompress_lzs(raw[offset:ceiling],descriptor.size)
     parsed=parse_man(payload,scene)
     if not parsed.actors:
-        raise ImportError(f'{scene}: MAN contains no actor placement records')
+        _qualify_controller_only_man(payload, parsed, scene)
     return ManSource('descriptor_man',bundle.entry_index,offset,payload,parsed,consumed,bundle,descriptor)

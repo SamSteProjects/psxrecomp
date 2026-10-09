@@ -1568,7 +1568,7 @@ function render(){
   reconcileLiveFollow();renderRuntimeControls();
   document.querySelector('.preview-badge').firstChild.textContent=live?'AUTHORED SCENE · LIVE OBSERVATIONS SEPARATE':'SCENE PREVIEW';
   updateSceneFocusButton();
-  $('status').textContent=state.scene?.id ? `${state.scene.name} · ${entities().length} entities · ${state.project?.dirty?'Changes not saved':'Project ready'}` : 'Ready · Create or open a project to begin';
+  $('status').textContent=state.scene?.id ? `${state.scene.name} · ${entities().length} imported actors · ${state.project?.dirty?'Changes not saved':'Project ready'}` : 'Ready · Create or open a project to begin';
   renderHierarchy();renderAssets();renderInspector();
   templateButton.disabled=!state.capabilities?.authored_transform_templates;
   if(templateDialog.open)renderTemplates();
