@@ -1066,6 +1066,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-resolution.js": ("model-resolution.js", "text/javascript"),
                  "/scene-controller.js": ("scene-controller.js", "text/javascript"),
                  "/controller-branches.js": ("controller-branches.js", "text/javascript"),
+                 "/controller-operand-flow.js": ("controller-operand-flow.js", "text/javascript"),
                  "/controller-fades.js": ("controller-fades.js", "text/javascript"),
                  "/controller-tile-rects.js": ("controller-tile-rects.js", "text/javascript"),
                  "/controller-references.js": ("controller-references.js", "text/javascript"),
