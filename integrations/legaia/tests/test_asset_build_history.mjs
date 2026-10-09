@@ -15,3 +15,12 @@ for(const mutate of [v=>v.receipt.archive_sha256='0'.repeat(64),v=>v.receipt.sou
 assert.throws(()=>assetBuildRecords(value,{...entry,change_count:1},asset,key));assert.throws(()=>assetBuildRecords(value,entry,'../escape',key));assert.throws(()=>assetBuildRecords(value,entry,asset,key,null));
 for(const invalid of [{...entry,id:'../escape'},{...entry,archive_sha256:'invalid'},{...entry,source_disc_sha256:'invalid'},{...entry,change_count:-1},{...entry,build_kind:'unknown'}])assert.throws(()=>assetBuildRecords(value,invalid,asset,key));
 console.log('Asset Build exact asset/owner matching, full ledgers, detached data, receipt/current-input binding and no-record semantics passed.');
+
+const controller='script://fixture/controllers/man-p1/0000',owner=controller.replace('script://','scene://');
+const {CONTROLLER_BUILD_TARGETS}=await import('../editor/controller-build-navigation.js');
+const operands=Object.entries(CONTROLLER_BUILD_TARGETS).map(([scope,[component,kind,field]])=>({asset_id:controller+'/'+kind+'/0005',owner_id:owner,scene:'fixture',field,scope,before:0,after:1}));
+const bad=operands[0],foreign=[{...bad,owner_id:owner+'extra'},{...bad,scene:'other'},{...bad,scope:'unsupported'},{...bad,field:'other'},{...bad,asset_id:controller+'/foreign/0005'},{...bad,asset_id:bad.asset_id+'extra'}];
+const controllerValue=structuredClone(value);controllerValue.report.changes=[...operands,...foreign];controllerValue.report.change_count=controllerValue.report.changes.length;const controllerEntry={...entry,change_count:controllerValue.report.change_count};
+const rows=assetBuildRecords(controllerValue,controllerEntry,controller,key);assert.equal(rows.length,11);assert(rows.every(row=>row.relationship==='Qualified controller audit owner'));assert.deepEqual(rows.map(row=>row.record),operands);assert.equal(assetBuildRecords(controllerValue,controllerEntry,controller,key,false).length,0);assert.equal(assetBuildRecords(controllerValue,controllerEntry,controller.replace('/controllers/','/other/'),key).length,0);
+assert.equal(assetBuildRecords({...controllerValue,matches_current_inputs:false},controllerEntry,controller,'0'.repeat(64)).length,11);
+console.log('All eleven controller audit owner mappings require exact scene, owner, scope, field and operand identity; stale packages remain inspectable as history.');
