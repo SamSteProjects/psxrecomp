@@ -22,11 +22,11 @@ def review(project, request):
             any(type(v) is not int or v % 64 or abs(v) > 16320 for v in delta.values())):
         raise ProjectError('NPC group offsets require X/Z integer multiples of64 within -16320..16320')
     if 'layout' in request:
-        if not isinstance(layout, dict) or layout.get('kind') not in ('align','distribute','rotate','scale','mirror'):
+        if not isinstance(layout, dict) or layout.get('kind') not in ('align','distribute','rotate','scale','mirror','snap'):
             raise ProjectError('Choose a supported NPC group layout')
         kind=layout['kind']
-        fields={'kind','axis'} if kind=='distribute' else {'kind','anchor_entity_id','quarter_turns'} if kind=='rotate' else {'kind','anchor_entity_id','percent'} if kind=='scale' else {'kind','axis','anchor_entity_id'}
-        if set(layout)!=fields or (kind!='distribute' and layout['anchor_entity_id'] not in ids):
+        fields={'kind','axes','spacing'} if kind=='snap' else {'kind','axis'} if kind=='distribute' else {'kind','anchor_entity_id','quarter_turns'} if kind=='rotate' else {'kind','anchor_entity_id','percent'} if kind=='scale' else {'kind','axis','anchor_entity_id'}
+        if set(layout)!=fields or (kind not in ('distribute','snap') and layout['anchor_entity_id'] not in ids):
             raise ProjectError('NPC group layout requires exact fields and a selected anchor')
         if kind in ('align','distribute','mirror') and layout['axis'] not in ('x','z'):
             raise ProjectError('NPC group layout requires X or Z')
@@ -34,6 +34,8 @@ def review(project, request):
             raise ProjectError('NPC group rotation requires -1, 1 or 2 quarter turns')
         if kind=='scale' and (type(layout['percent']) is not int or not 1<=layout['percent']<=1000):
             raise ProjectError('NPC group spacing scale requires 1..1000 integer percent')
+        if kind=='snap' and (layout['axes'] not in (['x'],['z'],['x','z']) or type(layout['spacing']) is not int or not 64<=layout['spacing']<=4096 or layout['spacing']%64):
+            raise ProjectError('NPC grid snap requires X, Z or X/Z and spacing in multiples of 64 from 64 through 4096')
     before = source_key(project)
     targets = []
     for identifier in sorted(ids):
@@ -45,7 +47,11 @@ def review(project, request):
         targets.append(dict(entity_id=identifier, draft=deepcopy(draft), proposed=None if removing else proposed))
     if layout is not None:
         axis=layout.get('axis')
-        if layout['kind']=='align':
+        if layout['kind']=='snap':
+            for row in targets:
+                for a in layout['axes']:
+                    n=row['draft']['position'][a];row['proposed'][a]=((n+layout['spacing']//2)//layout['spacing'])*layout['spacing']
+        elif layout['kind']=='align':
             anchor=next(row for row in targets if row['entity_id']==layout['anchor_entity_id'])
             for row in targets:row['proposed'][axis]=anchor['draft']['position'][axis]
         elif layout['kind'] in ('rotate','scale','mirror'):
