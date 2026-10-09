@@ -21,3 +21,11 @@ const zAlign={kind:'align',axis:'z',anchor:ids[2]},zReport={...report,operation:
 assert.deepEqual(decodeEnvironmentLayout(zReport,key,scene,ids,zAlign),zReport);
 const unchanged={...report,affected_count:0,project_change:false,targets:rows.map(row=>({...row,current:{x:9,z:row.current.z},proposed:{x:9,z:row.current.z}}))};assert.deepEqual(decodeEnvironmentLayout(unchanged,key,scene,ids,align),unchanged);
 console.log('Scenery layout operation, source identity, canonical selection, alignment, deterministic distribution, half-up rounding and retained-report guards passed.');
+
+const scale={kind:'scale',anchor:ids[2],percent:50},scaleReport={...report,operation:scale,affected_count:3,targets:rows.map((r,i)=>({...r,proposed:{x:[-3,-3,0,3][i],z:[21,22,22,23][i]}}))};
+assert.deepEqual(environmentLayoutOperation(scale,ids),scale);assert.deepEqual(decodeEnvironmentLayout(scaleReport,key,scene,ids,scale),scaleReport);
+const mirror={kind:'mirror',anchor:ids[2],axis:'x'},mirrorReport={...report,operation:mirror,affected_count:3,targets:rows.map(r=>({...r,proposed:{x:-r.current.x,z:r.current.z}}))};
+assert.deepEqual(decodeEnvironmentLayout(mirrorReport,key,scene,ids,mirror),mirrorReport);
+for(const op of [{...scale,percent:true},{...scale,percent:0},{...scale,percent:1001},{...scale,percent:50.5},{...scale,axis:'x'},{...mirror,anchor:'foreign'}])assert.throws(()=>environmentLayoutOperation(op,ids));
+assert.throws(()=>decodeEnvironmentLayout({...scaleReport,targets:scaleReport.targets.map((r,i)=>i===0?{...r,proposed:{...r.proposed,x:-2}}:r)},key,scene,ids,scale));
+console.log('Scenery scale/mirror exact signed half ties, both axes, preserved layers, native operation fields and response arithmetic passed.');

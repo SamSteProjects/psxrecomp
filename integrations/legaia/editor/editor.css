@@ -356,3 +356,12 @@
 .sequence-preview-viewport{height:260px;position:relative;border:1px solid var(--line);background:#10181b}.sequence-preview-viewport canvas{width:100%;height:100%;display:block;touch-action:none}.sequence-preview-viewport [data-points]{position:absolute;inset:0;pointer-events:none;background:transparent}#model-vertex-sequence-dialog [data-sequence-preview]{margin:12px 0}#model-vertex-sequence-dialog [data-sequence-preview] .vertex-move-controls{flex-wrap:wrap}
 
 .animation-imported-dialog{overflow-wrap:anywhere}.animation-imported-dialog pre{max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere}.animation-imported-dialog button,.animation-imported-dialog select{max-width:100%;white-space:normal}
+
+/* Keep scenery arrangement controls and actions inside narrow dialogs. */
+#environment-layout-dialog .dialog-actions{flex-wrap:wrap;justify-content:flex-start}
+#environment-layout-dialog .dialog-actions label{display:flex;flex-direction:column;flex:1 1 180px;min-width:0;max-width:100%}
+#environment-layout-dialog .dialog-actions select,#environment-layout-dialog .dialog-actions input{width:100%;max-width:100%;min-width:0;flex:none}
+#environment-layout-dialog .dialog-actions button{max-width:100%;white-space:normal;text-align:left}
+#environment-layout-dialog table{width:100%;table-layout:fixed}
+#environment-layout-dialog th,#environment-layout-dialog td{overflow-wrap:anywhere}
+#environment-layout-dialog th:first-child{width:46%}

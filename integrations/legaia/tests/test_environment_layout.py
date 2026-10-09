@@ -162,4 +162,29 @@ class EnvironmentLayoutTests(unittest.TestCase):
                 self.assertEqual(p.overrides,before);self.assertEqual(len(p.undo_stack),depth)
 
 
+    def test_scale_spacing_mirror_exact_coordinates_preserve_layers_and_history(self):
+        with tempfile.TemporaryDirectory() as directory:
+            p = self.project(directory); source = source_map(); ids = IDS + [identity(387)]
+            positions = [(0, 0), (-3, 3), (3, -3)]
+            entries = []
+            for cell, (x, z) in zip((129, 258, 387), positions):
+                entries.append(dict(cell_index=cell, offset=dict(x=x-(cell%128)*128-64, y=17, z=(cell//128)*128+64-z), rotation_psx=dict(y=777)))
+            with patch.object(ProjectService, '_environment_source', return_value=source):
+                p.command(dict(type='set_environment_transforms',entity_id=SCENE,value=dict(source_sha256=sha256(source).hexdigest(),edits=[],instances=entries)))
+                before = deepcopy(p._document()); depth = len(p.undo_stack)
+                scaled = review(p, SCENE, ids, dict(kind='scale',anchor=ids[0],percent=50))
+                self.assertEqual([t['proposed'] for t in scaled['targets']],[dict(x=0,z=0),dict(x=-2,z=2),dict(x=2,z=-2)])
+                self.assertEqual(p._document(), before)
+                self.apply_review(p,scaled); self.assertEqual(len(p.undo_stack),depth+1)
+                for item in p.overrides[SCENE]['Environment']['instances']:
+                    self.assertEqual(item['offset']['y'],17);self.assertEqual(item['rotation_psx'],dict(y=777))
+                p.undo();self.assertEqual(p._document(),before);p.redo();p.save();self.assertEqual(ProjectService.open(p.root)._document(),p._document());p.undo()
+                mirrored = review(p,SCENE,ids,dict(kind='mirror',axis='x',anchor=ids[0]))
+                self.assertEqual([t['proposed'] for t in mirrored['targets']],[dict(x=0,z=0),dict(x=3,z=3),dict(x=-3,z=-3)])
+                self.apply_review(p,mirrored);p.undo();self.assertEqual(p._document(),before)
+                noop=review(p,SCENE,ids,dict(kind='scale',anchor=ids[0],percent=100));self.assertFalse(noop['project_change']);self.assertEqual(noop['affected_count'],0)
+                for operation in [dict(kind='scale',anchor=ids[0],percent=True),dict(kind='scale',anchor=ids[0],percent=0),dict(kind='scale',anchor=ids[0],percent=1001),dict(kind='scale',anchor=ids[0],percent=50.5),dict(kind='scale',anchor='foreign',percent=50),dict(kind='scale',anchor=ids[0],percent=50,axis='x'),dict(kind='mirror',anchor=ids[0],axis='y')]:
+                    with self.assertRaises(ProjectError):review(p,SCENE,ids,operation)
+                self.assertEqual(p._document(),before)
+
 if __name__ == '__main__':unittest.main()

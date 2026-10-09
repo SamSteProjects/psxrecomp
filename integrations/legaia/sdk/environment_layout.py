@@ -1,4 +1,4 @@
-"""Source-bound alignment and distribution of static scenery instances."""
+"""Source-bound arrangement of static scenery placement coordinates."""
 from copy import deepcopy
 
 from .project import ProjectError, digest
@@ -6,22 +6,34 @@ from .environment_group import _prepare, _merge
 
 
 def review(project, scene, entity_ids, operation):
-    if not isinstance(operation, dict) or operation.get('kind') not in ('align', 'distribute') or operation.get('axis') not in ('x', 'z'):
-        raise ProjectError('Decoration layout requires alignment or distribution on X/Z')
-    expected = {'kind', 'axis', 'anchor'} if operation['kind'] == 'align' else {'kind', 'axis'}
+    if not isinstance(operation, dict) or operation.get('kind') not in ('align', 'distribute', 'scale', 'mirror'):
+        raise ProjectError('Decoration layout requires a supported arrangement operation')
+    kind = operation['kind']
+    expected = {'kind', 'anchor', 'percent'} if kind == 'scale' else {'kind', 'axis'} if kind == 'distribute' else {'kind', 'axis', 'anchor'}
     if set(operation) != expected:
         raise ProjectError('Decoration layout operation has unexpected or missing fields')
+    if kind == 'scale':
+        if type(operation['percent']) is not int or not 1 <= operation['percent'] <= 1000:
+            raise ProjectError('Decoration spacing scale requires an integer percentage from 1 through 1000')
+    elif operation['axis'] not in ('x', 'z'):
+        raise ProjectError('Decoration layout requires X/Z axes')
     context = _prepare(project, scene, entity_ids)
-    axis = operation['axis']
+    axis = operation.get('axis')
     targets = context['targets']
     proposed = {t['entity_id']: deepcopy(t['current']) for t in targets}
-    if operation['kind'] == 'align':
+    if kind != 'distribute':
         anchor = operation['anchor']
         if not isinstance(anchor, str) or anchor not in proposed:
-            raise ProjectError('Decoration alignment anchor must be in the selected group')
-        coordinate = proposed[anchor][axis]
+            raise ProjectError('Decoration arrangement anchor must be in the selected group')
+        pivot = proposed[anchor].copy()
         for point in proposed.values():
-            point[axis] = coordinate
+            if kind == 'scale':
+                for a in ('x', 'z'):
+                    numerator = pivot[a] * 100 + (point[a] - pivot[a]) * operation['percent']
+                    # Exact integer rounding; half ties move away from world zero.
+                    point[a] = (1 if numerator >= 0 else -1) * ((abs(numerator) + 50) // 100)
+            else:
+                point[axis] = pivot[axis] if kind == 'align' else 2 * pivot[axis] - point[axis]
     else:
         ordered = sorted(targets, key=lambda t: (t['current'][axis], t['entity_id']))
         low, high = ordered[0]['current'][axis], ordered[-1]['current'][axis]
