@@ -1086,6 +1086,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/scene-controller.js": ("scene-controller.js", "text/javascript"),
                  "/controller-branches.js": ("controller-branches.js", "text/javascript"),
                  "/controller-operand-flow.js": ("controller-operand-flow.js", "text/javascript"),
+                 "/controller-flow-source.js": ("controller-flow-source.js", "text/javascript"),
                  "/controller-fades.js": ("controller-fades.js", "text/javascript"),
                  "/controller-tables.js": ("controller-tables.js", "text/javascript"),
                  "/controller-authoring-availability.js": ("controller-authoring-availability.js", "text/javascript"),

@@ -133,6 +133,8 @@ class ControllerFlowSource(unittest.TestCase):
             except HTTPError as error:
                 with error:return error.code,json.load(error)
         try:
+            with urlopen(f'http://127.0.0.1:{server.server_port}/controller-flow-source.js',timeout=10) as response:
+                self.assertEqual(response.status,200);self.assertIn(b'export function controllerScenarioBindings',response.read())
             before=self.state();body=dict(entity=OWNER,component='ControllerFlagBits',layer='current',expected_source_key=state_key(self.p))
             status,result=post(body);self.assertEqual(status,200)
             self.assertEqual(result,qualify(self.p,OWNER,'ControllerFlagBits','current',state_key(self.p)))

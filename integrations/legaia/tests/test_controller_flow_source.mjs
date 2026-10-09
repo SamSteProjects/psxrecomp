@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {scriptFlowReportHash} from '../editor/script-flow-identity.js';
-import {decodeControllerFlowSource,validateControllerFlowProof} from '../editor/controller-flow-source.js';
+import {decodeControllerFlowSource,validateControllerFlowProof,controllerScenarioBindings} from '../editor/controller-flow-source.js';
 import {createScriptFlagSandbox} from '../editor/script-sandbox-engine.js';
 import {createScriptSandboxScenario,replayScriptSandboxScenario} from '../editor/script-sandbox-scenarios.js';
 const rows=JSON.parse(readFileSync(process.argv[2],'utf8'));
@@ -20,5 +20,16 @@ for(const row of rows){
   const invalid=structuredClone(row.raw);mutate(invalid);await assert.rejects(()=>decodeControllerFlowSource(invalid,row));
  }
  assert.throws(()=>validateControllerFlowProof({...layer.context.controller_flow_proof,source_key:0}));
+ let owns=true,requests=[];
+ const state={project:{path:row.context.projectPath,mode:'edit'},scene:{id:row.context.sceneId},controller_branch_source_key:row.context.scriptKey,asset_reference_source_key:row.projectSourceKey};
+ globalThis.fetch=async(url,options)=>{requests.push({url,options});return {ok:true,json:async()=>structuredClone(url==='/api/state'?state:row.raw)};};
+ const bindings=controllerScenarioBindings({...row,getContext:()=>row.context,current:()=>owns});
+ assert.equal(bindings.getContext(),null);
+ assert.deepEqual(await bindings.prepareScenario({}),layer.context);
+ assert.equal(await bindings.requalify({}),true);assert.equal(requests.length,6);
+ const body=JSON.parse(requests[1].options.body);assert.equal(body.component,row.raw.component);
+ assert.deepEqual(Object.keys(body).sort(),(row.kind==='current'?['entity','component','layer','expected_source_key']:['entity','component','layer','expected_source_key','operand_id','value','review_key']).sort());
+ state.asset_reference_source_key='f'.repeat(64);await assert.rejects(()=>bindings.requalify({}));
+ owns=false;await assert.rejects(()=>bindings.prepareScenario({}));
 }
 console.log(`${rows.length} controller Current/Proposed/reset report hashes and v4 scenario replay, source/schema/operand tampering refusal passed`);

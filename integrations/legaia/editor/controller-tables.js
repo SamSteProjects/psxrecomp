@@ -54,7 +54,7 @@ export function mountControllerTables(host,{owner,getContext,busy,setBusy,api,re
  for(const key of fields){const label=el('label',fieldName(key)),input=el('input');input.type='text';input.inputMode='numeric';input.maxLength=6;input.setAttribute('aria-label','Proposed '+fieldName(key));input.style.cssText='width:100%;box-sizing:border-box';inputs[key]=input;label.append(input);fieldGrid.append(label);}
  const actions=el('div');actions.className='dialog-actions';actions.style.flexWrap='wrap';const buttons={};for(const [id,text] of [['review','Review table copy'],['reset','Review table-copy reset to Retail'],['discard','Discard table-copy draft'],['apply','Apply reviewed table copy']]){const b=el('button',text);b.type='button';b.dataset.controllerTableAction=id;buttons[id]=b;actions.append(b);}section.append(actions,assessment);host.append(section);
  let snapshot=null,accepted=null,pending=false,disposed=false,generation=0,abort=null,resetDraft=false;
- const flow=mountControllerOperandFlow(section,{current:()=>fresh(),busy:()=>pending||busy()});
+ const flow=mountControllerOperandFlow(section,{getContext,current:()=>fresh(),busy:()=>pending||busy()});
  const fresh=()=>{try{return !disposed&&same(context,scriptBranchContext(getContext()));}catch{return false;}},row=()=>snapshot?.targets.find(t=>t.semantic_id===source.value);
  const choice=()=>{if(resetDraft)return null;const v={signed_words:Array(16).fill(0)};for(const key of fields){if(!(/^-?\d{1,5}$/).test(inputs[key].value))return undefined;const n=Number(inputs[key].value);v.signed_words[Number(key.slice(5))]=n;}return values(v)?v:undefined;};
  const invalidate=()=>{generation++;abort?.abort();accepted=null;assessment.textContent='';if(snapshot)flow.sync(snapshot,null,row()?.pc??null);};

@@ -39,3 +39,23 @@ export async function decodeControllerFlowSource(raw,{snapshot,review=null,kind,
  if(proposed&&(review?.owner_id!==snapshot.owner_id||review?.schema_version!==snapshot.schema_version||review?.state_key!==snapshot.state_key||review?.source_record_sha256!==snapshot.source_record_sha256||review?.current_record_sha256!==snapshot.current_record_sha256||review?.project_changed!==false||review?.gameplay_verified!==false||proof.operand_id!==review?.operand_id||!same(proof.value,review?.value)||proof.review_key!==review?.review_key||proof.effective_record_sha256!==review?.proposed_record_sha256))throw Error('Controller flow source differs from its reviewed operands.');
  return {report:structuredClone(report),context:{project_path:context.projectPath,scene_id:proof.scene_id,script_id:proof.owner_id.replace('scene://','script://'),project_source_key:projectSourceKey,record_sha256:proof.source_record_sha256,representation:proof.representation,controller_flow_proof:proof}};
 }
+
+// Obtain provenance on Save/Load, leaving ordinary hypothetical stepping local.
+export function controllerScenarioBindings({snapshot,review,kind,getContext,current}){
+ let descriptor=null;
+ const component=Object.keys(CONTROLLER_SNAPSHOT_SCHEMAS).find(k=>CONTROLLER_SNAPSHOT_SCHEMAS[k]===snapshot.schema_version);
+ async function request(url,options){const response=await fetch(url,options),raw=await response.json();if(!response.ok||raw.error)throw Error(raw.error||'Controller scenario source could not be verified.');return raw;}
+ async function qualify(signal){
+  if(!current())throw Error('Controller simulation source changed.');
+  const context=structuredClone(getContext()),state=await request('/api/state',{signal});
+  const owns=s=>current()&&s.project?.mode==='edit'&&context.mode==='edit'&&s.project?.path===context.projectPath&&s.scene?.id===context.sceneId&&s.controller_branch_source_key===context.scriptKey&&same(context,getContext());
+  if(!owns(state)||!hash(state.asset_reference_source_key))throw Error('Authoritative controller scenario project changed.');
+  const body={entity:snapshot.owner_id,component,layer:kind,expected_source_key:context.scriptKey,...(kind==='proposed'?{operand_id:review.operand_id,value:review.value,review_key:review.review_key}:{})};
+  const raw=await request('/api/controller-flow-source',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal});
+  const value=await decodeControllerFlowSource(raw,{snapshot,review,kind,context,projectSourceKey:state.asset_reference_source_key});
+  const after=await request('/api/state',{signal});
+  if(!owns(after)||after.asset_reference_source_key!==state.asset_reference_source_key)throw Error('Controller scenario source changed during qualification.');
+  return value;
+ }
+ return {getContext:()=>descriptor?.context??null,prepareScenario:async({signal})=>{const value=await qualify(signal);descriptor=value;return structuredClone(value.context);},requalify:async({signal})=>{const value=await qualify(signal);if(!descriptor||!same(value.context,descriptor.context))throw Error('Controller scenario receipt changed.');return true;}};
+}

@@ -45,7 +45,7 @@ assert(tree(host).some(n=>n.textContent==='global value 0x00000020 · known mask
 input(host).value='6';input(host).oninput();queue=[proposal()];await button(host,'review').onclick();
 textButton('Simulate reviewed Proposed operands').onclick();textButton('Start flag sandbox at selection').onclick();textButton('Simulate one instruction').onclick();
 assert(tree(host).some(n=>n.textContent==='global value 0x00000040 · known mask 0x00000040'));
-assert(textButton('Save sandbox scenario').disabled);assert(textButton('Load sandbox scenario').disabled);
+assert(!textButton('Save sandbox scenario').disabled);assert(!textButton('Load sandbox scenario').disabled);
 input(host).value='7';input(host).oninput();assert(textButton('Simulate reviewed Proposed operands').disabled);assert(!tree(host).some(n=>'flagSandbox' in n.dataset));
 textButton('Simulate Current operands').onclick();textButton('Start flag sandbox at selection').onclick();textButton('Simulate one instruction').onclick();assert(tree(host).some(n=>n.textContent==='global value 0x00000020 · known mask 0x00000020'));
 ctx.scriptKey='f'.repeat(64);controls.updateState();assert(!tree(host).some(n=>'flagSandbox' in n.dataset));controls.dispose();assert.equal(commands.length,simulationCommandCount);

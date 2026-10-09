@@ -1,5 +1,16 @@
 # Controller Source Coverage Survey
 
+## Controller Operand Scenario Editor — 2026-10-09
+
+Current and independently reviewed Proposed simulations in the ten shared operand-family panels now save and load version4 controller scenarios. On each transfer the shared client checks authoritative project/scene/Edit/source state, requests an exact native flow receipt, verifies it against the accepted snapshot/review and selected report, and checks authoritative state again. The shared sandbox independently creates/replays the bounded hypothetical recipe, requalifies its receipt before export or replacing simulation state, and preserves the previous simulation on refusal. Ordinary stepping performs no source requests. Disposal aborts in-flight transfer; changed source or Proposed reviews withdraw their simulation.
+
+The new source module now has an explicit static server route. Browser initialization exposed this missing route despite passing Node imports; it was corrected before final browser verification, and a focused HTTP check guards deployment. Existing Retail/branch recipes remain compatible. The separate system-selector and branch panels retain their previous presentation and still need the shared Current/Proposed simulation entry points; all twelve source-contract and scenario-format families are qualified.
+
+Five focused Python checks, twenty Node suites, fifteen JS syntax checks and two Python AST checks passed. Thirty-six twelve-family fixture sources passed exact request-field checks, prepare/requalification, changed authoritative-key and ownership refusal. Actual Cave01/Rikuroa2 browser workflows saved and replayed Current bit25 and reviewed Proposed bit26 recipes, independently matched literal hypothetical masks, refused Current recipes in Proposed without mutation, withdrew invalid Proposed drafts and kept Current free of local drafts. Four desktop/400-pixel screenshots passed visual review; zero page errors, overflow or authoring/Build/Run requests occurred. Complete project/history/imports stayed exact and Save/Open matched. Evidence: `local-output/sdk-20260909/controller-scenario-editor-20261009/`.
+
+No native Build, recomp compilation, runtime attachment, game, installation or disc export occurred. Native scheduling, story effects and gameplay remain unverified; the full SDK goal stays active and solo development continues.
+
+
 ## Controller Operand Scenario Format — 2026-10-09
 
 The editor now validates a dedicated controller flow receipt rather than treating arbitrary operands as branch proposals. Exact proof fields preserve imported/source/current/effective and report hashes, scene/controller ownership, family-specific operand identity, bounded typed values, Review key and read-only/unverified status. `decodeControllerFlowSource` checks the fresh backend receipt against the already-qualified snapshot or review and the selected representation. Null reset proposals remain explicit.
