@@ -98,6 +98,9 @@ def refresh_resource_catalog(project) -> dict:
                 catalog = loader(project.disc_path, document["scene"]["name"])
                 records.extend(catalog["assets"])
                 limitations.extend(catalog.get("limitations", []))
+                if kind == 'Scene entry controller':
+                    from .controller_flag_assets import build_controller_flag_assets
+                    records.extend(build_controller_flag_assets(catalog['assets'][0],document))
                 if kind == 'Scripts and dialogue':
                     from .flag_assets import build_flag_assets
                     qualifications={};edits=_flag_edits(project, project.active_scene,qualifications)
@@ -337,6 +340,25 @@ def project_text_index(project) -> dict:
                     'This private text response does not add retail payload to the metadata-only Asset Database.'])
 
 
+def _append_controller_flags(project,document,index):
+    from importer.scene_controller import load_controller_asset_catalog
+    from .controller_flag_assets import build_controller_flag_assets
+    try:
+        controller=load_controller_asset_catalog(project.disc_path,document['scene']['name'])['assets'][0]
+        groups=build_controller_flag_assets(controller,document)
+    except RetailImportError as exc:
+        index['limitations'].append('Scene controller flags unavailable: '+str(exc))
+        return index
+    index['groups'].extend(groups)
+    index['reference_count']+=sum(group['reference_count'] for group in groups)
+    index['coverage']['script_count']+=1
+    index['coverage']['partial_script_count']+=int(controller['inspection_status']=='partial')
+    if len(index['groups'])>16384 or index['reference_count']>65536:
+        raise ProjectError('Scene flag references exceed the controller discovery budget')
+    index['limitations'].append('Controller operands retain separate read-only source ownership; actor authoring does not apply.')
+    return index
+
+
 def scene_flag_index(project) -> dict:
     from importer.script_catalog import load_script_asset_catalog
     from .flags import build_flag_index
@@ -346,7 +368,7 @@ def scene_flag_index(project) -> dict:
         _verify(project, document)
         catalog = load_script_asset_catalog(project.disc_path, document["scene"]["name"])
         qualifications={};edits=_flag_edits(project,project.active_scene,qualifications)
-        index = build_flag_index(catalog,edits,qualifications)
+        index = _append_controller_flags(project,document,build_flag_index(catalog,edits,qualifications))
     if key != source_key(project) or flag_key != scene_flag_state_key(project):
         raise ProjectError("Scene source changed during flag discovery; refresh again")
     return {**index, "source_key": key, "flag_state_key": flag_key}
@@ -370,7 +392,7 @@ def project_flag_index(project) -> dict:
             try:
                 catalog=load_script_asset_catalog(project.disc_path,name)
                 qualifications={};edits=_flag_edits(project,scene_id,qualifications)
-                index = build_flag_index(catalog,edits,qualifications)
+                index = _append_controller_flags(project,document,build_flag_index(catalog,edits,qualifications))
             except RetailImportError as exc:
                 scenes.append(dict(scene_id=scene_id,scene_name=name,status='unavailable',reason=str(exc)))
                 continue

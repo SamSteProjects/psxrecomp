@@ -1,3 +1,4 @@
+import {validateControllerSourceEvidence} from './controller-references.js';
 // A group identifies encoded operands in one retail script, not a runtime variable.
 import {decodeFlagQualification} from './flag-qualification.js';
 const MAX_REFERENCES=16384, PAGE_SIZE=50;
@@ -28,11 +29,12 @@ function detached(value,depth=0,budget={nodes:0,characters:0}){
 }
 function sourceIdentity(value){
   if(!text(value.script_id,512))fail('Flag group requires a source-qualified script identity.');
-  const match=/^script:\/\/([A-Za-z0-9_-]+)\/(actors\/man-p1|scripts\/man-p2)\/([0-9]{4})$/.exec(value.script_id);
+  const match=/^script:\/\/([A-Za-z0-9_-]+)\/(actors\/man-p1|scripts\/man-p2|controllers\/man-p1)\/([0-9]{4})$/.exec(value.script_id);
   if(!match)fail('Flag group requires a source-qualified script identity.');
-  const partition=match[2]==='actors/man-p1'?1:2;
+  const controller=match[2]==='controllers/man-p1';if(controller&&match[3]!=='0000')fail('Invalid scene controller record identity.');
+  const partition=match[2]==='scripts/man-p2'?2:1;
   if(value.partition!==partition||value.owner_id!=='scene://'+value.script_id.slice(9))fail('Flag owner differs from its source script.');
-  return {sceneId:'scene://'+match[1],partition,recordIndex:Number(match[3])};
+  return {sceneId:'scene://'+match[1],partition,recordIndex:Number(match[3]),controller};
 }
 function validIndex(value,bank){return integer(value,0,bank==='system'?0xffff:31);}
 function instruction(reference){
@@ -49,6 +51,7 @@ export function decodeFlagResource(data){
   if(value.semantic_id!==value.script_id.replace('script://','flag-reference://')+`/${context}/${value.bank}/${value.index}`)fail('Flag identity must retain its retail script, context, bank and selector.');
   if(!['decoded_supported_paths','partial'].includes(value.script_status)||!object(value.source_record)||!Object.keys(value.source_record).length)fail('Flag source script or provenance is unavailable.');
   const source=value.source_record;
+  if(identity.controller){const p=validateControllerSourceEvidence(value.controller_source_evidence,identity.sceneId);if(JSON.stringify(p.source_record)!==JSON.stringify(source)||value.authored_reference_count!==0||value.references?.some(row=>row.authored_index!==null||row.flag_operand_id!==null))fail('Controller flag source cannot contain actor authoring.');}else if(Object.hasOwn(value,'controller_source_evidence'))fail('Actor flag cannot use controller source evidence.');
   for(const [key,min,max] of [['byte_offset',0,0xffffffff],['byte_length',1,65536],['record_index',0,9999],['partition',1,2]])if(Object.hasOwn(source,key)&&!integer(source[key],min,max))fail('Invalid flag source record bounds.');
   if(Object.hasOwn(source,'partition')&&source.partition!==identity.partition||Object.hasOwn(source,'record_index')&&source.record_index!==identity.recordIndex)fail('Flag source record differs from its script identity.');
   if(Object.hasOwn(source,'sha256')&&(typeof source.sha256!=='string'||!/^[0-9a-f]{64}$/.test(source.sha256)))fail('Invalid flag source record hash.');
@@ -59,7 +62,7 @@ export function decodeFlagResource(data){
     if(!object(reference)||!integer(reference.pc,0,65535)||seen.has(reference.pc)||!integer(reference.byte_offset,0,0xffffffff)||!text(reference.mnemonic,64)||reference.bank!==value.bank||reference.scope!==value.scope||reference.extended_target!==value.extended_target||reference.index!==value.index||reference.retail_index!==value.index||reference.runtime_value!==null||Object.hasOwn(reference,'runtime_binding')&&reference.runtime_binding!=='unresolved')fail('Invalid flag instruction site or retail layer.');
     seen.add(reference.pc);
     if(Object.hasOwn(source,'byte_offset')&&reference.byte_offset!==source.byte_offset+reference.pc||Object.hasOwn(source,'byte_length')&&reference.pc>=source.byte_length)fail('Flag instruction site is outside its source record.');
-    const decoded=instruction(reference),system=decoded.bank==='system'&&reference.extended_target===null&&reference.index<=4095&&reference.authored_index!==null,operandId=system?`${value.script_id}/system-flag/${reference.pc.toString(16).padStart(4,'0')}`:decoded.authorable?`${value.script_id}/flag-bit/${reference.pc.toString(16).padStart(4,'0')}`:null;
+    const decoded=instruction(reference),system=decoded.bank==='system'&&reference.extended_target===null&&reference.index<=4095&&reference.authored_index!==null,operandId=identity.controller?null:system?`${value.script_id}/system-flag/${reference.pc.toString(16).padStart(4,'0')}`:decoded.authorable?`${value.script_id}/flag-bit/${reference.pc.toString(16).padStart(4,'0')}`:null;
     if(decoded.bank!==value.bank||decoded.operation!==reference.operation||reference.flag_operand_id!==operandId||reference.context_resolution!==(value.extended_target===null?'current_script_context':'extended_target_unresolved')||reference.index_semantics!==(value.bank==='system'?'encoded_selector_not_resolved_runtime_bit':'operand_masked_to_five_bits')||reference.status!==(value.bank==='local'&&value.index>=16?'bank_width_unresolved':'encoded_reference'))fail('Flag instruction interpretation differs from its encoded reference.');
     if(reference.authored_index!==null&&(!decoded.authorable&&!system||!integer(reference.authored_index,0,system?4095:31)))fail('Invalid authored flag operand annotation.');
     const qualified=Object.hasOwn(reference,'authored_qualification');if(qualified)decodeFlagQualification(reference.authored_qualification,{owner_id:value.owner_id,operand_id:reference.flag_operand_id,source_record_sha256:source.sha256,pc:reference.pc,mnemonic:reference.mnemonic,extended_target:reference.extended_target,retail_index:reference.retail_index,authored_index:reference.authored_index});

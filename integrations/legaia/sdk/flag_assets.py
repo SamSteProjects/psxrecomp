@@ -73,6 +73,9 @@ def _coverage(value):
 
 def validate_flag_asset(record):
     """Validate adapter or registered metadata and return it without mutation."""
+    if isinstance(record,dict) and '/controllers/man-p1/' in str(record.get('script_id','')):
+        from .controller_flag_assets import validate_controller_flag_asset
+        return validate_controller_flag_asset(record)
     if not isinstance(record, dict) or not _ASSET_FIELDS <= set(record) or set(record) - _ASSET_FIELDS - _WRAPPER_FIELDS:
         _reject("record shape")
     if (record['asset_kind'] != 'flag' or record['read_only'] is not True or

@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from importer.flag_authoring import FlagAuthoringContext
+from importer.core import ImportError as RetailImportError
 from importer.script_catalog import _catalog
 from sdk.asset_references import assemble, assemble_project
 from sdk.project import ProjectError, ProjectService
@@ -30,6 +31,8 @@ class FlagAssetIntegration(unittest.TestCase):
         self.key = self.flags.options(ACTOR)['targets'][0]['semantic_id']
         self.stack = ExitStack()
         self.addCleanup(self.stack.close)
+        self.stack.enter_context(patch('importer.scene_controller.load_controller_asset_catalog',
+            side_effect=RetailImportError('Actor-only synthetic fixture has no controller source')))
         for target, value in (
             ('sdk.resources._disc_context', nullcontext()),
             ('sdk.resources.import_scene', self.document),

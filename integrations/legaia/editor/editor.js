@@ -1889,7 +1889,7 @@ async function openFlagReferences(projectWide=false){
         const row=document.createElement('section');row.className='resource-provenance';
         row.innerHTML=`<h3>${projectWide?escapeHTML(group.scene_name)+' · ':''}${escapeHTML(group.bank)} ${escapeHTML(group.index)} · ${escapeHTML(group.script_name)}</h3><p>${escapeHTML(group.scope)} · ${escapeHTML(resourceLabel(group.script_status))} · ${group.extended_target===null?'Current script context':`Unresolved extended target ${escapeHTML(group.extended_target)}`}</p><p>${group.references.map(ref=>`${escapeHTML(scriptOffset(ref.pc))}: ${escapeHTML(ref.mnemonic)} (${escapeHTML(resourceLabel(ref.status))}) · Retail ${escapeHTML(ref.retail_index??ref.index)} · Authored ${ref.authored_index==null?'none':escapeHTML(ref.authored_index)} · Effective ${escapeHTML(ref.effective_index??ref.index)}`).join(' · ')}</p><button>Inspect source script</button><details><summary>Source provenance and encoded operands</summary><pre></pre></details>`;
         row.querySelector('pre').textContent=JSON.stringify(group,null,2);
-        const inspect=async(pc=null)=>{if(busy||key!==flagContext(projectWide))return;flagsDialog.close();if(projectWide&&group.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:group.scene_id}))return;const owner=group.partition===2?{id:group.owner_id,name:group.script_name,partitionTwo:true}:entities().find(entity=>entity.id===group.owner_id);if(!owner){notify('The source script owner is unavailable.',true);return;}flagsDialog.close();openActorScript(owner,false,null,null,pc);};
+        const inspect=async(pc=null)=>{if(busy||key!==flagContext(projectWide))return;flagsDialog.close();if(projectWide&&group.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:group.scene_id}))return;if(group.controller_source_evidence){await refreshResources();const record=assetRecords(true).find(row=>row.id===group.script_id&&row.type==='controller');if(!record||record.data?.source_record?.sha256!==group.source_record?.sha256)throw Error('Controller flag source changed. Refresh references.');await inspectControllerAsset(record,pc);return;}const owner=group.partition===2?{id:group.owner_id,name:group.script_name,partitionTwo:true}:entities().find(entity=>entity.id===group.owner_id);if(!owner){notify('The source script owner is unavailable.',true);return;}flagsDialog.close();openActorScript(owner,false,null,null,pc);};
         row.querySelector('button').onclick=()=>inspect();
         const references=document.createElement('div');references.className='dialog-actions';
         for(const ref of group.references){const button=document.createElement('button');button.textContent=`Inspect ${scriptOffset(ref.pc)} · ${ref.mnemonic}`;button.onclick=()=>inspect(ref.pc);references.append(button);}
@@ -2037,6 +2037,7 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
       await refreshResources();
       if(state.scene?.id!==site.scene_id||resourceKey!==resourceStateKey())throw new Error('Reference source catalog could not be refreshed.');
       const record=resourceRecords.find(row=>row.semantic_id===site.script_id);
+      if(site.relationship==='controller_flag_reference'){if(!record||record.asset_kind!=='controller'||record.source_record.sha256!==site.source_record_sha256)throw Error('Controller reference source changed.');const target=assetRecords(true).find(row=>row.id===site.script_id&&row.type==='controller');await inspectControllerAsset(target,site.pc);return;}
       qualifyAssetReferenceInstructionSite(site,record,state.scene_preview_source_key);
       const owner=site.partition===2?{id:site.owner_id,name:record.name,partitionTwo:true}:entities().find(entity=>entity.id===site.owner_id);
       if(!owner)throw new Error('Reference script owner is unavailable.');
@@ -2151,7 +2152,7 @@ async function resolveProjectAsset(record){
   if(!current?.projectMembership||current.sceneId!==variant.scene_id||current.projectMembership.sourceKey!==expected)throw new Error('The selected source membership is no longer current. Refresh project resources.');
   return current;
 }
-async function inspectControllerAsset(record){
+async function inspectControllerAsset(record,focusFlagPc=null){
   if(busy||record.type!=='controller'||!canEdit())return;
   const scene=record.sceneId,path=state.project?.path,sourceHash=record.data?.source_record?.sha256;
   if(typeof scene!=='string'||record.id!=='script://'+scene.slice(8)+'/controllers/man-p1/0000'||!sourceHash)throw Error('Controller asset has no qualified scene ownership.');
@@ -2160,7 +2161,7 @@ async function inspectControllerAsset(record){
   if(resourceKey!==resourceStateKey())await refreshResources();
   const fresh=assetRecords(true).find(row=>row.id===record.id&&row.type==='controller'&&row.sceneId===scene);
   if(path!==state.project?.path||scene!==state.scene?.id||resourceKey!==resourceStateKey()||fresh?.data?.source_record?.sha256!==sourceHash)throw Error('Controller asset source changed. Refresh resources.');
-  selectSceneResource(fresh);await openSceneController({getState:()=>state,busy:()=>busy,expectedAsset:fresh,onError:error=>notify(error.message,true)});
+  selectSceneResource(fresh);await openSceneController({getState:()=>state,busy:()=>busy,expectedAsset:fresh,focusFlagPc,onError:error=>notify(error.message,true)});
 }
 async function activateAsset(record,action=null){
   if(busy)return;
@@ -2227,7 +2228,7 @@ function inspectFlagResource(record){
   if(busy||resourceKey!==resourceStateKey())return;
   const context=resourceStateKey(),snapshot=JSON.stringify(record);
   const current=()=>context===resourceStateKey()&&resourceKey===context&&JSON.stringify(assetRecords().find(item=>item.id===record.id))===snapshot;
-  const data=decodeFlagResource(record.data),owner=data.partition===2?{id:data.owner_id,name:data.script_name,partitionTwo:true}:entities().find(entity=>entity.id===data.owner_id);
+  const data=decodeFlagResource(record.data);if(data.controller_source_evidence){flagResourceDialog=openFlagResource({record,current,busy:()=>busy,canInspect:()=>canEdit()&&state.capabilities?.scene_controller_inspection===true,onInspect:async pc=>{if(!current()||busy)return false;const controller=assetRecords(true).find(row=>row.id===data.script_id&&row.type==='controller');if(!controller||controller.data?.source_record?.sha256!==data.source_record.sha256)throw Error('Controller source changed. Refresh resources.');await inspectControllerAsset(controller,pc);return true;},onError:error=>notify(error.message,true)});return;}const owner=data.partition===2?{id:data.owner_id,name:data.script_name,partitionTwo:true}:entities().find(entity=>entity.id===data.owner_id);
   flagResourceDialog=openFlagResource({record,current,busy:()=>busy,canInspect:()=>!!owner&&state.capabilities?.actor_script_preview===true,
     onInspect:async pc=>{if(!current()||busy||!owner)return false;await openActorScript(owner,false,null,null,pc);return true;},onError:error=>notify(error.message,true)});
 }

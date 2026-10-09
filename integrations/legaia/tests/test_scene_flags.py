@@ -22,7 +22,7 @@ class SceneFlags(unittest.TestCase):
             result['scene']=name
             for asset in result['assets']:asset['semantic_id']=asset['semantic_id'].replace('fixture',name)
             return result
-        with patch('sdk.resources._disc_context',return_value=nullcontext()),patch('sdk.resources._verify'),patch('importer.script_catalog.load_script_asset_catalog',side_effect=load):
+        with patch('sdk.resources._disc_context',return_value=nullcontext()),patch('sdk.resources._verify'),patch('importer.script_catalog.load_script_asset_catalog',side_effect=load),patch('importer.scene_controller.load_controller_asset_catalog',side_effect=ImportError('Actor-only fixture has no controller source')):
             result=project_flag_index(project)
         self.assertEqual(result['reference_count'],2)
         self.assertEqual(len(result['groups']),2)

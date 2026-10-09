@@ -21,12 +21,12 @@ export function decodeControllerFlags(report){
  return structuredClone(rows);
 }
 
-export function renderControllerFlags(host,report){
+export function renderControllerFlags(host,report,focusPc=null){
  const rows=decodeControllerFlags(report),section=document.createElement('section'),heading=document.createElement('h3'),note=document.createElement('p'),filter=document.createElement('select'),body=document.createElement('div');
  heading.textContent='Encoded Flag References';note.textContent=`${rows.length} decoded source operands · Current values and runtime bindings remain unresolved. Only inspected paths contribute references.`;filter.setAttribute('aria-label','Controller flag bank');filter.style.maxWidth='100%';
  for(const bank of ['all',...Object.keys(scopes)]){const option=document.createElement('option');option.value=bank;option.textContent=bank==='all'?'All encoded flag banks':bank[0].toUpperCase()+bank.slice(1)+' bank';filter.append(option);}
  const count=document.createElement('p');count.setAttribute('role','status');section.append(heading,note,filter,count,body);
  const render=()=>{body.replaceChildren();const selected=rows.filter(row=>filter.value==='all'||row.bank===filter.value);count.textContent=`Showing ${selected.length} of ${rows.length} decoded flag references`;
-  for(const row of selected){const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent=`PC 0x${row.pc.toString(16).padStart(4,'0')} · ${row.bank} ${row.index} · ${row.operation} · ${row.extended_target===null?'controller dispatch context':'extended target '+row.extended_target+' unresolved'}`;pre.style.whiteSpace='pre-wrap';pre.textContent=JSON.stringify(row,null,2);details.append(summary,pre);body.append(details);}
- };filter.onchange=render;render();host.append(section);
+  for(const row of selected){const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');details.dataset.controllerFlagPc=row.pc;summary.textContent=`PC 0x${row.pc.toString(16).padStart(4,'0')} · ${row.bank} ${row.index} · ${row.operation} · ${row.extended_target===null?'controller dispatch context':'extended target '+row.extended_target+' unresolved'}`;pre.style.whiteSpace='pre-wrap';pre.textContent=JSON.stringify(row,null,2);details.append(summary,pre);body.append(details);}
+ };filter.onchange=render;const selected=rows.find(row=>row.pc===focusPc);if(selected)filter.value=selected.bank;render();host.append(section);const focused=selected?body.querySelector(`[data-controller-flag-pc="${focusPc}"]`):null;if(focused)focused.open=true;return focused;
 }

@@ -12,7 +12,7 @@ export function qualifySceneControllerAsset(report,asset){
  return true;
 }
 
-export async function openSceneController({getState,busy,expectedAsset=null,onError=()=>{}}){
+export async function openSceneController({getState,busy,expectedAsset=null,focusFlagPc=null,onError=()=>{}}){
  const initial=getState(),scene=initial.scene?.id,key=initial.asset_reference_source_key,projectPath=initial.project?.path;
  if(busy()||!scene||initial.project?.mode!=='edit'||!key)return;
  const dialog=document.createElement('dialog');dialog.id='scene-controller-dialog';dialog.style.cssText='width:min(850px,calc(100vw - 32px));max-height:90vh;overflow:auto';
@@ -28,7 +28,8 @@ export async function openSceneController({getState,busy,expectedAsset=null,onEr
   const report=decodeSceneController(value,scene,key);if(expectedAsset)qualifySceneControllerAsset(report,expectedAsset);status.textContent=`${report.semantic_id} · Decoder status: ${report.status} · ${report.instructions.length} decoded instructions · ${report.dialogues.length} dialogue segments`;
   for(const note of report.limitations){const p=document.createElement('p');p.textContent=note;content.append(p);}
   const source=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='Controller source and entry evidence';pre.style.whiteSpace='pre-wrap';pre.textContent=JSON.stringify({source_record:report.source_record,man_source:report.man_source,entry_pc:report.entry_pc,local_count:report.record.local_count,reference_commit:report.reference_commit},null,2);source.append(summary,pre);content.append(source);
-  renderControllerFlags(content,report);
+  const focusedFlag=renderControllerFlags(content,report,focusFlagPc);
   for(const [title,rows] of [['Encoded instructions',report.instructions],['Dialogue segments',report.dialogues],['Opaque regions',report.opaque_regions],['Inspection stops',report.stops]]){const heading=document.createElement('h3');heading.textContent=title;content.append(heading);if(!rows?.length){const p=document.createElement('p');p.textContent='None reported';content.append(p);}for(const row of rows??[]){const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');const pc=Number.isSafeInteger(row.pc)?'PC 0x'+row.pc.toString(16).padStart(4,'0'):'Source region';summary.textContent=pc+' · '+(row.mnemonic??row.reason??(title==='Dialogue segments'?'Dialogue segment':'Source evidence'));pre.style.whiteSpace='pre-wrap';pre.textContent=JSON.stringify(row,null,2);details.append(summary,pre);content.append(details);}}
+  focusedFlag?.scrollIntoView({block:'nearest'});
  }catch(error){if(dialog.open&&error.name!=='AbortError'){status.textContent=error.message;onError(error);}}
 }

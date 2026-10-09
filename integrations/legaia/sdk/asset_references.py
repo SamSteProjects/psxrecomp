@@ -376,6 +376,20 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
             from .flag_assets import validate_flag_asset
             validate_flag_asset(record)
             target=record['script_id']
+            if 'controller_source_evidence' in record:
+                controller=next((row for row in catalog['records'] if row['id']==target and row['kind']=='controller'),None)
+                from .controller_references import controller_source_evidence
+                if controller is None or controller_source_evidence(controller,scene,project.imports[scene])!=record['controller_source_evidence']:
+                    raise ProjectError('Controller flag group differs from its source controller')
+                from .controller_flag_assets import REFERENCE_FIELDS
+                expected=[row for row in controller['flag_references'] if row['bank']==record['bank'] and row['index']==record['index'] and row['extended_target']==record['extended_target']]
+                if [{key:row[key] for key in REFERENCE_FIELDS} for row in record['references']]!=expected:
+                    raise ProjectError('Controller flag group omits or changes decoded source operands')
+                for reference in record['references']:
+                    proof={key:deepcopy(record[key]) for key in ('bank','index','scope','extended_target','grouping_layer')}
+                    proof.update(operation=reference['operation'],mnemonic=reference['mnemonic'])
+                    edge(target,identity,'controller_flag_reference',scene,'decoded',reference['pc'],flag_evidence=proof,controller_evidence=record['controller_source_evidence'])
+                continue
             if target not in nodes or nodes[target]['kind']!='script':
                 raise ProjectError('Flag reference has no verified source script')
             scripts=source_scripts.get(target,[])
