@@ -612,6 +612,18 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "signed_words": list(struct.unpack_from("<hhh", data, operand + 1)),
                     "packed_u24": int.from_bytes(data[operand + 7:operand + 10], "little"),
                     "destination_semantics": "host_defined"}
+        elif sub == 0xDF:
+            # Retail PROT897 table801CF004 ->801E3028: load global
+            # pointer801C6EA4, write one byte at pointee+61, PC+=3.
+            # Pinned nibble_d agrees on the operand and continuation.
+            size, mnemonic = 2, "SCENE_STATE_BYTE_WRITE"
+            need(size)
+            args = {"sub_op": sub, "value": data[operand+1],
+                    "native_pointer_global": "0x801C6EA4",
+                    "native_field_offset": 0x61,
+                    "scene_state_binding": "runtime_pointer_target_unresolved",
+                    "value_semantics": "runtime_byte_meaning_unresolved",
+                    "runtime_effect": "not_evaluated"}
         elif sub == 0xD8:
             # Retail PROT[897] 801E2DD4 reads selector+three signed
             # words. First word adds a runtime global then wraps i16;
