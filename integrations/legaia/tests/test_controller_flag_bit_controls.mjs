@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {decodeControllerFlagBitSnapshot,decodeControllerFlagBitReview,mountControllerFlagBits} from '../editor/controller-flag-bits.js';
 const owner='scene://fixture/controllers/man-p1/0000',id='script://fixture/controllers/man-p1/0000/flag-bit/0005',context={projectPath:'C:/private',sceneId:'scene://fixture',mode:'edit',scriptKey:'a'.repeat(64)};
 const values=bit=>({bit});
-const report=value=>({status:'decoded_supported_paths',instructions:[{pc:5,length:2,byte_offset:105,mnemonic:'GFLAG_SET',raw_hex:'2e'+(224|value).toString(16),target_context:null,operands:values(value),successors:[{pc:7,condition:'encoded_continuation'}]},{pc:7,length:3,byte_offset:107,mnemonic:'JMP_REL',raw_hex:'26fdff',target_context:null,operands:{},successors:[{pc:5,condition:'unconditional'}]}],dialogues:[],stops:[],opaque_regions:[],unvisited_instructions:[],unvisited_dialogues:[]});
+const report=value=>({status:'decoded_supported_paths',instructions:[{pc:5,length:2,byte_offset:105,mnemonic:'GFLAG_SET',opcode:0x2e,raw_hex:'2e'+(224|value).toString(16),target_context:null,operands:{...values(value),raw_operand:224|value},successors:[{pc:7,condition:'encoded_continuation'}]},{pc:7,length:3,byte_offset:107,mnemonic:'JMP_REL',raw_hex:'26fdff',target_context:null,operands:{},successors:[{pc:5,condition:'unconditional'}]}],dialogues:[],stops:[],opaque_regions:[],unvisited_instructions:[],unvisited_dialogues:[]});
 const snapshot=()=>({schema_version:'legaia.controller-flag-bits.v1',owner_id:owner,state_key:context.scriptKey,source_record_sha256:'b'.repeat(64),current_record_sha256:'b'.repeat(64),source:{owner_id:owner,record_kind:'man_partition_1_scene_controller',runtime_execution:'not_asserted'},source_report:report(5),current_report:report(5),targets:[{semantic_id:id,owner_id:owner,pc:5,mnemonic:'GFLAG_SET',target_context:null,bit_mask:31,preserved_bits:224,maximum:31,decoded_byte_offset:106,source_record_sha256:'b'.repeat(64),values:values(5),current_values:values(5),authored_values:null}],supported:true,reason:null,limitations:[],gameplay_verified:false});
 const proposal=()=>({...snapshot(),operand_id:id,value:values(6),proposed_record_sha256:'c'.repeat(64),review_key:'d'.repeat(64),proposed_report:report(6),changed_decoded_byte_offsets:[106],no_op:false,native_bytes_changed:true,project_changed:false});
 assert.equal(decodeControllerFlagBitSnapshot(snapshot(),owner,context).targets.length,1);assert.equal(decodeControllerFlagBitReview(proposal(),snapshot(),id,values(6)).operand_id,id);
@@ -15,7 +15,7 @@ assert.equal(decodeControllerFlagBitSnapshot(extended,owner,context).targets[0].
 class Node{constructor(tag){this.tag=tag;this.children=[];this.dataset={};this.style={};this.value='';}append(...nodes){for(const n of nodes){n.parent=this;this.children.push(n);}}replaceChildren(...nodes){this.children=[];this.append(...nodes);}setAttribute(name,value){this[name]=value;}remove(){this.parent.children=this.parent.children.filter(n=>n!==this);}}
 globalThis.document={createElement:tag=>new Node(tag)};let queue=[],ctx=structuredClone(context),busy=false,commands=[],reopened=[];
 globalThis.fetch=async()=>({ok:true,json:async()=>await queue.shift()});
-const tree=n=>[n,...n.children.flatMap(tree)],button=(h,id)=>tree(h).find(n=>n.dataset.controllerFlagBitAction===id),input=h=>tree(h).filter(n=>n.tag==='input').at(-1);
+const tree=n=>[n,...n.children.flatMap(tree)],button=(h,id)=>tree(h).find(n=>n.dataset.controllerFlagBitAction===id),input=h=>tree(h).find(n=>n.tag==='input'&&n['aria-label']==='Proposed Bit Index');
 const settings={owner,getContext:()=>ctx,busy:()=>busy,setBusy:v=>busy=v,api:async(route,body)=>{assert.equal(busy,false);commands.push(body);return true;},reopen:pc=>reopened.push(pc)};
 async function mount(extra={},initial=snapshot()){ctx=structuredClone(context);const host=new Node();queue=[initial];const controls=mountControllerFlagBits(host,{...settings,...extra});assert(await controls.ready);return {host,controls};}
 let {host,controls}=await mount();assert.equal(tree(host).filter(n=>n.tag==='input').length,1);assert(tree(host).some(n=>n.textContent==='Retail: 5 \u00b7 Current: 5 \u00b7 Authored: None'));assert(tree(host).some(n=>n.textContent==='Controller Flag Bit Requests'));input(host).value='6';input(host).oninput();queue=[proposal()];assert(await button(host,'review').onclick());assert.equal(commands.length,0);assert.equal(tree(host).find(n=>'controllerOperandProposed' in n.dataset).hidden,false);assert(!button(host,'apply').disabled);input(host).value='32';input(host).oninput();assert(button(host,'apply').disabled);assert(button(host,'review').disabled);assert.equal(tree(host).find(n=>'controllerOperandProposed' in n.dataset).hidden,true);
@@ -36,3 +36,17 @@ console.log('Local width and context SET8/CLEAR10 draft refusal passed.');
 
 const hiddenMalformed=snapshot();hiddenMalformed.targets=[];hiddenMalformed.supported=false;hiddenMalformed.source_report.instructions[0].raw_hex='2be5';assert.throws(()=>decodeControllerFlagBitSnapshot(hiddenMalformed,owner,context));
 console.log('Malformed source bit instructions cannot disappear as unsupported targets.');
+
+({host,controls}=await mount());
+const simulationCommandCount=commands.length;const textButton=name=>tree(host).find(n=>n.tag==='button'&&n.textContent===name);
+assert(textButton('Simulate reviewed Proposed operands').disabled);textButton('Simulate Current operands').onclick();
+textButton('Start flag sandbox at selection').onclick();textButton('Simulate one instruction').onclick();
+assert(tree(host).some(n=>n.textContent==='global value 0x00000020 · known mask 0x00000020'));
+input(host).value='6';input(host).oninput();queue=[proposal()];await button(host,'review').onclick();
+textButton('Simulate reviewed Proposed operands').onclick();textButton('Start flag sandbox at selection').onclick();textButton('Simulate one instruction').onclick();
+assert(tree(host).some(n=>n.textContent==='global value 0x00000040 · known mask 0x00000040'));
+assert(textButton('Save sandbox scenario').disabled);assert(textButton('Load sandbox scenario').disabled);
+input(host).value='7';input(host).oninput();assert(textButton('Simulate reviewed Proposed operands').disabled);assert(!tree(host).some(n=>'flagSandbox' in n.dataset));
+textButton('Simulate Current operands').onclick();textButton('Start flag sandbox at selection').onclick();textButton('Simulate one instruction').onclick();assert(tree(host).some(n=>n.textContent==='global value 0x00000020 · known mask 0x00000020'));
+ctx.scriptKey='f'.repeat(64);controls.updateState();assert(!tree(host).some(n=>'flagSandbox' in n.dataset));controls.dispose();assert.equal(commands.length,simulationCommandCount);
+console.log('Current/Reviewed Proposed hypothetical bytes stay separate; drafts, review withdrawal and stale sources dispose simulations without commands.');

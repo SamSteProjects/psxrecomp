@@ -1,5 +1,16 @@
 # Controller Source Coverage Survey
 
+## Controller Operand-Layer Sandbox — 2026-10-09
+
+The shared controller operand flow now offers Simulate Current and Simulate reviewed Proposed. This reaches all twelve mounted authoring families while reusing the existing bounded hypothetical engine: unsupported instructions and host/context/scheduler effects still stop explicitly. The UI does not imply that every family's native operation is simulated. Current uses applied native-derived report bytes; Proposed requires the accepted Review report, and local drafts are excluded.
+
+Simulation mounts only on explicit opening, with one active layer per flow component. Same-source navigation preserves its temporary state. A changed or discarded Proposed review, stale source, or disposal withdraws it. Current simulation remains independent of local draft values. The panel names its active layer. Inputs/steps are hypothetical and read-only; no engine or game process is called. Scenario save/load is disabled for these operand-layer views until a dedicated source contract is integrated. The separate Retail walkthrough retains its qualified scenario transfer.
+
+All twelve controller-control suites and five shared sandbox suites passed, plus two JS syntax checks. Focused control checks prove Current bit5 versus reviewed bit6, draft exclusion, Proposed withdrawal, source disposal and zero commands. Actual Cave01 SET/Rikuroa2 CLEAR views at PC29/65 used Current bit25 and reviewed bit26, yielding known masks33554432/67108864; the independently expected set/clear values matched. Invalid edits removed Proposed simulation and reopening Current used original applied bytes. Desktop/400-pixel layouts had zero page errors, horizontal overflow or authoring/Build/Run requests; four final screenshots were inspected. Project document/imports/history and Save/Open stayed exact. Evidence: `local-output/sdk-20260909/controller-operand-sandbox-20261009/`.
+
+No new VM semantics, Build, native recomp compile, runtime attachment, game, installation or disc export occurred. Runtime flags, story outcomes, general scheduling and gameplay remain unverified; the full SDK goal stays active.
+
+
 ## Retail Controller Flag Sandbox — 2026-10-09
 
 The controller Retail walkthrough now exposes the existing shared hypothetical flag sandbox. Users supply unknown/known local16/global32/context32 words and explicit system-selector assumptions, start at a decoded source selection, step bounded instructions, stop before temporary breakpoints, Back/reset, and save/replay a qualified scenario. This reuses the existing single-context engine and UI; it introduces no native writes or new interpreter semantics.
