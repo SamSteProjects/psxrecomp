@@ -263,7 +263,7 @@ class ScriptInspectionTests(unittest.TestCase):
                         self.assertEqual(truncated["dialogues"], [])
 
     def test_effect_truncated_spawn_and_unsupported_forms_remain_opaque(self):
-        for sub in (1, 2, *range(4, 16)):
+        for sub in (1, *range(4, 16)):
             report = inspect_record(bytes([0x34, sub << 4]) + b"\x1fOpaque\0", 0)
             self.assertEqual(report["status"], "partial")
             self.assertEqual(report["instructions"], [])

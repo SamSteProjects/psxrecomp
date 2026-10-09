@@ -194,6 +194,26 @@ def _instruction(data: bytes, pc: int) -> dict:
                                                        "new_actor_capture": operand + size + 2 + length},
                             unresolved_control_flow="EFFECT spawn capture has conditional payload ownership; actor match and both parent continuations remain unresolved")
                 branches = []
+        elif sub == 2:
+            # Retail801E0024..0098 searches actor+90 for the current context.
+            # Missing match or non40 marker uses adjusted PC+2. A match with
+            # marker40 stores the child pointer and skips length+2 as well.
+            # The pinned reference Yield interpretation does not match Retail.
+            size, mnemonic = 1, "EFFECT_EXISTING_ACTOR_CAPTURE_REQUEST"
+            need(size + 1)
+            marker = data[operand + size]
+            args.update(following_byte=marker, runtime_actor_match="not_observed",
+                        runtime_effect="not_evaluated")
+            if marker == 0x40:
+                need(size + 2)
+                length = data[operand + size + 1]
+                need(size + 2 + length)
+                args.update(capture_payload={"pc": operand + size + 2, "length": length,
+                                             "encoded_hex": data[operand + size + 2:operand + size + 2 + length].hex()},
+                            conditional_continuations={"missing_actor": operand + size,
+                                                       "matched_actor_capture": operand + size + 2 + length},
+                            unresolved_control_flow="EFFECT existing-actor capture has conditional payload ownership; actor match and both parent continuations remain unresolved")
+                branches = []
         elif sub == 3:
             size, mnemonic = 2, "EFFECT_ANIMATION_TRIGGER"
             need(size)
@@ -962,7 +982,8 @@ def inspect_record(data: bytes, script_offset: int, *, semantic_id: str = "scrip
                 stops.append({"pc": pc, "reason": "decoded boundary overlaps conditional capture ownership; parent region is ambiguous"})
                 conflict = True
                 continue
-            if not is_message and row["mnemonic"] == "EFFECT_SPAWN_PACKET" and "capture_payload" in row["operands"]:
+            if (not is_message and row["mnemonic"] in ("EFFECT_SPAWN_PACKET", "EFFECT_EXISTING_ACTOR_CAPTURE_REQUEST")
+                    and "capture_payload" in row["operands"]):
                 payload = row["operands"]["capture_payload"]
                 capture_range = range(pc + row["length"], payload["pc"] + payload["length"])
                 if any(byte in ownership or byte in conditional_capture or byte in entries for byte in capture_range):

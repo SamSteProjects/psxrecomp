@@ -10,6 +10,7 @@ import {mountControllerSystemSelectors} from './system-flag-selectors.js';
 import {mountScriptWalkthrough} from './script-walkthrough.js';
 import {mountScriptFlowOverview} from './script-flow-overview.js';
 import {decodeControllerFlags,renderControllerFlags} from './controller-flags.js';
+import {appendCaptureSummary} from './script-capture.js';
 export function decodeSceneController(value,scene,key){
  const fail=()=>{throw Error('Scene controller source or record ownership changed.');},int=v=>Number.isSafeInteger(v)&&v>=0,hash=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v),source=value?.source_record,record=value?.record;
  if(value?.schema_version!=='legaia.scene-controller-inspection.v1'||value.scene_id!==scene||value.source_key!==key||!hash(key)||value.semantic_id!=='script://'+scene.slice(8)+'/controllers/man-p1/0000'||value.read_only!==true||value.representation!=='retail'||value.runtime_execution!=='not_asserted'||source?.record_kind!=='man_partition_1_scene_controller'||source.record_index!==0||source.byte_coordinate_space!=='decoded_man_payload'||source.iso_file!=='PROT.DAT'||!/^sha256:[a-f0-9]{64}$/.test(source.disc_identity)||!hash(source.sha256)||!int(source.byte_offset)||!int(source.byte_length)||!source.byte_length||source.byte_length>65536||!int(source.containing_decoded_size)||source.byte_offset+source.byte_length>source.containing_decoded_size||!int(record?.local_count)||record.local_count>255||record.script_offset!==1+record.local_count*2+4||value.entry_pc!==record.script_offset||value.entry_pc>=source.byte_length||typeof record.raw_hex!=='string'||record.raw_hex.length!==source.byte_length*2||!/^[a-f0-9]+$/.test(record.raw_hex)||parseInt(record.raw_hex.slice(0,2),16)!==record.local_count||!Array.isArray(value.instructions)||value.instructions.length>4096||!Array.isArray(value.dialogues)||value.dialogues.length>4096||!Array.isArray(value.stops)||!Array.isArray(value.limitations))fail();
@@ -38,6 +39,7 @@ export function renderControllerInstruction(row,report,selectSource,authoring=[]
   field(path,value===null?'Unresolved':typeof value==='boolean'?(value?'Yes':'No'):typeof value==='string'?value.replaceAll('_',' '):value);
  };
  flatten(row.operands,'');details.append(summary,create('p','Retail encoded source. Runtime execution and effects have not been verified.'),fields);
+ appendCaptureSummary(details,row);
  const navigation=create('div');navigation.dataset.controllerInstructionSuccessors='';navigation.style.cssText='display:flex;flex-wrap:wrap;gap:8px';
  const boundaries=new Set([...report.instructions,...report.dialogues].map(node=>node.pc));
  for(const edge of row.successors){
