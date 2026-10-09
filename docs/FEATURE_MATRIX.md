@@ -10178,3 +10178,6 @@ Controller Table-Copy Native Build: FUNCTIONAL for qualified32-byte operands in 
 
 
 Controller Table-Copy Editor Controls: FUNCTIONAL for source-qualified16-word Review/Apply/reset, responsive controls, history/persistence and native Build readback in compressed Conc and raw-streaming Rikuroa. Runtime table meanings/bindings/effects and gameplay remain unverified.
+
+
+Controller Instruction-to-Editor Navigation: FUNCTIONAL across all five qualified controller families, with exact source/focus, same-target Review preservation and changed-target withdrawal. Actual Conc/Rikuroa wide/400-pixel checks passed with unchanged project/import/history and zero commands. Runtime/gameplay unchanged and unverified.

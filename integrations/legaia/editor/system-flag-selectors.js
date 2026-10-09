@@ -1,3 +1,4 @@
+import {controllerAuthoringFocus} from './controller-authoring-focus.js';
 // Persistent encoded operands; these controls do not read or write live story flags.
 import {scriptBranchContext} from './script-branches.js';
 const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
@@ -79,7 +80,8 @@ function mountSelectors(host,{protocol,owner,focusPc=null,getContext,busy,setBus
     }catch(e){if(current()){error.textContent=e.message;onError(e);}return false;}
     finally{if(!disposed){pending=false;updateState();}}
   };
-  updateState();return {ready,updateState,dispose(){if(disposed)return;disposed=true;invalidate();section.remove();resolveReady?.(false);resolveReady=null;}};
+  const navigation=controllerAuthoringFocus({current:()=>current()&&context.mode==='edit',busy:()=>pending||busy(),targets:()=>snapshot?.targets,source:selector,select:target=>{invalidate();active=target.semantic_id;selector.value=active;fields();status.textContent='Source selected. Review before Apply.';updateState();}});
+  updateState();return {...navigation,ready,updateState,dispose(){if(disposed)return;disposed=true;invalidate();section.remove();resolveReady?.(false);resolveReady=null;}};
 }
 
 export function mountSystemSelectors(host,options){return mountSelectors(host,{...options,protocol:{schema:'legaia.system-flag-authoring.v1',snapshotRoute:'/api/system-flag-selectors',reviewRoute:'/api/system-flag-selector-review',commandType:'set_system_flag_selector'}});}

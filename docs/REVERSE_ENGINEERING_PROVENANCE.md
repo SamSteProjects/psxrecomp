@@ -1008,3 +1008,6 @@ Controller Table-Copy Native Build — 2026-10-09: independent signed word encod
 
 
 Controller Table-Copy Editor Controls — 2026-10-09: actual Conc/Rikuroa source snapshots, sixteen indexed fields and browser-authored Word10 changes320→−321 matched only two literal emitted MAN bytes per scene and verified package receipts. No additional runtime semantic inference; source table meanings/bindings/effects and gameplay remain unresolved. Evidence: `local-output/sdk-20260909/controller-table-editor-20261009/`.
+
+
+Controller Instruction-to-Editor Navigation — 2026-10-09: links rely exclusively on current qualified SDK target lists and verified Retail instruction rows; no new dispatch or runtime semantic assumptions. Actual Conc/Rikuroa navigation produced zero authored commands and unchanged project state. Evidence: `local-output/sdk-20260909/controller-authoring-navigation-20261009/`.

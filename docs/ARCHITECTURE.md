@@ -2395,3 +2395,6 @@ Controller table-copy Build uses a dedicated independent32-byte verifier after s
 
 
 Controller table-copy editor controls use source-qualified SDK snapshots and Reviews, sixteen bounded signed-word fields, typed Apply/reset and the existing operand-layer/encoded-flow workspace. Source identity/stale withdrawal follow other controller families; Retail/current/authored/proposed values stay separate and runtime table meanings remain unknown.
+
+
+Controller editing modules expose a shared source-qualified PC navigation contract. Retail instruction rows ask each mounted module for target membership, then select/focus existing controls by stable identity; no editor-side binary dispatch or additional command path is introduced. Same-target Review persists and stale/busy links refuse.

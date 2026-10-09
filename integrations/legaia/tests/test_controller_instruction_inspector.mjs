@@ -22,3 +22,8 @@ for(const change of [r=>r.pc=4,r=>r.pc=10,r=>r.length=0,r=>r.length=5,r=>r.byte_
 const terminal=structuredClone(row);terminal.successors=[];terminal.target_context=7;terminal.operands={text:'<img src=x onerror=alert(1)>',values:[-32768,32767],unknown:null};
 const terminalNodes=nodes(renderControllerInstruction(terminal,report,()=>{}));assert(terminalNodes.some(n=>n.textContent==='<img src=x onerror=alert(1)>'));assert(terminalNodes.some(n=>n.textContent==='-32768, 32767'));assert(terminalNodes.some(n=>n.textContent==='Unresolved'));assert(terminalNodes.some(n=>n.textContent.includes('Extended target 7')));assert(terminalNodes.some(n=>n.textContent.startsWith('No encoded successors')));
 console.log('Controller instruction fields, detached source data, exact byte refusals, literal text and decoded successor navigation passed.');
+
+const editing=[],controls=[{kind:'selector',label:'Selector',canFocus:pc=>pc===5,focusPc:pc=>editing.push(['selector',pc])},{kind:'branch',label:'Branch',canFocus:pc=>pc===5,focusPc:pc=>editing.push(['branch',pc])},{kind:'table',label:'Table Copy',canFocus:()=>false,focusPc:()=>assert.fail('Unqualified edit')}];
+const editNodes=nodes(renderControllerInstruction(row,report,()=>{},controls)).filter(n=>Object.hasOwn(n.dataset,'controllerInstructionEditPc'));
+assert.deepEqual(editNodes.map(n=>n.textContent),['Open Selector Controls','Open Branch Controls']);for(const button of editNodes)button.onclick();assert.deepEqual(editing,[['selector',5],['branch',5]]);assert.equal(JSON.stringify({row,report}),before);
+console.log('Instruction links expose every independently qualified editor family without inventing unsupported controls.');

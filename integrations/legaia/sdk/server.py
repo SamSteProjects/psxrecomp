@@ -1071,6 +1071,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/controller-operand-flow.js": ("controller-operand-flow.js", "text/javascript"),
                  "/controller-fades.js": ("controller-fades.js", "text/javascript"),
                  "/controller-tables.js": ("controller-tables.js", "text/javascript"),
+                 "/controller-authoring-focus.js": ("controller-authoring-focus.js", "text/javascript"),
                  "/controller-tile-rects.js": ("controller-tile-rects.js", "text/javascript"),
                  "/controller-references.js": ("controller-references.js", "text/javascript"),
                  "/controller-flags.js": ("controller-flags.js", "text/javascript"),
