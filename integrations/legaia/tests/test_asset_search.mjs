@@ -22,3 +22,15 @@ for(const query of ['provenance:'+ 'c'.repeat(64),'provenance:'+ 'd'.repeat(64),
 for(const query of ['-provenance:'+ 'c'.repeat(64),'-name:"Other binding"','provenance:'+ 'e'.repeat(64),'provenance:invented','name:"Other evidence"'])assert(!assetMatchesQuery(variants,parseAssetQuery(query)),query);
 assert.deepEqual(variants,variantsBefore);assert.equal(variants.data,record.data);assert.equal(variants.projectMembership.chosenSceneId,'scene://town01');
 console.log('Project field search covers retained membership names, source aliases, import/catalog hashes and provenance without merging or activating source variants.');
+
+const retailClip='animation://town01/scene-anm/0012',currentClip='animation://town01/authored-record/example';
+const bound={...record,data:{...record.data,components:{...record.data.components,ActorAnimation:{imported:{animation_asset_id:retailClip},effective:{animation_asset_id:currentClip}}}}};
+const boundBefore=structuredClone(bound);
+for(const query of ['type:actor animation:'+retailClip,'animation:'+currentClip,'animation:authored-record -animation:0013'])assert(assetMatchesQuery(bound,parseAssetQuery(query)),query);
+for(const query of ['animation:0013','-animation:'+retailClip,'animation:speculative','animation:scene://town01'])assert(!assetMatchesQuery(bound,parseAssetQuery(query)),query);
+assert(assetMatchesQuery({id:currentClip,type:'animation',data:{}},parseAssetQuery('animation:'+currentClip)));
+assert(!assetMatchesQuery({id:'unresolved',type:'actor',data:{components:{ActorAnimation:{imported:{animation_asset_id:null},effective:{initial_animation_id:12}}}}},parseAssetQuery('animation:12')));
+const projectBinding={...record,projectMembership:{chosenSceneId:'scene://town01',variants:[{scene_id:'scene://other',record:{components:{ActorAnimation:{effective:{animation_asset_id:'animation://other/scene-anm/0001'}}}}}]}};
+const projectBefore=structuredClone(projectBinding);assert(assetMatchesQuery(projectBinding,parseAssetQuery('animation:animation://other/scene-anm/0001')));assert(!assetMatchesQuery(projectBinding,parseAssetQuery('-animation:animation://other/scene-anm/0001')));
+assert.deepEqual(bound,boundBefore);assert.deepEqual(projectBinding,projectBefore);
+console.log('Animation field search covers Retail/Current bindings, clip identities and retained Project variants without inventing unresolved clips or changing source membership.');

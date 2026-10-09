@@ -1,5 +1,5 @@
 // Search recorded asset metadata without inferring confidence or runtime identity.
-export const ASSET_SEARCH_FIELDS=['name','id','type','scene','model','confidence','provenance'];
+export const ASSET_SEARCH_FIELDS=['name','id','type','scene','model','animation','confidence','provenance'];
 export function parseAssetQuery(query,fields=ASSET_SEARCH_FIELDS){
   if(!Array.isArray(fields)||!fields.length||fields.length>32||fields.some(field=>typeof field!=='string'||!/^[_a-z]+$/.test(field))||new Set(fields).size!==fields.length)throw Error('Invalid search field vocabulary.');
   if(typeof query!=='string'||query.length>2048)throw new Error('Asset search is limited to 2048 characters.');
@@ -12,12 +12,12 @@ export function parseAssetQuery(query,fields=ASSET_SEARCH_FIELDS){
 }
 function values(value){return value===undefined||value===null?'':typeof value==='string'?value:JSON.stringify(value);}
 export function assetSearchIndex(record){
-  const data=record.data??{},variants=record.projectMembership?.variants??[],sources=[data,...variants.map(variant=>variant.record)],confidences=[],models=[];
+  const data=record.data??{},variants=record.projectMembership?.variants??[],sources=[data,...variants.map(variant=>variant.record)],confidences=[],models=[],animations=[];
   const visit=(value,key='')=>{if(value===null||value===undefined)return;if(key==='confidence'&&typeof value==='string')confidences.push(value);
-    if(typeof value==='string'){if(value.startsWith('asset://')&&value.includes('/models/'))models.push(value);return;}
+    if(typeof value==='string'){if(value.startsWith('asset://')&&value.includes('/models/'))models.push(value);if(value.startsWith('animation://'))animations.push(value);return;}
     if(Array.isArray(value)){for(const item of value)visit(item,key);}else if(typeof value==='object'){for(const [name,item] of Object.entries(value))visit(item,name);}};
   visit(record);if(record.type==='model')models.push(record.id);
-  const fields={name:[record.label,...sources.map(source=>source?.name)],id:[record.id],type:[record.type,data.asset_kind],scene:[record.sceneId,record.source,record.authoredRecord?.source_scene,...sources.map(source=>source?.source_record?.prot_entry_name),...(record.projectMembership?.scene_ids??[])],model:models,confidence:confidences,
+  const fields={name:[record.label,...sources.map(source=>source?.name)],id:[record.id],type:[record.type,data.asset_kind],scene:[record.sceneId,record.source,record.authoredRecord?.source_scene,...sources.map(source=>source?.source_record?.prot_entry_name),...(record.projectMembership?.scene_ids??[])],model:models,animation:animations,confidence:confidences,
     provenance:[...sources.flatMap(source=>[source?.source_record,source?.claims,source?.components?.RetailMetadata]),record.authoredRecord?.source_record,
       ...variants.map(({scene_id,source_import_sha256,source_catalog_key})=>({scene_id,source_import_sha256,source_catalog_key}))]};
   return Object.fromEntries([['all',values(record).toLowerCase()],...Object.entries(fields).map(([key,items])=>[key,items.map(values).join(' ').toLowerCase()])]);

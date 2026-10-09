@@ -16,4 +16,7 @@ for(const query of ['type:animation','type:ani','type:audio name:bank','animatio
 for(const query of ['', 'name:Walk','type:model','-type:animation','-animation://town01/example','provenance:animation://town01/example','type:', 'type:animation "unfinished','"type:animation"'])assert.equal(assetSearchNeedsResources('all',query),false,query);
 assert.equal(assetSearchNeedsResources('model','type:animation'),false);assert(assetSearchNeedsResources('animation',''));assert(assetSearchNeedsResources('authored',''));
 assert(resourceAssetCategories.has('controller'));assert(assetSearchNeedsResources('controller',''));assert(assetSearchNeedsResources('all','type:controller'));
+assert(assetSearchNeedsResources('all','animation:scene-anm'));assert(assetSearchNeedsResources('all','animation:animation://town01/scene-anm/0001'));
+assert.equal(assetSearchNeedsResources('all','-animation:scene-anm'),false);assert.equal(assetSearchNeedsResources('all','animation:'),false);
+assert.equal(assetSearchNeedsResources('actor','animation:scene-anm'),false);assert.equal(assetSearchNeedsResources('model','animation:scene-anm'),false);
 console.log('Explicit positive resource type and stable-ID searches discover in All; ordinary names, exclusions, malformed input and unrelated categories do not request catalog data.');

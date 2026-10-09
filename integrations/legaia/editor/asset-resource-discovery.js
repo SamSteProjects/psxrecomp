@@ -6,7 +6,7 @@ export function assetSearchNeedsResources(category,query){
   if(category!=='all')return false;
   let terms;try{terms=parseAssetQuery(query);}catch{return false;}
   const types=[...resourceAssetCategories].filter(type=>type!=='authored');
-  return terms.some(term=>!term.exclude&&(term.field==='type'?types.some(type=>type.includes(term.text)):(term.field===null||term.field==='id')&&types.some(type=>term.text.startsWith(type+'://'))));
+  return terms.some(term=>!term.exclude&&(term.field==='animation'||(term.field==='type'?types.some(type=>type.includes(term.text)):(term.field===null||term.field==='id')&&types.some(type=>term.text.startsWith(type+'://')))));
 }
 export function createAssetResourceDiscovery({getContext,load,schedule=work=>setTimeout(work,0),onError=()=>{}}){
   let attempted=null,queued=null,disposed=false;

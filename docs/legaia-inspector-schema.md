@@ -538,3 +538,31 @@ checks rejection of controls. Validation was not relaxed. No Build, game, runtim
 attachment, native recomp compilation, install or disc export occurred. Initial
 binding metadata does not prove runtime residency, visibility, playback or script
 compatibility. Gameplay remains unverified; the full SDK goal stays active.
+## Animation Binding Asset Search — 2026-10-09
+
+The Asset Browser now accepts `animation:` filters. They search recorded stable
+animation identities in asset metadata, including separate Retail/Current actor
+bindings, retained authored clips and Project source variants. A clip's own asset
+identity is searchable too. Combine `type:actor animation:<clip-id>` to locate
+actors with a recorded association; exclusions and quoted terms use the existing
+bounded query parser. Unresolved numeric initial-animation fields are not turned
+into invented clip identities. Searching does not select a different source
+membership, change an actor or imply runtime playback.
+
+Positive animation filters in All records trigger the existing source-qualified
+resource discovery. Actor-only searches use the actor metadata already available;
+negative-only and invalid filters do not request additional catalogs. The shared
+search help documents the new field and its evidence limits. No binary format,
+serializer, native Build or runtime transport changes were needed.
+
+Two focused Node suites and three JS syntax checks passed. Actual muted editor
+checks found the same Town01 actor by its distinct Retail and retained Current
+clip in Active Scene and Project scopes; All records discovered the referenced
+clip automatically. Exclusion, missing reference and invalid-filter behavior,
+clip Asset Details/Back and Project source membership passed. Desktop and 400px
+layouts were inspected. Zero page errors or authoring/Build/Run/scene requests
+occurred; project/imports/history/file bytes were unchanged. Private evidence:
+`local-output/sdk-20260909/animation-binding-search-20261009/`. Initial harness
+failures used a nonexistent narrow-layout tab and omitted the Project catalog
+readiness wait; corrected checks passed, with both diagnostic logs retained.
+Gameplay association and playback remain unverified. The full SDK goal is active.
