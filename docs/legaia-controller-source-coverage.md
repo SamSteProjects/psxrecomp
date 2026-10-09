@@ -427,3 +427,21 @@ The dedicated controller registry now recognizes seven families. They share one 
 Thirty-two focused Python tests and seven AST checks passed. The seven-family fixture independently checks the complete composed MAN. Actual Opdeene and Opstati HTTP snapshot/Review/Apply/reset, Undo/Redo and Save/Open passed, changing only decoded byte223 and435 respectively for first-word0→1. Independent signed-word serialization matched each entire MAN; Review was read-only and imported metadata remained unchanged. Opstati's unvisited opaque tail stayed byte-identical. Stale Apply, boolean words and extraneous HTTP fields were refused.
 
 Evidence: `local-output/sdk-20260909/controller-three-word-workflow-20261009/` includes the reproducible HTTP harness and per-scene results. Build collection and composition explicitly refuse saved E6 overrides before generating output until independent Build receipt integration is implemented. Editor controls and native Build integration are pending. No runtime/game launch, attachment, native recompilation, install or disc export occurred. Helper-owned state, operand meanings, visible effects and gameplay remain unverified; the full SDK goal stays active.
+
+
+## Controller Three-Word Build Integration — 2026-10-09
+
+E6 project overrides now enter normal Build through `controller_three_word_build.py`. Independent receipt qualification checks Retail opcode/context/continuation, exactly six operand bytes, strict signed-word values, owner/source hashes, complete audit identities and unchanged MAN layout. Missing, duplicate, forged and unaudited changes are refused. No-op operands still reserve their source span, so overlapping edits are rejected. Relocated controller composition retains original and effective offsets/preimages after qualified NPC spawn reindexing.
+
+Build reports expose `script.three_word_operands`, stable `three_word_id` and `controller-three-word-operands-only`; NPC and raw-streaming composition metadata retain `controller_three_word_changes`. The prior pending-E6 Build guard is superseded by this qualified serializer. Editor controls remain pending.
+
+Thirty-seven focused Python tests and eight AST checks passed. An independent complete-MAN fixture combines all seven controller families; separate focused checks cover relocated mixed edits, no-op overlap and malformed receipts. Actual Opdeene and Opstati E6-only, mixed and NPC Builds passed Save/Open, Undo/Redo, read-only Build Review and unchanged project/import/history assertions. Delivered PROT packages matched independent signed-word literal edits over each entire MAN, or every original record after NPC relocation/reindexing. Directory/source-file/ZIP receipts verified for all six Builds:
+
+| Scene | E6 Only | Mixed | Mixed With NPC |
+| --- | --- | --- | --- |
+| Opdeene | `54136f2bca8bbac8` | `0b2c46d3f30b5962` | `77a963b8690546d5` |
+| Opstati | `b4a22d7fae9f9933` | `6a78a40ff197bd1a` | `49877d42ba8307b6` |
+
+Opdeene's actual mixed scene exposes E6, branch, selector, table-copy and tile edits; Opstati exposes E6 and branch edits. The synthetic fixture covers the additional fade and D8 families. Opstati's unvisited opaque tail remains byte-identical. An initial mixed edit required1458 compressed bytes against a1457-byte fixed span and was correctly refused. A smaller valid E6 edit passed without widening or bypassing that capacity guard.
+
+Evidence: `local-output/sdk-20260909/controller-three-word-build-20261009/` contains the reproducible harness, six Build results/package hashes and the recorded capacity refusal. NPC packages use the existing relocated PROT format whose runtime delivery remains disabled by default. No runtime/game launch, attachment, native recompilation, install or disc export occurred. Helper-owned state, parameter meanings/effects and gameplay remain unverified; the full SDK goal stays active.

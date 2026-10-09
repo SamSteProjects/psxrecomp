@@ -100,11 +100,9 @@ class ControllerThreeWordWorkflow(unittest.TestCase):
         self.p.mode='edit';self.p.overrides[OWNER]['Transform']={'position':{'x':1}}
         with self.assertRaises(ProjectError):ProjectService.open(self.p.save())
 
-    def test_build_refuses_pending_three_word_receipts(self):
-        from sdk.controller_selector_build import collect,compose
-        from sdk.build import BuildError
+    def test_build_collection_retains_three_word_components(self):
+        from sdk.controller_selector_build import collect
         self.apply(VALUES)
-        with self.assertRaisesRegex(BuildError,'integration is pending'):
-            collect(self.p,OWNER,self.p.overrides[OWNER])
-        with self.assertRaisesRegex(BuildError,'integration is pending'):
-            compose(self.p,'scene://fixture',self.context._man,self.context._man)
+        scene,components=collect(self.p,OWNER,self.p.overrides[OWNER])
+        self.assertEqual(scene,'scene://fixture')
+        self.assertEqual(components[COMPONENT]['entries'][ID],VALUES)

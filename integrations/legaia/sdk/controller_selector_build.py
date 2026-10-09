@@ -1,4 +1,4 @@
-"""Compose source-qualified controller selector, branch, tile, fade, table-copy and word-triplet Build receipts."""
+"""Compose source-qualified controller selector, branch, tile, fade, table-copy, word-triplet and three-word Build receipts."""
 from hashlib import sha256
 from .controller_system_flags import COMPONENT,validate_components,scene_document
 from .system_flags import merge_patch
@@ -6,9 +6,6 @@ from importer.controller_system_flags import load_controller_system_flag_context
 
 
 def collect(project,owner,components):
-    from .build import BuildError
-    if 'ControllerThreeWords' in components:
-        raise BuildError('Controller three-word native Build integration is pending; remove the override before Build')
     value=validate_components(project,owner,components)
     return scene_document(project,owner)['scene']['semantic_id'],value
 
@@ -17,8 +14,6 @@ def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
     from .build import BuildError
     owner=scene_id+'/controllers/man-p1/0000'
     components=validate_components(project,owner,project.overrides[owner])
-    if 'ControllerThreeWords' in components:
-        raise BuildError('Controller three-word native Build integration is pending; remove the override before Build')
     value=components.get(COMPONENT,dict(entries={}))
     scene=project.imports[scene_id]['scene']['name']
     context=load_controller_system_flag_context(project.disc_path,scene)
@@ -80,4 +75,8 @@ def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
         from .controller_word_triplet_build import compose_word_triplets
         result,triplet_changes=compose_word_triplets(context,owner,components,result,[*previous,*changes],appended=appended)
         changes.extend(triplet_changes)
+    if 'ControllerThreeWords' in components:
+        from .controller_three_word_build import compose_three_words
+        result,three_word_changes=compose_three_words(context,owner,components,result,[*previous,*changes],appended=appended)
+        changes.extend(three_word_changes)
     return result,changes
