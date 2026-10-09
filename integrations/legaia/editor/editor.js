@@ -927,7 +927,7 @@ function setBusy(value) {
   sceneAnimationController?.updateState();
   modelMaterialsEditor?.updateState();
   if($('shape-materials'))$('shape-materials').disabled=value||Boolean(shapeDraft)||state.project?.mode!=='edit'||!state.capabilities?.model_material_authoring;
-  savedActorSelections?.synchronize();savedSceneSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();synchronizeHistoricalPositions();
+  savedActorSelections?.synchronize();savedSceneSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();synchronizeHistoricalPositions();if($('reveal-hierarchy-selection'))updateHierarchyRevealButton();
 }
 async function api(path, payload, {dialog,success,signal}={}) {
   if(busy) return false;
@@ -1396,6 +1396,10 @@ hierarchyPlacementMatchSelect.onclick=async()=>{
 };
 $('entity-search').oninput=renderHierarchy;
 const revealHierarchyButton=document.createElement('button');revealHierarchyButton.id='reveal-hierarchy-selection';revealHierarchyButton.type='button';revealHierarchyButton.textContent='Reveal selection';revealHierarchyButton.title='Clear hierarchy search, expand the selected group and focus the selected row';$('entity-search').parentElement.after(revealHierarchyButton);
+function updateHierarchyRevealButton(){
+  const ids=currentPlacementSelection();revealHierarchyButton.disabled=busy||(!hierarchySelectedIdentity()&&ids.length<2);
+  revealHierarchyButton.title=ids.length>1?'Clear search and reveal every selected placement; keep focus on the active member':'Clear search and reveal the active selection';
+}
 function hierarchySelectedIdentity(){return selectedSceneResource()?.id??(selectedNpcDraft()?npcDraftSelection:null)??selectedEnvironment()?.entity_id??selected()?.id??null;}
 revealHierarchyButton.onclick=()=>{
   if(busy)return;const current=currentPlacementSelection(),active=hierarchySelectedIdentity(),ids=current.length>1?current:active?[active]:[];if(!ids.length)return;
@@ -1716,7 +1720,7 @@ function renderHierarchy(){
   }
   const groupScope=JSON.stringify([state.project?.path,state.scene?.id]);mountHierarchyGroups(list,{state:hierarchyGroupState,scope:groupScope,filter,current:()=>groupScope===JSON.stringify([state.project?.path,state.scene?.id]),onVisibility:()=>hierarchyNavigation.afterRender(hierarchyNavigation.beforeRender())});
   updateHierarchyPlacementMatchSelection();
-  revealHierarchyButton.disabled=busy||!hierarchySelectedIdentity()&&currentPlacementSelection().length<2;revealHierarchyButton.title=currentPlacementSelection().length>1?'Clear search and reveal every selected placement; keep focus on the active member':'Clear search and reveal the active selection';
+  updateHierarchyRevealButton();
   hierarchyNavigation.afterRender(focusSnapshot);
 }
 // Search SDK records already present in project state, including their provenance.
