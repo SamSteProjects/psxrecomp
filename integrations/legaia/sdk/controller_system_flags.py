@@ -33,14 +33,17 @@ def validate(project, owner, value):
 
 
 def validate_components(project,owner,components):
-    if not isinstance(components,dict) or not components or set(components)-{COMPONENT,'ControllerBranches'}:
+    if not isinstance(components,dict) or not components or set(components)-{COMPONENT,'ControllerBranches','ControllerTileRects'}:
         raise ProjectError('Controller overrides cannot contain actor components')
     hashes=set()
     for family,value in components.items():
         if family==COMPONENT:checked=validate(project,owner,value)
-        else:
+        elif family=='ControllerBranches':
             from .controller_branches import validate as validate_branches
             checked=validate_branches(project,owner,value)
+        else:
+            from .controller_tile_rects import validate as validate_tiles
+            checked=validate_tiles(project,owner,value)
         hashes.add(checked['source_record_sha256'])
     if len(hashes)!=1:raise ProjectError('Controller components require the same Retail source hash')
     return deepcopy(components)
@@ -53,6 +56,9 @@ def compose(context,owner,components):
         from importer.controller_branches import ControllerBranchAuthoringContext
         branches=ControllerBranchAuthoringContext(context._source,system_selectors=selectors)
         current,_=branches.patch_composed(current,components['ControllerBranches']['entries'])
+    if 'ControllerTileRects' in components:
+        from .controller_tile_rects import compose as compose_tiles
+        current=compose_tiles(context._source,current,components['ControllerTileRects']['entries'])
     return current
 
 

@@ -12,7 +12,7 @@ LIMITATIONS = [
     'Only reached FIELD_TILE_RECT_REQUEST operands in fully decoded controller paths are candidates.',
     'The five encoded byte values do not establish tile capacity, runtime tile identity or gameplay effects.',
     'Opcode, dispatch context, instruction boundaries, successors, record lengths and MAN pointers remain unchanged.',
-    'This is native serialization groundwork; project/editor/Build integration is not yet provided.',
+    'Source qualification does not establish runtime tile ownership or execution.',
 ]
 
 

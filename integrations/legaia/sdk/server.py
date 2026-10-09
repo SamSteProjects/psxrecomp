@@ -1290,6 +1290,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'scene_id','expected_source_key'} or any(not isinstance(value,str) or len(value)>512 for value in body.values()):raise ProjectError('Model resolution requires exact scene and current source key')
                     from .model_resolution import inspect as inspect_model_resolution
                     self._json(200,inspect_model_resolution(self.server.project,body['scene_id'],body['expected_source_key']));return
+                if route in ('/api/controller-tile-rects','/api/controller-tile-rect-review'):
+                    expected={'entity'} if route=='/api/controller-tile-rects' else {'entity','operand_id','value'}
+                    if set(body)!=expected or not isinstance(body['entity'],str):raise ProjectError('Controller tile request requires exact inputs')
+                    from .controller_tile_rects import snapshot,review
+                    self._json(200,snapshot(self.server.project,body['entity']) if route=='/api/controller-tile-rects' else review(self.server.project,body['entity'],body['operand_id'],body['value']));return
                 if route in ('/api/controller-branches','/api/controller-branch-review'):
                     expected={'entity'} if route=='/api/controller-branches' else {'entity','operand_id','value'}
                     if set(body)!=expected or not isinstance(body['entity'],str):raise ProjectError('Controller branch request requires exact inputs')

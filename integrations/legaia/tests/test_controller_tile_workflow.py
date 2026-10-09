@@ -1,0 +1,80 @@
+from copy import deepcopy
+from contextlib import nullcontext
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+from sdk.project import ProjectService,ProjectError
+from sdk.controller_tile_rects import snapshot,review,COMPONENT
+from sdk.controller_system_flags import review as selector_review,snapshot as selector_snapshot
+from sdk.controller_branches import review as branch_review,snapshot as branch_snapshot
+from importer.controller_system_flags import ControllerSystemFlagAuthoringContext
+from test_controller_branches import source,OWNER
+from test_project_workflow import synthetic_scene
+
+ID='script://fixture/controllers/man-p1/0000/tile-rect/0007'
+VALUES=dict(column_start=1,row_start=2,column_end=3,row_end=4,value=255)
+
+
+class ControllerTileWorkflow(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
+        self.p=ProjectService(Path(self.temp.name));self.p.import_metadata(synthetic_scene())
+        src,_=source(b'\x61\x23\x4c\x83\x01\x02\x03\x04\x05\x26\xf6\xff')
+        self.context=ControllerSystemFlagAuthoringContext(src)
+        for name,value in [('importer.pipeline._disc_context',nullcontext()),('sdk.resources._verify',None),('sdk.controller_system_flags.load_controller_system_flag_context',self.context)]:
+            mock=patch(name,return_value=value);mock.start();self.addCleanup(mock.stop)
+
+    def apply(self,value):
+        r=review(self.p,OWNER,ID,value);self.p.command(dict(type='set_controller_tile_rect',entity_id=OWNER,operand_id=ID,value=value,review_key=r['review_key']));return r
+
+    def selector(self,value):
+        operand='script://fixture/controllers/man-p1/0000/system-flag/0005';r=selector_review(self.p,OWNER,operand,value)
+        self.p.command(dict(type='set_controller_system_flag_selector',entity_id=OWNER,operand_id=operand,value=value,review_key=r['review_key']))
+
+    def branch(self,value):
+        operand='script://fixture/controllers/man-p1/0000/branch/000e';r=branch_review(self.p,OWNER,operand,value)
+        self.p.command(dict(type='set_controller_branch',entity_id=OWNER,operand_id=operand,value=value,review_key=r['review_key']))
+
+    def test_review_history_save_open_reset_and_authored_asset(self):
+        before=deepcopy((self.p._document(),self.p.undo_stack,self.p.redo_stack));r=review(self.p,OWNER,ID,VALUES)
+        self.assertEqual(before,(self.p._document(),self.p.undo_stack,self.p.redo_stack));self.assertEqual(r['changed_decoded_byte_offsets'],[70]);self.assertFalse(r['project_changed']);self.assertFalse(r['gameplay_verified'])
+        self.apply(VALUES);saved=deepcopy(self.p.overrides);t=snapshot(self.p,OWNER)['targets'][0]
+        self.assertEqual(t['values']['value'],5);self.assertEqual(t['current_values']['value'],255);self.assertEqual(t['authored_values'],VALUES)
+        self.assertIn(COMPONENT,self.p.authored_assets()[0]['authored']);self.p.undo();self.assertFalse(self.p.overrides);self.p.redo();self.assertEqual(self.p.overrides,saved)
+        opened=ProjectService.open(self.p.save());self.assertEqual(opened._document(),self.p._document());self.assertEqual(opened.imports,self.p.imports)
+        self.apply(None);self.assertFalse(self.p.overrides);self.p.undo();self.assertEqual(self.p.overrides,saved)
+        self.apply(t['values']);self.assertFalse(self.p.overrides)
+
+    def test_three_controller_families_compose_and_reset_independently(self):
+        self.selector({'index':4095});self.branch({'target_pc':7});self.apply(VALUES)
+        saved=deepcopy(self.p.overrides);self.assertEqual(set(saved[OWNER]),{'ControllerSystemFlags','ControllerBranches',COMPONENT})
+        self.assertEqual(selector_snapshot(self.p,OWNER)['targets'][0]['current_index'],4095)
+        self.assertEqual(branch_snapshot(self.p,OWNER)['targets'][0]['current_target_pc'],7)
+        self.selector({'index':4094});self.branch({'target_pc':14});self.assertEqual(self.p.overrides[OWNER][COMPONENT],saved[OWNER][COMPONENT])
+        self.apply(None);self.assertNotIn(COMPONENT,self.p.overrides[OWNER]);self.p.undo();self.selector(None);self.assertIn(COMPONENT,self.p.overrides[OWNER]);self.branch(None);self.assertEqual(set(self.p.overrides[OWNER]),{COMPONENT})
+        self.assertEqual(snapshot(self.p,OWNER)['targets'][0]['current_values'],VALUES)
+        self.assertEqual(ProjectService.open(self.p.save())._document(),self.p._document())
+
+    def test_stale_review_bad_values_owner_hash_modes_and_mixed_components_refuse(self):
+        stale=review(self.p,OWNER,ID,VALUES);self.selector({'index':4095});before=deepcopy((self.p._document(),self.p.undo_stack,self.p.redo_stack))
+        with self.assertRaises(ProjectError):self.p.command(dict(type='set_controller_tile_rect',entity_id=OWNER,operand_id=ID,value=VALUES,review_key=stale['review_key']))
+        for value in [dict(VALUES,value=True),dict(VALUES,value=256),{},dict(VALUES,capacity=256)]:
+            with self.assertRaises(ProjectError):review(self.p,OWNER,ID,value)
+        for owner,operand in [(OWNER.replace('/controllers/','/actors/'),ID),(OWNER.replace('fixture','other'),ID),(OWNER,ID[:-4]+'0008')]:
+            with self.assertRaises(ProjectError):review(self.p,owner,operand,VALUES)
+        self.assertEqual(before,(self.p._document(),self.p.undo_stack,self.p.redo_stack));self.apply(VALUES)
+        self.p.overrides[OWNER][COMPONENT]['source_record_sha256']='f'*64
+        with self.assertRaises(ProjectError):snapshot(self.p,OWNER)
+        with self.assertRaises(ProjectError):ProjectService.open(self.p.save())
+        self.p.overrides[OWNER][COMPONENT]['source_record_sha256']=self.p.overrides[OWNER]['ControllerSystemFlags']['source_record_sha256'];self.p.mode='live'
+        with self.assertRaises(ProjectError):review(self.p,OWNER,ID,None)
+        self.p.mode='edit';self.p.overrides[OWNER]['Transform']={'position':{'x':1}}
+        with self.assertRaises(ProjectError):ProjectService.open(self.p.save())
+
+    def test_build_refuses_pending_tile_output_instead_of_ignoring_saved_edits(self):
+        from sdk.build import build_project,BuildError,_build_project
+        self.apply(VALUES);output=Path(self.temp.name)/'output'
+        for action in [lambda:build_project(self.p,output),lambda:_build_project(self.p,output,review_only=True)]:
+            with self.assertRaisesRegex(BuildError,'tile request native Build integration is pending'):action()
+        self.assertFalse(output.exists())

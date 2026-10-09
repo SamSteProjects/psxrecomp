@@ -527,6 +527,8 @@ def build_project(project, output_dir: Path | str | None = None) -> dict:
 
 
 def _build_project(project, output_dir, *, review_only=False) -> dict:
+    if any(isinstance(components,dict) and 'ControllerTileRects' in components for components in project.overrides.values()):
+        raise BuildError('Controller tile request native Build integration is pending; clear tile overrides before Build')
     draft_scenes = set()
     for identifier, draft in getattr(project, 'actor_drafts', {}).items():
         project._validate_actor_draft(identifier, draft)
