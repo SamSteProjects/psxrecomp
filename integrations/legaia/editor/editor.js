@@ -52,6 +52,7 @@ import {validateVertexRetarget} from '/vertex-retarget.js';
 import {qualifySourceNormals,rigidFrameNormals} from '/source-normal-view.js';
 import {mountAssetNavigation} from '/asset-navigation.js';
 import {wallCellAt,wallDragRectangle,wallSelectionGeometry} from '/wall-viewport.js';
+import {mountSelectionHistory} from '/selection-history.js';
 import {interpolateAnimationRange,interpolateAnimationFrameRange,holdAnimationFrameRange,removeAnimationRange,moveAnimationRange,duplicateAnimationRange,offsetAnimationRange,decodeReversedRange,decodeImportedFrame} from '/animation-range.js';
 import {decodeChannelPoseProposal} from '/animation-channel-proposal.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
@@ -176,6 +177,7 @@ import {mountProjectAssets,projectAssetVariant,qualifyProjectCatalogVariant} fro
 import {captureRuntimeReview,parseRuntimeReview,compareRuntimeReviews,historicalRuntimePositions,historicalRuntimeComparisonPositions,historicalSampleHits,MAX_REVIEW_BYTES} from '/runtime-review.js';
 import {createHistoricalActorComparisonDialog} from '/historical-actor-comparison.js';
 import {mountActorPlacementBatch,toggleActorGroupSelection,mergeActorGroupSelection,actorGroupRange} from '/actor-placement-batch.js';
+let hierarchyHistory=null;
 const $ = (id) => document.getElementById(id);
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const numeric = (value) => typeof value === 'number' && Number.isFinite(value);
@@ -875,7 +877,7 @@ function setBusy(value) {
   if($('project-copy-button'))$('project-copy-button').disabled=value||!state.capabilities?.project_copy;
   if($('project-animation-inputs'))$('project-animation-inputs').disabled=value||!state.project?.path;
   document.querySelectorAll('#script-report [data-script-family]').forEach(button=>button.disabled=value);
-  busy=value;sceneCameraInspector?.update();if($('select-matching-actors'))hierarchyMatchSelect.disabled=!canSelectHierarchyMatches()||!hierarchyMatchIds.length||hierarchyMatchKey!==resourceStateKey();npcPresetControls?.update();triggerScriptsDialog?.refresh?.();triggerGroupDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
+  busy=value;hierarchyHistory?.refresh();sceneCameraInspector?.update();if($('select-matching-actors'))hierarchyMatchSelect.disabled=!canSelectHierarchyMatches()||!hierarchyMatchIds.length||hierarchyMatchKey!==resourceStateKey();npcPresetControls?.update();triggerScriptsDialog?.refresh?.();triggerGroupDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);updateAssetPlacementActions();
@@ -1655,9 +1657,27 @@ async function refreshScenePreview(){
   finally{if(sceneAbort===controller){sceneAbort=null;scenePendingKey=null;updateSceneBadge();sceneAnimationController?.updateState();draw();}}
 }
 const hierarchyGroupState={scope:null,collapsed:new Set()};
+function inspectionHistorySelection(){const focus=hierarchySelectedIdentity();if(!focus)return null;const resource=selectedSceneResource();return {kind:resource?'resource':'placements',focus,ids:resource?[focus]:currentPlacementSelection().sort()};}
+async function restoreInspectionSelection(value){
+  if(busy||!canEdit()||!scenePreviewCurrent())return false;
+  const key=resourceStateKey(),fresh=()=>key===resourceStateKey()&&canEdit()&&scenePreviewCurrent();
+  if(value.kind==='resource'){
+    const record=assetRecords().find(row=>row.id===value.focus&&row.sceneId===state.scene.id&&['trigger','region','collision','script','transition'].includes(row.type));if(!record||resourceKey!==key)return false;selectSceneResource(record);
+  }else{
+    const ids=mergeScenePlacementSelection([],value.ids,scenePlacementEligible());if(!ids.includes(value.focus))return false;
+    clearScenePlacementSelection();
+    if(entities().some(row=>row.id===value.focus)){if(!await api('/api/selection',{entity_id:value.focus})||!fresh())return false;}
+    else if(state.actor_drafts?.[value.focus])selectNpcDraft(value.focus);else selectEnvironment(value.focus);
+    if(!fresh())return false;if(ids.length>1)setSourcePlacementGroup(ids,value.focus);
+  }
+  if(!fresh())return false;$('entity-search').value='';renderHierarchy();renderInspector();draw();revealHierarchyEntities($('hierarchy'),value.ids,value.focus);
+  return JSON.stringify(inspectionHistorySelection())===JSON.stringify(value);
+}
+hierarchyHistory=mountSelectionHistory(revealHierarchyButton,{getScope:()=>JSON.stringify([state.project?.path,state.scene?.id]),getSelection:inspectionHistorySelection,available:()=>canEdit()&&scenePreviewCurrent(),busy:()=>busy,navigate:restoreInspectionSelection,onError:error=>notify(error.message,true)});
 const hierarchyNavigation=mountHierarchyNavigation($('hierarchy'),()=>[state.project?.path,state.scene?.id]);
 function hierarchyActorRecord(entity,hidden){return {id:entity.id,name:entity.name,type:'actor',components:[...(entity.authored_components??[]),...authoredComponentLabels(entity)],authored:authored(entity)?'true':'false',visibility:hidden.has(entity.id)?'hidden':'shown'};}
 function renderHierarchy(){
+  hierarchyHistory?.observe();
   const focusSnapshot=hierarchyNavigation.beforeRender();
   const list=$('hierarchy');list.setAttribute('aria-multiselectable','true');list.replaceChildren();
   const filter=$('entity-search').value,hidden=hiddenSceneEntities();let tokens;

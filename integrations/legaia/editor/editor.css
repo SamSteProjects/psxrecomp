@@ -365,3 +365,5 @@
 #environment-layout-dialog table{width:100%;table-layout:fixed}
 #environment-layout-dialog th,#environment-layout-dialog td{overflow-wrap:anywhere}
 #environment-layout-dialog th:first-child{width:46%}
+
+.hierarchy-history{display:flex;flex-wrap:wrap;gap:5px;padding:4px 10px}.hierarchy-history button{max-width:100%;white-space:normal}
