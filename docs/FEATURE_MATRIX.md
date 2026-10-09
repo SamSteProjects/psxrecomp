@@ -10187,3 +10187,6 @@ Retail VRAM STP Controller Decoding: FUNCTIONAL read-only D4/D5 source operands 
 
 
 Retail Field Word-Triplet Controller Decoding: FUNCTIONAL read-only D8 layout/continuation with native runtime-offset uncertainty explicit. Seventeen requests matched across99 bounded controllers; Garmel/Jagaroom/Juui2 now inspect fully. Bounded coverage63 decoded/36 partial, prior25 refused retained. Authoring, live request meanings and gameplay unverified.
+
+
+Controller Word-Triplet Native Authoring: FOUNDATION ONLY for qualified D8 seven-byte selector/signed-word serialization. Nine targets in three compressed scenes matched complete independent literal MAN/no-op/LZS readback; two partial scenes refuse. Shared geometry preserves exact134-target fade behavior. Project/HTTP/editor/Build integration pending; runtime meanings/effects and gameplay unverified.

@@ -2404,3 +2404,6 @@ Retail VRAM STP source inspection now decodes fixed-width D4/D5 requests with pr
 
 
 Retail D8 field word-triplet inspection preserves encoded selector/signed words and separately exposes the native first-word runtime offset/wrap contract with offset unknown. The SDK does not convert those words into coordinates or preview/live state. Existing source/search/flow inspectors consume the qualified read-only nodes.
+
+
+Fade and D8 source writers now share strict selector/three-word serialization geometry while retaining dedicated source-family adapters, opcode sets, stable IDs and receipt keys. Literal source values remain separate from unknown runtime offset/effects. Existing fade options/output/audits are qualified against the pre-refactor writer; D8 project/editor/Build integration remains pending.

@@ -1017,3 +1017,6 @@ Retail VRAM STP Controller Decoding — 2026-10-09: pinned nibble_d blob80d71c4a
 
 
 Retail Field Word-Triplet Controller Decoding — 2026-10-09: pinned nibble_d layout and fresh Retail D8 handler word loads, selector, runtime-global addition/sign wrap, helper call and PC+9 qualify source inspection. All99 source record hashes remain exact;17 literal requests matched. Source values remain unadjusted and runtime offset/effects unknown. Evidence: `local-output/sdk-20260909/controller-word-triplet-20261009/`.
+
+
+Controller Word-Triplet Native Authoring Foundation — 2026-10-09: fresh native D8 argument/offset/helper/continuation assertions and all99 bounded source record hashes qualify9 serialized targets in3 scenes. Complete literal MAN readback independently encodes signed values; runtime offset remains unknown/unmodified. Shared fade geometry retained exact prior134-target options/patch/audit behavior. Evidence: `local-output/sdk-20260909/controller-word-triplet-authoring-20261009/`.
