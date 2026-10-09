@@ -1271,6 +1271,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_geometry import inspect
                     self._json(200, inspect(self.server.project, body['scene'], body['source_key']))
                     return
+                if route == '/api/worldmap-placement-reset-review':
+                    if set(body) != {'scene', 'source_key'}:
+                        raise ProjectError('Kingdom reset review requires exact source scope')
+                    from .worldmap_placements import review_reset
+                    self._json(200, review_reset(self.server.project, body['scene'], body['source_key']))
+                    return
                 if route in ('/api/worldmap-placements','/api/worldmap-placement-review'):
                     expected={'scene','source_key'} | ({'record_id','values','shared_record'} if route.endswith('-review') else set())
                     if set(body)!=expected:

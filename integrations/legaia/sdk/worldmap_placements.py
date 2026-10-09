@@ -183,6 +183,49 @@ def apply(project,command):
     project.undo_stack.append(dict(entity_id=identifier,before=before,after=deepcopy(after)))
     project.redo_stack.clear()
 
+def review_reset(project, scene, expected_key):
+    if project.mode != 'edit' or expected_key != state_key(project):
+        raise ProjectError('World placement reset requires current Edit inputs')
+    raw, provenance, records, _, _, binding, current, _ = context(project, scene)
+    if not binding or not binding['entries']:
+        raise ProjectError('This kingdom has no authored placement records to reset')
+    rows = []
+    for identifier in sorted(binding['entries']):
+        row = records[identifier]
+        if not row['writable']:
+            raise ProjectError('Reset requires complete qualified source record ownership')
+        rows.append(dict(record_id=identifier, source_record_sha256=row['source_record_sha256'],
+                         current_values=deepcopy(row['current_values']), retail_values=deepcopy(row['retail_values']),
+                         affected_source_entities=[p['entity_id'] for p in row['placements']]))
+    report = dict(schema_version='legaia.worldmap-placement-reset.v1', scene=scene, source_key=expected_key,
+                  source_record=provenance, current_map_sha256=sha256(current).hexdigest(),
+                  candidate_map_sha256=sha256(raw).hexdigest(), records=rows,
+                  changed_bytes=[dict(byte_offset=i, before_byte=a, after_byte=b)
+                                 for i, (a, b) in enumerate(zip(current, raw)) if a != b],
+                  project_changed=False, gameplay_verified=False)
+    if project.mode != 'edit' or expected_key != state_key(project):
+        raise ProjectError('World placement inputs changed during reset review')
+    report['review_key'] = digest(report)
+    return report
+
+
+def apply_reset(project, command):
+    if set(command) != {'type', 'scene', 'source_key', 'review_key'}:
+        raise ProjectError('Kingdom reset accepts only its reviewed source scope')
+    report = review_reset(project, command['scene'], command['source_key'])
+    if command['review_key'] != report['review_key']:
+        raise ProjectError('World placement reset review changed; review again')
+    identifier = owner(command['scene'])
+    before = deepcopy(project.overrides[identifier])
+    after = {key: deepcopy(value) for key, value in before.items() if key != COMPONENT}
+    if after:
+        project.overrides[identifier] = after
+    else:
+        project.overrides.pop(identifier)
+    project.undo_stack.append(dict(entity_id=identifier, before=before, after=deepcopy(after) or None))
+    project.redo_stack.clear()
+
+
 def build(project,overlays):
     changes=[]
     for scene in SCENES:

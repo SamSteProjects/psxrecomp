@@ -40,6 +40,33 @@ class WorldPlacementGuards(unittest.TestCase):
    conflict=bytearray(original);conflict[at]=77;overlays=[dict(offset=200,size=len(original),payload=bytes(conflict),expected_sha256=sha256(original).hexdigest())]
    with self.assertRaisesRegex(ProjectError,'conflicts'):build(project,overlays)
 
+class WorldPlacementResetGuards(unittest.TestCase):
+ def test_reset_review_scope_stale_replay_and_one_step_history(self):
+  from sdk.worldmap_placements import review_reset,apply_reset
+  from test_project_workflow import synthetic_scene
+  with tempfile.TemporaryDirectory() as root:
+   p=ProjectService(Path(root));doc=synthetic_scene();doc['source']['disc_identity']='sha256:'+'b'*64;p.import_metadata(doc)
+   identifier=owner('map01');p.overrides[identifier]={'WorldMapPlacements':{'entries':{'0005':{'values':{}}}}}
+   retail=dict(offset=dict(x=4,y=-8,z=12),yaw_units=64);current=dict(offset=dict(x=36,y=-8,z=12),yaw_units=64)
+   row=dict(writable=True,source_record_sha256='a'*64,current_values=current,retail_values=retail,placements=[dict(entity_id='scene://map01/worldmap/placements/0064')])
+   p.overrides[identifier]={'WorldMapPlacements':dict(scene='map01',source_disc_sha256=next(iter(p.imports.values()))['source']['disc_identity'].removeprefix('sha256:'),source_map_sha256='c'*64,source_floor_lut_sha256='d'*64,entries={'0005':dict(values=current,source_record_sha256='a'*64,shared_record=False)})}
+   raw=bytes(32);changed=bytes([1])+raw[1:];binding=p.overrides[identifier]['WorldMapPlacements']
+   context=(raw,{}, {'0005':row},0,[],binding,changed,[])
+   held=deepcopy((p.overrides,p.imports,p.undo_stack,p.redo_stack));key=state_key(p)
+   with patch('sdk.worldmap_placements.context',return_value=context):
+    r=review_reset(p,'map01',key);self.assertEqual((p.overrides,p.imports,p.undo_stack,p.redo_stack),held)
+    self.assertEqual(r['changed_bytes'],[dict(byte_offset=0,before_byte=1,after_byte=0)])
+    body=dict(type='reset_worldmap_placements',scene='map01',source_key=key,review_key=r['review_key'])
+    for bad in ({**body,'review_key':'f'*64},{**body,'extra':True},{**body,'source_key':'f'*64}):
+     with self.assertRaises(ProjectError):apply_reset(p,bad)
+     self.assertEqual((p.overrides,p.imports,p.undo_stack,p.redo_stack),held)
+    p.command(body);self.assertNotIn(identifier,p.overrides);self.assertEqual(len(p.undo_stack),len(held[2])+1)
+    with self.assertRaises(ProjectError):p.command(body)
+    p.undo();self.assertEqual(p.overrides,held[0]);p.redo();self.assertNotIn(identifier,p.overrides)
+    p.undo();p.save();self.assertEqual(ProjectService.open(p.root).overrides,p.overrides)
+    row['writable']=False
+    with self.assertRaises(ProjectError):review_reset(p,'map01',state_key(p))
+
 @unittest.skipUnless(os.environ.get('LEGAIA_DISC_BIN'),'requires private retail disc')
 class RetailWorldPlacements(unittest.TestCase):
  def test_three_kingdom_source_roundtrip_and_normal_package(self):
