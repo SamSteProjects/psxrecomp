@@ -445,3 +445,34 @@ inspected. Project document, imports, history and every project file stayed exac
 Private evidence: `local-output/sdk-20260909/project-settings-scene-reference-20261009/`.
 No Build, game, runtime attachment, native recomp compilation, install or disc
 export occurred. Gameplay remains unverified; the full SDK goal remains active.
+## Asset Property Reference Navigation — 2026-10-09
+
+Asset Details and source-resource Inspector properties can now open exact SDK
+asset/entity references through the shared catalog resolver. Rendering opts in
+only when the complete local navigation adapter is registered. The asset's own
+identity remains plain text through a bounded, validated reference-exclusion
+option; other property values, types and state badges remain supplied by SDK
+metadata. Paths, unknown strings and guest addresses do not become targets.
+
+Asset Details retains the originating catalog lookup, including selected Project
+source membership. Source-resource inspection uses the active catalog. Missing
+or ambiguous targets report the current catalog limitation without parsing IDs,
+changing scenes, assigning models, selecting actors or granting editing. Existing
+source, busy and pending-discovery guards remain. Both references and registered
+actions additionally require their mounted content to remain connected to its
+host. Replacing a dialog/Inspector withdraws old callback eligibility, even when
+its original record still exists unchanged in the catalog.
+
+Seven focused Node suites and four JS syntax checks passed. Actual Town01
+controller owning-scene navigation worked from Asset Details and source Inspector.
+NPC scene, retail donor actor and recorded donor model links opened their exact
+Asset Details; model navigation also passed in Project scope. Direct calls to
+retained buttons from replaced content could neither rerender the current dialog
+nor invoke their old action. Desktop and 400px layouts were inspected. No scene
+switch, authoring, Save, Build or Run requests occurred; project document, imports,
+history and every file stayed exact. Private evidence:
+`local-output/sdk-20260909/asset-property-navigation-20261009/`.
+The initial NPC harness matched a scene ID inside longer donor-ID text; its failed
+attempt is retained, and the passing check uses exact reference attributes.
+No game, runtime attachment, native recomp compilation, installation or disc
+export occurred. Gameplay remains unverified; the full SDK goal stays active.

@@ -4,7 +4,7 @@ import {navigableComponentReference} from './component-inspector.js';
 export function resolveComponentReference(records,id,type){
   if(!navigableComponentReference(id,type)||!Array.isArray(records))throw new Error('Unsupported component reference.');
   const matches=records.filter(row=>row?.id===id&&(type!=='entity-reference'||row.type==='actor'));
-  if(matches.length>1)throw new Error('Component reference is ambiguous in this source scene.');
+  if(matches.length>1)throw new Error('Component reference is ambiguous in the current source catalog.');
   return matches[0]??null;
 }
 
@@ -19,7 +19,7 @@ export function bindComponentReferences(root,{current,busy,records,discover,open
         let record=resolveComponentReference(records(),id,type);
         if(!record){await discover();if(!current()||busy())return;record=resolveComponentReference(records(),id,type);}
         if(!current()||busy())return;
-        if(!record)throw new Error('Referenced asset is unavailable in the active source scene.');
+        if(!record)throw new Error('Referenced asset is unavailable in the current source catalog.');
         await open(record);
       }catch(error){if(current())onError(error);}finally{pending=false;if(current())button.disabled=false;}
     };

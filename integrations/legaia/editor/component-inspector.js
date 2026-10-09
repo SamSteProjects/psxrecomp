@@ -9,10 +9,10 @@ export function propertyStateBadge(schema,state){
   const label=valid?definition.label:'Unclassified',note=valid?definition.note:'No registered property state. No edit or runtime capability is inferred.';
   return `<small class="property-state" data-property-state="${escape(valid?state:'unclassified')}" title="${escape(note)}" aria-label="${escape(label+': '+note)}">${escape(label)}</small>`;
 }
-const propertyRow=(schema,p,value,navigation=false,layer=null)=>{
+const propertyRow=(schema,p,value,navigation=false,layer=null,referenceExclusions=[])=>{
   const target=propertyValue(value,p),label=[layer?.label,p.label].filter(Boolean).join(' ');
   const state=layer?.id==='authored'&&p.state?.startsWith('authored-')?p.state:layer?.state??p.state;
-  const content=navigation&&navigableComponentReference(target,p.type)?`<button type="button" data-component-reference="${escape(target)}" data-reference-type="${escape(p.type)}" aria-label="Inspect ${escape(label)} reference: ${escape(target)}"><code>${escape(target)}</code></button>`:`<code>${escape(target)}</code>`;
+  const content=navigation&&!referenceExclusions.includes(target)&&navigableComponentReference(target,p.type)?`<button type="button" data-component-reference="${escape(target)}" data-reference-type="${escape(p.type)}" aria-label="Inspect ${escape(label)} reference: ${escape(target)}"><code>${escape(target)}</code></button>`:`<code>${escape(target)}</code>`;
   return `<div class="property"><span class="property-label">${escape(p.label)}${propertyStateBadge(schema,state)}</span>${content}</div>`;
 };
 const notes=definition=>(definition.notes??[]).map(note=>`<p class="field-note">${escape(note)}</p>`).join('');
@@ -22,26 +22,27 @@ export function componentDefinition(schema,id){
   if(!definition||!Array.isArray(definition.properties)||definition.properties.length>32||new Set(definition.properties.map(p=>p.id)).size!==definition.properties.length)throw new Error('Invalid inspector component definition');
   return definition;
 }
-export function renderComponentProperties(schema,id,component,editable=false,referenceNavigation=false){
-  return `<div data-component-content="${escape(id)}">${renderPropertyContent(schema,id,component,editable,referenceNavigation)}</div>`;
+export function renderComponentProperties(schema,id,component,editable=false,referenceNavigation=false,referenceExclusions=[]){
+  if(!Array.isArray(referenceExclusions)||referenceExclusions.length>32||new Set(referenceExclusions).size!==referenceExclusions.length||referenceExclusions.some(value=>!navigableComponentReference(value,'asset-reference')))throw Error('Invalid component reference exclusions.');
+  return `<div data-component-content="${escape(id)}">${renderPropertyContent(schema,id,component,editable,referenceNavigation,referenceExclusions)}</div>`;
 }
 // Section extensions are local renderer callbacks, never executable SDK metadata.
-export function renderComponentSection(schema,id,component,{editable=false,propertyEditable=false,referenceNavigation=false,capabilities={},registry={},headingLevel=3,attributes={},classes=[],decorate=null}={}){
+export function renderComponentSection(schema,id,component,{editable=false,propertyEditable=false,referenceNavigation=false,referenceExclusions=[],capabilities={},registry={},headingLevel=3,attributes={},classes=[],decorate=null}={}){
   const definition=componentDefinition(schema,id);
   if(!Array.isArray(classes)||classes.length>4||new Set(classes).size!==classes.length||classes.some(value=>typeof value!=='string'||! /^[a-z][a-z0-9-]{0,63}$/.test(value)||value==='component'))throw Error('Invalid component section style classes.');
   if(![3,4].includes(headingLevel)||typeof editable!=='boolean'||typeof propertyEditable!=='boolean'||typeof referenceNavigation!=='boolean'||!attributes||Array.isArray(attributes)||typeof attributes!=='object'||Object.keys(attributes).length>8||Object.entries(attributes).some(([key,value])=>!/^data-[a-z][a-z-]*$/.test(key)||key==='data-inspector-component-section'||typeof value!=='string'||value.length>1024)||decorate!==null&&typeof decorate!=='function')throw Error('Invalid component section renderer options.');
-  const parts={properties:renderComponentProperties(schema,id,component,editable&&propertyEditable,referenceNavigation),actions:renderComponentActions(schema,id,component,capabilities,registry,editable),details:renderComponentDetails(schema,id,component)};
+  const parts={properties:renderComponentProperties(schema,id,component,editable&&propertyEditable,referenceNavigation,referenceExclusions),actions:renderComponentActions(schema,id,component,capabilities,registry,editable),details:renderComponentDetails(schema,id,component)};
   const body=decorate===null?parts.properties+parts.actions+parts.details:decorate(Object.freeze(parts));
   if(typeof body!=='string')throw Error('Component section extension must return rendered content.');
   const extra=Object.entries(attributes).map(([key,value])=>` ${key}="${escape(value)}"`).join('');
   return `<section class="${['component',...classes].join(' ')}" data-inspector-component-section="${escape(id)}"${extra}><h${headingLevel}>${escape(definition.label??id)}${definition.units?` <small>${escape(definition.units)}</small>`:''}</h${headingLevel}>${body}</section>`;
 }
-function renderPropertyContent(schema,id,component,editable=false,referenceNavigation=false){
+function renderPropertyContent(schema,id,component,editable=false,referenceNavigation=false,referenceExclusions=[]){
   const definition=componentDefinition(schema,id);
-  if(definition.layout==='read-only-properties')return definition.properties.map(p=>propertyRow(schema,p,component,referenceNavigation)).join('')+notes(definition);
+  if(definition.layout==='read-only-properties')return definition.properties.map(p=>propertyRow(schema,p,component,referenceNavigation,null,referenceExclusions)).join('')+notes(definition);
   if(definition.layout==='layered-properties'){
     if(!Array.isArray(definition.layers)||definition.layers.length>8||new Set(definition.layers.map(row=>row.id)).size!==definition.layers.length)throw new Error('Invalid property layers');
-    return definition.layers.map(layer=>`<div class="appearance-layer" data-property-layer="${escape(layer.id)}"><h4>${escape(layer.label)}</h4>${definition.properties.filter(p=>p.layers?.includes(layer.id)).map(p=>propertyRow(schema,p,component[layer.id],referenceNavigation,layer)).join('')}</div>`).join('')+notes(definition);
+    return definition.layers.map(layer=>`<div class="appearance-layer" data-property-layer="${escape(layer.id)}"><h4>${escape(layer.label)}</h4>${definition.properties.filter(p=>p.layers?.includes(layer.id)).map(p=>propertyRow(schema,p,component[layer.id],referenceNavigation,layer,referenceExclusions)).join('')}</div>`).join('')+notes(definition);
   }
   if(definition.layout!=='layered-number'||JSON.stringify(definition.layers)!==JSON.stringify(['imported','authored','effective']))throw new Error('Unsupported property layout');
   let html='<div class="transform-table"><span></span>'+definition.layers.map(layer=>`<span class="column-title">${escape(layer[0].toUpperCase()+layer.slice(1))}${propertyStateBadge(schema,definition.layer_states?.[layer])}</span>`).join('');

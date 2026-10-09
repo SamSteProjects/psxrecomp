@@ -7,6 +7,8 @@ const component={imported:{asset:id},effective:{asset:'asset://fixture/models/2'
 const html=renderComponentProperties(schema,'Reference',component,false,true);
 assert(html.includes(`data-component-reference="${id}"`));assert(html.includes('Inspect Imported Model reference:'));assert(html.includes('Inspect Effective Model reference:'));
 assert(!renderComponentProperties(schema,'Reference',component).includes('<button'));
+const excluded=renderComponentProperties(schema,'Reference',component,false,true,[id]);assert(!excluded.includes(`data-component-reference="${id}"`));assert(excluded.includes(`<code>${id}</code>`));assert(excluded.includes('data-component-reference="asset://fixture/models/2"'));
+for(const exclusions of [null,[id,id],['C:/private/file'],Array.from({length:33},(_,i)=>'asset://fixture/'+i)])assert.throws(()=>renderComponentProperties(schema,'Reference',component,false,true,exclusions));
 for(const value of ['javascript:alert(1)','C:/private/file',0,null,'asset://fixture/<script>','asset://fixture/"bad','asset://fixture/white space'])assert(!navigableComponentReference(value,'asset-reference'));
 assert(!navigableComponentReference(id,'string'));
 const model={id,type:'model'},entity={id:actor,type:'actor'};
