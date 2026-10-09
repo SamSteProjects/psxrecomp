@@ -35,19 +35,28 @@ def record_at(man, partition, index):
 
 
 def describe(offset, data, entry, owner):
+    identity = 'script://' + owner.removeprefix('scene://')
     return dict(byte_offset=offset, byte_length=len(data), script_offset=entry,
                 sha256=sha256(data).hexdigest(), raw_hex=data.hex(),
-                inspection=inspect_record(data, entry, semantic_id='script://' + owner.removeprefix('scene://'), base_offset=offset))
+                inspection=dict(inspect_record(data, entry, semantic_id=identity, base_offset=offset), semantic_id=identity))
 
 
 def inspect(project, owner, build_id):
-    match = re.fullmatch(r'scene://([A-Za-z0-9_-]+)/(actors/man-p1|scripts/man-p2)/([0-9]{4})', owner) if isinstance(owner, str) else None
-    if not match or 'scene://' + match[1] != project.active_scene:
+    match = re.fullmatch(r'scene://([A-Za-z0-9_-]{1,128})/(actors/man-p1|scripts/man-p2|controllers/man-p1)/([0-9]{4})', owner) if isinstance(owner, str) else None
+    controller = bool(match and match[2] == 'controllers/man-p1')
+    if not match or 'scene://' + match[1] != project.active_scene or controller and match[3] != '0000':
         raise ProjectError('Choose an imported script owner in the active scene')
     if not project.disc_path:
         raise ProjectError('Saved script comparison requires the retail disc')
     key = state_key(project); provenance_key = source_key(project)
-    context = project._dialogue_context(owner)
+    if controller:
+        from .resources import _verify
+        from importer.controller_system_flags import load_controller_record_source
+        with _disc_context(project.disc_path):
+            _verify(project, project.imports[project.active_scene])
+            context = load_controller_record_source(project.disc_path, match[1])
+    else:
+        context = project._dialogue_context(owner)
     source_offset, retail, retail_entry = context.verified_record(owner)
     verified = verify_build(project, build_id)
     if not verified['matches_current_inputs']:
@@ -66,7 +75,11 @@ def inspect(project, owner, build_id):
             raise ProjectError('Emitted PROT exceeds the inspection budget')
         archive = _archive(prot)
         carrier = read_man_source(archive, *_bounded_scene_range(archive, mapping, scene), scene)
-        offset, generated, entry = record_at(carrier.payload, 2 if match[2] == 'scripts/man-p2' else 1, int(match[3]))
+        if controller:
+            from importer.scene_controller import controller_record
+            offset, generated, entry = controller_record(carrier.payload, scene)
+        else:
+            offset, generated, entry = record_at(carrier.payload, 2 if match[2] == 'scripts/man-p2' else 1, int(match[3]))
         if len(generated) != len(retail) or entry != retail_entry:
             raise ProjectError('Emitted source owner changed record layout; comparison is unsupported')
         changes = [dict(pc=i, retail=a, generated=b) for i, (a, b) in enumerate(zip(retail, generated)) if a != b]
@@ -79,7 +92,7 @@ def inspect(project, owner, build_id):
                       generated=describe(offset, generated, entry, owner), changed_bytes=changes,
                       generated_man_sha256=sha256(carrier.payload).hexdigest(),
                       limitations=['Record PCs are comparable; decoded MAN offsets may move when records are allocated.',
-                                   'Changed bytes include actor header fields. Decoder stops and opaque regions remain unresolved.',
+                                   'Changed bytes may include record header fields. Decoder stops and opaque regions remain unresolved.',
                                    'Package delivery does not prove script execution, effect targets, story state or gameplay.'])
     if state_key(project) != key or source_key(project) != provenance_key or verify_build(project, build_id)['receipt'] != receipt:
         raise ProjectError('Project or saved Build changed during script comparison')

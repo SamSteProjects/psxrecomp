@@ -4,9 +4,17 @@ from sdk.project import ProjectError
 from sdk.source_build_script import record_at, describe
 from test_branch_authoring import p2_fixture
 from importer.man_layout import read_man_layout
+from types import SimpleNamespace
+from sdk.source_build_script import inspect
 
 
 class SourceBuildScriptTests(unittest.TestCase):
+    def test_controller_owner_is_exact_and_active(self):
+        project=SimpleNamespace(active_scene='scene://fixture')
+        for owner in ['scene://fixture/controllers/man-p1/0001','scene://foreign/controllers/man-p1/0000','scene://fixture/controllers/man-p1/0000/extra','script://fixture/controllers/man-p1/0000']:
+            with self.assertRaisesRegex(ProjectError,'active scene'):
+                inspect(project,owner,'a'*16)
+
     def test_partition_identity_and_exact_raw_record(self):
         _, man = p2_fixture(b'\x21\x26\xfe\xff')
         for partition, index, entry in ((1, 1, 5), (2, 0, 4)):
@@ -15,6 +23,7 @@ class SourceBuildScriptTests(unittest.TestCase):
             report = describe(offset, record, entry, 'scene://fixture/scripts/man-p2/0000')
             self.assertEqual(bytes.fromhex(report['raw_hex']), record)
             self.assertEqual(report['sha256'], sha256(record).hexdigest())
+            self.assertEqual(report['inspection']['semantic_id'], 'script://fixture/scripts/man-p2/0000')
         with self.assertRaises(ProjectError):
             record_at(man, 2, 1)
 

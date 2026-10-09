@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {decodeSourceBuildScript} from '../editor/source-build-script.js';
+const key='a'.repeat(64),id='b'.repeat(16),hash='c'.repeat(64),owner='scene://fixture/controllers/man-p1/0000';
+const record=raw=>({byte_offset:57,byte_length:8,script_offset:5,raw_hex:raw,sha256:createHash('sha256').update(Buffer.from(raw,'hex')).digest('hex'),inspection:{semantic_id:owner.replace('scene://','script://'),status:'decoded_supported_paths',instructions:[{pc:5,length:3,raw_hex:raw.slice(10),mnemonic:'JMP_REL'}],dialogues:[],stops:[],opaque_regions:[]}});
+const fixture=()=>({schema_version:'legaia.source-build-script.v1',owner_id:owner,scene_id:'scene://fixture',state_key:key,project_source_key:hash,read_only:true,gameplay_verified:false,reference_commit:'d'.repeat(40),representation:'saved_build',runtime_binding:'not_asserted',generated_man_sha256:hash,build:{id,archive_sha256:hash,integrity:'verified',matches_current_inputs:true,source_disc_sha256:hash,source_disc_integrity:'verified',delivery:'fixed_span_PROT_overlays'},source:record('000000000026fdff'),generated:record('000000000026fcff'),changed_bytes:[{pc:6,retail:253,generated:252}],limitations:[]});
+const value=fixture(),decoded=await decodeSourceBuildScript(value,owner,id,key);decoded.changed_bytes[0].pc=2;assert.equal(value.changed_bytes[0].pc,6);
+for(const mutate of [v=>v.owner_id='foreign',v=>v.state_key=hash,v=>v.build.matches_current_inputs=false,v=>v.build.source_disc_integrity='unknown',v=>v.source.sha256=hash,v=>v.generated.raw_hex='000000000026fbff',v=>v.source.inspection.semantic_id='foreign',v=>v.changed_bytes=[],v=>v.gameplay_verified=true]){const v=fixture();mutate(v);await assert.rejects(()=>decodeSourceBuildScript(v,owner,id,key));}
+await assert.rejects(()=>decodeSourceBuildScript({...fixture(),owner_id:owner.replace('0000','0001')},owner.replace('0000','0001'),id,key));
+for(const suffix of ['actors/man-p1/0001','scripts/man-p2/0000']){const o='scene://fixture/'+suffix;await decodeSourceBuildScript({...fixture(),owner_id:o},o,id,key);}
+console.log('Saved Build controller identity, hashes, byte differences, detached output and actor/P2 compatibility passed.');

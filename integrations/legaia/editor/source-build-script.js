@@ -5,6 +5,7 @@ const hex=pc=>'0x'+pc.toString(16).toUpperCase().padStart(4,'0');
 const fail=()=>{throw new Error('Saved script comparison is invalid or belongs to changed inputs.');};
 
 export async function decodeSourceBuildScript(value,owner,id,key){
+  if(typeof owner!=='string'||!/^scene:\/\/[A-Za-z0-9_-]{1,128}\/(?:actors\/man-p1\/\d{4}|scripts\/man-p2\/\d{4}|controllers\/man-p1\/0000)$/.test(owner))fail();
   if(value?.schema_version!=='legaia.source-build-script.v1'||value.owner_id!==owner||value.state_key!==key||!hash(key)||value.scene_id!==owner.split('/').slice(0,3).join('/')||value.read_only!==true||value.gameplay_verified!==false||value.representation!=='saved_build'||value.runtime_binding!=='not_asserted'||!hash(value.project_source_key)||!/^[0-9a-f]{40}$/.test(value.reference_commit)||!hash(value.generated_man_sha256))fail();
   const b=value.build;
   if(b?.id!==id||!/^[0-9a-f]{16}$/.test(id)||b.integrity!=='verified'||b.matches_current_inputs!==true||b.source_disc_integrity!=='verified'||!hash(b.archive_sha256)||!hash(b.source_disc_sha256)||!['relocated_PROT','fixed_span_PROT_overlays'].includes(b.delivery))fail();
@@ -13,6 +14,7 @@ export async function decodeSourceBuildScript(value,owner,id,key){
     const bytes=Uint8Array.from(record.raw_hex.match(/../g),v=>parseInt(v,16));
     const actual=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),v=>v.toString(16).padStart(2,'0')).join('');if(actual!==record.sha256)fail();
     const r=record.inspection;
+    if(owner.includes('/controllers/')&&r?.semantic_id!==owner.replace('scene://','script://'))fail();
     if(!['partial','decoded_supported_paths'].includes(r?.status)||!['instructions','dialogues','stops','opaque_regions'].every(k=>Array.isArray(r[k])&&r[k].length<=8192))fail();
     const seen=new Set();for(const row of [...r.instructions,...r.dialogues]){if(!int(row.pc,0,record.byte_length-1)||!int(row.length,1,record.byte_length-row.pc)||seen.has(row.pc))fail();seen.add(row.pc);if(row.raw_hex!==record.raw_hex.slice(row.pc*2,(row.pc+row.length)*2))fail();}
   }
@@ -51,7 +53,7 @@ export function mountSourceBuildScript(parent,{owner,getContext,current,busy,set
     status.textContent=`${report.changed_bytes.length} changed record bytes · package and retail disc verified · gameplay unverified`;
     const summary=document.createElement('p');summary.className='field-note';summary.textContent=`Retail MAN offset ${report.source.byte_offset}; Build MAN offset ${report.generated.byte_offset}. Record PCs retain their own coordinate space. Retail decoder: ${report.source.inspection.status}; Build decoder: ${report.generated.inspection.status}.`;
     output.append(summary);
-    function table(headers,rows){const wrap=document.createElement('div');wrap.className='script-table-wrap';const t=document.createElement('table'),head=document.createElement('thead'),h=document.createElement('tr');for(const text of headers){const c=document.createElement('th');c.textContent=text;h.append(c);}head.append(h);const body=document.createElement('tbody');for(const row of rows){const tr=document.createElement('tr');for(const text of row){const td=document.createElement('td');td.textContent=text;tr.append(td);}body.append(tr);}t.append(head,body);wrap.append(t);output.append(wrap);}
+    function table(headers,rows){const wrap=document.createElement('div');wrap.className='script-table-wrap';const t=document.createElement('table'),head=document.createElement('thead'),h=document.createElement('tr');t.style.cssText='width:100%;table-layout:fixed';for(const text of headers){const c=document.createElement('th');c.textContent=text;h.append(c);}h.firstChild.style.width='70px';head.append(h);const body=document.createElement('tbody');for(const row of rows){const tr=document.createElement('tr');for(const text of row){const td=document.createElement('td');td.textContent=text;tr.append(td);}body.append(tr);}t.append(head,body);wrap.append(t);output.append(wrap);}
     table(['Record PC','Retail byte','Build byte'],report.changed_bytes.slice(0,256).map(r=>[hex(r.pc),hex(r.retail),hex(r.generated)]));
     const left=new Map([...report.source.inspection.instructions,...report.source.inspection.dialogues].map(r=>[r.pc,r])),right=new Map([...report.generated.inspection.instructions,...report.generated.inspection.dialogues].map(r=>[r.pc,r]));
     const pcs=[...new Set([...left.keys(),...right.keys()])].sort((a,b)=>a-b),label=row=>row?`${row.mnemonic??'MES_SEGMENT'} · ${JSON.stringify(row.operands??row.text)}`:'Not decoded on this side';
