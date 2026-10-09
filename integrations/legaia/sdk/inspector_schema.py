@@ -452,4 +452,18 @@ def inspector_schema():
          'when':['authoredRecord','donor_entity_id']})
     asset_actions.append({'id':'edit-npc-system-flags','label':'Edit NPC system selectors','capability':'npc_system_selector_authoring','when':['authoredRecord','donor_entity_id']})
     asset_actions.append({'id':'reset-npc-script','label':'Reset NPC-owned script edits','capability':'npc_script_reset','when':['authoredRecord','donor_entity_id']})
+    schema['components']['WorldSourcePlacement']={
+        'label':'World source entity','layout':'read-only-properties',
+        'properties':[
+            {'id':'identity','label':'Entity','path':['entity_id'],'type':'entity-reference','state':'derived'},
+            {'id':'model','label':'Source model','path':['asset_id'],'type':'asset-reference','state':'derived'},
+            {'id':'scope','label':'Placement scope','path':['placement_scope'],'type':'string','state':'derived'},
+            *[{'id':'position-'+axis,'label':'Source '+axis.upper(),'path':['source_position',axis],'type':'number','state':'derived','empty_label':'Not recorded'} for axis in ('x','y','z')],
+            *[{'id':key,'label':label,'path':[key],'type':'number','state':'read-only-retail','empty_label':'Not recorded for this entity'} for key,label in [('source_cell','Cell index'),('object_record_index','Object record'),('model_pool_index','Model pool index')]],
+            {'id':'record-hash','label':'Source record hash','path':['source_record_sha256'],'type':'string','state':'derived','empty_label':'Not recorded for this entity'},
+            {'id':'visibility','label':'Runtime visibility','path':['runtime_visibility'],'type':'string','state':'unresolved'},
+            {'id':'resting','label':'Runtime resting position','path':['runtime_resting_position'],'type':'string','state':'unresolved'},
+        ],
+        'notes':['Source coordinates are decoded spawn seeds in the retail Y-down coordinate system. Display Y reflection is separate.', 'Runtime visibility and resting transforms are unverified; no authoring or runtime-write capability is inferred.'],
+    }
     return schema

@@ -67,3 +67,28 @@ The browser harness first exhausted Chromium response-body inspection cache for 
 large geometry response; bounded API route capture qualified the same response
 before the final pass. No game, runtime attachment or native Build ran. Source spawn
 seeds do not establish runtime resting positions or visibility; full SDK goal active.
+
+
+## Shared Source Inspector — 2026-10-09
+
+World source entities now render through the shared component inspector using the
+SDK `WorldSourcePlacement` descriptor. The descriptor owns labels, property paths,
+read-only state badges and limits notes. Entity/model identities, placement scope,
+source XYZ, cell/object/model indices and source record hash are separate fields.
+Decoded spawn-seed coordinates remain Derived; runtime visibility and resting
+position remain Unresolved. Missing ground-only fields retain explicit unavailable
+labels. No component actions, authoring adapters or runtime writes are registered.
+The raw entity evidence remains unchanged in a disclosure, with the existing raw
+Inspector identity preserved for source inspection. An older schema without the
+new component can still expose the raw evidence.
+
+Seventeen Python schema checks, three Node inspector/world geometry/hierarchy suites
+and frontend syntax passed. Actual muted map01/map02/map03 workflows verified exact
+XYZ against each source report, two Unresolved runtime badges and no edit controls.
+Hierarchy filtering retained selection and raw Inspector text; close cleared content.
+Desktop and 400px layouts were inspected. Zero page errors or command/Build/Run/Save/
+scene/selection/export requests occurred; project/imports/history and saved fixture
+files stayed exact. Private evidence:
+`local-output/sdk-20260909/worldmap-component-inspector-20261009/`.
+No game, runtime attachment or native Build ran. These remain source spawn seeds;
+runtime resting transforms and visibility require further evidence. Full SDK goal active.

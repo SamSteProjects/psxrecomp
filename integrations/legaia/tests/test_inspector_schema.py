@@ -1,6 +1,16 @@
 import unittest
 from sdk.inspector_schema import inspector_schema
 class InspectorSchema(unittest.TestCase):
+    def test_world_source_component_does_not_claim_runtime_or_edit_capability(self):
+        schema=inspector_schema();component=schema['components']['WorldSourcePlacement']
+        self.assertEqual(component['layout'],'read-only-properties')
+        self.assertNotIn('actions',component)
+        self.assertTrue(all('authoring' not in prop for prop in component['properties']))
+        props={prop['id']:prop for prop in component['properties']}
+        self.assertTrue(all(props['position-'+axis]['state']=='derived' for axis in ('x','y','z')))
+        self.assertTrue(all(props[key]['state']=='unresolved' for key in ('visibility','resting')))
+        self.assertTrue(all(prop['state'] in schema['property_states'] for prop in component['properties']))
+
     def test_model_and_clip_actor_binding_navigation_is_read_only(self):
         for identifier in ('AssetModel','AssetAnimation'):
             component=inspector_schema()['components'][identifier]
