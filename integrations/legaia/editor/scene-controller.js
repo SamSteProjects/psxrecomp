@@ -4,20 +4,26 @@ export function decodeSceneController(value,scene,key){
  return structuredClone(value);
 }
 
+export function qualifySceneControllerAsset(report,asset){
+ const data=asset?.data,source=data?.source_record;
+ if(asset?.type!=='controller'||asset.id!==report.semantic_id||asset.sceneId!==report.scene_id||data?.owner_scene_id!==report.scene_id||data?.read_only!==true||data?.runtime_binding!=='not_asserted'||data?.entry_pc!==report.entry_pc||data?.local_count!==report.record.local_count||data?.inspection_status!==report.status||data?.decoded_instruction_count!==report.instructions.length||data?.dialogue_segment_count!==report.dialogues.length||data?.reference_commit!==report.reference_commit||!source||Object.entries(report.source_record).some(([key,value])=>source[key]!==value))throw Error('Controller asset source changed. Refresh resources.');
+ return true;
+}
+
 export async function openSceneController({getState,busy,expectedAsset=null,onError=()=>{}}){
- const initial=getState(),scene=initial.scene?.id,key=initial.asset_reference_source_key;
+ const initial=getState(),scene=initial.scene?.id,key=initial.asset_reference_source_key,projectPath=initial.project?.path;
  if(busy()||!scene||initial.project?.mode!=='edit'||!key)return;
  const dialog=document.createElement('dialog');dialog.id='scene-controller-dialog';dialog.style.cssText='width:min(850px,calc(100vw - 32px));max-height:90vh;overflow:auto';
  const heading=document.createElement('h2');heading.textContent='Retail Scene Entry Controller';
  const close=document.createElement('button');close.textContent='Close';close.onclick=()=>dialog.close();
  const status=document.createElement('p');status.setAttribute('role','status');status.textContent='Verifying the scene controller source…';
  const content=document.createElement('div');content.style.overflowWrap='anywhere';dialog.append(heading,close,status,content);document.body.append(dialog);dialog.showModal();
- const controller=new AbortController(),fresh=()=>dialog.open&&getState().scene?.id===scene&&getState().asset_reference_source_key===key&&getState().project?.mode==='edit';
+ const controller=new AbortController(),fresh=()=>dialog.open&&getState().project?.path===projectPath&&getState().scene?.id===scene&&getState().asset_reference_source_key===key&&getState().project?.mode==='edit';
  const timer=setInterval(()=>{if(!fresh()){content.replaceChildren();status.textContent='Scene sources changed. Reopen controller inspection.';}},250);
  dialog.addEventListener('close',()=>{clearInterval(timer);controller.abort();dialog.remove();},{once:true});
  try{
   const response=await fetch('/api/scene-controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scene_id:scene,expected_source_key:key}),signal:controller.signal}),value=await response.json();if(!response.ok||value.error)throw Error(value.error||'Controller inspection failed');if(!fresh())return;
-  const report=decodeSceneController(value,scene,key);if(expectedAsset&&(expectedAsset.id!==report.semantic_id||expectedAsset.sceneId!==scene||expectedAsset.data?.source_record?.sha256!==report.source_record.sha256||expectedAsset.data?.entry_pc!==report.entry_pc))throw Error('Controller asset source changed. Refresh resources.');status.textContent=`${report.semantic_id} · Decoder status: ${report.status} · ${report.instructions.length} decoded instructions · ${report.dialogues.length} dialogue segments`;
+  const report=decodeSceneController(value,scene,key);if(expectedAsset)qualifySceneControllerAsset(report,expectedAsset);status.textContent=`${report.semantic_id} · Decoder status: ${report.status} · ${report.instructions.length} decoded instructions · ${report.dialogues.length} dialogue segments`;
   for(const note of report.limitations){const p=document.createElement('p');p.textContent=note;content.append(p);}
   const source=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='Controller source and entry evidence';pre.style.whiteSpace='pre-wrap';pre.textContent=JSON.stringify({source_record:report.source_record,man_source:report.man_source,entry_pc:report.entry_pc,local_count:report.record.local_count,reference_commit:report.reference_commit},null,2);source.append(summary,pre);content.append(source);
   for(const [title,rows] of [['Encoded instructions',report.instructions],['Dialogue segments',report.dialogues],['Opaque regions',report.opaque_regions],['Inspection stops',report.stops]]){const heading=document.createElement('h3');heading.textContent=title;content.append(heading);if(!rows?.length){const p=document.createElement('p');p.textContent='None reported';content.append(p);}for(const row of rows??[]){const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');const pc=Number.isSafeInteger(row.pc)?'PC 0x'+row.pc.toString(16).padStart(4,'0'):'Source region';summary.textContent=pc+' · '+(row.mnemonic??row.reason??(title==='Dialogue segments'?'Dialogue segment':'Source evidence'));pre.style.whiteSpace='pre-wrap';pre.textContent=JSON.stringify(row,null,2);details.append(summary,pre);content.append(details);}}
