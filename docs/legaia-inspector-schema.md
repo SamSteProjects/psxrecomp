@@ -739,3 +739,32 @@ Project/imports/history and original fixture files remained unchanged. Private
 evidence: `local-output/sdk-20260909/asset-usage-browser-20261009/`.
 No game, runtime attachment or native Build was used. Gameplay remains unverified;
 the full SDK goal remains active.
+
+
+## Reference Result Ownership — 2026-10-09
+
+Relationship rows previously retained callable navigation handlers after their
+filters or result rows were replaced. Reference target, exploration and instruction
+callbacks now require their original accepted report, source scope/root, unchanged
+display filters and a mounted row. Detached dialogs are ineligible. A delayed trace
+module import also retains the original report generation and root.
+
+Trace navigation retains its accepted report generation, mounted target and exact
+current direction/depth/layer controls. Downloads require the same control binding.
+Controls cannot invalidate a pending request through retained change callbacks;
+responses are accepted only for their original selected controls. Reference responses
+likewise retain selected scope/root, and report downloads require that ownership.
+Recorded relationships and reverse-engineering interpretations are unchanged.
+
+Four focused Node suites and two JS syntax checks passed. The instruction test now
+covers filtered and detached row callbacks with a connected DOM fixture. Actual
+muted Edge components with synthetic qualified metadata verified trace control
+changes, reruns, busy/stale/detached/closed-pending refusal, filtered reference target
+and exploration refusal, exact downloaded evidence and current navigation once.
+There were zero page errors. Private evidence:
+`local-output/sdk-20260909/reference-result-ownership-20261009/`.
+This was a browser component fixture, not a retail SDK or gameplay acceptance run.
+An initial fixture used an invalid depth stopping reason and assumed synchronous
+close-event removal; those fixture expectations were corrected before the pass.
+No project authoring, game, runtime attachment or native Build occurred. Gameplay
+remains unverified and the full SDK goal remains active.

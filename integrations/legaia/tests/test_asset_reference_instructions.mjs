@@ -23,7 +23,9 @@ class Element{
  constructor(tag){this.tagName=tag;this.children=[];this.dataset={};this.events={};this.textContent='';this.open=false;this.value='';}
  append(...items){for(const item of items){if(this.tagName==='select'&&!this.children.length&&item.tagName==='option')this.value=item.value;item.parent=this;this.children.push(item);}}
  replaceChildren(...items){this.children=[];this.append(...items);}
- setAttribute(){}
+ get isConnected(){return this===globalThis.document.body||!!this.parent?.isConnected&&this.parent.children.includes(this);}
+ contains(item){return item===this||this.children.some(child=>child.contains(item));}
+ setAttribute(name,value){this[name]=value;}
  addEventListener(name,callback){this.events[name]=callback;}
  showModal(){this.open=true;}
  close(){this.open=false;this.events.close?.();}
@@ -37,5 +39,14 @@ const mount=()=>openAssetReferences({record:{id:script,label:'Source'},getState:
 const flush=()=>new Promise(resolve=>setTimeout(resolve,0));
 let view=mount();await flush();let inspect=tree(view).find(item=>item.dataset.referenceInstruction);assert.ok(inspect);await inspect.onclick();assert.deepEqual(selected,[site]);assert.deepEqual(neighbors,[]);assert.equal(view.open,false);await inspect.onclick();assert.equal(selected.length,1);
 view=mount();await flush();inspect=tree(view).find(item=>item.dataset.referenceInstruction);busy=true;await inspect.onclick();assert.equal(view.open,true);assert.equal(selected.length,1);busy=false;state={...state,asset_reference_source_key:'f'.repeat(64)};await inspect.onclick();assert.equal(view.open,true);assert.equal(selected.length,1);view.close();state.asset_reference_source_key=hash;
+view=mount();await flush();
+const oldInstruction=tree(view).find(item=>item.dataset.referenceInstruction),oldTarget=tree(view).find(item=>item.dataset.referenceTarget),oldExplore=tree(view).find(item=>item.dataset.exploreReferenceTarget),search=tree(view).find(item=>item['aria-label']==='Search recorded references');
+search.value='No matching identity';search.oninput();
+for(const button of [oldInstruction,oldTarget,oldExplore])await button.onclick();
+assert.equal(view.open,true);assert.equal(selected.length,1);assert.equal(neighbors.length,0);
+search.value='';search.oninput();assert.ok(tree(view).find(item=>item.dataset.referenceInstruction));
+// Even an un-dispatched control value change invalidates a retained row.
+inspect=tree(view).find(item=>item.dataset.referenceInstruction);search.value='Changed before event';await inspect.onclick();assert.equal(selected.length,1);view.close();
+view=mount();await flush();inspect=tree(view).find(item=>item.dataset.referenceInstruction);view.remove();await inspect.onclick();assert.equal(selected.length,1);view.close();
 let resolve;globalThis.fetch=()=>new Promise(done=>resolve=done);view=mount();view.close();resolve({ok:true,json:async()=>structuredClone(report)});await flush();assert.equal(tree(view).some(item=>item.dataset.referenceInstruction),false);assert.deepEqual(errors,[]);
 console.log('Asset reference instruction sites: qualified P1/P2 identity, source refresh, targets, stale/busy/close/late-response and exactly-once navigation pass');
