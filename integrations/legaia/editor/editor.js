@@ -52,7 +52,7 @@ import {validateVertexRetarget} from '/vertex-retarget.js';
 import {qualifySourceNormals,rigidFrameNormals} from '/source-normal-view.js';
 import {mountAssetNavigation} from '/asset-navigation.js';
 import {wallCellAt,wallDragRectangle,wallSelectionGeometry} from '/wall-viewport.js';
-import {interpolateAnimationRange,interpolateAnimationFrameRange,holdAnimationFrameRange,removeAnimationRange,moveAnimationRange,decodeImportedFrame} from '/animation-range.js';
+import {interpolateAnimationRange,interpolateAnimationFrameRange,holdAnimationFrameRange,removeAnimationRange,moveAnimationRange,decodeReversedRange,decodeImportedFrame} from '/animation-range.js';
 import {decodeChannelPoseProposal} from '/animation-channel-proposal.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
 import {appendCaptureSummary} from '/script-capture.js';
@@ -3926,7 +3926,18 @@ async function openAnimationChannels(entity,initialChannel=null){
       const result=moveAnimationRange({start:Number(rangeInputs.start.value),end:Number(rangeInputs.end.value),frameCount:binding.frame_count,objectCount:binding.bone_count,object:importedScope.value==='all_objects'?null:channelObject,axes:removalAxes.value,offset:Number(moveOffset.value),edits});
       showChannelReview(result,interpolationKey(),`${result.movedAxes} stored ${result.movedAxes===1?'axis':'axes'} proposed for a shift of ${moveOffset.value} frames. Source contributions are withdrawn and destination values remain exact. Other contributions remain; project unchanged until Apply.`,'Apply reviewed range move');
     }catch(exc){if(current())error.textContent=exc.message;}};
-    rangeControls.append(interpolationNote,scopeLabel,operationLabel,holdNote,curveLabel,interpolate,removalLabel,removeRange,moveLabel,moveNote,moveRange,interpolationReview);
+    const reverseRange=document.createElement('button');reverseRange.type='button';reverseRange.textContent='Review reversed effective pose range';const reverseNote=document.createElement('p');reverseNote.className='field-note';reverseNote.textContent='Reverse complete effective poses in the selected frame and object range, including Retail channels with no edits. All six axes are authored; Contribution axes and shift do not limit this operation. Clip length and playback timing remain unchanged.';
+    reverseRange.onclick=async()=>{interpolationReview.replaceChildren();if(!current()||busy)return;try{
+      if(channelDirty)throw Error('Apply or discard the current draft before reversing poses.');
+      if(loadedAuthoringState!==JSON.stringify([state.scene_preview_source_key,state.authored_assets]))throw Error('Project changed. Reopen the animation editor.');
+      if(!rangeInputs.start.reportValidity()||!rangeInputs.end.reportValidity())return;
+      const key=interpolationKey(),start=Number(rangeInputs.start.value),end=Number(rangeInputs.end.value),object=importedScope.value==='all_objects'?null:channelObject,sourceKey=state.scene_preview_source_key;setBusy(true);
+      const response=await fetch('/api/animation-range-reverse-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id,start,end,object_index:object,expected_source_key:sourceKey})}),report=await response.json();
+      if(!current())return;if(key!==interpolationKey())throw Error('Selection or project changed during reversal review. Review again.');if(!response.ok||report.error)throw Error(report.error||'Pose reversal review failed.');
+      const result=decodeReversedRange(report,{entityId:entity.id,binding,sourceKey,start,end,object});if(!result.changedAxes)throw Error('Reversing these effective poses would not change native channels.');
+      showChannelReview(result,key,`${result.proposed.length} complete reversed poses proposed across frames ${start} through ${end}; ${result.changedAxes} effective native axes change. Project unchanged until Apply. Shared conflicts are checked before review and on Apply.`,'Apply reviewed pose reversal');
+    }catch(exc){if(current())error.textContent=exc.message;}finally{setBusy(false);}};
+    rangeControls.append(interpolationNote,scopeLabel,operationLabel,holdNote,curveLabel,interpolate,removalLabel,removeRange,moveLabel,moveNote,moveRange,reverseNote,reverseRange,interpolationReview);
     clearChannel.onclick=()=>{
       if(channelDirty){error.textContent='Apply or discard unapplied channel changes before clearing the selected contribution.';return;}
       const next=edits.filter(edit=>edit.frame_index!==channelFrame||edit.object_index!==channelObject);

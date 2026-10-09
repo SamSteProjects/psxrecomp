@@ -3173,6 +3173,20 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Project changed during channel pose inspection')
                     self._json(200, preview)
                     return
+                if route == '/api/animation-range-reverse-review':
+                    from .scene_preview import source_key
+                    from .animation_range_review import reverse_range
+                    if set(body) != {'entity_id', 'start', 'end', 'object_index', 'expected_source_key'} or not isinstance(body.get('entity_id'), str):
+                        raise ProjectError('Pose reversal requires exact actor, range, object scope and current source')
+                    key = source_key(self.server.project)
+                    if not key or body['expected_source_key'] != key:
+                        raise ProjectError('Project changed; reopen the imported animation editor')
+                    report = reverse_range(self.server.project, body['entity_id'], body['start'], body['end'], body['object_index'])
+                    if source_key(self.server.project) != key:
+                        raise ProjectError('Project changed during pose reversal review')
+                    self._json(200, dict(report, schema_version='legaia.animation-range-reverse.v1', entity_id=body['entity_id'],
+                        project_source_key=key, project_changed=False, gameplay_verified=False))
+                    return
                 if route == '/api/animation-frame-values':
                     from .scene_preview import source_key
                     if (set(body) != {'entity_id', 'frame_index', 'expected_source_key'} or

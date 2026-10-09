@@ -118,3 +118,14 @@ export function moveAnimationRange(args){
   if(edits.length>4096)throw Error('Moved and retained contributions exceed the 4096-channel limit.');
   return {proposed,edits,movedAxes:selected.removedAxes};
 }
+
+export function decodeReversedRange(report,{entityId,binding,sourceKey,start,end,object}){
+  const keys=['animation_id','source_record_sha256','before_record_sha256','after_record_sha256','start','end','object_index','proposed','value','changed_axes','schema_version','entity_id','project_source_key','project_changed','gameplay_verified'];
+  if(!report||Object.keys(report).length!==keys.length||!keys.every(k=>Object.hasOwn(report,k))||report.schema_version!=='legaia.animation-range-reverse.v1'||report.entity_id!==entityId||report.project_source_key!==sourceKey||report.project_changed!==false||report.gameplay_verified!==false||report.animation_id!==binding.semantic_id||report.source_record_sha256!==binding.source_record.record_sha256||report.start!==start||report.end!==end||report.object_index!==object||!['before_record_sha256','after_record_sha256'].every(k=>/^[a-f0-9]{64}$/.test(report[k]))||!Number.isSafeInteger(report.changed_axes)||report.changed_axes<0||report.changed_axes>24576)throw Error('Reversed pose review differs from the current clip, source or selection.');
+  const objects=object===null?Array.from({length:binding.bone_count},(_,i)=>i):[object];
+  if(!Array.isArray(report.proposed)||report.proposed.length!==(end-start+1)*objects.length||report.proposed.length>4096||!report.value||Object.keys(report.value).sort().join(',')!=='animation_id,edits,source_record_sha256'||report.value.animation_id!==binding.semantic_id||report.value.source_record_sha256!==binding.source_record.record_sha256)throw Error('Reversed poses are incomplete or have different source ownership.');
+  // Validate all retained and proposed contributions, then require every complete reversed pose in the command.
+  removeAnimationRange({start,end,frameCount:binding.frame_count,objectCount:binding.bone_count,object,axes:'all',edits:report.value.edits});
+  report.proposed.forEach((row,i)=>{if(!row||Object.keys(row).sort().join(',')!=='frame_index,object_index,rotation_psx,translation'||row.frame_index!==start+Math.floor(i/objects.length)||row.object_index!==objects[i%objects.length])throw Error('Reversed poses have invalid frame/object ownership.');values(row);const stored=report.value.edits.find(r=>r.frame_index===row.frame_index&&r.object_index===row.object_index);if(!stored)throw Error('Reversed pose is missing from the reviewed command.');for(const kind of ['translation','rotation_psx'])for(const axis of 'xyz')if(stored[kind]?.[axis]!==row[kind][axis])throw Error('Reversed pose differs from the reviewed command.');});
+  return {proposed:structuredClone(report.proposed),edits:structuredClone(report.value.edits),changedAxes:report.changed_axes};
+}
