@@ -870,6 +870,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-operand-bundle.js": ("script-operand-bundle.js", "text/javascript"),
                  "/script-capture.js": ("script-capture.js", "text/javascript"),
                  "/animation-range.js": ("animation-range.js", "text/javascript"),
+                 "/animation-channel-proposal.js": ("animation-channel-proposal.js", "text/javascript"),
                  "/project-settings.js": ("project-settings.js", "text/javascript"),
                  "/asset-reference-trace.js": ("asset-reference-trace.js", "text/javascript"),
                  "/sequence-replacement-authoring.js": ("sequence-replacement-authoring.js", "text/javascript"),
@@ -3146,6 +3147,25 @@ class EditorHandler(BaseHTTPRequestHandler):
                         return
                     self.server.project.import_animation_record(body['entity_id'], payload, body.get('format', 'record'))
                     self._json(200, self.server.state())
+                    return
+                if route == '/api/animation-channels-pose-preview':
+                    from .scene_preview import source_key
+                    if (set(body) != {'entity_id', 'value', 'expected_source_key'} or
+                            not isinstance(body.get('entity_id'), str) or not isinstance(body.get('value'), dict)):
+                        raise ProjectError('Channel pose inspection requires actor, reviewed contribution and current source identity only')
+                    key = source_key(self.server.project)
+                    if not key or body['expected_source_key'] != key:
+                        raise ProjectError('Project changed; review interpolation again')
+                    animation, asset = self.server.project.animation_channels_pose_preview(body['entity_id'], body['value'])
+                    preview = self.server.model_preview(asset, prepared=animation.pop('geometry'))
+                    preview['frames'] = animation.pop('frames')
+                    animation.update(source_clip_id=animation['clip_id'], clip_id='channel-preview', entity_id=body['entity_id'])
+                    animation['proposal']['project_source_key'] = key
+                    preview['animation'] = animation
+                    preview['animation_support'] = {'supported':True, 'clips':[{'id':'channel-preview','label':'Reviewed sampled channels'}], 'evidence':'reviewed_sampled_channels_not_applied_or_runtime_verified'}
+                    if source_key(self.server.project) != key:
+                        raise ProjectError('Project changed during channel pose inspection')
+                    self._json(200, preview)
                     return
                 if route == '/api/animation-frame-values':
                     from .scene_preview import source_key

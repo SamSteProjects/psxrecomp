@@ -532,6 +532,26 @@ class ProjectService:
                      for a in document["actors"] if "AnimationChannels" in self.overrides.get(a["semantic_id"], {})}
         return catalog.channel_values(self._actor(identifier), asset, frame_index, object_index, overrides)
 
+    def animation_channels_pose_preview(self, identifier: str, value: dict) -> tuple[dict, dict]:
+        """Pose a reviewed contribution without changing the project or retail bytes."""
+        from importer.scene_animation import load_scene_actor_animation_catalog
+        document = self.imports.get(self.active_scene)
+        actor = next((a for a in (document or {}).get('actors', []) if a['semantic_id'] == identifier), None)
+        if actor is None:
+            raise ProjectError('Channel pose preview requires an actor in the active scene')
+        self._validate_animation_override(identifier, value)
+        asset = next(a for a in document['assets']['models']
+                     if a['semantic_id'] == actor['model_reference']['asset_semantic_id'])
+        overrides = {a['semantic_id']: deepcopy(self.overrides[a['semantic_id']]['AnimationChannels'])
+                     for a in document['actors'] if a['semantic_id'] != identifier and
+                     'AnimationChannels' in self.overrides.get(a['semantic_id'], {})}
+        overrides[identifier] = deepcopy(value)
+        catalog = load_scene_actor_animation_catalog(self.disc_path, document['scene']['name'])
+        animation = catalog.authored_bank_preview(actor, asset, overrides)
+        animation['representation'] = 'channel_preview'
+        animation['proposal'] = {'value': deepcopy(value), 'project_changed': False, 'gameplay_verified': False}
+        return animation, deepcopy(asset)
+
     def animation_frame_values(self, identifier: str, frame_index: int) -> dict:
         """Resolve a freshly verified full imported frame for pose authoring."""
         from importer.scene_animation import load_scene_actor_animation_catalog
