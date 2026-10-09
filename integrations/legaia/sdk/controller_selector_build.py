@@ -7,12 +7,17 @@ from importer.controller_system_flags import load_controller_system_flag_context
 
 def collect(project,owner,components):
     value=validate_components(project,owner,components)
+    if 'ControllerFades' in value:
+        from .build import BuildError
+        raise BuildError('Controller fade native Build integration is pending; remove the override before Build')
     return scene_document(project,owner)['scene']['semantic_id'],value
 
 
 def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
     from .build import BuildError
     owner=scene_id+'/controllers/man-p1/0000'
+    if 'ControllerFades' in project.overrides[owner]:
+        raise BuildError('Controller fade native Build integration is pending; remove the override before Build')
     components=validate_components(project,owner,project.overrides[owner])
     value=components.get(COMPONENT,dict(entries={}))
     scene=project.imports[scene_id]['scene']['name']

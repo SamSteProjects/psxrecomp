@@ -199,7 +199,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     facing={}
     branches={}
     for identifier,components in overrides.items():
-        if isinstance(components,dict) and {'ControllerSystemFlags','ControllerBranches','ControllerTileRects'} & set(components):
+        if isinstance(components,dict) and {'ControllerSystemFlags','ControllerBranches','ControllerTileRects','ControllerFades'} & set(components):
             from .controller_selector_build import collect
             if collect(project,identifier,components)[0]!=draft['scene_id']:raise ProjectError('Controller override belongs to another candidate scene')
             continue
@@ -499,7 +499,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         from .floor_heights import compose as compose_floor_heights
         candidate,floor_height_audit=compose_floor_heights(project,draft['scene_id'],source,candidate)
         controller_selector_audit=[]
-        if {'ControllerSystemFlags','ControllerBranches','ControllerTileRects'} & set(project.overrides.get(draft['scene_id']+'/controllers/man-p1/0000',{})):
+        if {'ControllerSystemFlags','ControllerBranches','ControllerTileRects','ControllerFades'} & set(project.overrides.get(draft['scene_id']+'/controllers/man-p1/0000',{})):
             from .controller_selector_build import compose as compose_controller
             candidate,controller_selector_audit=compose_controller(project,draft['scene_id'],source,candidate,appended=True)
         # Check the final MAN before reading/repacking the archive. Existing-only

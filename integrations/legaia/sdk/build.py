@@ -554,7 +554,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                      for scene_id, document in project.imports.items()
                      for actor in document["actors"]}
     for identifier, components in sorted(project.overrides.items()):
-        if isinstance(components,dict) and {'ControllerSystemFlags','ControllerBranches','ControllerTileRects'} & set(components):
+        if isinstance(components,dict) and {'ControllerSystemFlags','ControllerBranches','ControllerTileRects','ControllerFades'} & set(components):
             from .controller_selector_build import collect
             scene_id,value=collect(project,identifier,components)
             controller_edits[scene_id]=value
