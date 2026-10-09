@@ -550,6 +550,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                      for scene_id, document in project.imports.items()
                      for actor in document["actors"]}
     for identifier, components in sorted(project.overrides.items()):
+        if isinstance(components,dict) and 'ControllerSystemFlags' in components:
+            raise BuildError('Controller selector overrides require pending native Build integration; no package was emitted')
         if isinstance(components,dict) and 'AnimationRecords' in components:
             from .animation_record_ledger import validate as validate_animation_records
             ledger = validate_animation_records(project,identifier,components['AnimationRecords'],verify_disc=True)

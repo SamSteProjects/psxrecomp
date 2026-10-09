@@ -2157,6 +2157,10 @@ class ProjectService:
             from .script_branches import apply
             apply(self, command)
             return
+        if command.get('type') == 'set_controller_system_flag_selector':
+            from .controller_system_flags import apply
+            apply(self,command)
+            return
         if command.get('type') == 'set_system_flag_selector':
             from .system_flags import apply
             apply(self, command)
@@ -3395,8 +3399,14 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptAnimationOperands", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ControllerSystemFlags", "ScriptWaits", "ScriptAnimationOperands", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements"}:
                 raise ProjectError("Unsupported authored component")
+            if 'ControllerSystemFlags' in components:
+                from .controller_system_flags import validate
+                if set(components)!={'ControllerSystemFlags'}:raise ProjectError('Controller cannot contain actor components')
+                validate(result,identifier,components['ControllerSystemFlags'])
+                result.overrides[identifier]=deepcopy(components)
+                continue
             if 'WorldMapPlacements' in components:
                 from .worldmap_placements import validate
                 if set(components) != {'WorldMapPlacements'}:
@@ -3850,6 +3860,10 @@ class ProjectService:
                 records.append({"id":scene_id, "kind":"scene", "name":document["scene"]["name"],
                                 "scene_id":scene_id, "source_scene":document["scene"]["name"],
                                 "changes":scene_changes, "authored":scene_authored})
+            controller_owner=scene_id+'/controllers/man-p1/0000'
+            controller_value=self.overrides.get(controller_owner,{}).get('ControllerSystemFlags')
+            if controller_value:
+                records.append(dict(id=controller_owner.replace('scene://','script://',1),kind='controller',name='Scene Entry Controller',scene_id=scene_id,source_scene=document['scene']['name'],changes=[f"Controller system selectors: {len(controller_value['entries'])} operands"],authored={'ControllerSystemFlags':deepcopy(controller_value)}))
             for actor in document["actors"]:
                 identifier = actor["semantic_id"]
                 edits = self.overrides.get(identifier, {})
