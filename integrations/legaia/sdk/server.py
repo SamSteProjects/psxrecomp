@@ -1324,6 +1324,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!=expected or not isinstance(body['entity'],str):raise ProjectError('Controller five-word request requires exact inputs')
                     from .controller_five_words import snapshot,review
                     self._json(200,snapshot(self.server.project,body['entity']) if route=='/api/controller-five-words' else review(self.server.project,body['entity'],body['operand_id'],body['value']));return
+                if route in ('/api/controller-global-bytes','/api/controller-global-byte-review'):
+                    expected={'entity'} if route=='/api/controller-global-bytes' else {'entity','operand_id','value'}
+                    if set(body)!=expected or not isinstance(body['entity'],str):raise ProjectError('Controller global-byte request requires exact inputs')
+                    from .controller_global_bytes import snapshot,review
+                    self._json(200,snapshot(self.server.project,body['entity']) if route=='/api/controller-global-bytes' else review(self.server.project,body['entity'],body['operand_id'],body['value']));return
                 if route in ('/api/controller-three-words','/api/controller-three-word-review'):
                     expected={'entity'} if route=='/api/controller-three-words' else {'entity','operand_id','value'}
                     if set(body)!=expected or not isinstance(body['entity'],str):raise ProjectError('Controller three-word request requires exact inputs')
