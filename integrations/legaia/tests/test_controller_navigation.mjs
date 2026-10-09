@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {controllerNavigationTarget,qualifyControllerNavigation} from '../editor/controller-navigation.js';
+const hash='a'.repeat(64),context={projectPath:'project',sourceKey:'b'.repeat(64),activeSceneId:'scene://other'},record={id:'script://fixture/controllers/man-p1/0000',sceneId:'scene://fixture',type:'controller',data:{source_record:{sha256:hash}}};
+const target=controllerNavigationTarget(record,context,24),current={...context,activeSceneId:record.sceneId};
+assert.deepEqual(qualifyControllerNavigation(target,record,current),target);
+assert.equal(context.activeSceneId,'scene://other');assert.equal(record.data.source_record.sha256,hash);
+for(const changed of [{projectPath:'other'},{sourceKey:'c'.repeat(64)},{activeSceneId:'scene://other'},{sourceKey:null}])assert.throws(()=>qualifyControllerNavigation(target,record,{...current,...changed}));
+for(const changed of [{id:'script://other/controllers/man-p1/0000'},{sceneId:'scene://other'},{type:'script'},{data:{source_record:{sha256:'d'.repeat(64)}}}])assert.throws(()=>qualifyControllerNavigation(target,{...record,...changed},current));
+for(const pc of [-1,65536,1.5,NaN,'24'])assert.throws(()=>controllerNavigationTarget(record,context,pc));
+for(const pc of [null,0,65535])assert.equal(controllerNavigationTarget(record,context,pc).pc,pc);
+const authored={...record,authoredRecord:{id:record.id,kind:'controller',scene_id:record.sceneId,authored:{ControllerPartySelectors:{source_record_sha256:hash,entries:{[record.id+'/party-selector/0018']:{party_selector:1}}}}}};
+assert.deepEqual(qualifyControllerNavigation(target,authored,current),target);
+assert.throws(()=>qualifyControllerNavigation(target,{...authored,data:{source_record:{sha256:'e'.repeat(64)}}},current));
+console.log('Controller navigation binds project inputs, scene, Retail hash and bounded operand focus across scene changes.');

@@ -1089,6 +1089,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/controller-authoring-availability.js": ("controller-authoring-availability.js", "text/javascript"),
                  "/controller-scene-bytes.js": ("controller-scene-bytes.js", "text/javascript"),
                  "/controller-hierarchy.js": ("controller-hierarchy.js", "text/javascript"),
+                 "/controller-navigation.js": ("controller-navigation.js", "text/javascript"),
                  "/controller-operand-files.js": ("controller-operand-files.js", "text/javascript"),
                  "/controller-build-navigation.js": ("controller-build-navigation.js", "text/javascript"),
                  "/controller-owner-inspector.js": ("controller-owner-inspector.js", "text/javascript"),

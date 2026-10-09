@@ -1,6 +1,7 @@
 import {hierarchyControllerRecord,hierarchyNeedsControllerResources} from '/controller-hierarchy.js';
+import {controllerNavigationTarget,qualifyControllerNavigation} from '/controller-navigation.js';
 import {controllerBuildTarget} from '/controller-build-navigation.js';
-import {mountControllerOwnerInspector,controllerAssetSourceHash} from '/controller-owner-inspector.js';
+import {mountControllerOwnerInspector} from '/controller-owner-inspector.js';
 import {createAssetResourceDiscovery,assetSearchNeedsResources} from '/asset-resource-discovery.js';
 import {copiedAnimationAsset} from '/animation-copy-selection.js';
 import {decodeSceneCatalog} from '/scene-catalog.js';
@@ -2164,13 +2165,13 @@ async function resolveProjectAsset(record){
 }
 async function inspectControllerAsset(record,focusFlagPc=null){
   if(busy||record.type!=='controller'||!canEdit())return;
-  const scene=record.sceneId,path=state.project?.path,sourceHash=controllerAssetSourceHash(record);
-  if(typeof scene!=='string'||record.id!=='script://'+scene.slice(8)+'/controllers/man-p1/0000'||!sourceHash)throw Error('Controller asset has no qualified scene ownership.');
+  const context=()=>({projectPath:state.project?.path,sourceKey:state.project_assets_source_key,activeSceneId:state.scene?.id}),target=controllerNavigationTarget(record,context(),focusFlagPc),scene=target.sceneId;
   if(scene!==state.scene?.id&&!await api('/api/scene',{scene_id:scene}))return;
-  if(path!==state.project?.path||scene!==state.scene?.id)throw Error('Controller source scene changed during navigation.');
+  qualifyControllerNavigation(target,record,context());
   if(resourceKey!==resourceStateKey())await refreshResources();
   const fresh=assetRecords(true).find(row=>row.id===record.id&&row.type==='controller'&&row.sceneId===scene);
-  if(path!==state.project?.path||scene!==state.scene?.id||resourceKey!==resourceStateKey()||fresh?.data?.source_record?.sha256!==sourceHash)throw Error('Controller asset source changed. Refresh resources.');
+  if(resourceKey!==resourceStateKey())throw Error('Controller catalog changed. Refresh resources.');
+  qualifyControllerNavigation(target,fresh,context());
   selectSceneResource(fresh);await openSceneController({getState:()=>state,busy:()=>busy,api,setBusy,expectedAsset:fresh,focusFlagPc,onError:error=>notify(error.message,true)});
 }
 async function activateAsset(record,action=null){
