@@ -4,7 +4,7 @@ class InspectorSchema(unittest.TestCase):
     def test_world_source_component_does_not_claim_runtime_or_edit_capability(self):
         schema=inspector_schema();component=schema['components']['WorldSourcePlacement']
         self.assertEqual(component['layout'],'read-only-properties')
-        self.assertNotIn('actions',component)
+        self.assertEqual(component['actions'],[{'id':'inspect-world-placement-record','label':'Inspect placement record','capability':'worldmap_placements','requires_edit':True}])
         self.assertTrue(all('authoring' not in prop for prop in component['properties']))
         props={prop['id']:prop for prop in component['properties']}
         self.assertTrue(all(props['position-'+axis]['state']=='derived' for axis in ('x','y','z')))

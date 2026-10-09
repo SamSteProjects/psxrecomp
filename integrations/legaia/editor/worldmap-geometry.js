@@ -1,4 +1,4 @@
-import {renderComponentSection} from './component-inspector.js';
+import {renderComponentSection,bindComponentActions} from './component-inspector.js';
 import {SceneRenderer} from './scene-renderer.js';
 import {worldmapSceneView,worldmapHierarchyRows} from './worldmap-scene.js';
 const scenes=['map01','map02','map03'],hash=value=>typeof value==='string'&&/^[0-9a-f]{64}$/.test(value);
@@ -34,7 +34,7 @@ export function decodeWorldmapGeometry(value,scene,key){
   if(new TextEncoder().encode(JSON.stringify(value)).length>32*1024*1024)fail('World ground exceeds its inspection budget.');return value;
 }
 function node(tag,text){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;}
-export function mountWorldmapGeometry({after,getState,busy,setBusy,onError=()=>{}}){
+export function mountWorldmapGeometry({after,getState,busy,setBusy,onError=()=>{},onInspectPlacement=null}){
   const open=node('button','World ground');open.id='worldmap-geometry';open.type='button';after.after(open);
   const dialog=node('dialog');dialog.id='worldmap-geometry-dialog';dialog.className='project-dialog';Object.assign(dialog.style,{width:'min(1180px,96vw)',maxHeight:'94vh',overflow:'auto',boxSizing:'border-box'});document.body.append(dialog);
   const heading=node('div');heading.className='dialog-heading';const close=node('button','Close');close.type='button';heading.append(node('h2','World-map source scene'),close);close.onclick=()=>dialog.close();
@@ -55,7 +55,11 @@ export function mountWorldmapGeometry({after,getState,busy,setBusy,onError=()=>{
     catch(error){hierarchySearch.setAttribute('aria-invalid','true');hierarchyCount.textContent=error.message;}
   }
   hierarchySearch.oninput=()=>{if(busy()||!report||!current())return;renderHierarchy();};
-  function inspectSelection(){const selected=sceneView?.entities.find(row=>row.entity_id===hierarchy.value);const schema=getState().inspector_schema;inspectorComponent.innerHTML=selected&&schema?.components?.WorldSourcePlacement?renderComponentSection(schema,'WorldSourcePlacement',selected):'';inspector.textContent=selected?JSON.stringify({entity_id:selected.entity_id,asset_id:selected.asset_id,source_position:selected.source_position,source_cell:selected.source_cell,object_record_index:selected.object_record_index,model_pool_index:selected.model_pool_index,source_record_sha256:selected.source_record_sha256,placement_scope:selected.placement_scope,runtime_visibility:selected.runtime_visibility,runtime_resting_position:selected.runtime_resting_position},null,2):'';}
+  function inspectSelection(){const selected=sceneView?.entities.find(row=>row.entity_id===hierarchy.value);const schema=getState().inspector_schema,capturedReport=report,entityId=selected?.entity_id;
+    const registry=selected?.placement_scope==='source_spawn_seed'&&Number.isSafeInteger(selected.object_record_index)&&hash(selected.source_record_sha256)&&typeof onInspectPlacement==='function'?{'inspect-world-placement-record':{run:async()=>{const target={scene:capturedReport.scene,entityId,recordIndex:selected.object_record_index,sourceRecordHash:selected.source_record_sha256,sourceKey:session.key,projectPath:session.path};dialog.close();await onInspectPlacement(target);}}}:{};
+    inspectorComponent.innerHTML=selected&&schema?.components?.WorldSourcePlacement?renderComponentSection(schema,'WorldSourcePlacement',selected,{registry,capabilities:getState().capabilities,editable:getState().project?.mode==='edit'}):'';
+    const actionButton=inspectorComponent.querySelector('[data-inspector-action]');
+    bindComponentActions(inspectorComponent,registry,{current:()=>inspectorComponent.isConnected&&inspectorComponent.contains(actionButton)&&getState().capabilities?.worldmap_placements===true&&current()&&report===capturedReport&&hierarchy.value===entityId,editable:()=>getState().project?.mode==='edit',busy,onError});inspector.textContent=selected?JSON.stringify({entity_id:selected.entity_id,asset_id:selected.asset_id,source_position:selected.source_position,source_cell:selected.source_cell,object_record_index:selected.object_record_index,model_pool_index:selected.model_pool_index,source_record_sha256:selected.source_record_sha256,placement_scope:selected.placement_scope,runtime_visibility:selected.runtime_visibility,runtime_resting_position:selected.runtime_resting_position},null,2):'';}
   hierarchy.onchange=()=>{if(pendingKind==='export'){cancelPending();status.textContent='Export canceled because the selection changed.';}inspectSelection();draw();updateState();};models.onchange=()=>{if(pendingKind==='export'){cancelPending();status.textContent='Export canceled because the source scope changed.';}draw();updateState();};
   selectedFrame.onclick=()=>{if(!report||!current())return;const points=renderer.bounds(new Map(),hierarchy.value);if(!points.length)return;const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];for(const p of points)[p.x,p.y,p.z].forEach((v,i)=>{min[i]=Math.min(min[i],v);max[i]=Math.max(max[i],v);});camera.target={x:(min[0]+max[0])/2,y:(min[1]+max[1])/2,z:(min[2]+max[2])/2};camera.distance=Math.max(20,Math.hypot(...max.map((v,i)=>v-min[i]))*1.4);draw();};
   const camera={projection:'perspective',yaw:-.65,pitch:.8,distance:24000,target:{x:8192,y:0,z:8192}};

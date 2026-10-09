@@ -92,3 +92,13 @@ files stayed exact. Private evidence:
 `local-output/sdk-20260909/worldmap-component-inspector-20261009/`.
 No game, runtime attachment or native Build ran. These remain source spawn seeds;
 runtime resting transforms and visibility require further evidence. Full SDK goal active.
+
+## Placement Inspector Handoff — 2026-10-09
+
+Select a source model seed in World ground and choose **Inspect placement record**. The source dialog hands the selected stable entity to World placements, reloads qualified geometry and placement metadata, selects its exact owning record, and frames that seed. Source XYZ remains decoded read-only metadata; destination number fields contain Current record offsets and yaw, not absolute seed coordinates.
+
+Ownership requires the same Edit project, source key, kingdom, source record index/hash and placement entity. Exactly one fresh owner must qualify. Missing/changed ownership closes the destination instead of leaving a different default record selected. Busy state, existing placement dialogs/drafts, changed project/mode/source and withdrawn capability refuse navigation. Replaced Inspector buttons cannot navigate even if the new Inspector selects the same entity. Ground exposes no placement action. Shared records still require explicit all-cell consent; navigation grants none automatically. Review, typed Apply, retained provenance and undo remain owned by the existing placement workflow. Discard restores Current values and clears the old Reviewed status.
+
+Targeted evidence: 17 inspector-schema Python checks; placement and shared-component Node suites; three JavaScript syntax checks. Actual private retail source workflows for map01/map02/map03 qualified records 0414/0461/0490 with 1/55/31 source cells respectively. Each selected exact entity/hash/record/anchor and Current values, then reviewed a changed byte and discarded. Detached-button refusal and ground action absence passed. Desktop and 400px views were inspected. Project document, imports, history and all saved fixture bytes remained exact; zero browser errors or mutation requests occurred.
+
+Private evidence: `local-output/sdk-20260909/worldmap-placement-handoff-20261009/`. No extracted assets or fixtures are tracked. No game, runtime attachment, native Build, install or disc export occurred. Apply/package/gameplay were not rerun for this navigation change. Runtime visibility and resting positions remain unresolved; full SDK goal remains active.
