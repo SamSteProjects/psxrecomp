@@ -31,4 +31,24 @@ class WorldmapExportHTTPTests(unittest.TestCase):
                     export.assert_called_once_with(project,'map01','a'*64,'selected',selected['entity_id'])
             finally:server.shutdown();server.server_close();thread.join(5)
 
+class WorldPlacementExportHTTPTests(unittest.TestCase):
+    def test_legacy_and_selected_scope_keep_server_owned_payload(self):
+        with tempfile.TemporaryDirectory() as root:
+            project=ProjectService(Path(root));server=EditorServer(('127.0.0.1',0),project)
+            thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+            def post(body):
+                request=Request(f'http://127.0.0.1:{server.server_port}/api/export/worldmap-placements',data=json.dumps(body).encode(),headers={'Content-Type':'application/json'})
+                try:
+                    with urlopen(request) as response:return response.status,json.load(response)
+                except HTTPError as error:
+                    with error:return error.code,json.load(error)
+            try:
+                with patch('sdk.worldmap_placement_export.export',return_value={'fixture':True}) as export:
+                    base=dict(scene='map01',source_key='a'*64,proposal=None)
+                    for body in ({**base,'path':'C:/outside.glb'},{**base,'preview':{}},{**base,'scope':'selected'},{**base,'scope':'unknown'},{**base,'scope':'ground','entity_id':'scene://map01/worldmap/ground'}):
+                        self.assertEqual(post(body)[0],400)
+                    export.assert_not_called();self.assertEqual(post(base),(200,{'fixture':True}));export.assert_called_once_with(project,'map01','a'*64,None,scope='source-scene',entity_id=None)
+                    export.reset_mock();selected={**base,'scope':'selected','entity_id':'scene://map01/worldmap/ground'};self.assertEqual(post(selected),(200,{'fixture':True}));export.assert_called_once_with(project,'map01','a'*64,None,scope='selected',entity_id=selected['entity_id'])
+            finally:server.shutdown();server.server_close();thread.join(5)
+
 if __name__=='__main__':unittest.main()

@@ -11,9 +11,13 @@ from .worldmap_authoring import state_key
 from .worldmap_placements import context,review,patch
 from .worldmap_export import MAX_RESPONSE_BYTES
 
-def export(project,scene,expected_key,proposal=None):
+def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entity_id=None):
     if scene not in ('map01','map02','map03') or project.mode!='edit' or not project.disc_path:
         raise ProjectError('World placement export requires a supported kingdom in Edit mode')
+    if scope not in ('source-scene','ground','selected') or (scope=='selected')!=(entity_id is not None):
+        raise ProjectError('Choose source-scene, ground or selected placement export scope')
+    if entity_id is not None and (not isinstance(entity_id,str) or len(entity_id)>1024 or not entity_id.startswith(f'scene://{scene}/worldmap/')):
+        raise ProjectError('Selected placement export requires a bounded entity in the same kingdom')
     key=state_key(project)
     def current():
         if expected_key!=key or project.mode!='edit' or state_key(project)!=key:
@@ -59,11 +63,11 @@ def export(project,scene,expected_key,proposal=None):
         authored_records=deepcopy((active or {}).get('entries',{})),changed_source_entity_count=changed,
         override_scope='WorldMapPlacements',gameplay_verified=False,project_changed=False)
     geometry['limitations'].append('Only WorldMapPlacements record transforms are composed; geometry, textures and ground remain retail source assets.')
-    glb,audit=encode_worldmap_glb(geometry,key,placement_authoring=metadata)
+    glb,audit=encode_worldmap_glb(geometry,key,scope,entity_id,placement_authoring=metadata)
     current()
     if len(glb)>MAX_WORLDMAP_GLB_BYTES:raise ProjectError('World placement GLB exceeds32 MiB')
     response=dict(schema_version='legaia.worldmap-placement-export-response.v1',scene=scene,source_key=key,
-        representation=representation,review_key=review_key,glb_base64=base64.b64encode(glb).decode('ascii'),
+        representation=representation,review_key=review_key,scope=scope,entity_id=entity_id,glb_base64=base64.b64encode(glb).decode('ascii'),
         gameplay_verified=False,project_changed=False)
     if len(json.dumps(dict(response,audit=audit),allow_nan=False).encode())+65536>MAX_RESPONSE_BYTES:
         raise ProjectError('World placement export response exceeds64 MiB')

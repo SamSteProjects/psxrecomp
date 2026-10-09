@@ -1,20 +1,15 @@
+export {decodePlacementExport} from './worldmap-geometry.js';
 import {decodeWorldPlacements,placementSceneView,worldPlacementLayers} from './worldmap-placement-state.js';
 export {decodeWorldPlacements,placementSceneView,worldPlacementLayers} from './worldmap-placement-state.js';
 import {renderComponentSection} from './component-inspector.js';
 import {SceneRenderer} from './scene-renderer.js';
-import {decodeWorldmapGeometry,decodeWorldmapExport} from './worldmap-geometry.js';
+import {decodeWorldmapGeometry,decodePlacementExport} from './worldmap-geometry.js';
 import {worldmapSceneView} from './worldmap-scene.js';
 import {mountPlacementGizmo,sourceOffsetDirections} from './worldmap-placement-gizmo.js';
 import {mountPlacementYaw} from './worldmap-placement-yaw.js';
 const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v),scenes=['map01','map02','map03'];
 const fail=m=>{throw new Error(m);};
 const validValues=v=>v&&Object.keys(v).sort().join(',')==='offset,yaw_units'&&v.offset&&Object.keys(v.offset).sort().join(',')==='x,y,z'&&Object.values(v.offset).every(n=>Number.isSafeInteger(n)&&n>=-32768&&n<=32767)&&Number.isSafeInteger(v.yaw_units)&&v.yaw_units>=0&&v.yaw_units<4096;
-export async function decodePlacementExport(value,report,proposal){
-  const representation=proposal?'proposed-source':'current-source',key=report.source_key,metadata=value?.audit?.worldmap_source?.placement_authoring;
-  if(value?.schema_version!=='legaia.worldmap-placement-export-response.v1'||value.scene!==report.scene||value.source_key!==key||value.representation!==representation||value.review_key!==(proposal?.review_key??null)||value.project_changed!==false||value.gameplay_verified!==false||value.audit?.representation!==representation||metadata?.schema_version!=='legaia.worldmap-placement-export.v1'||metadata.representation!==representation||metadata.override_scope!=='WorldMapPlacements'||metadata.source_key!==key||metadata.current_map_sha256!==report.current_map_sha256||metadata.exported_map_sha256!==(proposal?report.review?.candidate_map_sha256:report.current_map_sha256)||metadata.source_map_sha256!==report.source_record.source_map_sha256||metadata.review_key!==(proposal?.review_key??null)||JSON.stringify(metadata.proposal)!==JSON.stringify(proposal)||metadata.gameplay_verified!==false||metadata.project_changed!==false||!Number.isSafeInteger(metadata.changed_source_entity_count)||metadata.changed_source_entity_count<0||metadata.changed_source_entity_count>512||!metadata.authored_records||typeof metadata.authored_records!=='object'||Array.isArray(metadata.authored_records)||Object.keys(metadata.authored_records).length>512)fail('World placement artifact differs from the Current/Proposed transform scope.');
-  for(const [key,entry] of Object.entries(metadata.authored_records))if(!/^\d{4}$/.test(key)||Number(key)>=512||!entry||!validValues(entry.values)||!hash(entry.source_record_sha256)||typeof entry.shared_record!=='boolean')fail('World placement artifact has invalid authored record provenance.');
-  return decodeWorldmapExport({...value,schema_version:'legaia.worldmap-export.v1',project_source_key:key,scope:'source-scene',entity_id:null},report.scene,key,'source-scene');
-}
 export function worldPlacementTarget(report,target){
   if(!target||!scenes.includes(target.scene)||target.scene!==report?.scene||!hash(target.sourceKey)||target.sourceKey!==report.source_key||!hash(target.sourceRecordHash)||!Number.isSafeInteger(target.recordIndex)||target.recordIndex<0||target.recordIndex>=512||typeof target.entityId!=='string')fail('World placement navigation source changed.');
   const rows=report.records.filter(row=>row.object_record_index===target.recordIndex&&row.source_record_sha256===target.sourceRecordHash&&row.placements.some(p=>p.entity_id===target.entityId));

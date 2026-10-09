@@ -1,7 +1,7 @@
 const scenes=['map01','map02','map03'];
 const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
 const fail=m=>{throw new Error(m);};
-const validValues=v=>v&&Object.keys(v).sort().join(',')==='offset,yaw_units'&&v.offset&&Object.keys(v.offset).sort().join(',')==='x,y,z'&&Object.values(v.offset).every(n=>Number.isSafeInteger(n)&&n>=-32768&&n<=32767)&&Number.isSafeInteger(v.yaw_units)&&v.yaw_units>=0&&v.yaw_units<4096;
+export const validValues=v=>v&&Object.keys(v).sort().join(',')==='offset,yaw_units'&&v.offset&&Object.keys(v.offset).sort().join(',')==='x,y,z'&&Object.values(v.offset).every(n=>Number.isSafeInteger(n)&&n>=-32768&&n<=32767)&&Number.isSafeInteger(v.yaw_units)&&v.yaw_units>=0&&v.yaw_units<4096;
 export function decodeWorldPlacements(value,scene,key){
   if(value?.schema_version!=='legaia.worldmap-placement-authoring.v1'||value.scene!==scene||!scenes.includes(scene)||!hash(key)||value.source_key!==key||value.gameplay_verified!==false||value.project_changed!==false||!hash(value.current_map_sha256)||!value.source_record||!['source_disc_sha256','source_map_sha256','source_floor_lut_sha256'].every(k=>hash(value.source_record[k]))||value.source_record.scene!==scene||!Array.isArray(value.records)||value.records.length>512||!Array.isArray(value.limitations)||value.limitations.some(s=>typeof s!=='string'||s.length>4096))fail('World placement source or coverage is invalid. Inspect again.');
   const ids=new Set(),entities=new Set();

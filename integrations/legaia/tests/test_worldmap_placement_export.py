@@ -12,6 +12,13 @@ from sdk.worldmap_export import export as export_retail
 from importer.pipeline import import_scene
 from test_importer_export import parse_glb
 
+class WorldPlacementExportScope(unittest.TestCase):
+ def test_invalid_scopes_reject_before_source_read_or_write(self):
+  p=type('Project',(),{'mode':'edit','disc_path':'private'})()
+  with patch('sdk.worldmap_placement_export.context',side_effect=AssertionError('must not read source')),patch('sdk.worldmap_placement_export.write_encoded_glb',side_effect=AssertionError('must not write')):
+   for scope,identity in [('unknown',None),('selected',None),('source-scene','scene://map01/worldmap/ground'),('selected','scene://map02/worldmap/ground'),('selected',123),('selected','scene://map01/worldmap/'+'a'*1024)]:
+    with self.subTest(scope=scope,identity=identity),self.assertRaises(ProjectError):export(p,'map01','a'*64,scope=scope,entity_id=identity)
+
 @unittest.skipUnless(os.environ.get('LEGAIA_DISC_BIN'),'requires private retail disc')
 class WorldPlacementExport(unittest.TestCase):
  def test_three_kingdom_current_proposed_and_unchanged_binary(self):

@@ -1290,10 +1290,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                                            body['scope'], body.get('entity_id')))
                     return
                 if route == '/api/export/worldmap-placements':
-                    if set(body)!={'scene','source_key','proposal'}:
+                    if set(body) not in ({'scene','source_key','proposal'},{'scene','source_key','proposal','scope'},{'scene','source_key','proposal','scope','entity_id'}):
                         raise ProjectError('World placement export requires scene, source identity and optional reviewed proposal')
+                    scope=body.get('scope','source-scene');entity_id=body.get('entity_id')
+                    if scope not in ('source-scene','ground','selected') or (scope=='selected')!=(entity_id is not None):
+                        raise ProjectError('World placement export scope and selected identity must agree')
                     from .worldmap_placement_export import export
-                    self._json(200,export(self.server.project,body['scene'],body['source_key'],body['proposal']))
+                    self._json(200,export(self.server.project,body['scene'],body['source_key'],body['proposal'],scope=scope,entity_id=entity_id))
                     return
                 if route in ('/api/worldmap-authoring', '/api/worldmap-authoring-review'):
                     expected = set() if route == '/api/worldmap-authoring' else {'entity_id', 'values'}
