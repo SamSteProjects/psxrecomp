@@ -209,6 +209,7 @@ class EditorServer(ThreadingHTTPServer):
         state['controller_tile_source_key']=state['controller_selector_source_key']
         state['controller_fade_source_key']=state['controller_selector_source_key']
         state['controller_table_source_key']=state['controller_selector_source_key']
+        state['controller_scene_byte_source_key']=state['controller_selector_source_key']
         state['controller_three_word_source_key']=state['controller_selector_source_key']
         state['controller_word_triplet_source_key']=state['controller_selector_source_key']
         state['capabilities']['script_branch_authoring'] = bool(self.project.disc_path)
@@ -269,6 +270,7 @@ class EditorServer(ThreadingHTTPServer):
         state['capabilities']['controller_tile_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_fade_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_table_authoring']=state['capabilities']['scene_controller_inspection']
+        state['capabilities']['controller_scene_byte_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_three_word_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_word_triplet_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['asset_references'] = bool(self.project.disc_path and self.project.active_scene and len(self.project.imports)<=64)
@@ -1076,6 +1078,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/controller-fades.js": ("controller-fades.js", "text/javascript"),
                  "/controller-tables.js": ("controller-tables.js", "text/javascript"),
                  "/controller-authoring-availability.js": ("controller-authoring-availability.js", "text/javascript"),
+                 "/controller-scene-bytes.js": ("controller-scene-bytes.js", "text/javascript"),
                  "/controller-three-words.js": ("controller-three-words.js", "text/javascript"),
                  "/controller-word-triplets.js": ("controller-word-triplets.js", "text/javascript"),
                  "/controller-authoring-focus.js": ("controller-authoring-focus.js", "text/javascript"),
