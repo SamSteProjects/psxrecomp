@@ -4945,6 +4945,23 @@ sceneAnimationController=createSceneAnimationController({
     canStart:!scenePose&&!shapeDraft&&!actorGroupInspection&&!scenePlacementInspection&&!environmentGroupInspection&&!document.querySelector('dialog[open]')}),
   busy:()=>busy,setBusy,onError:error=>notify(error.message??String(error),true),
   onNormalView:enabled=>{sceneNormalDiagnostic=enabled;draw();},
+  onFrameTrack:(rows,report,{isCurrent})=>{
+    if(!isCurrent()||scenePose?.report!==report||!scenePreviewCurrent()||!sceneModelsReady())return false;
+    const view=sceneView(),points=[];
+    for(const row of rows){const instance=scenePreview.entities.find(item=>item.entity_id===row.entity_id);if(!instance?.renderable||instance.geometry_key!==row.geometry_key||instance.asset_id!==row.asset_id||instance.source_actor_id!==row.source_actor_id)throw Error('Track instance no longer matches the loaded scene.');points.push(...sceneRenderer.bounds(view.positions,row.entity_id,view.hiddenEntities,view.transforms));}
+    if(!points.length)throw Error('This track has no visible instance bounds. Show its actors or restore scene visibility before framing.');
+    const framed=sceneFrameCamera(camera,{width,height},points);if(!isCurrent())return false;cancelViewportGesture();pendingEntityFrame=null;Object.assign(camera,framed);cameraRevision++;draw();return true;
+  },
+  onInspectInstance:async(row,report,{isCurrent})=>{
+    if(!isCurrent()||scenePose?.report!==report||!scenePreviewCurrent())return false;
+    const instance=scenePreview.entities.find(item=>item.entity_id===row.entity_id);
+    if(!instance?.renderable||instance.geometry_key!==row.geometry_key||instance.asset_id!==row.asset_id||instance.source_actor_id!==row.source_actor_id)throw Error('Track instance no longer matches the loaded scene.');
+    if(state.actor_drafts?.[row.entity_id])selectNpcDraft(row.entity_id);
+    else if(entities().some(entity=>entity.id===row.entity_id)){if(!await api('/api/selection',{entity_id:row.entity_id}))return false;}
+    else throw Error('This animation instance has no current actor Inspector.');
+    if(!isCurrent())return false;
+    sceneResourceSelection=null;environmentSelection=null;clearScenePlacementSelection();clearActorGroupSelection();clearEnvironmentGroupSelection();$('entity-search').value='';renderHierarchy();revealHierarchyEntities($('hierarchy'),[row.entity_id],row.entity_id);renderInspector();draw();return true;
+  },
   onStatus:status=>{if(status.active!==sceneAnimationWriteGuard){sceneAnimationWriteGuard=status.active;renderInspector();updateSceneBadge();}},
   onLoad:async(report,{isCurrent,signal})=>{
     if(signal.aborted||!isCurrent()||!scenePreviewCurrent()||!sceneModelsReady()||scenePose||report.scene_source_key!==scenePreview.source_key||report.project_source_key!==state.scene_preview_source_key||report.representation!==sceneRepresentation)throw new Error('Scene animation no longer matches the loaded scene.');

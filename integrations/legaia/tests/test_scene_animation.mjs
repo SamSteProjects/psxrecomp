@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {sceneAnimationContext,decodeSceneAnimation,sceneAnimationSamples,sceneAnimationFrameIndex,createSceneAnimationController} from '../editor/scene-animation.js';
+import {sceneAnimationContext,decodeSceneAnimation,sceneAnimationSamples,sceneAnimationFrameIndex,sceneAnimationTrackInstances,createSceneAnimationController} from '../editor/scene-animation.js';
 
 const h=letter=>letter.repeat(64),context={projectPath:'C:/private/scene-project',sceneId:'scene://town01',mode:'edit',sourceKey:h('a'),sceneSourceKey:h('b'),representation:'authored',ready:true,canStart:true};
 const actor=index=>`scene://town01/actors/man-p1/${String(index).padStart(4,'0')}`,model=index=>`asset://town01/models/scene-tmd/${String(index).padStart(4,'0')}`;
@@ -21,6 +21,8 @@ for(const count of [1,2,3,31,4096])for(const tick of [0,1,2,31,4096,Number.MAX_S
  assert.equal(sceneAnimationFrameIndex(count,tick,{mode,offset}),expected);
 }
 for(const settings of [new Map([['foreign',{mode:'loop',offset:0}]]),new Map([['geometry-a',{mode:'loop',offset:2}]]),new Map([['geometry-a',{mode:'foreign',offset:0}]]),new Map([['geometry-a',{mode:'freeze',offset:true}]]),new Map([['geometry-a',{mode:'loop',offset:0,extra:1}]]),{}])assert.throws(()=>sceneAnimationSamples(fixture(),0,settings));
+assert.deepEqual(sceneAnimationTrackInstances(fixture(),'geometry-a').map(row=>row.entity_id),[actor(0),actor(1)]);assert(Object.isFrozen(sceneAnimationTrackInstances(fixture(),'geometry-a')));assert.throws(()=>sceneAnimationTrackInstances(fixture(),'foreign'));
+for(const mutate of [v=>v.instances=v.instances.filter(row=>row.geometry_key!=='geometry-a'),v=>v.instances[1].entity_id=actor(0),v=>v.instances[1].asset_id=model(1)]){const value=fixture();mutate(value);assert.throws(()=>sceneAnimationTrackInstances(value,'geometry-a'));}
 const normalTrack=withNormals(),phasedNormalSample=sceneAnimationSamples(normalTrack,1)[0];assert.deepEqual(sceneAnimationSamples(normalTrack,0,new Map([['geometry-a',{mode:'freeze',offset:1}]]))[0],phasedNormalSample);
 
 class Node {constructor(tag){this.tagName=tag;this.children=[];this.attributes={};this.style={};this.dataset={};this.textContent='';this.value='';this.disabled=false;}append(...nodes){this.children.push(...nodes);for(const node of nodes)node.parent=this;}replaceChildren(...nodes){this.children=[];this.append(...nodes);}setAttribute(key,value){this.attributes[key]=String(value);}remove(){this.removed=true;}}
@@ -59,6 +61,19 @@ try{
   assert.equal(JSON.stringify(loads.at(-1).value),sourceBefore);assert.equal(calls.length,requestCount);
   controller.stop();assert(previewInputs().every(n=>n.disabled));assert.equal(modeA.value,'loop');assert.equal(offsetA.value,'0');
   await start();assert.deepEqual(samples.at(-1).rows.map(row=>row.frame_index),[0,0]);ctx={...ctx,sourceKey:h('f')};controller.updateState();assert.equal(controller.active(),false);assert(previewInputs().every(n=>!n||n.disabled));controller.dispose();
+  }
+  {ctx=structuredClone(context);let framed=[],inspected=[],inspectionWait=null;
+  open({onFrameTrack:(rows,report,options)=>{framed.push({rows,report,options});return true;},onInspectInstance:async(row,report,options)=>{inspected.push({row,report,options});if(inspectionWait)await inspectionWait.promise;return options.isCurrent();}});await start();
+  const frameButton=action(controller,'frame-track'),inspectButton=action(controller,'inspect-track-instance'),member=input(controller,'Animation track instance geometry-a');
+  assert.equal(frameButton.disabled,false);assert.equal(inspectButton.disabled,false);assert.deepEqual(member.children.map(option=>option.value),[actor(0),actor(1)]);
+  action(controller,'play').onclick();pump(0);assert.equal(await frameButton.onclick(),true);assert.equal(frames.size,0);assert.deepEqual(framed[0].rows.map(row=>row.entity_id),[actor(0),actor(1)]);assert(Object.isFrozen(framed[0].rows));assert.equal(framed[0].report,loads.at(-1).value);
+  member.value=actor(1);assert.equal(await inspectButton.onclick(),true);assert.equal(inspected[0].row.entity_id,actor(1));assert.equal(inspected[0].options.isCurrent(),true);
+  member.value=actor(3);const inspectCount=inspected.length;assert.equal(await inspectButton.onclick(),false);assert.equal(inspected.length,inspectCount);member.value=actor(0);
+  isBusy=true;controller.updateState();assert.equal(frameButton.disabled,true);assert.equal(await frameButton.onclick(),false);isBusy=false;controller.updateState();
+  inspectionWait=deferred();const navigating=inspectButton.onclick();assert.equal(inspectButton.disabled,true);assert.equal(member.disabled,true);assert.equal(await frameButton.onclick(),false);assert.equal(action(controller,'play').onclick(),false);
+  controller.stop();assert.equal(inspected.at(-1).options.isCurrent(),false);await start();const newInspect=action(controller,'inspect-track-instance');assert.equal(newInspect.disabled,false,'Old stopped navigation cannot lock a new session.');inspectionWait.resolve();assert.equal(await navigating,false);assert.equal(newInspect.disabled,false);
+  ctx={...ctx,sourceKey:h('d')};assert.equal(await newInspect.onclick(),false);controller.updateState();assert.equal(controller.active(),false);controller.dispose();
+  ctx=structuredClone(context);open();await start();assert.equal(action(controller,'frame-track').disabled,true);assert.equal(action(controller,'inspect-track-instance').disabled,true);assert.equal(await action(controller,'frame-track').onclick(),false);controller.dispose();
   }
 }finally{for(const [key,value] of Object.entries(globals)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}}
 console.log('Scene animation source/coverage/budget qualification; coordinated modulo samples, preview fps/play/scrub, no-track and failed-load/sample restore, loading/source/representation/late/busy/dispose guards passed.');
