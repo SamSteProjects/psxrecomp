@@ -307,7 +307,7 @@ class ScriptInspectionTests(unittest.TestCase):
                         self.assertEqual(truncated["opaque_regions"][0]["length"], length)
 
     def test_other_menu_e_subops_still_stop_without_scanning(self):
-        for sub in (0xE0, 0xE1, 0xE7, 0xE9, 0xEB, 0xEE, 0xEF):
+        for sub in (0xE0, 0xE7, 0xE9, 0xEB, 0xEE, 0xEF):
             data = bytes([0x4C, sub]) + b"\x1fOpaque\0\x4c\xed\1"
             report = inspect_record(data, 0)
             self.assertEqual(report["status"], "partial")

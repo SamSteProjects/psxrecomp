@@ -622,6 +622,18 @@ def _instruction(data: bytes, pc: int) -> dict:
                             uses_frame_delta=sub in (0xCB, 0xCC) and raw == 0xFFFF)
             else:
                 args["values"] = list(data[operand + 1:operand + size])
+        elif sub == 0xE1:
+            # Retail801E30B8 optionally calls8003C764, then always walks
+            # the payload through8003CA38. It advances adjusted PC by
+            # 3 + walker length (which excludes its terminator).
+            # Keep native child bytes atomic; they are not parent MES text.
+            payload = _native_payload_span(data, operand + 1, 'MENU_E1 text-actor')
+            size, mnemonic = 1 + payload['length'], 'TEXT_ACTOR_PAYLOAD_REQUEST'
+            args = {'sub_op': sub, 'embedded_payload': payload,
+                    'nonzero_first_byte': data[operand + 1] != 0,
+                    'payload_ownership': 'runtime_text_actor_not_parent_dialogue',
+                    'actor_binding': 'runtime_allocation_unresolved',
+                    'runtime_effect': 'not_evaluated'}
         elif sub == 0xE2:
             # Retail801E30E4 reads a signed halfword at+1, stores it at
             # 8007BA78, sets8007B83C=26, and returns PC+6. The final two
