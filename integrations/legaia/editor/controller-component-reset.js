@@ -41,5 +41,5 @@ export function mountControllerComponentReset(host,{families,owner,getKey,curren
   catch(error){withdraw();onError(error);}finally{pending=false;updateState();}
  };
  status.textContent='Choose an authored component to review its removal.';updateState();
- return {updateState,dispose(){disposed=true;withdraw();section.remove();}};
+ return {updateState,hasDraft:()=>!!accepted||pending,dispose(){disposed=true;withdraw();section.remove();}};
 }

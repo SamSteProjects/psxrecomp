@@ -1780,6 +1780,7 @@ projectBookmarkNavigator=mountProjectScriptBookmarks({after:projectTransitionsBu
   qualified();
   if(bookmark.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:bookmark.scene_id}))return;
   qualified();if(state.scene_view_source_key!==bookmark.import_sha256)throw new Error('Bookmark imported scene witness differs from this scene.');
+  if(bookmark.owner_id===bookmark.scene_id+'/controllers/man-p1/0000'){await openSceneController({getState:()=>state,busy:()=>busy,api,setBusy,focusBookmark:bookmark,onError:error=>notify(error.message,true)});return;}
   const owner=bookmark.owner_id.includes('/scripts/man-p2/')?{id:bookmark.owner_id,name:bookmark.name,partitionTwo:true}:entities().find(row=>row.id===bookmark.owner_id);
   if(!owner)throw new Error('Bookmarked script owner is unavailable in this imported scene.');
   if(!owner.partitionTwo){if(!await api('/api/selection',{entity_id:owner.id}))return;qualified();}

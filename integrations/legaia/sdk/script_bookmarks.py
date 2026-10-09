@@ -7,6 +7,14 @@ from .metadata_text import metadata_name
 
 COMMANDS = {'create_script_bookmark', 'rename_script_bookmark', 'update_script_bookmark', 'delete_script_bookmark'}
 
+def _document(project, owner):
+    if isinstance(owner, str) and '/controllers/' in owner:
+        match=re.fullmatch(r'(scene://[A-Za-z0-9_-]{1,128})/controllers/man-p1/0000',owner)
+        if not match or match[1] not in project.imports:
+            raise ProjectError('Controller bookmark requires its exact imported scene owner')
+        return project.imports[match[1]]
+    return project._dialogue_document(owner)
+
 def validate(project, identifier, value):
     try:
         if not isinstance(identifier, str) or not identifier.startswith('bookmark://') or str(uuid.UUID(identifier[11:])) != identifier[11:]:
@@ -21,7 +29,7 @@ def validate(project, identifier, value):
             not isinstance(value['mnemonic'],str) or not 1 <= len(value['mnemonic']) <= 128):
         raise ProjectError('Script bookmark has invalid source metadata')
     metadata_name(value['name'], 'Script bookmark name')
-    if project._dialogue_document(value['owner_id'])['scene']['semantic_id'] != value['scene_id']:
+    if _document(project,value['owner_id'])['scene']['semantic_id'] != value['scene_id']:
         raise ProjectError('Script bookmark owner differs from its imported scene')
 
 def review_key(project, value):
@@ -36,6 +44,12 @@ def _inspection(project, owner, document):
         scene=document['scene']['name']
         if import_scene(project.disc_path,scene)!=document:
             raise ProjectError('Bookmark source differs from freshly verified imported evidence')
+        if '/controllers/' in owner:
+            from importer.scene_controller import inspect_scene_controller
+            result=inspect_scene_controller(project.disc_path,scene)
+            if result['semantic_id']!=owner.replace('scene://','script://') or result['scene_id']!=document['scene']['semantic_id'] or result['read_only'] is not True:
+                raise ProjectError('Controller bookmark source ownership changed')
+            return {**result,'record':{**result['record'],'sha256':result['source_record']['sha256']}}
         if '/scripts/man-p2/' in owner:
             result=inspect_partition_two_script(project.disc_path,scene,int(owner.rsplit('/',1)[1]))
             return {**result['inspection'],'record':result['record']}
@@ -43,7 +57,7 @@ def _inspection(project, owner, document):
         return inspect_actor_script(project.disc_path,scene,actor)
 
 def _boundary(project, owner, pc, expected):
-    document=project._dialogue_document(owner)
+    document=_document(project,owner)
     if document['scene']['semantic_id'] != project.active_scene:
         raise ProjectError('Script bookmarks require the active imported scene')
     if type(pc) is not int or not 0 <= pc <= 65535:

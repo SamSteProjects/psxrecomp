@@ -2,7 +2,7 @@ import {qualifyScriptBookmark} from './script-bookmark-source.js';
 export {qualifyScriptBookmark} from './script-bookmark-source.js';
 import {SCRIPT_BOOKMARK_TRANSFER_BYTES,exportScriptBookmark,importScriptBookmark} from './script-bookmark-transfer.js';
 const offset=pc=>'0x'+pc.toString(16).padStart(4,'0');
-export function mountScriptBookmarks(host,{owner,report,getState,getRows,getSelected,select,current,busy,editable,draftPending,command,reopen,onError,selectedBookmarkId=null}){
+export function mountScriptBookmarks(host,{owner,report,getState,getRows,getSelected,select,current,afterCommandCurrent=current,busy,editable,draftPending,command,reopen,onError,selectedBookmarkId=null}){
   const document=host.ownerDocument,section=document.createElement('section');section.className='script-bookmarks';
   const heading=document.createElement('h3');heading.textContent='Saved script bookmarks';
   const note=document.createElement('p');note.className='field-note';note.textContent='Save a selected Retail instruction or dialogue boundary. Bookmarks are project navigation metadata; they do not change instructions or prove execution.';
@@ -13,7 +13,7 @@ export function mountScriptBookmarks(host,{owner,report,getState,getRows,getSele
   const buttons={};for(const [id,label] of Object.entries({save:'Save script bookmark',recall:'Recall script bookmark',rename:'Rename script bookmark',update:'Update bookmark offset',delete:'Delete script bookmark'})){
     const button=document.createElement('button');button.type='button';button.textContent=label;buttons[id]=button;actions.append(button);
   }
-  section.append(heading,note,name,list,status,actions);host.querySelector('.script-instructions')?.before(section);
+  section.append(heading,note,name,list,status,actions);const anchor=host.querySelector('.script-instructions');if(anchor)anchor.before(section);else host.append(section);
   const transfer=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Transfer a script bookmark';transfer.append(summary);
   const transferNote=document.createElement('p');transferNote.className='field-note';transferNote.textContent='Export navigation metadata. Import creates a new bookmark for this exact Retail scene, script and decoded boundary.';
   const file=document.createElement('input');file.type='file';file.accept='.json,application/json';file.setAttribute('aria-label','Import script bookmark JSON');
@@ -44,7 +44,7 @@ export function mountScriptBookmarks(host,{owner,report,getState,getRows,getSele
     const saved=row(),pc=selection(),body={type:kind==='save'?'create_script_bookmark':`${kind==='update'?'update':kind}_script_bookmark`};
     if(kind==='save')Object.assign(body,{owner_id:owner,name:name.value,pc,source_record_sha256:report.record.sha256});
     else{Object.assign(body,{bookmark_id:saved.id,review_key:saved.review_key});if(kind==='rename')body.name=name.value;if(kind==='update')Object.assign(body,{pc,source_record_sha256:report.record.sha256});}
-    try{if(await command(body)){if(current()&&!disposed)await reopen(pc);}}catch(error){onError(error);}finally{if(!disposed)refresh();}
+    try{if(await command(body)){if(afterCommandCurrent()&&!disposed)await reopen(pc);}}catch(error){onError(error);}finally{if(!disposed)refresh();}
   }
   for(const kind of ['save','rename','update','delete'])buttons[kind].onclick=()=>mutate(kind);
   buttons.recall.onclick=()=>{if(disposed||!current()||busy())return;try{const pc=qualifyScriptBookmark(row(),owner,report);if(!select(pc))throw new Error('Bookmark offset is absent from this inspection.');updateState();}catch(error){onError(error);}};
@@ -60,6 +60,6 @@ export function mountScriptBookmarks(host,{owner,report,getState,getRows,getSele
     importScriptBookmark(value,getState(),owner,report,proposed);imported=value;importedName.value=proposed;transferStatus.textContent=`Verified ${offset(value.source_bookmark.pc)} ${value.source_bookmark.mnemonic}. Choose a distinct name and import.`;
   }catch(error){if(!disposed&&token===generation){transferStatus.textContent=error.message;onError(error);}}finally{if(!disposed&&token===generation){reading=false;updateState();}}};
   importedName.oninput=updateState;
-  importButton.onclick=async()=>{updateState();if(disposed||importButton.disabled||!current()||busy())return;try{const body=importScriptBookmark(imported,getState(),owner,report,importedName.value),before=new Set(getRows().map(row=>row.id));if(await command(body)){if(current()&&!disposed){const copies=getRows().filter(row=>!before.has(row.id)&&row.owner_id===body.owner_id&&row.name===body.name&&row.pc===body.pc&&row.source_record_sha256===body.source_record_sha256);if(copies.length!==1)throw Error('Bookmark saved; reopen the script to inspect its new identity.');qualifyScriptBookmark(copies[0],owner,report);await reopen(body.pc,copies[0]);}}}catch(error){onError(error);}finally{if(!disposed)refresh();}};
+  importButton.onclick=async()=>{updateState();if(disposed||importButton.disabled||!current()||busy())return;try{const body=importScriptBookmark(imported,getState(),owner,report,importedName.value),before=new Set(getRows().map(row=>row.id));if(await command(body)){if(afterCommandCurrent()&&!disposed){const copies=getRows().filter(row=>!before.has(row.id)&&row.owner_id===body.owner_id&&row.name===body.name&&row.pc===body.pc&&row.source_record_sha256===body.source_record_sha256);if(copies.length!==1)throw Error('Bookmark saved; reopen the script to inspect its new identity.');qualifyScriptBookmark(copies[0],owner,report);await reopen(body.pc,copies[0]);}}}catch(error){onError(error);}finally{if(!disposed)refresh();}};
   refresh();return {updateState,dispose(){disposed=true;generation++;imported=null;section.remove();}};
 }

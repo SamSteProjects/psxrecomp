@@ -83,7 +83,7 @@ function mountSelectors(host,{protocol,owner,focusPc=null,getContext,busy,setBus
     finally{if(!disposed){pending=false;updateState();}}
   };
   const navigation=controllerAuthoringFocus({current:()=>current()&&context.mode==='edit',busy:()=>pending||busy(),targets:()=>snapshot?.targets,source:selector,select:target=>{invalidate();active=target.semantic_id;selector.value=active;fields();status.textContent='Source selected. Review before Apply.';updateState();}});
-  updateState();return {...navigation,ready,updateState,dispose(){if(disposed)return;disposed=true;invalidate();section.remove();resolveReady?.(false);resolveReady=null;}};
+  updateState();return {...navigation,ready,updateState,hasDraft:()=>drafts.size>0||!!accepted||pending,dispose(){if(disposed)return;disposed=true;invalidate();section.remove();resolveReady?.(false);resolveReady=null;}};
 }
 
 export function mountSystemSelectors(host,options){return mountSelectors(host,{...options,protocol:{schema:'legaia.system-flag-authoring.v1',snapshotRoute:'/api/system-flag-selectors',reviewRoute:'/api/system-flag-selector-review',commandType:'set_system_flag_selector'}});}
