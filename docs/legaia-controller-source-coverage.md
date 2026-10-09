@@ -146,3 +146,24 @@ Twenty-one focused Python checks passed across fade/project/native, tile/project
 Actual Conc HTTP checks exposed two source-qualified fade requests. A signed word increment changed only byte3461, matching independent literal source encoding. Review preserved document/history; Apply updated Current, repeated stale Apply and Boolean/extra-field requests refused, Undo/Redo and Save/Open matched, and reviewed reset restored the original document/imports. Build refused the pending fade component before creating the requested output directory. Evidence: `local-output/sdk-20260909/controller-fade-workflow-20261009/http_checks.py` and `http-checks.json`.
 
 Project/API workflow is implemented; fade editor controls, normal/appended native Build receipts and playable delivery remain pending. The temporary Build refusal prevents saved fade edits from being silently omitted. Runtime parameter meanings, effect ownership and visible/gameplay behavior remain unverified. No game, runtime attachment, native recompilation, installation or disc export ran. Full SDK goal stays active, solo work continues; gameplay verification deferred.
+
+
+## Controller Fade Native Build — 2026-10-09
+
+The normal Build now serializes persistent `ControllerFades` after controller selector, branch and tile composition. It independently derives each seven-byte source span, current instruction header/context/sub-op/continuation, requested values and original raw preimage from qualified Retail data. A serializer must return every non-no-op receipt exactly once, with exact strict integer/list values, offsets, source hashes and before/after bytes. Changed MAN bytes outside audited spans refuse. Prior authored spans cannot overlap even a no-op fade request. Fixed instruction/MAN layout is preserved.
+
+For NPC append composition, the existing parent controller proof first verifies saved partition growth and literal spawn reindexing. Fade receipts then rebase their source-relative offsets against the same controller record extent and exact operand preimage. Receipts retain Retail and relocated offsets, effective/candidate controller hashes, appended MAN hash and exact changed bytes. Normal reports identify the stable fade asset with before/after values and `controller-fade-operands-only`; composed reports retain distinct `controller_fade_changes`. The temporary pending-Build refusal was removed only with this integration. Existing raw-streaming composition routes use the same writer; all observed Retail fade targets currently use descriptor-compressed MAN carriers, so no real raw-streaming fade target is claimed.
+
+Twenty-four focused Python checks passed across fade/native/project/Build, tile/native/project/Build and branch authoring; six changed SDK modules parsed. New Build cases cover fade-only and all four families, relocation, exact receipts/no-ops, no-op overlap refusal, forged/missing/duplicate receipts, Boolean/wrong-sub-op/offset/value refusal and unaudited bytes.
+
+Three fresh normal Conc Builds passed independent delivered PROT/MAN readback and directory/source-file/ZIP receipt verification:
+
+| Authored content | Build | Package SHA256 |
+| --- | --- | --- |
+| Fade only | `8912be08dcda6da7` | `f7ae2c0ded0310b6e3a11ca71f1d24d6571a17e2cb9fb972ec598eb27f02e8ca` |
+| Fade + selector + branch + tile | `19d3f2e1494367bc` | `7b3db3159ab1c446a7de36081948168336fef85f3bdc7da1c53502c702b136db` |
+| Four families + NPC append | `e86680572b8f75f5` | `a10d4249260679b6fd95240e8ed49849cf9e52758a1ee6938fcdfb9c2e9e0989` |
+
+The first two matched the complete independent literal MAN; the appended Build matched every original record with literal spawn-index changes and requested controller operands, and grew partition1 by one. Project document/import/history state remained exact through Build. Evidence: `local-output/sdk-20260909/controller-fade-build-20261009/check.py`, `checks.json` and private project Builds.
+
+Native package byte delivery is implemented; editor controls remain pending. Runtime meanings, visible effects, scheduler behavior and playable gameplay acceptance remain unverified. No game, runtime attachment, native recompilation, installation or disc export ran. Full SDK goal remains active, solo work continues, manual gameplay verification deferred.

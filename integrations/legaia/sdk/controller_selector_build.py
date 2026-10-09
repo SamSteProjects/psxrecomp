@@ -1,4 +1,4 @@
-"""Compose source-qualified controller selector, branch and tile Build receipts."""
+"""Compose source-qualified controller selector, branch, tile and fade Build receipts."""
 from hashlib import sha256
 from .controller_system_flags import COMPONENT,validate_components,scene_document
 from .system_flags import merge_patch
@@ -7,17 +7,12 @@ from importer.controller_system_flags import load_controller_system_flag_context
 
 def collect(project,owner,components):
     value=validate_components(project,owner,components)
-    if 'ControllerFades' in value:
-        from .build import BuildError
-        raise BuildError('Controller fade native Build integration is pending; remove the override before Build')
     return scene_document(project,owner)['scene']['semantic_id'],value
 
 
 def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
     from .build import BuildError
     owner=scene_id+'/controllers/man-p1/0000'
-    if 'ControllerFades' in project.overrides[owner]:
-        raise BuildError('Controller fade native Build integration is pending; remove the override before Build')
     components=validate_components(project,owner,project.overrides[owner])
     value=components.get(COMPONENT,dict(entries={}))
     scene=project.imports[scene_id]['scene']['name']
@@ -68,4 +63,8 @@ def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
         from .controller_tile_build import compose_tiles
         result,tile_changes=compose_tiles(context,owner,components,result,[*previous,*changes],appended=appended)
         changes.extend(tile_changes)
+    if 'ControllerFades' in components:
+        from .controller_fade_build import compose_fades
+        result,fade_changes=compose_fades(context,owner,components,result,[*previous,*changes],appended=appended)
+        changes.extend(fade_changes)
     return result,changes
