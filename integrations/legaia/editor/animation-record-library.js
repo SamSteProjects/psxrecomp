@@ -104,7 +104,7 @@ export async function openAnimationRecordLibrary({entityId,getContext,assignment
   const current=()=>{try{return !closed&&!stale&&same(context,animationGlbContext(getContext()));}catch{return false;}};
   const allowed=row=>retainedRecord!==null?row.record_id===retainedRecord.record_id:modelAssetId?row.donor_asset_id===modelAssetId:row.entity_id===entityId;
   const selected=()=>library?.records.find(row=>row.record_id===select.value&&allowed(row));
-  const comparison=mountRetainedComparison({host:dialog,getRows:()=>library?.records??[],getSelected:selected,getContext,busy:()=>!current()||pending!==null||busy(),setBusy:value=>{setBusy(value);updateState();},onError});
+  const comparison=mountRetainedComparison({host:dialog,getRows:()=>library?.records??[],getSelected:selected,getContext,busy:()=>!current()||pending!==null||busy(),setBusy:value=>{setBusy(value);updateState();},onError,onOpen:onEdit===null?null:async(row,channel)=>{if(!current()||pending!==null||busy())throw Error('Comparison channel source changed. Reopen the library.');dispose();await onEdit(row,channel);}});
   const release=token=>{if(owner===token){owner=null;setBusy(false);}};
   function invalidate(){generation++;controller?.abort();controller=null;pending=null;if(owner)release(owner);held=null;}
   function updateState(){

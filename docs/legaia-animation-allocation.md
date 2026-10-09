@@ -821,3 +821,11 @@ Private Town01 evidence in
 editor Review/Apply, identical copied records, independent subsequent editing,
 unchanged original assignment, history/reopen and exact Build relocation readback.
 Build: `3e5c84bacab35ad6`; gameplay playback/timing remains unverified.
+
+## Comparison Channel Navigation — 2026-10-09
+
+Each changed Left/Right value in retained native clip comparison opens that side's own clip in the native channel editor, selecting its output frame and rigid object and focusing the exact translation or rotation axis. The handoff validates the reported native capture and changed row against current library identities; source changes, busy work, disposal and stale reports refuse navigation. The target's captured owner and animation asset ID are preserved, including when the comparison target belongs to another owner.
+
+Navigation does not stage an override. Authored inputs continue to show only existing overrides; blank axes inherit the frozen captured donor. The compared effective native value appears as a placeholder/title hint and is cleared when the channel draft, selection or source changes. Initial channel selectors are bounded by the current clip and the native signed translation/rotation grid. Review and explicit Apply remain separate.
+
+Offline checks: three focused Node suites and four JavaScript syntax checks passed. Actual Town01 Asset Database → retained lifecycle → comparison → right/left value navigation opened the correct active variant and retired source at output2/object0/Translation Z. Active authored345 remained345; retired inherited0 remained blank with a comparison hint. Apply stayed disabled, zero page errors or Apply requests occurred, and complete project/imports/history/files remained exact. Desktop and 400-pixel screenshots were inspected. Evidence: `local-output/sdk-20260909/comparison-channel-navigation-20261009/`. No Build or game ran. Gameplay, timing and the full SDK goal remain pending.

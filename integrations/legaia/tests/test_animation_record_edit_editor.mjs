@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {decodeRetainedEditOptions,decodeRetainedEditReview,decodeRetainedEditPose,validateRetainedAxes,openRetainedAnimationEditor} from '../editor/animation-record-edit.js';
+import {decodeRetainedEditOptions,decodeRetainedEditReview,decodeRetainedEditPose,validateRetainedAxes,openRetainedAnimationEditor,retainedChannelSelection} from '../editor/animation-record-edit.js';
 const entity='scene://town01/actors/man-p1/0011',id='11111111-1111-4111-8111-111111111111',asset='asset://town01/models/scene-tmd/0105';
 const context={projectPath:'C:/private',sceneId:'scene://town01',sourceKey:'a'.repeat(64),mode:'edit'};
 const row={record_id:id,record_sha256:'b'.repeat(64),donor_asset_id:asset,frame_count:3,object_count:6,active:true};
@@ -15,10 +15,15 @@ assert.throws(()=>validateRetainedAxes([{frame_index:0,object_index:0,rotation_p
 class Node{constructor(tag){this.children=[];this.style={};this.dataset={};this.attributes={};this.value='';this.open=false;this.disabled=false;}append(...nodes){for(const n of nodes){this.children.push(n);n.parent=this;}}setAttribute(k,v){this.attributes[k]=v;}replaceChildren(...nodes){this.children=[];this.append(...nodes);}showModal(){this.open=true;}close(){this.open=false;this.onclose?.();}remove(){if(this.parent)this.parent.children=this.parent.children.filter(n=>n!==this);}}
 const tree=n=>[n,...n.children.flatMap(tree)],action=(c,k)=>tree(c.dialog).find(n=>n.dataset.action===k),input=(c,k)=>tree(c.dialog).find(n=>n.attributes['aria-label']===k);
 const old={document:globalThis.document,fetch:globalThis.fetch};globalThis.document={body:new Node('body'),createElement:t=>new Node(t)};
+Node.prototype.focus=function(){globalThis.document.activeElement=this;};
+const target={frame:2,object:3,field:'rotation_psx',axis:'x',effective_value:16};
+assert.deepEqual(retainedChannelSelection(target,row),target);
+for(const bad of [{...target,frame:3},{...target,object:6},{...target,axis:'w'},{...target,field:'scale'},{...target,effective_value:17},{frame:0,object:0,effective_value:0}])assert.throws(()=>retainedChannelSelection(bad,row));
 try{
  let current={...context},busy=false,applied=0,returned,calls=[],heldReport,delay=null;
  globalThis.fetch=async(path,settings)=>{const body=JSON.parse(settings.body);calls.push({path,body});if(delay?.path===path)return delay.promise;return {ok:true,json:async()=>path.endsWith('-options')?options:path.endsWith('-review')?(heldReport=report(body)):path.endsWith('-pose')?pose(heldReport):{project:{mode:'edit'}}};};
  const settings={row,getContext:()=>current,busy:()=>busy,setBusy:v=>busy=v,onApplied:()=>applied++,onPosePreview:async(_,callbacks)=>returned=callbacks.returnToEditor};
+ const focused=await openRetainedAnimationEditor({...settings,initialChannel:target});assert.equal(await focused.ready,true);assert.equal(input(focused,'Allocated frame index').value,'2');assert.equal(input(focused,'Rigid object index').value,'3');assert.equal(globalThis.document.activeElement,input(focused,'Rotation X'));assert.equal(input(focused,'Rotation X').value,'');assert.equal(input(focused,'Rotation X').placeholder,'Compared: 16');await action(focused,'review').onclick();assert.deepEqual(calls.at(-1).body.edits,[]);input(focused,'Allocated frame index').value='1';input(focused,'Allocated frame index').onchange();assert.equal(input(focused,'Rotation X').placeholder,'');focused.dispose();
  let control=await openRetainedAnimationEditor(settings);await control.ready;
  input(control,'Captured donor frame mapping').value='1,0,1,0';input(control,'Captured donor frame mapping').oninput();input(control,'Translation X').value='2';input(control,'Translation X').oninput();
  assert.equal(action(control,'apply').disabled,true);assert.equal(await action(control,'review').onclick(),true);assert.deepEqual(calls.at(-1).body,request);

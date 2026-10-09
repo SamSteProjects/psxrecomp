@@ -3701,7 +3701,7 @@ async function inspectSavedAnimationRecords(entity,retainedRecord=null,assetId=n
   if(busy||state.project.mode!=='edit')return;
   animationRecordLibrary?.dispose();animationRecordEntityId=entity.id;animationRecordAssetId=assetId;
   animationRecordLibrary=await openAnimationRecordLibrary({entityId:entity.id,retainedRecord,assetAssignment,getLabel:id=>state.animation_labels?.[id]?.name??null,
-    onEdit:assetAssignment?null:row=>inspectRetainedAnimationContent(entity,row,assetId),
+    onEdit:assetAssignment?null:(row,channel=null)=>inspectRetainedAnimationContent(channel?{id:row.entity_id}:entity,row,channel?row.animation_id:assetId,channel),
     onGlb:assetAssignment?null:row=>inspectRetainedAnimationGlb(entity,row,assetId),
     assignment:entity.components?.ActorAllocatedAnimation?.authored??null,
     modelAssetId:entity.components?.ActorAppearance?.effective?.asset_id??null,
