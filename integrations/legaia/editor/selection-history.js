@@ -1,6 +1,6 @@
 // Ephemeral scene inspection history; no project command or native data belongs here.
 export function selectionHistoryValue(value){
-  if(!value||Object.keys(value).sort().join()!=='focus,ids,kind'||!['placements','resource'].includes(value.kind)||typeof value.focus!=='string'||!value.focus||value.focus.length>1024||!Array.isArray(value.ids)||value.ids.length<1||value.ids.length>128||value.kind==='resource'&&value.ids.length!==1||new Set(value.ids).size!==value.ids.length||JSON.stringify(value.ids)!==JSON.stringify([...value.ids].sort())||!value.ids.includes(value.focus))throw Error('Invalid inspection history selection.');
+  if(!value||Object.keys(value).sort().join()!=='focus,ids,kind'||!['placements','resource','environment'].includes(value.kind)||typeof value.focus!=='string'||!value.focus||value.focus.length>1024||!Array.isArray(value.ids)||value.ids.length<1||value.ids.length>128||value.kind!=='placements'&&value.ids.length!==1||new Set(value.ids).size!==value.ids.length||JSON.stringify(value.ids)!==JSON.stringify([...value.ids].sort())||!value.ids.includes(value.focus))throw Error('Invalid inspection history selection.');
   for(let i=0;i<value.ids.length;i++)if(typeof value.ids[i]!=='string'||!value.ids[i]||value.ids[i].length>1024)throw Error('Invalid inspection history identity.');
   return structuredClone(value);
 }

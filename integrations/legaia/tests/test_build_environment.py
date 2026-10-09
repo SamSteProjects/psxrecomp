@@ -18,6 +18,44 @@ from sdk.scene_preview import environment_effective_transforms
 
 @unittest.skipUnless(os.environ.get('LEGAIA_DISC_BIN'), 'requires private retail disc')
 class EnvironmentBuildTests(unittest.TestCase):
+    def test_controller_only_scene_delivers_one_exact_map_without_actor_edits(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = ProjectService(Path(directory))
+            project.disc_path = os.environ['LEGAIA_DISC_BIN']
+            document = import_scene(project.disc_path, 'other1')
+            self.assertEqual(document['actors'], [])
+            project.import_metadata(document)
+            owner = 'scene://other1'
+            original = project._environment_source(owner)
+            source_hash = sha256(original).hexdigest()
+            x = struct.unpack_from('<h', original, 324 * 32)[0] + 64
+            project.command({'type': 'set_environment_transforms', 'entity_id': owner,
+                             'value': {'source_sha256': source_hash,
+                                       'edits': [{'record_index': 324, 'offset': {'x': x}}]}})
+            project.command({'type': 'set_collision_walls', 'entity_id': owner,
+                             'value': {'source_sha256': source_hash,
+                                       'edits': [{'row': 1, 'column': 0, 'quadrant': 0,
+                                                  'blocked': not bool(original[0x4080] & 16)}]}})
+            reopened = ProjectService.open(project.save())
+            self.assertEqual(reopened.imports[owner], document)
+            self.assertIsNone(reopened.selected)
+            result = build_project(reopened)
+            audit = json.loads(Path(result['audit']).read_text(encoding='utf-8'))
+            self.assertEqual(result['overlay_count'], 1)
+            overlay = audit['overlays'][0]
+            changed = (Path(result['package_directory']) / overlay['file']).read_bytes()
+            expected = bytearray(original)
+            struct.pack_into('<h', expected, 324 * 32, x)
+            expected[0x4080] ^= 16
+            self.assertEqual(changed, bytes(expected))
+            self.assertEqual(overlay['expected_sha256'], source_hash)
+            self.assertEqual(overlay['sha256'], sha256(expected).hexdigest())
+            self.assertEqual(reopened.imports[owner]['actors'], [])
+            project.undo(); project.undo()
+            self.assertEqual(project.overrides, {})
+            project.redo(); project.redo()
+            self.assertEqual(project.overrides, reopened.overrides)
+
     def test_collision_and_scenery_share_one_persisted_map(self):
         with tempfile.TemporaryDirectory() as directory:
             project = ProjectService(Path(directory))

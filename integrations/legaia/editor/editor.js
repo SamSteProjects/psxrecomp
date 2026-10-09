@@ -1669,12 +1669,15 @@ async function refreshScenePreview(){
   finally{if(sceneAbort===controller){sceneAbort=null;scenePendingKey=null;updateSceneBadge();sceneAnimationController?.updateState();draw();}}
 }
 const hierarchyGroupState={scope:null,collapsed:new Set()};
-function inspectionHistorySelection(){const focus=hierarchySelectedIdentity();if(!focus)return null;const resource=selectedSceneResource();return {kind:resource?'resource':'placements',focus,ids:resource?[focus]:currentPlacementSelection().sort()};}
+function inspectionHistorySelection(){const focus=hierarchySelectedIdentity();if(!focus)return null;const resource=selectedSceneResource(),sourceEnvironment=!resource&&environmentEntities().some(row=>row.entity_id===focus)&&!scenePlacementEligible().has(focus);return {kind:resource?'resource':sourceEnvironment?'environment':'placements',focus,ids:resource||sourceEnvironment?[focus]:currentPlacementSelection().sort()};}
 async function restoreInspectionSelection(value){
   if(busy||!canEdit()||!scenePreviewCurrent())return false;
   const key=resourceStateKey(),fresh=()=>key===resourceStateKey()&&canEdit()&&scenePreviewCurrent();
   if(value.kind==='resource'){
     const record=assetRecords().find(row=>row.id===value.focus&&row.sceneId===state.scene.id&&['trigger','region','collision','script','transition'].includes(row.type));if(!record||resourceKey!==key)return false;selectSceneResource(record);
+  }else if(value.kind==='environment'){
+    if(value.ids.length!==1||value.ids[0]!==value.focus||!environmentEntities().some(row=>row.entity_id===value.focus))return false;
+    clearScenePlacementSelection();selectEnvironment(value.focus);
   }else{
     const ids=mergeScenePlacementSelection([],value.ids,scenePlacementEligible());if(!ids.includes(value.focus))return false;
     clearScenePlacementSelection();
@@ -3527,7 +3530,7 @@ function renderInspector(){
         const base=individual?{...retail,...shared?.[field]}:retail;
         const heading=document.createElement('h4');heading.textContent=label;section.append(heading);
         for(const axis of ['x','y','z']){
-          const row=document.createElement('label');row.textContent=`${axis.toUpperCase()} · ${individual?'inherited':'imported'} ${base[axis]} `;
+          const row=document.createElement('label');row.className='environment-transform-axis';row.textContent=`${axis.toUpperCase()} · ${individual?'inherited':'imported'} ${base[axis]} `;
           const input=document.createElement('input');input.type='number';input.step='1';input.min=field==='offset'?'-32768':'0';input.max=field==='offset'?'32767':'4095';input.value=current?.[field]?.[axis]??base[axis];input.setAttribute('aria-label',`${individual?'Individual ':''}${label} ${axis.toUpperCase()}`);input.disabled=state.project?.mode==='live'||sceneRepresentation!=='authored'||!scenePreviewCurrent();row.append(input);section.append(row);inputs.push({field,axis,input,base:base[axis]});
         }
       }
