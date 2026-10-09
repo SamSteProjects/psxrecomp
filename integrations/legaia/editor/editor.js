@@ -3707,7 +3707,7 @@ async function inspectSavedAnimationRecords(entity,retainedRecord=null,assetId=n
     modelAssetId:entity.components?.ActorAppearance?.effective?.asset_id??null,
     getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key}),
     busy:()=>busy,setBusy,onError:error=>notify(error.message??String(error),true),
-    onApplied:async(next,change)=>{state=next;render();if(change.kind==='duplicate'){notify('Clip duplicated. Original record and assignments retained; the new clip is active and unassigned. Save project to persist.');await openCopiedAnimationAfterApply(change);}else{notify('Allocated clip settings updated. Save project to persist.');refreshRetainedAssetAfterApply(assetId);}},
+    onApplied:async(next,change)=>{state=next;render();if(change.kind==='duplicate'){notify('Clip duplicated. Original record and assignments retained; the new clip is active and unassigned. Save project to persist.');await openCopiedAnimationAfterApply(change);}else{notify(change.kind==='variant'?'Clip variant created. Source and assignments retained; the new clip is active and unassigned. Save project to persist.':'Allocated clip settings updated. Save project to persist.');refreshRetainedAssetAfterApply(assetId);}},
     onPosePreview:async(data,{returnToEditor})=>{
       setBusy(false);await openModel(data.semantic_id,data.animation.clip_id,entity.id,'imported',null,data,returnToEditor);
       if(model!==data||!$('model-dialog').open)throw new Error($('model-error').textContent||'Could not open saved allocated clip.');
@@ -3742,7 +3742,7 @@ async function inspectAnimationAllocation(entity){
   animationAllocationEditor=await openAnimationAllocationEditor({entityId:entity.id,
     getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key}),
     busy:()=>busy,setBusy,onError:error=>notify(error.message??String(error),true),
-    onApplied:next=>{state=next;render();notify('Animation clip allocated. Save project to persist. Gameplay assignment is pending.');},
+    onApplied:next=>{state=next;render();notify('Animation clip allocated and unassigned. Assign through the retained clip library. Save project to persist; gameplay remains unverified.');},
     onPosePreview:async(data,{returnToEditor})=>{
       setBusy(false);
       await openModel(data.semantic_id,'allocation-preview',entity.id,'imported',null,data,returnToEditor);

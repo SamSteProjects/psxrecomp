@@ -3092,14 +3092,21 @@ class EditorHandler(BaseHTTPRequestHandler):
                         self._json(200, self.server.state())
                     return
                 if route == '/api/animation-record-allocation-options':
-                    if set(body) != {'entity_id','expected_source_key'}:
+                    expected={'entity_id','expected_source_key'}
+                    if 'source_record_id' in body:
+                        expected.add('source_record_id')
+                        if not isinstance(body['source_record_id'],str):raise ProjectError('Retained donor requires a record identity')
+                    if set(body) != expected:
                         raise ProjectError('Animation allocation options require actor and current scene source')
                     from .animation_allocation import allocation_options
-                    self._json(200,allocation_options(self.server.project,body['entity_id'],body['expected_source_key']))
+                    self._json(200,allocation_options(self.server.project,body['entity_id'],body['expected_source_key'],body.get('source_record_id')))
                     return
                 if route in ('/api/animation-record-allocation-preview','/api/animation-record-allocation',
                              '/api/animation-record-allocation-pose-preview'):
                     expected = {'entity_id', 'source_frame_indices', 'edits', 'expected_source_key'}
+                    if 'source_record_id' in body:
+                        expected.add('source_record_id')
+                        if not isinstance(body['source_record_id'],str):raise ProjectError('Retained donor requires a record identity')
                     if route != '/api/animation-record-allocation-preview':
                         expected.add('review_key')
                     if (set(body) != expected or
@@ -3111,11 +3118,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .animation_allocation import preview_record_allocation
                     if route == '/api/animation-record-allocation-preview':
                         self._json(200, preview_record_allocation(self.server.project, body['entity_id'],
-                            body['source_frame_indices'], body['edits'], body['expected_source_key']))
+                            body['source_frame_indices'], body['edits'], body['expected_source_key'],body.get('source_record_id')))
                     elif route == '/api/animation-record-allocation-pose-preview':
                         from .animation_allocation import pose_record_allocation
                         animation,asset = pose_record_allocation(self.server.project,body['entity_id'],
-                            body['source_frame_indices'],body['edits'],body['expected_source_key'],body['review_key'])
+                            body['source_frame_indices'],body['edits'],body['expected_source_key'],body['review_key'],body.get('source_record_id'))
                         geometry = animation.pop('geometry')
                         geometry['frames'] = animation.pop('frames')
                         preview = self.server.model_preview(asset,prepared=geometry,effective_shape=True)

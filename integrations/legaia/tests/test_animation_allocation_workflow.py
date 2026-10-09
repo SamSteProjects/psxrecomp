@@ -79,6 +79,44 @@ class AnimationAllocationWorkflow(unittest.TestCase):
             emitted,_=compose(reopened,reopened.active_scene)
             a,b=animation_record_ranges(emitted)[-1];self.assertEqual(emitted[a:b],expected)
             self.assertEqual(reopened.overrides[owner]['ActorAllocatedAnimation'],binding)
+            # A retired, unassigned library clip is still an explicit variant donor,
+            # even when this actor has a different initial clip assigned.
+            from sdk.animation_allocation import prepare_record_activation
+            record_id=entry['record_id'];key=source_key(reopened)
+            _,retirement=prepare_record_activation(reopened,reopened.active_scene,record_id,False,key)
+            reopened.command(dict(type='set_animation_record_active',scene_id=reopened.active_scene,
+                record_id=record_id,active=False,expected_source_key=key,review_key=retirement['review_key']))
+            key=source_key(reopened);before_variant=self.snapshot(reopened);before_variant_overrides=deepcopy(reopened.overrides)
+            variant_options=allocation_options(reopened,owner,key,record_id)
+            self.assertEqual(variant_options['donor_frame_count'],5)
+            self.assertEqual(variant_options['source_allocated_entry'],entry)
+            sequence=[4,2,1]
+            variant_expected,_=allocate_animation_record(expected,sha256(expected).hexdigest(),sequence,[])
+            candidate,variant=prepare_record_allocation(reopened,owner,sequence,[],key,record_id)
+            a,b=animation_record_ranges(candidate)[-1];self.assertEqual(candidate[a:b],variant_expected)
+            self.assertEqual(variant['source_allocated_entry'],entry)
+            self.assertEqual(variant['proposed_ledger']['removed_record_ids'],[record_id])
+            self.assertEqual(self.snapshot(reopened),before_variant)
+            with http_server(reopened) as (_,post):
+                body=dict(entity_id=owner,expected_source_key=key,source_record_id=record_id,source_frame_indices=sequence,edits=[])
+                status,options=post('/api/animation-record-allocation-options',{k:body[k] for k in ('entity_id','expected_source_key','source_record_id')})
+                self.assertEqual(status,200,options);self.assertEqual(options,variant_options)
+                status,report=post('/api/animation-record-allocation-preview',body)
+                self.assertEqual(status,200,report);self.assertEqual(report,variant)
+                for bad in (dict(body,source_record_id=None),dict(body,source_record_id='missing'),dict(body,entity_id=owner.replace('0011','0012')),dict(body,expected_source_key='0'*64)):
+                    status,_=post('/api/animation-record-allocation-preview',bad);self.assertEqual(status,400)
+                self.assertEqual(self.snapshot(reopened),before_variant)
+                status,pose=post('/api/animation-record-allocation-pose-preview',dict(body,review_key=variant['review_key']))
+                self.assertEqual(status,200,pose);self.assertEqual(len(pose['frames']),3)
+                status,_=post('/api/animation-record-allocation',dict(body,review_key=variant['review_key']))
+                self.assertEqual(status,200)
+            self.assertEqual(reopened.overrides[owner]['ActorAllocatedAnimation'],binding)
+            self.assertEqual(reopened.overrides[reopened.active_scene]['AnimationRecords']['removed_record_ids'],[record_id])
+            reopened.undo();self.assertEqual(reopened.overrides,before_variant_overrides)
+            self.assertEqual(reopened.overrides[reopened.active_scene]['AnimationRecords']['records'][-1],entry)
+            reopened.redo();saved=ProjectService.open(reopened.save())
+            bank,_=compose(saved,saved.active_scene);a,b=animation_record_ranges(bank)[-1]
+            self.assertEqual(bank[a:b],variant_expected)
 
     def snapshot(self, project):
         return digest(dict(overrides=project.overrides, undo=project.undo_stack,

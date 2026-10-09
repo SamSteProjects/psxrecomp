@@ -31,8 +31,17 @@ def flatten_retained_sequence(entry,indices,edits):
     return [entry['source_frame_indices'][index] for index in indices],[rows[key] for key in sorted(rows)]
 
 
+def _retained_donor(project, entity_id, record_id):
+    if not isinstance(record_id,str):raise ProjectError('Retained donor requires a record identity')
+    ledger=validate(project,project.active_scene,project.overrides.get(project.active_scene,{}).get('AnimationRecords'),verify_disc=True)
+    entry=next((row for row in ledger['records'] if row['record_id']==record_id),None)
+    if entry is None or entry['entity_id']!=entity_id:
+        raise ProjectError('Retained donor identity differs from its captured owner')
+    return deepcopy(entry)
+
+
 def prepare_record_allocation(project, entity_id, source_frame_indices, edits,
-                              expected_source_key):
+                              expected_source_key, source_record_id=None):
     """Resolve a donor through actor/model evidence and review one new record.
 
     Current shared channel contributions are composed before copying frames.
@@ -52,7 +61,11 @@ def prepare_record_allocation(project, entity_id, source_frame_indices, edits,
     with _disc_context(project.disc_path):
         model_source = actor
         source_entry = None
-        if assigned is not None:
+        if source_record_id is not None:
+            source_entry = _retained_donor(project,entity_id,source_record_id)
+            actor = next(row for row in document['actors'] if row['semantic_id']==source_entry['channel_owner_entity_id'])
+            model_source = next(row for row in document['actors'] if row['semantic_id']==source_entry['model_source_entity_id'])
+        elif assigned is not None:
             from .allocated_animation_assignment import validate_binding
             source_entry = validate_binding(project,entity_id,assigned,verify_disc=True)
             actor = next(row for row in document['actors'] if row['semantic_id']==source_entry['channel_owner_entity_id'])
@@ -87,7 +100,9 @@ def prepare_record_allocation(project, entity_id, source_frame_indices, edits,
         if source_entry is not None:
             source_ledger = project.overrides[project.active_scene]['AnimationRecords']
             validate(project,project.active_scene,source_ledger);verify_witnesses(source_ledger,catalog)
-            retained = next(row['record'] for row in reconstruct(retail,source_ledger) if row['record_id']==source_entry['record_id'])
+            capture_ledger=deepcopy(source_ledger)
+            capture_ledger['removed_record_ids']=[id for id in capture_ledger['removed_record_ids'] if id!=source_entry['record_id']]
+            retained = next(row['record'] for row in reconstruct(retail,capture_ledger) if row['record_id']==source_entry['record_id'])
             record,_ = allocate_animation_record(retained,source_entry['record_sha256'],source_frame_indices,edits)
             captured,_ = patch_animation_channels(donor,source_entry['donor_record_sha256'],source_entry['donor_edits'])
             donor_edits = None
@@ -143,11 +158,11 @@ def prepare_record_allocation(project, entity_id, source_frame_indices, edits,
     return candidate, report
 
 
-def preview_record_allocation(project, entity_id, source_frame_indices, edits, expected_source_key):
-    return prepare_record_allocation(project, entity_id, source_frame_indices, edits, expected_source_key)[1]
+def preview_record_allocation(project, entity_id, source_frame_indices, edits, expected_source_key, source_record_id=None):
+    return prepare_record_allocation(project, entity_id, source_frame_indices, edits, expected_source_key,source_record_id)[1]
 
 
-def allocation_options(project, entity_id, expected_source_key):
+def allocation_options(project, entity_id, expected_source_key, source_record_id=None):
     if project.mode != 'edit':
         raise ProjectError('Animation allocation requires Edit mode')
     document = project.imports.get(project.active_scene)
@@ -159,7 +174,11 @@ def allocation_options(project, entity_id, expected_source_key):
     with _disc_context(project.disc_path):
         source_entry = None
         assigned = project.overrides.get(entity_id,{}).get('ActorAllocatedAnimation')
-        if assigned is not None:
+        if source_record_id is not None:
+            source_entry = _retained_donor(project,entity_id,source_record_id)
+            actor = next(row for row in document['actors'] if row['semantic_id']==source_entry['channel_owner_entity_id'])
+            model_source = next(row for row in document['actors'] if row['semantic_id']==source_entry['model_source_entity_id'])
+        elif assigned is not None:
             from .allocated_animation_assignment import validate_binding
             source_entry = validate_binding(project,entity_id,assigned,verify_disc=True)
             actor = next(row for row in document['actors'] if row['semantic_id']==source_entry['channel_owner_entity_id'])
@@ -196,8 +215,8 @@ def allocation_options(project, entity_id, expected_source_key):
     return result
 
 
-def pose_record_allocation(project, entity_id, source_frame_indices, edits, expected_source_key, review_key):
-    candidate,report = prepare_record_allocation(project,entity_id,source_frame_indices,edits,expected_source_key)
+def pose_record_allocation(project, entity_id, source_frame_indices, edits, expected_source_key, review_key,source_record_id=None):
+    candidate,report = prepare_record_allocation(project,entity_id,source_frame_indices,edits,expected_source_key,source_record_id)
     if report['review_key'] != review_key:
         raise ProjectError('Animation pose differs from the reviewed allocation; review again')
     entry = report['proposed_ledger']['records'][-1]
@@ -230,10 +249,14 @@ def pose_record_allocation(project, entity_id, source_frame_indices, edits, expe
 
 
 def apply_command(project, command):
-    if set(command) != {'type','entity_id','source_frame_indices','edits','expected_source_key','review_key'}:
+    fields={'type','entity_id','source_frame_indices','edits','expected_source_key','review_key'}
+    if 'source_record_id' in command:
+        fields.add('source_record_id')
+        if not isinstance(command['source_record_id'],str):raise ProjectError('Retained donor requires a record identity')
+    if set(command) != fields:
         raise ProjectError('Animation allocation Apply requires the exact reviewed request')
     candidate, report = prepare_record_allocation(project,command['entity_id'],command['source_frame_indices'],
-                                                 command['edits'],command['expected_source_key'])
+                                                 command['edits'],command['expected_source_key'],command.get('source_record_id'))
     if command['review_key'] != report['review_key']:
         raise ProjectError('Animation allocation changed after review; review again')
     # Reconstruct the complete prospective ledger independently, before publishing.

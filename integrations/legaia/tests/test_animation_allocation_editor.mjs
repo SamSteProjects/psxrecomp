@@ -25,6 +25,8 @@ capturedReport.allocation.allocated_records[0].record_id=newId;
 capturedReport.proposed_ledger.records=[source,{...source,...flat,record_id:newId,record_sha256:'c'.repeat(64)}];
 capturedReport.proposed_ledger.revision=2;
 decodeAnimationAllocationReview(capturedReport,retained,captureRequest);
+decodeAnimationAllocationReview(capturedReport,retained,{...captureRequest,source_record_id:id});
+assert.throws(()=>decodeAnimationAllocationReview(capturedReport,retained,{...captureRequest,source_record_id:newId}));
 for(const change of [v=>v.requested_source_frame_indices=[0],v=>v.source_allocated_entry.edits=[],v=>v.proposed_ledger.records.at(-1).donor_edits=[],v=>v.proposed_ledger.records.at(-1).source_frame_indices=[3,0,1,0],v=>v.source_animation_id=clip]){const value=structuredClone(capturedReport);change(value);assert.throws(()=>decodeAnimationAllocationReview(value,retained,captureRequest));}
 for(const change of [v=>v.source_allocated_entry.edits[0].translation.y=2048,v=>v.source_allocated_entry.source_frame_indices=[3],v=>v.donor_frame_count=3,v=>v.source_animation_id=clip]){const value=structuredClone(retainedOptions);change(value);assert.throws(()=>decodeAnimationAllocationOptions(value,entity,initial));}
 const deliveredOptions=decodeAnimationAllocationOptions({...options(),build_available:true},entity,initial),deliveredReport=report(request);deliveredReport.capabilities.build=true;decodeAnimationAllocationReview(deliveredReport,deliveredOptions,request);

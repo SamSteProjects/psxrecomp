@@ -1,5 +1,40 @@
 # Persistent native animation record allocation
 
+## Retained Clip Variants — 2026-10-09
+
+Choose **Create variant** in the saved clip library or retained lifecycle panel,
+then enter the selected clip's frame sequence, Review, optionally Preview/Return,
+and Apply. Both active and retired clips can supply captured poses. No initial
+assignment is required. The original record and its active/retired state remain
+unchanged; the variant begins active and unassigned. Existing actor assignments
+are preserved. The dedicated exact-duplicate and initial-assignment panels retain
+their existing scope.
+
+Allocation options, Review, pose and Apply accept an optional `source_record_id`.
+It must belong to the captured imported owner in the current active scene.
+Source-key checks, fresh disc witnesses and the frozen recipe prove the donor;
+retired source reconstruction is temporary and does not restore it in the project.
+The library also checks its selected native record hash before enabling Review.
+The resulting independent v1 ledger recipe uses the same literal-byte equality
+qualification as assigned-clip capture. Existing DTO versions and requests remain
+compatible, and persistent history/Build use the ordinary allocation command.
+
+The library retains ownership of its variant editor for stale-source updates and
+selection/close disposal. An already closed library's queued close event cannot
+destroy the new editor. Failed donor/hash qualification leaves Review disabled.
+The normal editor receives explicit variant change metadata after Apply.
+
+Twelve retail-enabled Python tests, three Node suites, three JS syntax checks and
+two Python AST checks passed. Coverage includes an explicit retired donor while
+the actor has another clip assigned, malformed/foreign/stale requests, exact
+native payloads, pose/Apply, preserved retirement, Undo/Redo and Save/Open.
+Actual Town01 library handoff and Review/Preview/Return/Apply passed with no page
+errors; desktop and 400-pixel screenshots were inspected. Native package
+`f20905491e99c985` readback matched the entire animation bank, SHA-256
+`13e9aee8798daf0d56b903a6d1b722d28724cc01d47354539e9fd75521ac48dc`.
+Private evidence: `local-output/sdk-20260909/retained-clip-variants-20261009/`.
+No game or runtime attachment; timing and gameplay remain unverified.
+
 ## Assigned Allocated Clip Capture — 2026-10-09
 
 **Allocate animation clip** now resolves an actor's assigned allocated clip as
