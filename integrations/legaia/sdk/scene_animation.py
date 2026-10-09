@@ -393,7 +393,7 @@ def prepare_scene_animation(project, scene, animation_loader, representation, ex
         else:
             raise ProjectError('Scene animation actor coverage is incomplete')
     limitations = ['Transient source animation preview; no game scheduling or runtime state is authored or observed.',
-                   'Clips share an integer preview tick and loop by viewer convention; display rate does not establish retail timing.',
+                   'Clips share an integer preview tick; per-track display mode, phase and rate do not establish retail timing.',
                    'Source actor-local Y-down coordinates are retained; existing instance transforms and material bindings remain canonical.',
                    'Static, unsupported and unavailable actors are reported explicitly; environment and terrain are excluded.']
     if budget_rejections:

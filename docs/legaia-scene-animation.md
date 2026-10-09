@@ -6,7 +6,7 @@ The scene animation timeline previews every eligible actor's verified initial cl
 
 Import a verified field scene and choose Edit mode. Choose the Authored or Retail scene representation, then start scene animation preview. Preparation reports animated instances, shared tracks and actors whose animation remains static or unavailable. It does not present partial coverage as a complete live scene.
 
-Use Play/Pause or the integer tick control to inspect poses. Preview rate is an explicit display setting from 1 to 30 frames per second, initially 10. Every track samples `preview_tick % frame_count`; repeating all clips is a preview convention. The shared sample index continues past the longest clip so different clip lengths loop independently. The scrub range expands to retain elapsed preview samples. Frames are discrete source samples, with no invented interpolation, script scheduling, movement or transitions.
+Use Play/Pause or the integer tick control to inspect poses. Preview rate is an explicit display setting from 1 to 30 frames per second, initially 10. Tracks initially sample `preview_tick % frame_count`; repeating clips is a preview convention. Per-track preview modes and source-frame phase offsets can change that sampling without changing source data. The shared sample index continues past the longest clip. The scrub range expands to retain elapsed preview samples. Frames are discrete source samples, with no invented interpolation, script scheduling, movement or transitions.
 
 Stop + Restore returns the viewport to its canonical scene. Preview does not append Undo history, change saved authoring, produce Build changes or persist retail animation payloads. Existing authored transforms, model materials, face/UV/RGB content and texture associations remain attached to the same scene instances. A project, scene, representation, mode or source change withdraws the preview; it never resumes automatically against changed evidence. Persistent editing and other transient pose tools are blocked while this preview owns the viewport.
 
@@ -71,3 +71,22 @@ Nineteen focused Python cases pass with no skips: scene animation source/channel
 Retail lighting, fixed-point GTE rounding, native animation timing and gameplay appearance remain unverified. This work uses stored source normal references and qualified SDK rigid poses; it does not establish those runtime behaviors.
 
 The22 retail Town01 tracks contain zero lit source-normal triangles. Their unlit faces correctly display neutral gray, while the focused synthetic signed16 directions establish rotation behavior. The qualified report covers344199 frame corners; this is source-channel evidence and no normals are synthesized for the retail actors.
+
+## Per-Track Preview Modes and Phase Offsets — 2026-10-09
+
+Start scene animation preview and expand **Animation sources and unavailable instances** in Scene tools. Each qualified track offers **Preview mode** and a source-frame **Phase offset** from zero through its last frame. Changing either pauses playback and resamples the current tick; use Play explicitly to resume.
+
+| Mode | Selected source frame |
+| --- | --- |
+| Loop | `(tick + offset) % frame_count` |
+| Hold at last frame | `min(tick + offset, frame_count - 1)` |
+| Ping-pong | Reflect `(tick + offset)` over period `2 * (frame_count - 1)`; a one-frame clip remains at zero |
+| Freeze at offset | Always the selected offset frame |
+
+The implementation reduces the tick before addition to preserve exact modular sampling through `Number.MAX_SAFE_INTEGER`. Offsets identify discrete source frames; no interpolation or retail time is inferred. Vertices and qualified normal directions sample the same frame. All instances sharing a geometry track receive its selected pose while retaining their existing transforms and materials.
+
+Settings are temporary and are not stored in the project, Undo history or Build inputs. Stop resets them to Loop/zero and restores the canonical scene. A fresh start uses defaults. Source changes withdraw coverage; stale or busy controls cannot update the viewport. Invalid offsets restore the prior valid settings without sampling.
+
+Nine focused Python tests, the Node scene-animation suite and two JS syntax checks passed. An independent BigInt oracle covered all modes, one-frame clips, boundary offsets and the maximum safe tick. Mounted controls passed pause, invalid input, busy/source withdrawal, reset and restart checks. In a private Dolk2 editor, all four modes matched literal source frames and every actual rendered vertex-buffer entry for 30- and 10-frame tracks, including a shared two-instance track. Desktop and 400-pixel screenshots were inspected. Browser errors, overflow and authoring/Build/Run requests were absent; complete project/history/imports stayed unchanged and Save/Open remained exact.
+
+Evidence: `local-output/sdk-20260909/scene-track-playback-20261009/`. The initial collapsed-drawer harness failure screenshot is retained alongside the passing evidence. These checks establish editor sampling and lifecycle behavior only. Native animation scheduling and gameplay appearance remain unverified; no game or runtime attachment occurred.
