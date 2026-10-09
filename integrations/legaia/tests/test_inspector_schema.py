@@ -1,6 +1,17 @@
 import unittest
 from sdk.inspector_schema import inspector_schema
 class InspectorSchema(unittest.TestCase):
+    def test_actor_asset_bindings_are_read_only_and_keep_initial_layers_separate(self):
+        component=inspector_schema()['components']['AssetActor'];properties={p['id']:p for p in component['properties']}
+        self.assertEqual(properties['retail-model']['path'],['data','components','ActorAppearance','imported','asset_id'])
+        self.assertEqual(properties['current-model']['path'],['data','components','ActorAppearance','effective','asset_id'])
+        self.assertEqual(properties['current-animation']['path'],['data','components','ActorAnimation','effective','animation_asset_id'])
+        self.assertEqual(properties['appearance-donor']['type'],'entity-reference')
+        self.assertEqual(properties['animation-donor']['type'],'entity-reference')
+        self.assertTrue(all('authoring' not in p and 'fallback_paths' not in p for p in component['properties']))
+        self.assertEqual(len(component['details']),3)
+        self.assertEqual(component['actions'][0]['id'],'select-asset-actor')
+
     def test_registered_actor_section_evidence_and_notes_are_metadata_only(self):
         schema=inspector_schema();appearance=schema['components']['ActorAppearance'];model=schema['components']['ModelRenderer']
         self.assertEqual(appearance['details'],[{'label':'Appearance evidence and limits','path':[]}])

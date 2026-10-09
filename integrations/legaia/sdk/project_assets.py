@@ -162,6 +162,7 @@ def assemble(project, catalogs, coverage=None) -> dict:
     _metadata(dict(catalogs=catalogs, coverage=supplied))
     _budget(dict(imports=imports, catalogs=catalogs, coverage=supplied))
     key = source_key(project)
+    from .actor_asset_bindings import components as actor_binding_components
     draft_models={row['source_id']:row for row in project.model_references() if row['kind']=='draft_initial_model_assignment'}
     drafts = {}
     for identifier, draft in sorted(project.actor_drafts.items()):
@@ -222,7 +223,9 @@ def assemble(project, catalogs, coverage=None) -> dict:
 
         add(document['scene'], base_kind='scene')
         for record in document['actors']:
-            add(record, base_kind='actor')
+            projected = deepcopy(record)
+            projected['components'] = actor_binding_components(project, record, document)
+            add(projected, base_kind='actor')
         for record in document['assets'].get('models', []):
             add(record, base_kind='model')
         if catalog is not None:
@@ -264,6 +267,7 @@ def inspect(project) -> dict:
     if not project.disc_path:
         raise ProjectError('Project Asset Database discovery requires the user-owned source disc')
     key = source_key(project)
+    from .actor_asset_bindings import components as actor_binding_components
     view = copy(project)
     for name, value in vars(project).items():
         if name != 'assets':

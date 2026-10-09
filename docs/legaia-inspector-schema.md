@@ -504,3 +504,37 @@ imports, history and every project file byte remained unchanged. Private evidenc
 `local-output/sdk-20260909/asset-details-back-trail-20261009/`.
 No Build, game, runtime attachment, native recomp compilation, install or disc
 export occurred. Gameplay remains unverified; the full SDK goal stays active.
+## Actor Asset Model and Clip Bindings — 2026-10-09
+
+Imported actor Asset Details now presents Retail initial model/animation,
+authored appearance and imported-clip witnesses, appearance-default animation,
+and Current initial model/animation as separate SDK properties. Exact references
+use the existing catalog navigation and Back trail. Missing models and unresolved
+local clips remain explicit. An absent imported-clip witness no longer claims
+that the Current animation inherits appearance when a retained clip is assigned.
+Read-only evidence details expose the existing appearance, animation and model
+resolution snapshots; the original actor-selection action remains.
+
+The scene entity and Project Asset Database now share a reusable SDK projection
+of existing initial bindings. Project catalog actor records receive detached
+component metadata without changing their imported source document, provenance
+or source membership. This reuses existing appearance/witness/allocated-record
+resolution; no new retail decoder, runtime binding or authoring path is introduced.
+The editor consumes the descriptor through its existing shared renderer.
+
+Thirty-five focused Python tests, two Node suites and four SDK AST checks passed.
+A captured pre-extraction baseline matched all three binding components for all
+52 Town01 actors exactly. Synthetic authored appearance checks retain distinct
+Retail/Current models and initial clips, with detached Project catalog snapshots.
+Actual actor Asset Details matched SDK values, opened separate Retail versus
+allocated Current clip records and the Current model, returned through Back, and
+retained Project membership. Scene/Project binding projections matched. Desktop
+and 400px layouts were inspected; zero page errors or authoring/scene-switch
+requests occurred, with unchanged project/imports/history/files. Private evidence:
+`local-output/sdk-20260909/actor-asset-bindings-20261009/`.
+An older NPC membership fixture used a forbidden newline name; committed HEAD
+reproduced that failure. The fixture now uses a printable name and separately
+checks rejection of controls. Validation was not relaxed. No Build, game, runtime
+attachment, native recomp compilation, install or disc export occurred. Initial
+binding metadata does not prove runtime residency, visibility, playback or script
+compatibility. Gameplay remains unverified; the full SDK goal stays active.

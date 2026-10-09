@@ -44,7 +44,7 @@ class ProjectAssetsTests(unittest.TestCase):
     def test_authored_npc_membership_is_detached_and_distinct_from_retail(self):
         identifier='authored-actor://12345678-1234-1234-1234-123456789abc'
         scene='scene://other';donor=self.project.imports[scene]['actors'][0]['semantic_id']
-        draft=dict(scene_id=scene,donor_entity_id=donor,name='Project\nNPC',position=dict(x=128,z=256))
+        draft=dict(scene_id=scene,donor_entity_id=donor,name='Project NPC',position=dict(x=128,z=256))
         self.project.actor_drafts[identifier]=deepcopy(draft)
         before=deepcopy(self.project._document());history=deepcopy((self.project.undo_stack,self.project.redo_stack));report=assemble(self.project,self.catalogs)
         asset=next(row for row in report['assets'] if row['id']==identifier)
@@ -63,8 +63,24 @@ class ProjectAssetsTests(unittest.TestCase):
         record['authored']['position']['x']=512;self.assertEqual(self.project.actor_drafts[identifier],draft)
         catalogs=deepcopy(self.catalogs);catalogs[scene]['records'].append(deepcopy(record))
         with self.assertRaisesRegex(ProjectError,'validated authored'):assemble(self.project,catalogs)
+        self.project.actor_drafts[identifier]['name']='Project\nNPC'
+        with self.assertRaisesRegex(ProjectError,'printable Unicode'):assemble(self.project,self.catalogs)
+        self.project.actor_drafts[identifier]['name']=draft['name']
         self.project.actor_drafts[identifier]['scene_id']='scene://absent'
         with self.assertRaises(ProjectError):assemble(self.project,self.catalogs)
+
+    def test_imported_actor_catalog_bindings_match_sdk_scene_components_without_mutation(self):
+        before=deepcopy(self.project._document());imports=deepcopy(self.project.imports)
+        report=assemble(self.project,self.catalogs);state=self.project.state()
+        expected={row['id']:{key:row['components'][key] for key in ('ActorAppearance','ActorAnimation','ModelRenderer')} for row in state['scene']['entities']}
+        for asset in report['assets']:
+            if asset['kind']!='actor':continue
+            record=asset['variants'][0]['record'];bindings=record['components']
+            if asset['id'] in expected:self.assertEqual(bindings,expected[asset['id']])
+            self.assertEqual(bindings['ActorAppearance']['imported']['asset_id'],self.model)
+            self.assertIsNone(bindings['ActorAnimation']['effective']['animation_asset_id'])
+            bindings['ActorAppearance']['imported']['asset_id']='mutated'
+        self.assertEqual(self.project._document(),before);self.assertEqual(self.project.imports,imports)
 
     def test_draft_model_reference_uses_retail_donor_and_keeps_unknown_explicit(self):
         p=self.project;scene=p.active_scene;donor=p.imports[scene]['actors'][0]

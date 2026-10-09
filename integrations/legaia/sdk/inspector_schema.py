@@ -216,6 +216,20 @@ def inspector_schema():
             'actions': [{'id': action, 'label': action_label, 'capability': capability}],
         }
     schema['asset_inspectors']['audio'] = 'AssetAudio'
+    actor = schema['components']['AssetActor']
+    actor['properties'] += [
+        {'id':'retail-model','label':'Retail initial model','path':['data','components','ActorAppearance','imported','asset_id'],'type':'asset-reference','state':'read-only-retail','empty_label':'Unresolved'},
+        {'id':'appearance-donor','label':'Authored appearance donor','path':['data','components','ActorAppearance','authored','donor_entity_id'],'type':'entity-reference','state':'authored-through-review','empty_label':'None · inherit Retail appearance'},
+        {'id':'current-model','label':'Current initial model','path':['data','components','ActorAppearance','effective','asset_id'],'type':'asset-reference','state':'effective','empty_label':'Unresolved'},
+        {'id':'retail-animation','label':'Retail initial animation','path':['data','components','ActorAnimation','imported','animation_asset_id'],'type':'asset-reference','state':'read-only-retail','empty_label':'No resolved local clip'},
+        {'id':'appearance-animation','label':'Appearance default animation','path':['data','components','ActorAnimation','base','animation_asset_id'],'type':'asset-reference','state':'effective','empty_label':'No resolved local clip'},
+        {'id':'animation-donor','label':'Authored animation witness','path':['data','components','ActorAnimation','authored','donor_entity_id'],'type':'entity-reference','state':'authored-through-review','empty_label':'No imported clip witness override'},
+        {'id':'current-animation','label':'Current initial animation','path':['data','components','ActorAnimation','effective','animation_asset_id'],'type':'asset-reference','state':'effective','empty_label':'No resolved local clip'},
+    ]
+    actor['details'] = [{'label':'SDK initial appearance bindings','path':['data','components','ActorAppearance']},
+                        {'label':'SDK initial animation bindings','path':['data','components','ActorAnimation']},
+                        {'label':'Imported model resolution','path':['data','components','ModelRenderer']}]
+    actor['notes'].append('Retail, authored witnesses and Current initial bindings remain separate. Retained clip assignments appear in Current initial animation independently of imported clip witness overrides. Scripts may change appearance or animation; runtime residency, visibility and playback are unverified.')
     controller = schema['components']['AssetController']
     controller['properties'] += [
         {'id':'owner','label':'Owning Scene','path':['data','owner_scene_id'],'type':'asset-reference','state':'read-only-retail'},

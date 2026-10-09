@@ -4129,6 +4129,7 @@ class ProjectService:
         from .selection_sets import review_key as selection_review_key
         from .inspector_schema import inspector_schema
         from .npc_script_binding import snapshots as npc_script_bindings
+        from .actor_asset_bindings import components as actor_binding_components
         document = self.imports.get(self.active_scene)
         model_diagnostics = []
         if document:
@@ -4163,37 +4164,15 @@ class ProjectService:
             placement_issues = self._placement_issues(authored)
             effective = deepcopy(imported)
             effective["position"].update(authored.get("position", {}))
-            model = actor["model_reference"]
-            appearance = deepcopy(self.overrides.get(identifier, {}).get("ActorAppearance", {}))
-            donor = self.appearance_source_actor(identifier)
-            original_pair = {"asset_id": model.get("asset_semantic_id"), "animation_id": actor["placement_fields"].get("animation_id")}
-            effective_pair = {"asset_id": donor["model_reference"].get("asset_semantic_id"),
-                              "animation_id": donor["placement_fields"].get("animation_id")}
-            if appearance:
-                effective_pair["donor_entity_id"] = donor["semantic_id"]
-            from .actor_animation import source_actor as animation_source_actor
-            animation_actor = animation_source_actor(self, identifier)
-            def animation_identity(source):
-                number = source['placement_fields'].get('animation_id')
-                local = source['model_reference'].get('model_index')
-                return {'animation_asset_id': f"animation://{document['scene']['name']}/scene-anm/{number-1:04d}"
-                        if type(number) is int and 1 <= number <= 255 and type(local) is int and 0 <= local < 240 else None,
-                        'initial_animation_id': number, 'donor_entity_id': source['semantic_id']}
-            allocated=self.overrides.get(identifier,{}).get('ActorAllocatedAnimation')
-            effective_animation=(dict(animation_asset_id=f"animation://{document['scene']['name']}/authored-record/{allocated['record_id']}",
-                initial_animation_id=None,source_kind='allocated_record',record_id=allocated['record_id'])
-                if allocated else animation_identity(animation_actor))
+            bindings = actor_binding_components(self, actor, document)
             entities.append({"id": identifier, "name": "Actor " + identifier.rsplit("/", 1)[-1],
                              "authored_components": sorted(key for key, value in self.overrides.get(identifier, {}).items() if value),
                              "components": {"Transform": {"imported": imported, "authored": authored, "effective": effective,
                                                            "build_issues": placement_issues},
-                                            "ActorAppearance": {"imported": original_pair, "authored": appearance, "effective": effective_pair,
-                                                                "limitations": ["Initial model/animation pair only; scripts may replace it. Script and gameplay compatibility remain unverified."]},
-                                            "ModelRenderer": {"asset_id": model.get("asset_semantic_id"), "resolution_status": model.get("resolution_status")},
+                                            "ActorAppearance": bindings['ActorAppearance'],
+                                            "ModelRenderer": bindings['ModelRenderer'],
                                             "Animation": {"imported_id": actor["placement_fields"].get("animation_id"), "resolution_status": "unresolved", "authored_channels": deepcopy(self.overrides.get(identifier, {}).get("AnimationChannels"))},
-                                            'ActorAnimation': {'imported': animation_identity(actor), 'base': animation_identity(donor),
-                                                               'authored': deepcopy(self.overrides.get(identifier, {}).get('ActorAnimation', {})),
-                                                               'effective': effective_animation},
+                                            'ActorAnimation': bindings['ActorAnimation'],
                                             'ActorAllocatedAnimation': {'authored':deepcopy(self.overrides.get(identifier,{}).get('ActorAllocatedAnimation')),
                                                 'initial_selection':'allocated_record_identity' if self.overrides.get(identifier,{}).get('ActorAllocatedAnimation') else None,
                                                 'gameplay_verified':False},
