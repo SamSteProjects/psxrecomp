@@ -1,3 +1,4 @@
+import {mountControllerOwnerInspector,controllerAssetSourceHash} from '/controller-owner-inspector.js';
 import {createAssetResourceDiscovery,assetSearchNeedsResources} from '/asset-resource-discovery.js';
 import {copiedAnimationAsset} from '/animation-copy-selection.js';
 import {decodeSceneCatalog} from '/scene-catalog.js';
@@ -2101,6 +2102,7 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
 
     $('asset-source-data').parentElement.before(usage);
   }
+  if(record.type==='controller')mountControllerOwnerInspector(assetDetails,{record,schema:state.inspector_schema,capabilities:state.capabilities,current:exportCurrent,editable:canEdit,busy:()=>busy,onInspect:async(_component,pc)=>{assetDetails.close();await inspectControllerAsset(record,pc);},onError:error=>notify(error.message,true)});
   if(isAuthored){$('asset-authored-data').textContent=JSON.stringify(record.authored,null,2);if($('open-authored-asset'))$('open-authored-asset').onclick=()=>{assetDetails.close();activateAsset(record);};}
   if(record.authoredRecord?.component_reviews?.length){
     const section=document.createElement('section'),title=document.createElement('h3'),note=document.createElement('p');
@@ -2158,7 +2160,7 @@ async function resolveProjectAsset(record){
 }
 async function inspectControllerAsset(record,focusFlagPc=null){
   if(busy||record.type!=='controller'||!canEdit())return;
-  const scene=record.sceneId,path=state.project?.path,sourceHash=record.data?.source_record?.sha256??record.authored?.ControllerSystemFlags?.source_record_sha256??record.authored?.ControllerBranches?.source_record_sha256;
+  const scene=record.sceneId,path=state.project?.path,sourceHash=controllerAssetSourceHash(record);
   if(typeof scene!=='string'||record.id!=='script://'+scene.slice(8)+'/controllers/man-p1/0000'||!sourceHash)throw Error('Controller asset has no qualified scene ownership.');
   if(scene!==state.scene?.id&&!await api('/api/scene',{scene_id:scene}))return;
   if(path!==state.project?.path||scene!==state.scene?.id)throw Error('Controller source scene changed during navigation.');
@@ -2428,6 +2430,7 @@ function renderSceneResourceInspector(record){
   const section=document.createElement('section');section.className='component scene-resource-inspector';section.dataset.sceneResource=record.id;host.append(section);
   const current=()=>resourceKey===resourceStateKey()&&key===resourceStateKey()&&sceneResourceSelection===record.id;
   mountAssetInspector(section,{schema:state.inspector_schema,record,capabilities:state.capabilities,current,busy:()=>busy,activate:async (item,action)=>{if(current()&&!busy)await activateAsset(item,action);},onError:error=>notify(error.message,true)});
+  if(record.type==='controller')mountControllerOwnerInspector(host,{record,schema:state.inspector_schema,capabilities:state.capabilities,current,editable:canEdit,busy:()=>busy,onInspect:(_component,pc)=>inspectControllerAsset(record,pc),onError:error=>notify(error.message,true)});
   if(record.type==='script'&&record.data?.partition===2){
     const owner=record.data.owner_semantic_id,projectPath=state.project?.path,sceneId=state.scene?.id;
     if(typeof owner==='string')mountScriptOwnerInspector(host,{owner,getState:()=>state,current,editable:canEditDialogue,busy:()=>busy,api,placement:'end',

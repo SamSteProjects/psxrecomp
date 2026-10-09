@@ -1087,6 +1087,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/controller-tables.js": ("controller-tables.js", "text/javascript"),
                  "/controller-authoring-availability.js": ("controller-authoring-availability.js", "text/javascript"),
                  "/controller-scene-bytes.js": ("controller-scene-bytes.js", "text/javascript"),
+                 "/controller-owner-inspector.js": ("controller-owner-inspector.js", "text/javascript"),
                  "/controller-component-reset.js": ("controller-component-reset.js", "text/javascript"),
                  "/controller-party-selectors.js": ("controller-party-selectors.js", "text/javascript"),
                  "/controller-five-words.js": ("controller-five-words.js", "text/javascript"),

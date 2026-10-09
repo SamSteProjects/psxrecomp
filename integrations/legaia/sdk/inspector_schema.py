@@ -95,6 +95,30 @@ def inspector_schema():
             'notes': ['Open the source editor for separate retail, authored and effective operands. Existing qualified commands own Apply/Clear, history and Build.', note],
         }
 
+    for identifier, label in (
+        ('ControllerSystemFlags', 'Controller System Flag Selectors'),
+        ('ControllerBranches', 'Controller Branches'),
+        ('ControllerTileRects', 'Controller Tile Requests'),
+        ('ControllerFades', 'Controller Fades'),
+        ('ControllerTableCopies', 'Controller Table Copies'),
+        ('ControllerWordTriplets', 'Controller Word Triplets'),
+        ('ControllerThreeWords', 'Controller Three Words'),
+        ('ControllerSceneBytes', 'Controller Scene-State Bytes'),
+        ('ControllerFiveWords', 'Controller Five Words'),
+        ('ControllerGlobalBytes', 'Controller Global Bytes'),
+        ('ControllerPartySelectors', 'Controller Party Selectors'),
+    ):
+        schema['components'][identifier] = {
+            'label': label, 'layout': 'read-only-properties',
+            'properties': [
+                {'id': 'authored_instruction_count', 'label': 'Authored Entries', 'path': ['authored_instruction_count'], 'type': 'integer', 'state': 'authored-through-source-editor'},
+                {'id': 'source_record_sha256', 'label': 'Retail Record SHA-256', 'path': ['source_record_sha256'], 'type': 'string', 'state': 'read-only-retail'},
+            ],
+            'actions': [{'id': 'inspect-controller-component', 'label': 'Inspect and Edit Component', 'capability': 'controller_workspace_snapshot', 'requires_edit': True}],
+            'details': [{'label': 'Authored Entries by Source Instruction', 'path': ['entries']}],
+            'notes': ['Open source controls for separate Retail, Current and Authored values, reviewed edits and component reset. History and native Build are supported; runtime execution and gameplay remain unverified.'],
+        }
+
     schema['components']['ScriptSystemFlags'] = {
         'label': 'Authored system selectors', 'units': 'Encoded selector indices', 'layout': 'read-only-properties',
         'properties': [{'id': 'authored_instruction_count', 'label': 'Authored instructions', 'path': ['authored_instruction_count'], 'type': 'integer', 'state': 'authored-through-review'}],
@@ -162,7 +186,7 @@ def inspector_schema():
         'texture': ('AssetTexture', 'Texture asset', 'texture_preview', 'inspect-asset-texture', 'Inspect texture'),
         'animation': ('AssetAnimation', 'Animation resource', 'animation_preview', 'inspect-asset-animation', 'Inspect animation bindings'),
         'script': ('AssetScript', 'Script resource', 'actor_script_preview', 'inspect-asset-script', 'Inspect script'),
-        'controller': ('AssetController', 'Scene Entry Controller', 'scene_controller_inspection', 'inspect-asset-controller', 'Inspect Retail Controller'),
+        'controller': ('AssetController', 'Scene Entry Controller', 'scene_controller_inspection', 'inspect-asset-controller', 'Inspect and Edit Controller'),
         'dialogue': ('AssetDialogue', 'Dialogue resource', 'actor_script_preview', 'inspect-asset-script', 'Inspect dialogue'),
         'transition': ('AssetTransition', 'Transition source reference', 'scene_transitions', 'inspect-asset-transition', 'Inspect transition entry and source'),
         'flag': ('AssetFlag', 'Flag reference group', 'scene_flags', 'inspect-asset-flag', 'Inspect flag reference sites'),
@@ -191,7 +215,7 @@ def inspector_schema():
         {'id':'status','label':'Decoder Status','path':['data','inspection_status'],'type':'string','state':'derived'},
         {'id':'flag_reference_count','label':'Encoded Flag References','path':['data','flag_reference_count'],'type':'integer','state':'derived'},
         {'id':'instruction_count','label':'Decoded Instructions','path':['data','decoded_instruction_count'],'type':'integer','state':'derived'}]
-    controller['notes'] = ['Retail partition-1 record zero is the scene controller, not a placed actor. Controller authoring and runtime execution remain unsupported.']
+    controller['notes'] = ['Retail partition-1 record zero is the scene controller, not a placed actor. Qualified controller families support reviewed authoring, history and native Build. Runtime execution and gameplay remain unverified.']
     schema['components']['AssetAudio'] = {
         'label': 'Source audio resource', 'layout': 'read-only-properties',
         'properties': [

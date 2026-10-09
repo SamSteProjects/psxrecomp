@@ -99,7 +99,7 @@ class InspectorSchema(unittest.TestCase):
 
     def test_asset_inspectors_are_detached_read_only_tool_groups(self):
         schema=inspector_schema()
-        self.assertEqual(set(schema['asset_inspectors']),{'audio','actor','scene','template','worldmap','model','texture','animation','script','dialogue','flag','transition','collision','trigger','region'})
+        self.assertEqual(set(schema['asset_inspectors']),{'audio','actor','scene','template','worldmap','model','texture','animation','script','controller','dialogue','flag','transition','collision','trigger','region'})
         for kind,identifier in schema['asset_inspectors'].items():
             definition=schema['components'][identifier]
             self.assertEqual(definition['layout'],'read-only-properties')
@@ -111,6 +111,19 @@ class InspectorSchema(unittest.TestCase):
         self.assertEqual(schema['components']['AssetRegion']['actions'][1]['capability'],'field_region_authoring')
         schema['components']['AssetModel']['actions'][0]['label']='changed'
         self.assertEqual(inspector_schema()['components']['AssetModel']['actions'][0]['label'],'Inspect model')
+
+    def test_controller_families_use_source_editor_actions_and_explicit_runtime_uncertainty(self):
+        from sdk.controller_components import CONTROLLER_COMPONENTS
+        schema=inspector_schema()
+        self.assertEqual({key for key in schema['components'] if key.startswith('Controller')},CONTROLLER_COMPONENTS)
+        for family in CONTROLLER_COMPONENTS:
+            definition=schema['components'][family]
+            self.assertEqual(definition['actions'],[{'id':'inspect-controller-component','label':'Inspect and Edit Component','capability':'controller_workspace_snapshot','requires_edit':True}])
+            self.assertTrue(all('authoring' not in prop for prop in definition['properties']))
+            self.assertIn('gameplay remain unverified',definition['notes'][0])
+        self.assertNotIn('authoring and runtime execution remain unsupported',schema['components']['AssetController']['notes'][0])
+        schema['components']['ControllerPartySelectors']['properties'].clear()
+        self.assertTrue(inspector_schema()['components']['ControllerPartySelectors']['properties'])
 
     def test_authored_script_components_are_detached_and_omit_empty_overrides(self):
         import tempfile
