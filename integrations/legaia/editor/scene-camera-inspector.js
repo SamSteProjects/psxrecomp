@@ -15,10 +15,11 @@ export function parseSceneCameraDraft(value){
  for(const key of fields.filter(k=>k!=='projection')){const raw=value?.[key];if(typeof raw!=='string'||!/^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[-+]?\d+)?$/i.test(raw.trim()))throw Error('Enter a decimal number for every camera field.');result[key]=Number(raw);}
  cameraFromSceneDraft(result);return result;
 }
-export function mountSceneCameraInspector({after,getCamera,getContext,isBusy,available,apply}){
- const button=document.createElement('button');button.id='scene-camera-inspector';button.textContent='Camera coordinates';after.after(button);
- const dialog=document.createElement('dialog');dialog.id='scene-camera-dialog';document.body.append(dialog);let context=null;
+export function mountSceneCameraInspector({after,getCamera,getContext,isBusy,available,apply,idPrefix='scene-camera',title='Scene camera coordinates',description=null}){
+ const button=document.createElement('button');button.id=idPrefix+'-inspector';button.textContent='Camera coordinates';after.after(button);
+ const dialog=document.createElement('dialog');dialog.id=idPrefix+'-dialog';document.body.append(dialog);let context=null;
  dialog.innerHTML='<h2>Scene camera coordinates</h2><p>Target coordinates use the editor display space. They are not actor, guest RAM or confirmed live coordinates. Changing this camera changes the viewport only. Save it through Saved scene views to keep it in the project.</p><label>Projection<select data-camera="projection" aria-label="Camera projection"><option value="perspective">Perspective</option><option value="orthographic">Orthographic</option></select></label><div data-camera-fields></div><p data-camera-status role="status"></p><div class="dialog-actions"><button type="button" data-camera-refresh>Read current camera</button><button type="button" data-camera-apply>Set viewport camera</button><button type="button" data-camera-close>Close camera coordinates</button></div>';
+ dialog.querySelector('h2').textContent=title;if(description!==null)dialog.querySelector('p').textContent=description;
  Object.assign(dialog.querySelector('.dialog-actions').style,{display:'flex',flexWrap:'wrap',gap:'8px',justifyContent:'flex-start'});
  const holder=dialog.querySelector('[data-camera-fields]');Object.assign(holder.style,{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:'8px'});
  for(const [key,label] of [['x','Target X'],['y','Target Y'],['z','Target Z'],['distance','Camera distance'],['yaw','Camera yaw degrees'],['pitch','Camera pitch degrees']]){const row=document.createElement('label');row.textContent=label;const input=document.createElement('input');input.type='text';input.inputMode='decimal';input.dataset.camera=key;input.setAttribute('aria-label',label);row.append(input);holder.append(row);}
@@ -29,5 +30,5 @@ export function mountSceneCameraInspector({after,getCamera,getContext,isBusy,ava
  button.onclick=()=>{if(button.disabled)return;dialog.showModal();capture();};refresh.onclick=()=>{if(!refresh.disabled)capture();};dialog.querySelector('[data-camera-close]').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{context=null;});
  for(const input of dialog.querySelectorAll('input,select'))input.addEventListener('input',update);
  set.onclick=()=>{if(isBusy()||!available()||context!==getContext()){update();return;}try{const next=cameraFromSceneDraft(parseSceneCameraDraft(read()));apply(next);capture();status.textContent='Viewport camera set. Project and actor transforms are unchanged.';}catch(error){status.textContent=error.message;set.disabled=true;}};
- update();return {update};
+ update();return {update,close:()=>{if(dialog.open)dialog.close();}};
 }
