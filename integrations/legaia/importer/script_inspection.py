@@ -318,6 +318,19 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "argument_u16": struct.unpack_from("<H", data, operand + 4)[0],
                     "trailing_operand": data[operand + 6],
                     "runtime_effect": "not_evaluated"}
+        elif sub in (3, 4, 5, 6):
+            # Retail801DF628/654/680/6AC read four bytes+1..4 and
+            # signed words+5/+7 via8003CE9C. Shared6D4 calls8003C6A4
+            # with width4, then6F4 advances adjusted PC10.
+            size, mnemonic = 9, "GLOBAL_FOUR_BYTE_REQUEST"
+            need(size)
+            args = {"sub_op": sub, "byte_values": list(data[operand + 1:operand + 5]),
+                    "parameters_i16": list(struct.unpack_from("<hh", data, operand + 5)),
+                    "native_destination": {3: "0x8007B618", 4: "0x8007B614",
+                                           5: "0x8007B60C", 6: "0x8007B610"}[sub],
+                    "helper": "0x8003C6A4", "native_width": 4,
+                    "parameter_semantics": "runtime_parameter_meanings_unresolved",
+                    "runtime_effect": "not_evaluated"}
         elif sub == 7:
             size, mnemonic = 16, "FACE_ROTATION_SETUP"
             need(size)
