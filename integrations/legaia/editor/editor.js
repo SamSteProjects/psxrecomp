@@ -4538,6 +4538,7 @@ function frame(entity){
     pendingEntityFrame={entity,key:sceneRequestKey(),scene:state.scene?.id,project:state.project?.path,projectSource:state.project_copy_source_key,selection:hierarchySelectedIdentity(),revision:cameraRevision};
     return;
   }
+  if(entity&&sceneModelsReady()&&sceneRenderer.hasEntity(entity.id))return frameScenePlacementGroup({targets:[{entity_id:entity.id}]});
   const points=entity?[position(entity)]:(sceneLayers.actors?entities().filter(e=>!hiddenSceneEntities().has(e.id)).map(position):[]);
   const hasMesh=sceneModelsReady()&&(!entity||sceneRenderer.hasEntity(entity.id));
   if(hasMesh)points.push(...previewBounds(entity?.id,hiddenSceneEntities()));
