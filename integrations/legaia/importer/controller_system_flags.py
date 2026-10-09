@@ -34,7 +34,7 @@ class ControllerRecordSource:
         value.update(owner_id=self.owner_id, record_kind='man_partition_1_scene_controller',
                      runtime_execution='not_asserted', limitations=[
             'Controller record zero is separate from placed actors and partition-two scripts.',
-            'Only encoded selector serialization is qualified; native execution and bank capacity remain unknown.'])
+            'Only independently qualified encoded operands are writable; native execution and bank capacity remain unknown.'])
         return deepcopy(value)
 
 
@@ -47,7 +47,7 @@ class ControllerSystemFlagAuthoringContext(SystemFlagAuthoringContext):
         super().__init__(source)
 
 
-def load_controller_system_flag_context(disc, scene):
+def load_controller_record_source(disc, scene):
     with _disc_context(disc) as (_, digest, mapping, archive):
         start, end = _bounded_scene_range(archive, mapping, scene)
         carrier = read_man_source(archive, start, end, scene)
@@ -57,4 +57,8 @@ def load_controller_system_flag_context(disc, scene):
                           prot_entry_index=carrier.entry_index, man=carrier.provenance())
         source = ControllerRecordSource(scene, carrier.payload, stream, provenance,
             compression='lzs' if carrier.kind == 'descriptor_man' else 'none')
-        return ControllerSystemFlagAuthoringContext(source)
+        return source
+
+
+def load_controller_system_flag_context(disc, scene):
+    return ControllerSystemFlagAuthoringContext(load_controller_record_source(disc,scene))

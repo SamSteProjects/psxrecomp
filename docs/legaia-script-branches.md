@@ -29,7 +29,7 @@ Proposed overview. Conditions and external resumption remain unresolved.
 ## Source and wire contract
 
 `BranchAuthoringContext` reuses the verified, uniquely owned MAN P1/P2 record
-snapshot. P0/controller records, aliases, section overlap, unknown/conflicting
+snapshot. Its default adapter excludes P0/controller records, aliases, section overlap, unknown/conflicting
 paths, instruction interiors, message interiors, opaque tails and record-end
 sentinels are excluded. A partial report caused only by an unvisited tail can
 qualify. Destinations are original reached instruction or atomic MES starts
@@ -136,3 +136,6 @@ branch word from source offset4791 to4794; Dolk2 streaming preparation preserves
 its44036 bytes and exact branch spans. These are prepared inputs, not full rebuilt
 disc or gameplay acceptance. No game was launched. Story behavior and the wider
 unfinished SDK remain deferred.
+
+
+Dedicated controller record-zero native support is documented in [Controller Native Branch Foundation](legaia-scene-controller-inspector.md#controller-native-branch-foundation--2026-10-08). It retains separate ownership and does not enable controller IDs through actor commands. Persistent controller branch Review/Apply, editor and Build integration are not yet implemented.

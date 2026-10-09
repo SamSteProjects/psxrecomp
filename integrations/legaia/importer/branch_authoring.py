@@ -152,6 +152,8 @@ def _graph_candidate(original, candidate, entry, source_graph, selector_baseline
 
 class BranchAuthoringContext:
     """Request-scoped private MAN source snapshot with detached review products."""
+    OWNER_PATTERN = r'[A-Za-z0-9_-]+/(?:actors/man-p1|scripts/man-p2)/[0-9]{4}'
+
     def __init__(self, source, *, system_selectors=None):
         if not isinstance(source._man, bytes) or not 0 < len(source._man) <= MAX_MAN_BYTES:
             raise ImportError('Branch source requires a bounded immutable verified MAN')
@@ -160,8 +162,12 @@ class BranchAuthoringContext:
         if len(self._layout['records']) > 8192:
             raise ImportError('Branch MAN exceeds its bounded record table')
         self._owners = {}
+        self._selector_man = self._man if not system_selectors else self._selector_context(source).patch(system_selectors)[0]
+
+    @staticmethod
+    def _selector_context(source):
         from .system_flag_authoring import SystemFlagAuthoringContext
-        self._selector_man = self._man if not system_selectors else SystemFlagAuthoringContext(source).patch(system_selectors)[0]
+        return SystemFlagAuthoringContext(source)
 
     def _selector_record(self, snapshot):
         at = snapshot['offset']
@@ -171,7 +177,7 @@ class BranchAuthoringContext:
         return dict(deepcopy(self._source.provenance()), limitations=list(LIMITATIONS))
 
     def _owner(self, owner):
-        if not isinstance(owner, str):
+        if not isinstance(owner, str) or re.fullmatch('scene://'+self.OWNER_PATTERN,owner) is None:
             raise ImportError('Branch owner requires a verified source identity string')
         if owner not in self._owners:
             offset, record, entry = self._source.verified_record(owner)
@@ -234,7 +240,7 @@ class BranchAuthoringContext:
         if not isinstance(edits, dict) or len(edits) > MAX_BRANCH_EDITS:
             raise ImportError('Branch edits require a bounded source-identity mapping')
         staged, owners = [], set()
-        pattern = r'script://([A-Za-z0-9_-]+/(?:actors/man-p1|scripts/man-p2)/[0-9]{4})/branch/([0-9a-f]{4})'
+        pattern = r'script://('+self.OWNER_PATTERN+r')/branch/([0-9a-f]{4})'
         for identifier, values in edits.items():
             match = re.fullmatch(pattern, identifier) if isinstance(identifier, str) else None
             if match is None:
@@ -326,7 +332,7 @@ class BranchAuthoringContext:
         if original is not None and (not isinstance(original, bytes) or original != self._man):
             raise ImportError('Branch MAN differs from its verified source baseline')
         if self._selector_man != self._man:
-            return BranchAuthoringContext(self._source)._patch(self._man, edits)
+            return type(self)(self._source)._patch(self._man, edits)
         return self._patch(self._man, edits)
 
     def patch_composed(self, candidate, edits):
