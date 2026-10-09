@@ -391,16 +391,18 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
                     validate_components(project,record['owner_id'],components)
                     if any(value['source_record_sha256']!=record['source_record']['sha256'] for value in components.values()):
                         raise ProjectError('Controller flag graph differs from saved source ownership')
+                system=record['bank']=='system'
+                if not system:
+                    from .controller_flag_bits import COMPONENT,validate
                 component=components.get(COMPONENT)
                 if component is not None:
                     validate(project,record['owner_id'],component)
-                    if set(components)-{COMPONENT,'ControllerBranches'} or component['source_record_sha256']!=record['source_record']['sha256']:
-                        raise ProjectError('Controller flag graph differs from saved source ownership')
                 entries=component['entries'] if component else {}
                 for reference in record['references']:
-                    operand=target+f"/system-flag/{reference['pc']:04x}"
+                    family='system-flag' if system else 'flag-bit';field='index' if system else 'bit'
+                    operand=target+f"/{family}/{reference['pc']:04x}"
                     saved=entries.get(operand)
-                    if reference['authored_index']!=(saved['index'] if saved else None):
+                    if reference['authored_index']!=(saved[field] if saved else None):
                         raise ProjectError('Controller flag graph differs from authored project selector')
                     proof={key:deepcopy(record[key]) for key in ('bank','index','scope','extended_target','grouping_layer')}
                     proof.update(operation=reference['operation'],mnemonic=reference['mnemonic'])

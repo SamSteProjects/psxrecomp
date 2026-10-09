@@ -15,7 +15,7 @@ class ControllerFlagBitAuthoringContext(FlagAuthoringContext):
     def provenance(self):
         return dict(self._source.provenance(),limitations=list(LIMITATIONS)+[
             'Controller record zero is separate from placed actors and partition-two scripts.',
-            'Native serialization foundation only; project commands, editor controls and Build integration are not yet provided.'])
+            'Runtime flag values, story-state, scheduling and gameplay remain unverified.'])
 
     def options(self,owner):
         value=super().options(owner)

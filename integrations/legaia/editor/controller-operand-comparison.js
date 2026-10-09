@@ -1,3 +1,4 @@
+import {decodeControllerFlagBitSnapshot} from './controller-flag-bits.js';
 import {CONTROLLER_SNAPSHOT_SCHEMAS} from './controller-workspace-snapshot.js';
 import {controllerOperandSource} from './controller-operand-files.js';
 import {decodeControllerSystemSelectorSnapshot} from './system-flag-selectors.js';
@@ -12,6 +13,7 @@ import {decodeControllerFiveWordSnapshot} from './controller-five-words.js';
 import {decodeControllerGlobalByteSnapshot} from './controller-global-bytes.js';
 import {decodeControllerPartySelectorSnapshot} from './controller-party-selectors.js';
 const families={
+ ControllerFlagBits:['flag-bit','Flag Bits',decodeControllerFlagBitSnapshot],
  ControllerSystemFlags:['selector','System Flag Selectors',decodeControllerSystemSelectorSnapshot],
  ControllerBranches:['branch','Branches',decodeControllerBranchSnapshot],
  ControllerTileRects:['tile','Tile Requests',decodeControllerTileSnapshot],

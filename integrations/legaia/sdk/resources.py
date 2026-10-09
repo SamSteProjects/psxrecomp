@@ -172,9 +172,9 @@ def scene_flag_state_key(project) -> str:
     """Operand annotations have their own freshness key, separate from geometry."""
     from .project import digest
     scene = project.active_scene
-    return digest(dict(scene_id=scene, flags={owner: {family:deepcopy(parts[family]) for family in ('ScriptFlags','ScriptSystemFlags','ControllerSystemFlags') if family in parts}
+    return digest(dict(scene_id=scene, flags={owner: {family:deepcopy(parts[family]) for family in ('ScriptFlags','ScriptSystemFlags','ControllerSystemFlags','ControllerFlagBits') if family in parts}
                   for owner, parts in project.overrides.items()
-                  if scene and owner.startswith(scene + '/') and any(family in parts for family in ('ScriptFlags','ScriptSystemFlags','ControllerSystemFlags'))}))
+                  if scene and owner.startswith(scene + '/') and any(family in parts for family in ('ScriptFlags','ScriptSystemFlags','ControllerSystemFlags','ControllerFlagBits'))}))
 
 
 def project_flag_state_key(project) -> str:
@@ -182,9 +182,9 @@ def project_flag_state_key(project) -> str:
     from .project import digest
     return digest(dict(project_path=str(project.root), disc_path=project.disc_path,
                        imports=project.imports,
-                       flags={owner: {family:deepcopy(parts[family]) for family in ('ScriptFlags','ScriptSystemFlags','ControllerSystemFlags') if family in parts}
+                       flags={owner: {family:deepcopy(parts[family]) for family in ('ScriptFlags','ScriptSystemFlags','ControllerSystemFlags','ControllerFlagBits') if family in parts}
                               for owner, parts in getattr(project, 'overrides', {}).items()
-                              if any(family in parts for family in ('ScriptFlags','ScriptSystemFlags','ControllerSystemFlags'))}))
+                              if any(family in parts for family in ('ScriptFlags','ScriptSystemFlags','ControllerSystemFlags','ControllerFlagBits'))}))
 
 
 def _flag_edits(project, scene_id,qualifications=None):
@@ -356,7 +356,7 @@ def _append_controller_flags(project,document,index):
     index['coverage']['partial_script_count']+=int(controller['inspection_status']=='partial')
     if len(index['groups'])>16384 or index['reference_count']>65536:
         raise ProjectError('Scene flag references exceed the controller discovery budget')
-    index['limitations'].append('Controller operands retain Retail grouping with independently qualified authored system selectors; runtime values remain unresolved.')
+    index['limitations'].append('Controller operands retain Retail grouping with independently qualified authored system selectors and flag-bit operands; runtime values remain unresolved.')
     return index
 
 

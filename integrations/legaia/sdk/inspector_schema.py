@@ -107,6 +107,7 @@ def inspector_schema():
         ('ControllerFiveWords', 'Controller Five Words'),
         ('ControllerGlobalBytes', 'Controller Global Bytes'),
         ('ControllerPartySelectors', 'Controller Party Selectors'),
+        ('ControllerFlagBits', 'Controller Flag Bits'),
     ):
         schema['components'][identifier] = {
             'label': label, 'layout': 'read-only-properties',
@@ -118,6 +119,10 @@ def inspector_schema():
             'details': [{'label': 'Authored Entries by Source Instruction', 'path': ['entries']}],
             'notes': ['Open source controls for separate Retail, Current and Authored values, reviewed edits and component reset. History and native Build are supported; runtime execution and gameplay remain unverified.'],
         }
+
+    flag_bits=schema['components']['ControllerFlagBits']
+    flag_bits['actions'][0]['label']='Inspect Component Source'
+    flag_bits['notes']=['Project Review/Apply, reset, history and persistence support qualified encoded bit indices. Source comparison is available; dedicated editing controls and native Build delivery remain pending. Build refuses authored flag-bit entries until integration is complete. Runtime values and gameplay remain unverified.']
 
     schema['components']['ScriptSystemFlags'] = {
         'label': 'Authored system selectors', 'units': 'Encoded selector indices', 'layout': 'read-only-properties',

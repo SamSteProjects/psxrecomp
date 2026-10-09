@@ -51,8 +51,9 @@ def validate_controller_flag_asset(record):
             if row['flag_operand_id'] is not None or 'authored_qualification' in row:reject()
         else:
             from .flag_qualification import validate
-            operand=script+f'/system-flag/{pc:04x}'
-            if bank!='system' or target is not None or row['flag_operand_id']!=operand:reject()
+            family='system-flag' if bank=='system' else 'flag-bit'
+            operand=script+f'/{family}/{pc:04x}'
+            if bank not in ('system','local','global','context') or row['flag_operand_id']!=operand:reject()
             validate(row.get('authored_qualification'),record['owner_id'],operand,source['sha256'],pc,row['mnemonic'],target,index,authored,controller=True)
         sites.add(pc)
     if type(record['reference_count']) is not int or record['reference_count']!=len(refs) or type(record['authored_reference_count']) is not int or record['authored_reference_count']!=sum(row['authored_index'] is not None for row in refs):reject()
@@ -79,11 +80,13 @@ def build_controller_flag_assets(controller,document,edits=None,qualifications=N
             runtime_binding='unresolved',runtime_value=None,references=[],read_only=True,grouping_layer='retail',
             name=f"{reference['bank'].title()} {reference['index']} · {context} · Scene Entry Controller",
             authored_reference_count=0,coverage=dict(script_count=1,partial_script_count=int(controller['inspection_status']=='partial'),unavailable_script_count=0),
-            limitations=['Retail controller source only; runtime values and dispatch target bindings remain unresolved.','Only independently source-qualified normal controller system selectors expose authored values.'],controller_source_evidence=deepcopy(proof)))
+            limitations=['Retail controller source only; runtime values and dispatch target bindings remain unresolved.','Only independently source-qualified controller system selectors and flag-bit operands expose authored values.'],controller_source_evidence=deepcopy(proof)))
         row=dict(deepcopy(reference),retail_index=reference['index'],authored_index=None,effective_index=reference['index'],flag_operand_id=None)
-        operand=script+f"/system-flag/{reference['pc']:04x}"
+        system=reference['bank']=='system'
+        family='system-flag' if system else 'flag-bit';field='index' if system else 'bit'
+        operand=script+f"/{family}/{reference['pc']:04x}"
         if operand in edits:
-            row.update(authored_index=edits[operand]['index'],effective_index=edits[operand]['index'],flag_operand_id=operand,authored_qualification=deepcopy(qualifications.get(operand)))
+            row.update(authored_index=edits[operand][field],effective_index=edits[operand][field],flag_operand_id=operand,authored_qualification=deepcopy(qualifications.get(operand)))
             group['authored_reference_count']+=1;used.add(operand)
         group['references'].append(row)
     if used!=set(edits):raise ProjectError('Controller authored selector is absent from Retail flag discovery')
@@ -105,16 +108,23 @@ def qualified_controller_flag_assets(project,controller,document):
     validate_components(project,owner,components)
     if any(value['source_record_sha256']!=controller['source_record']['sha256'] for value in components.values()):
         raise ProjectError('Controller flag annotations require unchanged Retail source ownership')
-    if COMPONENT not in components:return build_controller_flag_assets(controller,document)
-    value=validate(project,owner,components[COMPONENT]);entries=value['entries']
+    from .controller_flag_bits import COMPONENT as BIT_COMPONENT,validate as validate_bits
+    from importer.controller_flag_bits import ControllerFlagBitAuthoringContext
+    families=[(key,validator) for key,validator in ((COMPONENT,validate),(BIT_COMPONENT,validate_bits)) if key in components]
+    if not families:return build_controller_flag_assets(controller,document)
+    values={key:validator(project,owner,components[key]) for key,validator in families}
+    entries={};proofs={}
     try:
         context=load_controller_system_flag_context(project.disc_path,document['scene']['name'])
         _,record,_=context._source.verified_record(owner)
-        if sha256(record).hexdigest()!=value['source_record_sha256'] or value['source_record_sha256']!=controller['source_record']['sha256']:
+        if sha256(record).hexdigest()!=controller['source_record']['sha256']:
             raise ProjectError('Controller flag annotations require unchanged Retail source')
-        context.patch(entries)
-        targets={row['semantic_id']:row for row in context.options(owner)['targets']}
-        if set(entries)-set(targets):raise ProjectError('Controller selector lacks native operand qualification')
-        proofs={key:from_target(targets[key],fields,controller=True) for key,fields in entries.items()}
+        for family,value in values.items():
+            native=context if family==COMPONENT else ControllerFlagBitAuthoringContext(context._source)
+            authored=value['entries'];native.patch(authored)
+            targets={row['semantic_id']:row for row in native.options(owner)['targets']}
+            if set(authored)-set(targets):raise ProjectError('Controller flag lacks native operand qualification')
+            entries.update(authored)
+            proofs.update({key:from_target(targets[key],fields,controller=True) for key,fields in authored.items()})
     except RetailImportError as exc:raise ProjectError('Controller flag source verification failed: '+str(exc)) from exc
     return build_controller_flag_assets(controller,document,entries,proofs)

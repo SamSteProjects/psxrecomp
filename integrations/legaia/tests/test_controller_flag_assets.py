@@ -79,3 +79,36 @@ class ControllerFlagAssets(unittest.TestCase):
         before=(scene_flag_state_key(self.p),project_flag_state_key(self.p))
         self.p.overrides['scene://fixture/controllers/man-p1/0000']={'ControllerSystemFlags':{'source_record_sha256':'a'*64,'entries':{'script://fixture/controllers/man-p1/0000/system-flag/0005':{'index':2}}}}
         self.assertNotEqual(before[0],scene_flag_state_key(self.p));self.assertNotEqual(before[1],project_flag_state_key(self.p))
+
+    def test_current_bits_preserve_retail_groups_and_qualified_graphs(self):
+        from sdk.flag_qualification import from_target
+        from sdk.resources import scene_flag_state_key,project_flag_state_key
+        import json,subprocess
+        for bank,index,authored,extended in [('global',2,31,None),('local',2,15,7),('context',2,9,255)]:
+            with self.subTest(bank=bank):
+                self.p.overrides={};controller=deepcopy(self.controller)
+                prefix={'global':'GFLAG','local':'LFLAG','context':'CFLAG'}[bank]
+                # Use the shared canonical bank labels rather than runtime scope guesses.
+                from sdk.flag_assets import _SCOPES
+                scope=_SCOPES[bank]
+                controller['flag_references']=controller['flag_references'][:1];controller['flag_reference_count']=1
+                controller['flag_references'][0].update(mnemonic=prefix+'_TEST',bank=bank,operation='test',index=index,scope=scope,extended_target=extended,context_resolution='current_script_context' if extended is None else 'extended_target_unresolved',index_semantics='operand_masked_to_five_bits')
+                owner=controller['semantic_id'].replace('script://','scene://');operand=controller['semantic_id']+'/flag-bit/0005'
+                target=dict(owner_id=owner,semantic_id=operand,source_record_sha256=controller['source_record']['sha256'],pc=5,mnemonic=prefix+'_TEST',target_context=extended,values={'bit':index},maximum=15 if bank=='local' else 31)
+                proof=from_target(target,{'bit':authored},controller=True)
+                group=build_controller_flag_assets(controller,self.doc,{operand:{'bit':authored}},{operand:proof})[0]
+                self.assertEqual((group['index'],group['references'][0]['effective_index']),(index,authored));validate_flag_asset(group)
+                before=(scene_flag_state_key(self.p),project_flag_state_key(self.p))
+                self.p.overrides[owner]={'ControllerFlagBits':{'source_record_sha256':target['source_record_sha256'],'entries':{operand:{'bit':authored}}}}
+                self.assertNotEqual(before,(scene_flag_state_key(self.p),project_flag_state_key(self.p)))
+                catalog=dict(source_key='c'*64,records=[controller,dict(group,kind='flag',layer='derived',scene_id='scene://fixture')],limitations=[])
+                report=assemble(self.p,catalog,group['id'])
+                effective=[e for e in report['incoming'] if e['kind']=='effective_controller_flag_reference'];self.assertEqual(len(effective),1)
+                self.assertEqual(effective[0]['flag_binding_evidence']['native_operand_qualification'],proof)
+                path=self.p.root/'bit-reference.json';path.write_text(json.dumps(dict(group=group,report=report)),encoding='utf-8')
+                subprocess.run(['C:/Program Files/nodejs/node.exe',str(Path(__file__).with_name('test_controller_flag_bit_references.mjs')),str(path)],check=True)
+                for change in [lambda r:r.pop('authored_qualification'),lambda r:r['authored_qualification'].update(schema_version='legaia.flag-operand-qualification.v1'),lambda r:r['authored_qualification'].update(extended_target=None if extended is not None else 1)]:
+                    forged=deepcopy(group);change(forged['references'][0])
+                    with self.assertRaises(ProjectError):validate_flag_asset(forged)
+                self.p.overrides[owner]['ControllerFlagBits']['entries'][operand]['bit']=index
+                with self.assertRaises(ProjectError):assemble(self.p,catalog,group['id'])

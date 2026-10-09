@@ -60,6 +60,9 @@ def validate_components(project,owner,components):
         elif family=='ControllerFiveWords':
             from .controller_five_words import validate as validate_five_words
             checked=validate_five_words(project,owner,value)
+        elif family=='ControllerFlagBits':
+            from .controller_flag_bits import validate as validate_flag_bits
+            checked=validate_flag_bits(project,owner,value)
         elif family=='ControllerPartySelectors':
             from .controller_party_selectors import validate as validate_party_selectors
             checked=validate_party_selectors(project,owner,value)
@@ -108,6 +111,9 @@ def compose(context,owner,components):
     if 'ControllerPartySelectors' in components:
         from .controller_party_selectors import compose as compose_party_selectors
         current=compose_party_selectors(context._source,current,components['ControllerPartySelectors']['entries'])
+    if 'ControllerFlagBits' in components:
+        from .controller_flag_bits import compose as compose_flag_bits
+        current=compose_flag_bits(context._source,current,components['ControllerFlagBits']['entries'])
     return current
 
 

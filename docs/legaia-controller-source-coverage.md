@@ -1,5 +1,16 @@
 # Controller Source Coverage Survey
 
+## Controller Flag-Bit Project Workflow — 2026-10-09
+
+Source-qualified encoded bit indices now support project Review/Apply/Clear, one-step history and persistence. The controller registry and shared snapshots contain twelve families. Low five bits alone change; local16–31 and context SET8/CLEAR10 retain the serializer's refusals. Source comparison and component reset/file readers recognize authored entries; dedicated bit editing controls remain pending.
+
+Retail flag group identities stay fixed. Authored annotations and Current graph edges carry a distinct `legaia.controller-flag-bit-operand-qualification.v1` proof, exact controller record hash, PC, context, width and authored binding. Discovery reloads native source and qualifies each entry before exposing it. Scene/project flag state keys include ControllerFlagBits. No runtime flag value, context binding, story reachability or gameplay is inferred.
+
+Forty-nine focused Python tests, five Node suites, seventeen AST checks and eleven JS syntax checks passed. Python-to-Node ordinary global and extended local/context resource/graph tests refuse missing, foreign and stale qualifications. Private Cave01/Rikuroa2 HTTP workflows qualified three/fourteen targets; reviewed edits matched complete literal MANs with only byte196/601 changed and upper three bits preserved. Read-only Review, exact typed Apply, stale/invalid/foreign requests, Undo/Redo, Save/Open and reset passed with unchanged imports. Evidence: `local-output/sdk-20260909/controller-flag-bit-workflow-20261009/`.
+
+Native Build delivery is still pending. Build refuses projects with this family before emitting any output rather than omitting authored bytes. This checkpoint covers backend HTTP and frontend DTO decoding, not a fresh rendered browser campaign or manual gameplay. The full goal remains active.
+
+
 Latest decoder readback (2026-10-09): **71 decoded supported /28 partial** among99 bounded controllers; the prior25 refused structural blocks remain outside that scope. See [Five-Word Helper Request Inspection](#five-word-helper-request-inspection--2026-10-09). Earlier survey counts below retain their original dates and scope.
 
 Source survey dated 2026-10-08. This is Retail byte/decoder evidence, not runtime execution or gameplay acceptance.

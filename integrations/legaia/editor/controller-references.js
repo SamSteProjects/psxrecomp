@@ -25,7 +25,7 @@ export function validateEffectiveControllerFlagReference(edge,nodes){
  if(!exact(edge,['id','source_id','target_id','kind','scene_id','layer','runtime_binding','source_import_sha256','source_catalog_key','pc','controller_source_evidence','flag_reference_evidence','flag_binding_evidence'])||edge.kind!=='effective_controller_flag_reference'||edge.layer!=='effective'||!exact(b,['operand_id','retail_index','effective_index','source_record_sha256','component_sha256','native_operand_qualification']))throw Error('Invalid Current controller flag relationship.');
  const retail={...edge,kind:'controller_flag_reference',layer:'decoded'};delete retail.flag_binding_evidence;
  const p=validateControllerFlagReference(retail,nodes);
- if(f.bank!=='system'||f.extended_target!==null||!integer(f.index,0,4095)||b.retail_index!==f.index||b.source_record_sha256!==p.source_record.sha256||!hash(b.component_sha256))throw Error('Current controller flag differs from Retail source ownership.');
+ if(!['system','local','global','context'].includes(f.bank)||!integer(f.index,0,f.bank==='system'?4095:f.bank==='local'?15:31)||b.retail_index!==f.index||b.source_record_sha256!==p.source_record.sha256||!hash(b.component_sha256))throw Error('Current controller flag differs from Retail source ownership.');
  decodeControllerFlagQualification(b.native_operand_qualification,{owner_id:edge.source_id.replace('script://','scene://'),operand_id:b.operand_id,source_record_sha256:b.source_record_sha256,pc:edge.pc,mnemonic:f.mnemonic,extended_target:f.extended_target,retail_index:b.retail_index,authored_index:b.effective_index});
  return p;
 }

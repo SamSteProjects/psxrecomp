@@ -211,6 +211,7 @@ class EditorServer(ThreadingHTTPServer):
         state['controller_table_source_key']=state['controller_selector_source_key']
         state['controller_scene_byte_source_key']=state['controller_selector_source_key']
         state['controller_party_selector_source_key']=state['controller_selector_source_key']
+        state['controller_flag_bit_source_key']=state['controller_selector_source_key']
         state['controller_five_word_source_key']=state['controller_selector_source_key']
         state['controller_global_byte_source_key']=state['controller_selector_source_key']
         state['controller_three_word_source_key']=state['controller_selector_source_key']
@@ -277,6 +278,7 @@ class EditorServer(ThreadingHTTPServer):
         state['capabilities']['controller_operand_files']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_component_reset']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_party_selector_authoring']=state['capabilities']['scene_controller_inspection']
+        state['capabilities']['controller_flag_bit_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_five_word_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_global_byte_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_workspace_snapshot']=state['capabilities']['scene_controller_inspection']
@@ -1092,6 +1094,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/controller-navigation.js": ("controller-navigation.js", "text/javascript"),
                  "/controller-operand-files.js": ("controller-operand-files.js", "text/javascript"),
                  "/controller-operand-comparison.js": ("controller-operand-comparison.js", "text/javascript"),
+                 "/controller-flag-bits.js": ("controller-flag-bits.js", "text/javascript"),
                  "/controller-build-navigation.js": ("controller-build-navigation.js", "text/javascript"),
                  "/controller-owner-inspector.js": ("controller-owner-inspector.js", "text/javascript"),
                  "/controller-component-reset.js": ("controller-component-reset.js", "text/javascript"),
@@ -1341,6 +1344,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'entity','component'} or not isinstance(body['entity'],str):raise ProjectError('Controller component reset requires exact inputs')
                     from .controller_component_reset import review
                     self._json(200,review(self.server.project,body['entity'],body['component']));return
+                if route in ('/api/controller-flag-bits','/api/controller-flag-bit-review'):
+                    expected={'entity'} if route=='/api/controller-flag-bits' else {'entity','operand_id','value'}
+                    if set(body)!=expected or not isinstance(body['entity'],str):raise ProjectError('Controller flag-bit request requires exact inputs')
+                    from .controller_flag_bits import snapshot,review
+                    self._json(200,snapshot(self.server.project,body['entity']) if route=='/api/controller-flag-bits' else review(self.server.project,body['entity'],body['operand_id'],body['value']));return
                 if route in ('/api/controller-party-selectors','/api/controller-party-selector-review'):
                     expected={'entity'} if route=='/api/controller-party-selectors' else {'entity','operand_id','value'}
                     if set(body)!=expected or not isinstance(body['entity'],str):raise ProjectError('Controller party selector request requires exact inputs')

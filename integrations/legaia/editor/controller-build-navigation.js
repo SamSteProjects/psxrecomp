@@ -1,5 +1,6 @@
 import {controllerOwnerComponents} from './controller-owner-inspector.js';
 export const CONTROLLER_BUILD_TARGETS={
+ 'controller-flag-bit-only':['ControllerFlagBits','flag-bit','script.flag_bit'],
  'script-system-selector-only':['ControllerSystemFlags','system-flag','system_flag.index'],
  'script-branch-target-only':['ControllerBranches','branch','script.branch_target'],
  'controller-tile-rect-operands-only':['ControllerTileRects','tile-rect','script.tile_rect_operands'],

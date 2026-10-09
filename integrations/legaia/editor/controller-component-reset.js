@@ -2,7 +2,7 @@ import {CONTROLLER_SNAPSHOT_SCHEMAS} from './controller-workspace-snapshot.js';
 const hash=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
 const canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
 const same=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
-const labels={ControllerSystemFlags:'System Flag Selectors',ControllerBranches:'Branches',ControllerTileRects:'Tile Requests',ControllerFades:'Fades',ControllerTableCopies:'Table Copies',ControllerWordTriplets:'Word Triplets',ControllerThreeWords:'Three Words',ControllerSceneBytes:'Scene-State Bytes',ControllerFiveWords:'Five Words',ControllerGlobalBytes:'Global Bytes',ControllerPartySelectors:'Party Selectors'};
+const labels={ControllerSystemFlags:'System Flag Selectors',ControllerBranches:'Branches',ControllerTileRects:'Tile Requests',ControllerFades:'Fades',ControllerTableCopies:'Table Copies',ControllerWordTriplets:'Word Triplets',ControllerThreeWords:'Three Words',ControllerSceneBytes:'Scene-State Bytes',ControllerFiveWords:'Five Words',ControllerGlobalBytes:'Global Bytes',ControllerPartySelectors:'Party Selectors',ControllerFlagBits:'Flag Bits'};
 export function controllerResetEntries(snapshot){
  const entries={};
  for(const target of snapshot?.targets??[]){const value=target.authored_values??target.authored_value;if(value!==undefined&&value!==null){if(typeof target.semantic_id!=='string'||Object.hasOwn(entries,target.semantic_id))throw Error('Controller reset entries are invalid.');entries[target.semantic_id]=structuredClone(value);}}

@@ -2162,6 +2162,9 @@ class ProjectService:
             from .controller_component_reset import apply
             apply(self,command)
             return
+        if command.get('type') == 'set_controller_flag_bit':
+            from .controller_flag_bits import apply
+            apply(self,command);return
         if command.get('type') == 'set_controller_party_selector':
             from .controller_party_selectors import apply
             apply(self,command)
