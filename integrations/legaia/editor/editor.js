@@ -102,6 +102,7 @@ import {mountModelPlacementUsers} from '/model-placement-users.js';
 import {mountAnimationPlacementUsers,currentAnimationPlacementIds} from '/animation-placement-users.js';
 import {animationResourceChoices} from '/animation-resource-choices.js';
 import {mountAssetUsageBrowser} from '/asset-usage-browser.js';
+import {mountMaterialBindings} from '/asset-material-bindings.js';
 import {mountAnimationContributions} from '/animation-contributions.js';
 import {openStabilitySourceAudit} from '/sdk-stability-sources.js';
 import {openStabilityChecks} from '/sdk-stability-checks.js';
@@ -2069,6 +2070,16 @@ function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false}={})
       assetDetails.close();await openActorScript({id:target.data.owner_semantic_id,name:target.label,partitionTwo:true});
     }});
     if(triggerBindingInspector)assetDetails.addEventListener('close',triggerBindingInspector.dispose,{once:true});
+    const materialBindings=mountMaterialBindings(section,{record,getState:()=>state,current,busy:()=>busy,onError:error=>notify(error.message,true),onInspect:async node=>{
+      if(!current())return;
+      if(node.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:node.scene_id}))return;
+      if(node.kind==='texture')await refreshResources();
+      const target=assetRecords().find(item=>item.id===node.id&&item.type===node.kind&&item.sceneId===node.scene_id);
+      if(!target)throw Error('Recorded material counterpart is absent from the source catalog. Refresh resources.');
+      if(record.sceneId===node.scene_id){assetDetailsTrail.remember(record,assetDetailsTrailContext(),lookup);showAssetDetails(target,()=>assetRecords(),{keepTrail:true});}
+      else showAssetDetails(target);
+    }});
+    if(materialBindings)assetDetails.addEventListener('close',materialBindings.dispose,{once:true});
     $('asset-source-data').parentElement.before(section);
     $('asset-source-data').parentElement.open=false;
     // These record types use the SDK inspector tool rather than a duplicate authored button.

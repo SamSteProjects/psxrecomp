@@ -768,3 +768,38 @@ An initial fixture used an invalid depth stopping reason and assumed synchronous
 close-event removal; those fixture expectations were corrected before the pass.
 No project authoring, game, runtime attachment or native Build occurred. Gameplay
 remains unverified and the full SDK goal remains active.
+
+
+## Model and Texture Material Binding Inspector — 2026-10-09
+
+Model and texture Asset Details now share a recorded material binding inspector.
+It consumes the existing Project Asset References API and its strict decoder;
+models show outgoing TIM matches, textures show incoming model-material matches.
+The existing SDK static address evidence, source/current model hashes, native page
+and CLUT fields, material index, UV bounds and source-scene provenance stay intact.
+Retail decoded edges and separately decoded Current edges are distinct filters.
+Missing Current matches do not imply inheritance or absence of users. No new
+material association or reverse-engineering inference was introduced.
+
+The inspector shows source catalog availability and at most 64 rows per page.
+Each row opens the recorded counterpart in its qualified source scene; same-scene
+navigation participates in the existing Asset Details Back trail. Unavailable
+counterparts remain disabled. Source changes, filtered/replaced rows, busy or
+pending navigation and disposed content refuse callbacks. Closing aborts pending
+metadata requests. Project authoring and native serializers are unchanged.
+
+Three focused Node suites, two JS syntax checks and server AST passed. Actual
+muted editor checks used the saved authored Vell material/texture fixture and fresh
+SDK graph qualification: all model Retail/Current and authored texture Current row
+identities matched exact reports, filters preserved layers, an old filtered callback
+was refused, and texture-to-model-to-Back navigation worked. Desktop and 400px
+screenshots were inspected. Separate synthetic 165-edge browser component checks
+covered 64-row paging, filtered/page replacement and pending/busy/stale/disposed
+refusal; this does not claim a retail asset has 165 material links. Zero page errors
+or command/Build/Run/Save/scene/selection requests occurred. Project/imports/history
+and all saved fixture files stayed exact. Private evidence:
+`local-output/sdk-20260909/asset-material-bindings-20261009/`.
+The browser harness initially needed a guarded startup probe and a unique Inspector
+selector; both were corrected before the final pass. No game, runtime attachment
+or native Build occurred. Runtime residency, animated palette behavior and gameplay
+remain unverified; the full SDK goal stays active.
