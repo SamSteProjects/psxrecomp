@@ -101,6 +101,7 @@ import {mountHierarchyNavigation} from '/hierarchy-navigation.js';
 import {mountModelPlacementUsers} from '/model-placement-users.js';
 import {mountAnimationPlacementUsers,currentAnimationPlacementIds} from '/animation-placement-users.js';
 import {animationResourceChoices} from '/animation-resource-choices.js';
+import {mountAssetUsageBrowser} from '/asset-usage-browser.js';
 import {mountAnimationContributions} from '/animation-contributions.js';
 import {openStabilitySourceAudit} from '/sdk-stability-sources.js';
 import {openStabilityChecks} from '/sdk-stability-checks.js';
@@ -2078,7 +2079,7 @@ function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false}={})
     const usage=document.createElement('section');usage.innerHTML=`<h3>Used by</h3><p>${record.type==='model'?'Initial model assignments across imported scenes.':'Recorded Retail/Current initial animation bindings across imported scenes and NPC draft donor witnesses.'} Scripts may change these assignments during gameplay.</p>`;
     if(record.type==='animation')usage.dataset.initialAnimationUsage='true';
     const references=initialAssetUsage(record,state),usageContext=initialAssetUsageContext(state);
-    for(const ref of references){const button=document.createElement('button');Object.assign(button.style,{maxWidth:'100%',whiteSpace:'normal',overflowWrap:'anywhere',textAlign:'left'});button.textContent=`${ref.source_name??ref.source_id} · ${['draft_initial_model_assignment','draft_initial_animation_assignment'].includes(ref.kind)?'NPC draft':`${ref.imported?'Imported':''}${ref.imported&&ref.effective?' + ':''}${ref.effective?'Effective':''}`}`;button.title=ref.source_id;button.onclick=async()=>{if(busy||!assetDetails.contains(usage)||!exportCurrent()||usageContext!==initialAssetUsageContext(state))return;assetDetails.close();if(ref.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:ref.scene_id}))return;if(['draft_initial_model_assignment','draft_initial_animation_assignment'].includes(ref.kind)){selectNpcDraft(ref.source_id);frameNpcDraft();}else if(await api('/api/selection',{entity_id:ref.source_id}))frame(selected());};usage.append(button);}
+    if(references.length)mountAssetUsageBrowser(usage,{references,scenes:state.scenes,current:()=>assetDetails.contains(usage)&&exportCurrent()&&usageContext===initialAssetUsageContext(state),busy:()=>busy,onError:error=>notify(error.message,true),onActivate:async ref=>{assetDetails.close();if(ref.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:ref.scene_id}))return;if(['draft_initial_model_assignment','draft_initial_animation_assignment'].includes(ref.kind)){selectNpcDraft(ref.source_id);frameNpcDraft();}else if(await api('/api/selection',{entity_id:ref.source_id}))frame(selected());}});
     if(!references.length){const empty=document.createElement('p');empty.textContent='No imported or effective initial actor assignments in this project.';usage.append(empty);}
     if(record.type==='model'){
       const groups=(state.scenes??[]).map(scene=>({scene,ids:effectiveModelUsers(state,record.id,scene.id)})).filter(row=>row.ids.length>=2&&row.ids.length<=128);

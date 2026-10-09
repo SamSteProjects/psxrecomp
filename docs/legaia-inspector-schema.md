@@ -707,3 +707,35 @@ all original fixture files remained unchanged. Private evidence:
 `local-output/sdk-20260909/project-animation-usage-20261009/`.
 No game, runtime attachment or native Build was used. Gameplay remains unverified;
 the full SDK goal stays active.
+
+
+## Asset Usage Filters and Pages — 2026-10-09
+
+Model and animation Asset Details share a usage browser over the existing SDK
+reference projections. Retail and Current flags remain independent. Source-scene
+selection and case-insensitive actor name, stable ID or source-scene search filter
+the recorded rows without inferring runtime membership. Source order and exact
+source identities are preserved. At most 64 rows render per page, with bounded
+Previous/Next controls and a matching/total count. Filters reset the page; pages
+clamp when results shrink. Empty results are explicit. Duplicate source identities
+or missing layer metadata are refused rather than combined silently.
+
+Navigation retains the existing actor/NPC and source-scene behavior. A removed
+row cannot navigate after filtering or paging. Pending navigation locks controls
+and rows, while busy, detached and stale source contexts refuse callbacks. Rows
+passed to navigation are detached copies. No SDK serializers, authored overrides
+or runtime behavior changed.
+
+One focused Node suite covers filtering, explicit layer flags, source-scene and
+ID/name searches, detached metadata, 64-row paging and malformed input refusal.
+Two JS syntax checks and server AST passed. The actual muted editor workflow used
+an in-memory two-scene fixture with 89 SDK animation references, checked model and
+clip filters in Scene/Project catalogs, and preserved the source membership. A
+separate synthetic 165-reference DOM fixture verified pagination and filtered,
+pending, busy, stale and detached callback refusal; it does not establish that a
+retail asset has more than 64 users. Desktop and 400px screenshots were inspected.
+There were no page errors or command/Build/Run/Save/scene/selection requests.
+Project/imports/history and original fixture files remained unchanged. Private
+evidence: `local-output/sdk-20260909/asset-usage-browser-20261009/`.
+No game, runtime attachment or native Build was used. Gameplay remains unverified;
+the full SDK goal remains active.
