@@ -698,6 +698,29 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "on_lookup_miss": "no_field_copy",
                     "source_lookup": "0x8003C83C", "actor_binding": "runtime_lookup_unresolved",
                     "runtime_effect": "not_evaluated"}
+        elif sub == 0xE4:
+            # Retail801E31C0 advances adjusted PC8. Inclusive X/Z tests
+            # use dispatch fields14/18; outside loads sub-op+5/+6 and
+            # jumps3614 (word-2 added to advanced PC), relative to word PC.
+            size, mnemonic = 7, "ACTOR_RECT_BRANCH"
+            need(size)
+            encoded = list(data[operand + 1:operand + 5])
+            bounds = [(value & 0x7F) * 128 + (32 if i < 2 else 96) +
+                      (64 if value & 0x80 else 0) for i, value in enumerate(encoded)]
+            word_pc = operand + 5
+            raw = struct.unpack_from("<H", data, word_pc)[0]
+            target = (word_pc + raw) & 0xFFFF
+            args = {"sub_op": sub, "encoded_bounds": encoded,
+                    "bounds_inclusive": dict(x_min=bounds[0], z_min=bounds[1],
+                                             x_max=bounds[2], z_max=bounds[3]),
+                    "coordinate_system": "retail_field_world_units",
+                    "position_fields": ["0x14", "0x18"],
+                    "actor_binding": "dispatch_context_unresolved",
+                    "target_word": raw, "target_word_pc": word_pc,
+                    "target_pc": target, "encoding": "relative_u16_wrap16",
+                    "runtime_effect": "not_evaluated"}
+            branches = [{"pc": operand + size, "condition": "dispatch_position_inside_rect"},
+                        {"pc": target, "condition": "dispatch_position_outside_rect"}]
         elif sub == 0xE6:
             # Retail801E32E8 reads signed words at sub-op+1/+3/+5
             # through8003CE9C, calls801D8280, then advances adjusted PC8.

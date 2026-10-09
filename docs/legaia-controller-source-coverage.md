@@ -1,6 +1,6 @@
 # Controller Source Coverage Survey
 
-Latest decoder readback (2026-10-09): **67 decoded supported /32 partial** among99 bounded controllers; the prior25 refused structural blocks remain outside that scope. See [Retail Three-Word Controller Decoding](#retail-three-word-controller-decoding--2026-10-09). Earlier survey counts below retain their original dates and scope.
+Latest decoder readback (2026-10-09): **69 decoded supported /30 partial** among99 bounded controllers; the prior25 refused structural blocks remain outside that scope. See [Retail Actor Rectangle Branch Workflow](#retail-actor-rectangle-branch-workflow--2026-10-09). Earlier survey counts below retain their original dates and scope.
 
 Source survey dated 2026-10-08. This is Retail byte/decoder evidence, not runtime execution or gameplay acceptance.
 
@@ -467,3 +467,18 @@ Scene-controller inspection no longer presents a full disabled authoring form fo
 Nine focused Node suites passed, covering shared availability and all seven controller forms plus the shared actor selector form. Eight JS syntax and server AST checks passed. Actual Opdeene wide/400-pixel browser checks asserted visible unavailable-family headings/reasons and no visible controls within those families, alongside supported E6 Review, invalid-draft withdrawal, discard, instruction navigation, same/changed-source Review behavior, Apply and reset. Exactly two legitimate commands ran, with no page errors or page/dialog horizontal overflow; reset restored the initial project document. Read-only compact-summary capture made no commands or project changes.
 
 Browser verification exposed an existing display rule overriding HTML hidden state. Explicit display suppression now keeps unavailable form content compact under that styling. Evidence: `local-output/sdk-20260909/controller-authoring-availability-20261009/` contains reproducible browser/capture harnesses, results and screenshots. No native serialization/runtime behavior changed and no game/runtime attachment, native recompilation, install or disc export occurred. Gameplay remains unverified; the full SDK goal stays active.
+
+
+## Retail Actor Rectangle Branch Workflow — 2026-10-09
+
+MENU0xE4 now decodes as `ACTOR_RECT_BRANCH`. Retail PROT[897] table801CF018 selects801E31C0, which advances adjusted PC8 before reading four bytes at sub-op+1..4. Each low-seven-bit value is multiplied by128; lower X/Z use32 and upper X/Z use96, with64 added when that byte's high bit is set. Comparisons use signed dispatch-context fields14/18 and inclusive bounds. No bound reordering or imported actor binding is inferred.
+
+Inside the rectangle, execution reaches the common return at801E3624. Outside,801E3278/327C load the little-endian target word at sub-op+5/+6;801E3284 jumps to801E3614, subtracting2 before the word is added to the already advanced PC. The relative base is therefore the word location, with16-bit PC wrapping. Ordinary instructions occupy8 bytes, extended-context instructions9. Both encoded edges are inspected; runtime activation remains unknown.
+
+Pinned Andrew revision `d6e64c68ede25813d35db20980da82a1a025549b`, `crates/engine-vm/src/field/step/menu_ctrl/nibble_e.rs`, describes the outside path as halt and uses uniform tile-center conversion. Fresh Retail words contradict those two interpretations; Retail layout/arithmetic takes precedence. The existing source-qualified branch authoring family now edits only this target word. Rectangle bytes, opcode/context, record extent, dialogue/MAN layout and unrelated bytes remain held; no rectangle-property writer or interpreter execution is introduced.
+
+Forty focused Python tests passed with one optional Retail case skipped; four Node suites and three AST checks passed. Fresh all99-source readback retained every source-record hash and asserted18 pivotal native words. Twenty E4 sites matched independent literal bounds, word-base and continuation arithmetic:16 Nilboa and4 Nilboa2. Both scenes now decode fully, giving69 decoded/30 partial; prior25 structurally refused blocks remain outside scope. Decoded WAIT_FRAMES sites remain zero. All twenty qualified authoring targets matched entire independent literal MAN edits and exact no-op results.
+
+Actual Nilboa wide/400-pixel browser Review/Apply/reset, instruction navigation, Save/Open and Undo/Redo passed with two typed commands and zero errors/overflow. The self-target edit at PC1261 changed Retail destination1273 to1261, retaining the four encoded bounds. Build `4c74bd09c062ccfc` delivered a complete literal MAN match with only decoded branch-word bytes3426/3427 changed; directory/source-file/ZIP receipts verified. Package SHA256 `896ba753141e7cdec20743f819e6e0b6e9fa163795d583693cc3e184926623d9`. Screenshots were visually inspected.
+
+Evidence: `local-output/sdk-20260909/controller-rect-branch-20261009/` contains source/native readback, all-target authoring, browser/persistence/Build harnesses and receipts. No game/runtime attachment, native recompilation, install or disc export occurred. The test self-target is an encoded branch-authoring qualification, not recommended gameplay behavior. Dispatch actor identity, scheduling, branch activation and gameplay remain unverified; the full SDK goal stays active and solo.

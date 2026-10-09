@@ -34,6 +34,7 @@ _FAMILIES = {
     'FLAG_WORD_BRANCH': (2, 'flag_bit_set', 'relative_i16_wrap16'),
     'FIELD_68_BRANCH': (1, 'field_68_zero', 'relative_i16_wrap16'),
     'ACTOR_SEARCH_BRANCH': (3, 'search_match', 'relative_i16_wrap16'),
+    'ACTOR_RECT_BRANCH': (5, 'dispatch_position_outside_rect', 'relative_u16_wrap16'),
     'ACTOR_LOOKUP_BRANCH': (2, 'actor_lookup_missing', 'relative_u16_wrap16'),
     'VALUE_COMPARE_BRANCH': (4, 'comparison_true', 'relative_u16_wrap16'),
 }
