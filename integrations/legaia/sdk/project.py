@@ -2158,6 +2158,10 @@ class ProjectService:
             from .script_branches import apply
             apply(self, command)
             return
+        if command.get('type') == 'reset_controller_component':
+            from .controller_component_reset import apply
+            apply(self,command)
+            return
         if command.get('type') == 'set_controller_party_selector':
             from .controller_party_selectors import apply
             apply(self,command)

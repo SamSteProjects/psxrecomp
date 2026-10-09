@@ -1323,6 +1323,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'scene_id','expected_source_key'} or any(not isinstance(value,str) or len(value)>512 for value in body.values()):raise ProjectError('Model resolution requires exact scene and current source key')
                     from .model_resolution import inspect as inspect_model_resolution
                     self._json(200,inspect_model_resolution(self.server.project,body['scene_id'],body['expected_source_key']));return
+                if route=='/api/controller-component-reset-review':
+                    if set(body)!={'entity','component'} or not isinstance(body['entity'],str):raise ProjectError('Controller component reset requires exact inputs')
+                    from .controller_component_reset import review
+                    self._json(200,review(self.server.project,body['entity'],body['component']));return
                 if route in ('/api/controller-party-selectors','/api/controller-party-selector-review'):
                     expected={'entity'} if route=='/api/controller-party-selectors' else {'entity','operand_id','value'}
                     if set(body)!=expected or not isinstance(body['entity'],str):raise ProjectError('Controller party selector request requires exact inputs')
