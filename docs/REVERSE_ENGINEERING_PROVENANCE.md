@@ -1005,3 +1005,6 @@ Directly re-inspected pinned `crates/engine-core/src/scene/scene_ty.rs::field_fl
 
 
 Controller Table-Copy Native Build — 2026-10-09: independent signed word encoding and complete emitted MAN/all original-record checks qualify six Conc/compressed and Rikuroa/raw-streaming packages, preserving immutable Retail sources. This extends serialization/package evidence only; runtime table semantics, effects and gameplay remain unverified. Evidence: `local-output/sdk-20260909/controller-table-build-20261009/`.
+
+
+Controller Table-Copy Editor Controls — 2026-10-09: actual Conc/Rikuroa source snapshots, sixteen indexed fields and browser-authored Word10 changes320→−321 matched only two literal emitted MAN bytes per scene and verified package receipts. No additional runtime semantic inference; source table meanings/bindings/effects and gameplay remain unresolved. Evidence: `local-output/sdk-20260909/controller-table-editor-20261009/`.

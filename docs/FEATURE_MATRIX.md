@@ -10175,3 +10175,6 @@ Scenery source-Y viewport rotation is implemented offline: individual decoration
 
 
 Controller Table-Copy Native Build: FUNCTIONAL for qualified32-byte operands in normal and appended Builds, including mixed controller/NPC composition. Six fresh compressed/raw packages matched literal readback and complete receipt verification. Editor controls pending; gameplay/runtime table semantics unverified.
+
+
+Controller Table-Copy Editor Controls: FUNCTIONAL for source-qualified16-word Review/Apply/reset, responsive controls, history/persistence and native Build readback in compressed Conc and raw-streaming Rikuroa. Runtime table meanings/bindings/effects and gameplay remain unverified.

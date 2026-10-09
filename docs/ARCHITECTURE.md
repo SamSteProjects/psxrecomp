@@ -2392,3 +2392,6 @@ The pinned Andrew SEQ parser supplies format evidence for VLQ/running status and
 
 
 Controller table-copy Build uses a dedicated independent32-byte verifier after selector/branch/tile/fade composition, with Retail source hashes, current record preimages and appended controller ownership proof. Normal/appended routes retain distinct table-copy reports and composition receipts; editor controls and runtime behavior remain pending.
+
+
+Controller table-copy editor controls use source-qualified SDK snapshots and Reviews, sixteen bounded signed-word fields, typed Apply/reset and the existing operand-layer/encoded-flow workspace. Source identity/stale withdrawal follow other controller families; Retail/current/authored/proposed values stay separate and runtime table meanings remain unknown.

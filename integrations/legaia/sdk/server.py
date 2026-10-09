@@ -208,6 +208,7 @@ class EditorServer(ThreadingHTTPServer):
         state['controller_branch_source_key']=state['controller_selector_source_key']
         state['controller_tile_source_key']=state['controller_selector_source_key']
         state['controller_fade_source_key']=state['controller_selector_source_key']
+        state['controller_table_source_key']=state['controller_selector_source_key']
         state['capabilities']['script_branch_authoring'] = bool(self.project.disc_path)
         state['capabilities']['system_selector_authoring'] = bool(self.project.disc_path)
         state['capabilities']['source_build_script_inspection'] = bool(self.project.disc_path)
@@ -265,6 +266,7 @@ class EditorServer(ThreadingHTTPServer):
         state['capabilities']['controller_branch_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_tile_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_fade_authoring']=state['capabilities']['scene_controller_inspection']
+        state['capabilities']['controller_table_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['asset_references'] = bool(self.project.disc_path and self.project.active_scene and len(self.project.imports)<=64)
         state['capabilities']['worldmap_source_navigation'] = bool(self.project.disc_path)
         state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]
@@ -1068,6 +1070,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/controller-branches.js": ("controller-branches.js", "text/javascript"),
                  "/controller-operand-flow.js": ("controller-operand-flow.js", "text/javascript"),
                  "/controller-fades.js": ("controller-fades.js", "text/javascript"),
+                 "/controller-tables.js": ("controller-tables.js", "text/javascript"),
                  "/controller-tile-rects.js": ("controller-tile-rects.js", "text/javascript"),
                  "/controller-references.js": ("controller-references.js", "text/javascript"),
                  "/controller-flags.js": ("controller-flags.js", "text/javascript"),
