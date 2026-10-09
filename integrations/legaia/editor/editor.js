@@ -102,7 +102,7 @@ import {mountHierarchyGroups,revealHierarchyEntities,matchingHierarchyPlacementI
 import {captureSceneViewHierarchy} from '/hierarchy-views.js';
 import {mountSceneToolDrawer} from '/scene-tool-drawer.js';
 import {mountSceneViews,decodeSavedSceneView,captureSceneViewVisibility,sceneViewIsolationIds,unavailableSceneViewNpcs} from '/scene-views.js';
-import {sceneCameraBasis,sceneCameraPlanePoint,sceneAxisCamera,sceneFrameCamera} from '/scene-camera.js';
+import {sceneCameraBasis,sceneCameraPlanePoint,sceneAxisCamera,sceneFrameCamera,sceneFrameAllCamera} from '/scene-camera.js';
 import {mountSceneCameraInspector} from '/scene-camera-inspector.js';
 import {appendPresetImport,presetExportButton} from '/preset-files.js';
 import {openActorPresetReview} from '/actor-preset-review.js';
@@ -4606,6 +4606,7 @@ function renderDialogueAuthoring(){
 }
 
 function frame(entity){
+  if(!entity&&busy)return;
   pendingEntityFrame=null;
   if(entity&&modelsEnabled&&state.capabilities?.scene_preview&&state.scene_preview_source_key&&!scenePreviewCurrent()&&!sceneError){
     pendingEntityFrame={entity,key:sceneRequestKey(),scene:state.scene?.id,project:state.project?.path,projectSource:state.project_copy_source_key,selection:hierarchySelectedIdentity(),revision:cameraRevision};
@@ -4615,6 +4616,12 @@ function frame(entity){
   const points=entity?[position(entity)]:(sceneLayers.actors?entities().filter(e=>!hiddenSceneEntities().has(e.id)).map(position):[]);
   const hasMesh=sceneModelsReady()&&(!entity||sceneRenderer.hasEntity(entity.id));
   if(hasMesh)points.push(...previewBounds(entity?.id,hiddenSceneEntities()));
+  if(!entity){
+    if(!points.length){notify('No visible scene bounds are available to frame.',true);return;}
+    try{const framed=sceneFrameAllCamera(camera,{width,height},points);cancelViewportGesture();Object.assign(camera,framed);cameraRevision++;draw();}
+    catch(error){notify(error.message,true);}
+    return;
+  }
   if(!points.length){camera.target={x:0,y:0,z:0};camera.distance=2000;draw();return;}
   const min={x:Infinity,y:Infinity,z:Infinity},max={x:-Infinity,y:-Infinity,z:-Infinity};
   for(const p of points)for(const axis of ['x','y','z']){min[axis]=Math.min(min[axis],p[axis]);max[axis]=Math.max(max[axis],p[axis]);}

@@ -23,3 +23,15 @@ for(const projection of ['perspective','orthographic'])for(const shape of [{widt
  for(const point of corners){const pixel=renderer.projectPoint(point,{...shape,camera:framed,basis:sceneCameraBasis(framed)});assert(pixel);assert(pixel.x>=shape.width*.1-.001&&pixel.x<=shape.width*.9+.001);assert(pixel.y>=shape.height*.1-.001&&pixel.y<=shape.height*.9+.001);}
 }
 const tiny=sceneFrameCamera(original,viewport,[{x:0,y:0,z:0}]);assert(tiny.distance>=20);for(const bad of [[],new Array(2),Array(4097).fill(corners[0]),[{x:0,y:NaN,z:0}],[{x:1e13,y:0,z:0}],[{x:0,y:null,z:0}],corners.map(p=>({...p,x:p.x*1e9}))])assert.throws(()=>sceneFrameCamera(original,viewport,bad));assert.throws(()=>sceneFrameCamera(original,{width:0,height:600},corners));assert.throws(()=>sceneFrameCamera({...original,projection:'unknown'},viewport,corners));assert.deepEqual(original,before);console.log('Bounded group framing: aspect-aware perspective/orthographic GPU fit, edge padding, preserved angles and detached display state passed.');
+
+const {sceneFrameAllCamera}=await import('../editor/scene-camera.js');
+const scenePoints=Array.from({length:8192},(_,i)=>({x:(i%73)*400-7000,y:(i%11)*100-200,z:(i%37)*300-5000}));
+const sceneCopy=structuredClone(scenePoints);
+for(const projection of ['perspective','orthographic'])for(const shape of [{width:1600,height:400},{width:280,height:1100}]){
+ const current={...original,projection},framed=sceneFrameAllCamera(current,shape,scenePoints);
+ assert.equal(framed.yaw,current.yaw);assert.equal(framed.pitch,current.pitch);assert.equal(framed.projection,projection);
+ for(const point of scenePoints){const pixel=renderer.projectPoint(point,{...shape,camera:framed,basis:sceneCameraBasis(framed)});assert(pixel&&pixel.x>=shape.width*.1-.001&&pixel.x<=shape.width*.9+.001&&pixel.y>=shape.height*.1-.001&&pixel.y<=shape.height*.9+.001);}
+}
+assert.deepEqual(scenePoints,sceneCopy);assert.deepEqual(original,before);
+for(const bad of [[],[{}],[{x:0,y:NaN,z:0}],Array(262145).fill(corners[0])])assert.throws(()=>sceneFrameAllCamera(original,viewport,bad));
+console.log('Whole-scene framing retains every display point beyond the group bound, with padded wide/tall perspective and orthographic fits.');

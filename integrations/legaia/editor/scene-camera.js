@@ -35,3 +35,14 @@ export function sceneFrameCamera(camera,viewport,points){
  if(!finite(distance)||distance>1e8)throw new Error('Framing exceeds the supported camera distance.');
  return {...camera,target,distance};
 }
+
+
+// A whole visible scene may exceed the selected-group corner bound. Fit its
+// enclosing box conservatively without discarding any loaded mesh or marker.
+export function sceneFrameAllCamera(camera,viewport,points){
+ if(!Array.isArray(points)||points.length<1||points.length>262144)throw Error('Scene framing requires bounded visible display points.');
+ const axes=['x','y','z'],lo={x:Infinity,y:Infinity,z:Infinity},hi={x:-Infinity,y:-Infinity,z:-Infinity};
+ for(const point of points){if(!point||axes.some(a=>!finite(point[a])||Math.abs(point[a])>1e12))throw Error('Scene framing contains invalid display bounds.');for(const a of axes){lo[a]=Math.min(lo[a],point[a]);hi[a]=Math.max(hi[a],point[a]);}}
+ const corners=Array.from({length:8},(_,i)=>({x:(i&1?hi:lo).x,y:(i&2?hi:lo).y,z:(i&4?hi:lo).z}));
+ return sceneFrameCamera(camera,viewport,corners);
+}
