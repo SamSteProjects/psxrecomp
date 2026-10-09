@@ -122,6 +122,27 @@ function shiftAnimationRange(args,preserveSource){
 export function moveAnimationRange(args){return shiftAnimationRange(args,false);}
 export function duplicateAnimationRange(args){return shiftAnimationRange(args,true);}
 
+// Offset only explicitly stored axes; absent Retail/effective axes remain absent.
+export function offsetAnimationRange(args){
+  const {kind,delta}=args;
+  if(!['translation','rotation_psx'].includes(kind)||!delta||typeof delta!=='object'||Array.isArray(delta)||Object.keys(delta).sort().join('')!=='xyz'||Object.values(delta).some(v=>!Number.isSafeInteger(v)||Math.abs(v)>(kind==='translation'?4095:4080)||(kind==='rotation_psx'&&v%16)))throw Error('Choose bounded integer translation offsets or rotation offsets in steps of 16 PSX units.');
+  const selected=removeAnimationRange({...args,axes:kind});
+  const rows=new Map(args.edits.map(row=>[row.frame_index+':'+row.object_index,structuredClone(row)])),proposed=[];let changedAxes=0;
+  for(const source of selected.proposed){
+    const proposal={frame_index:source.frame_index,object_index:source.object_index},target=rows.get(source.frame_index+':'+source.object_index);
+    for(const [axis,value] of Object.entries(source[kind]??{})){
+      if(!delta[axis])continue;
+      const sum=value+delta[axis],next=kind==='translation'?sum:((sum%4096)+4096)%4096;
+      if(kind==='translation'&&(next< -2048||next>2047))throw Error('Offset exceeds native translation limits at frame '+source.frame_index+', object '+source.object_index+', axis '+axis.toUpperCase()+'.');
+      target[kind][axis]=next;(proposal[kind]??={})[axis]=next;changedAxes++;
+    }
+    if(proposal[kind])proposed.push(proposal);
+  }
+  if(!changedAxes)throw Error('No stored axes in this range and object scope would change. Choose a nonzero offset for a stored axis.');
+  const order=(a,b)=>a.frame_index-b.frame_index||a.object_index-b.object_index;
+  return {proposed:proposed.sort(order),edits:[...rows.values()].sort(order),changedAxes};
+}
+
 export function decodeReversedRange(report,{entityId,binding,sourceKey,start,end,object}){
   const keys=['animation_id','source_record_sha256','before_record_sha256','after_record_sha256','start','end','object_index','proposed','value','changed_axes','schema_version','entity_id','project_source_key','project_changed','gameplay_verified'];
   if(!report||Object.keys(report).length!==keys.length||!keys.every(k=>Object.hasOwn(report,k))||report.schema_version!=='legaia.animation-range-reverse.v1'||report.entity_id!==entityId||report.project_source_key!==sourceKey||report.project_changed!==false||report.gameplay_verified!==false||report.animation_id!==binding.semantic_id||report.source_record_sha256!==binding.source_record.record_sha256||report.start!==start||report.end!==end||report.object_index!==object||!['before_record_sha256','after_record_sha256'].every(k=>/^[a-f0-9]{64}$/.test(report[k]))||!Number.isSafeInteger(report.changed_axes)||report.changed_axes<0||report.changed_axes>24576)throw Error('Reversed pose review differs from the current clip, source or selection.');
