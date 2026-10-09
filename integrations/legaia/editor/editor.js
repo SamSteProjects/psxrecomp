@@ -1,3 +1,4 @@
+import {controllerBuildTarget} from '/controller-build-navigation.js';
 import {mountControllerOwnerInspector,controllerAssetSourceHash} from '/controller-owner-inspector.js';
 import {createAssetResourceDiscovery,assetSearchNeedsResources} from '/asset-resource-discovery.js';
 import {copiedAnimationAsset} from '/animation-copy-selection.js';
@@ -810,13 +811,15 @@ async function openBuildChange(change,vector=null){
   const scene=(state.scenes ?? []).find(item=>item.name===change.scene);
   if(!scene){notify('The source scene is no longer imported.',true);return;}
   const owner=change.owner_id,resource=buildChangeResource(change);
+  let controllerTarget;try{controllerTarget=controllerBuildTarget(change,state.scenes??[],state.authored_assets??[]);}catch(error){notify(error.message,true);return;}
   buildDialog.close();
   if(scene.id!==state.scene?.id&&!await api('/api/scene',{scene_id:scene.id}))return;
-  if(resource?.type==='controller'&&change.scope==='script-system-selector-only'){
+  if(controllerTarget){
     if(resourceKey!==resourceStateKey())await refreshResources();
-    const controller=assetRecords(true).find(row=>row.type==='controller'&&row.id===resource.id&&row.sceneId===scene.id);
+    try{controllerBuildTarget(change,state.scenes??[],state.authored_assets??[]);}catch(error){notify(error.message,true);return;}
+    const controller=assetRecords(true).find(row=>row.type==='controller'&&row.id===controllerTarget.assetId&&row.sceneId===scene.id);
     if(!controller){notify('The controller source is unavailable. Refresh or rebuild.',true);return;}
-    await inspectControllerAsset(controller,parseInt(change.asset_id.split('/').at(-1),16));return;
+    await inspectControllerAsset(controller,controllerTarget.pc);return;
   }
   if(['source-MAP-trigger-cell-only','source-MAP-region-bounds-only'].includes(change.scope)){
     if(resourceKey!==resourceStateKey())await refreshResources();
