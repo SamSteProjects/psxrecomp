@@ -232,3 +232,21 @@ Twenty-five focused Python checks passed across table/native/project, fade/proje
 Actual HTTP checks passed for Conc’s descriptor-compressed MAN (eight table targets) and Rikuroa’s raw-streaming MAN (nine targets). A signed first-word complement changed only independently derived bytes2831/2832 and2911/2912, respectively. Apply updated Current; repeated stale Apply, Boolean words and extra HTTP fields refused; Undo/Redo and Save/Open matched; reviewed reset restored original document/imports. Pending Build refused before creating its requested output directory. The initial Conc harness used an incorrect target count; fresh source counts corrected both carrier fixtures before their complete passing runs. Private evidence: `local-output/sdk-20260909/controller-table-workflow-20261009/conc/` and `rikuroa/` (`http_checks.py`, `http-checks.json`).
 
 Project/API workflow is implemented; editor controls, normal/appended native Build receipt integration and playable delivery remain pending. Runtime table bindings, slot meanings, scheduling and gameplay effects remain unverified. No package Build, game, runtime attachment, native recompilation, installation or disc export ran. Full SDK goal remains active and solo; manual gameplay verification deferred.
+
+
+## Controller Table-Copy Native Build — 2026-10-09
+
+Normal and appended Build paths now compose ControllerTableCopies after selectors, branches, tiles and fades. The dedicated Build verifier independently encodes exactly16 signed words into32 bytes; immutable dispatch/sub-op/context, source hashes, record extents, Retail preimages and continuation remain qualified. It refuses overlap even for no-ops, missing/duplicate/forged receipts, invalid word types/domains, changed source preimages and unrelated serializer bytes. Table-copy changes have distinct `script.table_copy_operands`, `controller-table-copy-operands-only`, stable `table_copy_id`, before/after values and `controller_table_copy_changes` composition audit fields. The temporary pending-Build refusal is removed; editor controls remain pending.
+
+Twenty-eight focused Python checks passed across table foundation/project/Build, fade/tile workflows/Build and branches; six changed SDK modules parsed. The first new test run caught a fixture component typo (`ControllerTableCopys`); correcting the fixture yielded the final passing checks. Fresh Conc/compressed and Rikuroa/raw-streaming projects each built table-only, mixed controller and mixed-plus-NPC packages. Conc mixed includes all five controller families; Rikuroa has no qualified fade site and composes its four available families. Independent signed `.to_bytes` and literal selector/branch/tile/fade bytes matched the complete emitted MAN for normal Builds. Appended Builds matched every original record, including literal spawn index reindexing and controller edits, retaining the native partition structure. Save/Open and Undo/Redo passed before Build; project/import/history state remained unchanged during Build. All six directory/source-file/ZIP receipt verifications returned `integrity=verified`.
+
+| Scene / Composition | Build ID | Package SHA-256 |
+| --- | --- | --- |
+| Conc / Table | e77092b381bcd1f7 | c238a46395c25a8909647feff72f596c6e29a7a60e88c041325a70cf04cb3d51 |
+| Conc / Five Families | 566280f473af4675 | d069b4cb78a58b2977b31287ca27237f665ff711748820e86b27d257befbb8ec |
+| Conc / Five Families + NPC | feb6af3a0f9e7415 | 5eecfecf3b6bcee484e62225699ba07e9745b3b9fe9bd78294bc376fab463ab2 |
+| Rikuroa / Table | cf9a27d252143c95 | c6ecfdb6bca4bf7fff580470ff737d61e2bb71b2444c978f926d9e6fd2d7ecba |
+| Rikuroa / Four Families | b071086618f5247b | 81e09b9f2a75609f0faa172dcc1b474e204346e219445ba006c21dda0036df6e |
+| Rikuroa / Four Families + NPC | 6450add44ebbe6be | 7c1095679c6519a6613971a66190226ec63e0242e5e47263795379ae0396dde2 |
+
+The Rikuroa NPC fixture emits relocated PROT; the packaged format remains disabled by default at runtime and is not claimed playable. Evidence: `local-output/sdk-20260909/controller-table-build-20261009/check.py` and `checks.json`. No game, runtime attachment, installation or disc export ran. Runtime table meanings/bindings/effects and gameplay remain unverified; the full SDK goal remains active.

@@ -80,9 +80,9 @@ class ControllerTableWorkflow(unittest.TestCase):
         self.p.mode='edit';self.p.overrides[OWNER]['Transform']={'position':{'x':1}}
         with self.assertRaises(ProjectError):ProjectService.open(self.p.save())
 
-    def test_build_collection_refuses_pending_table_components(self):
+    def test_build_collection_retains_validated_table_components(self):
         from sdk.controller_selector_build import collect
         self.apply(VALUES)
-        from sdk.build import BuildError
-        with self.assertRaisesRegex(BuildError,'table-copy native Build integration is pending'):
-            collect(self.p,OWNER,self.p.overrides[OWNER])
+        scene,components=collect(self.p,OWNER,self.p.overrides[OWNER])
+        self.assertEqual(scene,'scene://fixture')
+        self.assertEqual(components[COMPONENT]['entries'][ID],VALUES)

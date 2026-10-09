@@ -10172,3 +10172,6 @@ and `node-checks-20261001-scene-views.json`. No game launched.
 ## Scenery yaw milestone — 2026-10-02
 
 Scenery source-Y viewport rotation is implemented offline: individual decoration and explicitly enabled shared descriptor scopes, absolute-angle snapping, temporary preview, history, Save/Open and normal Build. Twelve browser checks, an actor movement regression, ten Python cases and Node guards passed. Runtime appearance, script resting transforms and collision acceptance remain unverified. See [workflow and evidence](legaia-scenery-rotation-gizmo.md).
+
+
+Controller Table-Copy Native Build: FUNCTIONAL for qualified32-byte operands in normal and appended Builds, including mixed controller/NPC composition. Six fresh compressed/raw packages matched literal readback and complete receipt verification. Editor controls pending; gameplay/runtime table semantics unverified.
