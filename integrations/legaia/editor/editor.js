@@ -3,6 +3,7 @@ import {copiedAnimationAsset} from '/animation-copy-selection.js';
 import {decodeSceneCatalog} from '/scene-catalog.js';
 import {openCatalogScenePreview} from '/catalog-scene-preview.js';
 import {openModelResolution} from '/model-resolution.js';
+import {openSceneController} from '/scene-controller.js';
 import {openSequenceReplacement} from '/sequence-replacement-authoring.js';
 import {animationChannelAuthoringTarget,validateImportedChannelHandoff,validateRetainedChannelHandoff} from '/animation-channel-authoring.js';
 import {createAnimationChannelGraph} from '/animation-channel-graph.js';
@@ -1226,6 +1227,7 @@ async function readSceneCatalog(offset=0){
 $('catalog-search').onclick=()=>readSceneCatalog();$('catalog-previous').onclick=()=>readSceneCatalog(Math.max(0,catalogOffset-16));$('catalog-next').onclick=()=>{if(catalogNext!==null)readSceneCatalog(catalogNext);};
 $('import-form').onsubmit=async event=>{event.preventDefault();$('status').textContent='Importing scene from local disc image…';await api('/api/import',{disc:$('disc-input').value,scene:$('scene-input').value},{dialog:$('import-dialog'),success:'Scene imported.'});};
 const modelResolutionButton=document.createElement('button');modelResolutionButton.type='button';modelResolutionButton.id='model-resolution-button';modelResolutionButton.textContent='Inspect unresolved model references';
+const sceneControllerButton=document.createElement('button');sceneControllerButton.type='button';sceneControllerButton.id='scene-controller-button';sceneControllerButton.textContent='Inspect Scene Entry Controller';sceneControllerButton.onclick=()=>openSceneController({getState:()=>state,busy:()=>busy,onError:error=>notify(error.message,true)});transformTools.append(sceneControllerButton);
 modelResolutionButton.onclick=()=>openModelResolution({getState:()=>state,busy:()=>busy,onError:error=>notify(error.message,true),onSelectGroup:async(ids,scene,key)=>{const current=()=>state.scene?.id===scene&&state.asset_reference_source_key===key;if(!await selectCurrentPlacementGroup(ids,ids.at(-1),current))throw Error('Load the Current scene in Edit mode before selecting affected placements.');},onInspectSource:async source=>{const actor=entities().find(entity=>entity.id===source.source_actor_id);if(!actor)throw Error('Model source actor is unavailable in the active scene');await openActorScript(actor);},onSelect:async row=>{if(row.kind==='npc'){if(!state.actor_drafts?.[row.entity_id])throw Error('NPC source changed');selectNpcDraft(row.entity_id);frameNpcDraft();}else if(await api('/api/selection',{entity_id:row.entity_id}))frame(selected());}});transformTools.append(modelResolutionButton);
 $('changes-button').onclick=()=>{if(!busy)openProjectChanges({save:(key,dialog)=>api('/api/project/save-reviewed',{source_key:key},{dialog,success:'Reviewed project changes saved.'})});};
 $('save-button').onclick=()=>api('/api/project/save',{}, {success:'Project saved.'});

@@ -1054,6 +1054,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/scene-catalog.js": ("scene-catalog.js", "text/javascript"),
                  "/catalog-scene-preview.js": ("catalog-scene-preview.js", "text/javascript"),
                  "/model-resolution.js": ("model-resolution.js", "text/javascript"),
+                 "/scene-controller.js": ("scene-controller.js", "text/javascript"),
                  "/script-branches.js": ("script-branches.js", "text/javascript"),
                  "/system-flag-selectors.js": ("system-flag-selectors.js", "text/javascript"),
                  "/source-build-script.js": ("source-build-script.js", "text/javascript"),
@@ -1280,6 +1281,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'scene_id','expected_source_key'} or any(not isinstance(value,str) or len(value)>512 for value in body.values()):raise ProjectError('Model resolution requires exact scene and current source key')
                     from .model_resolution import inspect as inspect_model_resolution
                     self._json(200,inspect_model_resolution(self.server.project,body['scene_id'],body['expected_source_key']));return
+                if route == '/api/scene-controller':
+                    if set(body)!={'scene_id','expected_source_key'} or any(not isinstance(value,str) or not value or len(value)>512 for value in body.values()):raise ProjectError('Controller inspection requires exact scene and current source key')
+                    from .scene_controller import inspect as inspect_scene_controller
+                    self._json(200,inspect_scene_controller(self.server.project,body['scene_id'],body['expected_source_key']));return
                 if route == '/api/scene-catalog':
                     if set(body) != {'disc', 'offset', 'prefix'} or not isinstance(body['disc'], str) or not body['disc'].strip() or type(body['offset']) is not int or not 0 <= body['offset'] <= 65536 or not isinstance(body['prefix'], str) or len(body['prefix']) > 64:
                         raise ProjectError('Scene catalog requires a disc path, bounded integer offset and name prefix')
