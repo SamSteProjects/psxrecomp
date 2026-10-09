@@ -274,6 +274,7 @@ class EditorServer(ThreadingHTTPServer):
         state['capabilities']['controller_fade_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_table_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_scene_byte_authoring']=state['capabilities']['scene_controller_inspection']
+        state['capabilities']['controller_component_reset']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_party_selector_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_five_word_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_global_byte_authoring']=state['capabilities']['scene_controller_inspection']
@@ -1086,6 +1087,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/controller-tables.js": ("controller-tables.js", "text/javascript"),
                  "/controller-authoring-availability.js": ("controller-authoring-availability.js", "text/javascript"),
                  "/controller-scene-bytes.js": ("controller-scene-bytes.js", "text/javascript"),
+                 "/controller-component-reset.js": ("controller-component-reset.js", "text/javascript"),
                  "/controller-party-selectors.js": ("controller-party-selectors.js", "text/javascript"),
                  "/controller-five-words.js": ("controller-five-words.js", "text/javascript"),
                  "/controller-global-bytes.js": ("controller-global-bytes.js", "text/javascript"),
