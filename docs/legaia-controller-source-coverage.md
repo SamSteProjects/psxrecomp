@@ -1,5 +1,16 @@
 # Controller Source Coverage Survey
 
+## Retail Controller Flag Sandbox — 2026-10-09
+
+The controller Retail walkthrough now exposes the existing shared hypothetical flag sandbox. Users supply unknown/known local16/global32/context32 words and explicit system-selector assumptions, start at a decoded source selection, step bounded instructions, stop before temporary breakpoints, Back/reset, and save/replay a qualified scenario. This reuses the existing single-context engine and UI; it introduces no native writes or new interpreter semantics.
+
+Scenario save/load uses the controller walkthrough's fresh Retail record and project/scene/source qualification, then rechecks authoritative editor state. Scenario identities retain the dedicated controller script ID, Retail record hash, exact report hash and `retail_source` representation. Closing or stale context disposes simulation; reopening begins empty. Unknown contexts, unsupported host actions, lifecycle/scheduler effects and real timing retain the shared engine's existing refusal boundaries. Current or reviewed Proposed controller simulation is not claimed by this checkpoint.
+
+Eight existing Node suites and changed JS syntax passed. Actual Cave01 GFLAG_SET PC29 and Rikuroa2 GFLAG_CLEAR PC65, both bit25, produced independently expected known masks with blank inputs. Breakpoints stopped before effects; Back restored Unknown. Explicit system4095 assumptions produced controller-bound v3 recipes that replayed exactly. Reopening cleared simulation. Desktop/400-pixel screenshots passed visual inspection with zero page errors, horizontal overflow, authoring/Build/Run requests, or changes to project/imports/history; Save/Open matched. Evidence: `local-output/sdk-20260909/controller-retail-sandbox-20261009/`. The first Cave01 harness expected visible text inside a collapsed reopened panel; that terminal failure is retained before the corrected passing workflow.
+
+These are hypothetical editor states, not live flags, story outcomes or runtime execution. No Build, game, native recomp compile, runtime attachment, installation or disc export occurred. Gameplay remains deferred and the full goal active.
+
+
 ## Controller Flag-Bit Editor Controls — 2026-10-09
 
 The dedicated controller source editor now offers bit-index selection, local0–15/global-context0–31 decimal fields, separate Retail/Current/Authored layers, keyed Review, explicit Apply, Discard and reset to Retail. Context SET8/CLEAR10 are refused before Review. Source instructions, the editing navigator and unified comparison links focus exact operands. Shared bookmark, reset and file workflows see pending bit drafts; Edit/source/scene changes withdraw stale views and reviews.
