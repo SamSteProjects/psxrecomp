@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {compactControllerAuthoring} from '../editor/controller-authoring-availability.js';
+const node=(tag,role)=>({tagName:tag.toUpperCase(),hidden:false,style:{},getAttribute:key=>key==='role'?role:null});
+const heading=node('h3'),reason=node('p','status'),fields=node('div'),flow=node('section'),error=node('p','alert');
+const section={dataset:{},children:[heading,reason,fields,flow,error]};
+compactControllerAuthoring(section,{targets:[],supported:false,reason:'Reached source paths remain unresolved.'},reason);
+assert.equal(section.dataset.controllerAuthoringAvailability,'unavailable');assert.equal(reason.textContent,'Reached source paths remain unresolved.');
+assert(!heading.hidden&&!reason.hidden&&!error.hidden);assert(fields.hidden&&flow.hidden);assert.equal(fields.style.display,'none');assert.equal(flow.style.display,'none');
+const supported={dataset:{},children:[node('input')]};
+compactControllerAuthoring(supported,{targets:[{pc:5}],supported:true},reason);
+assert.equal(supported.dataset.controllerAuthoringAvailability,'available');assert(!supported.children[0].hidden);
+assert.throws(()=>compactControllerAuthoring(section,{targets:null,supported:false},reason));
+console.log('Empty controller families retain heading/source reason/errors while hiding fields and flow; supported forms remain available.');
