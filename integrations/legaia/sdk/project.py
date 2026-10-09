@@ -3868,7 +3868,7 @@ class ProjectService:
             if 'WorldMapPlacements' in components:
                 binding=components['WorldMapPlacements']
                 records.append(dict(id=identifier,kind='worldmap',scene_id=None,source_scene=binding['scene'],
-                    name=f"{binding['scene']} source placements",changes=[f"Source transform records: {len(binding['entries'])}"],
+                    name=f"{binding['scene']} source placements",placement_record_count=len(binding['entries']),changes=[f"Source transform records: {len(binding['entries'])}"],
                     authored={'WorldMapPlacements':deepcopy(binding)}))
         worldmap = self.overrides.get('worldmap://legaia/menu', {}).get('WorldMapMenu')
         if worldmap:

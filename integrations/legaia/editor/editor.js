@@ -63,7 +63,7 @@ import {decodeChannelPoseProposal} from '/animation-channel-proposal.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
 import {appendCaptureSummary} from '/script-capture.js';
 import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files.js';
-import {npcDonorModel,npcDonorScript,mountAssetInspector,assetInspectorDefinition,mountTriggerBindingInspector} from '/asset-inspector.js';
+import {npcDonorModel,npcDonorScript,worldPlacementAsset,mountAssetInspector,assetInspectorDefinition,mountTriggerBindingInspector} from '/asset-inspector.js';
 import {createAssetDetailsTrail} from '/asset-details-trail.js';
 import {mountAssetRecordDownload} from '/asset-record-export.js';
 import {createAssetMetadataPin,mountAssetMetadataComparison} from '/asset-metadata-comparison.js';
@@ -1752,7 +1752,7 @@ function renderHierarchy(){
 }
 // Search SDK records already present in project state, including their provenance.
 const assetTools=document.createElement('div');assetTools.className='asset-tools';
-assetTools.innerHTML='<label class="asset-search-label"><input id="asset-search" type="search" placeholder="Search ID, type, scene, provenance…" aria-label="Search asset database"></label><select id="asset-category" aria-label="Asset category"><option value="all">All records</option><option value="authored">Authored assets</option><option value="model">Models</option><option value="actor">Actors</option><option value="scene">Imported scenes</option><option value="texture">Textures</option><option value="animation">Animations</option><option value="audio">Audio</option><option value="script">Scripts</option><option value="controller">Scene Controllers</option><option value="dialogue">Dialogue</option><option value="flag">Flag references</option><option value="transition">Transitions</option><option value="collision">Collision</option><option value="trigger">Triggers</option><option value="region">Regions</option><option value="worldmap">World-map landmarks</option></select><span id="asset-results" role="status"></span><button id="resource-refresh">Refresh scene resources</button><span id="resource-status" role="status">Resource catalog has not been loaded.</span>';
+assetTools.innerHTML='<label class="asset-search-label"><input id="asset-search" type="search" placeholder="Search ID, type, scene, provenance…" aria-label="Search asset database"></label><select id="asset-category" aria-label="Asset category"><option value="all">All records</option><option value="authored">Authored assets</option><option value="model">Models</option><option value="actor">Actors</option><option value="scene">Imported scenes</option><option value="texture">Textures</option><option value="animation">Animations</option><option value="audio">Audio</option><option value="script">Scripts</option><option value="controller">Scene Controllers</option><option value="dialogue">Dialogue</option><option value="flag">Flag references</option><option value="transition">Transitions</option><option value="collision">Collision</option><option value="trigger">Triggers</option><option value="region">Regions</option><option value="worldmap">World-map assets</option></select><span id="asset-results" role="status"></span><button id="resource-refresh">Refresh scene resources</button><span id="resource-status" role="status">Resource catalog has not been loaded.</span>';
 $('assets').before(assetTools);
 const assetScope=document.createElement('details');assetScope.className='asset-scope';assetScope.innerHTML='<summary>Catalog scope</summary><p>Choose active scene resources or discover imported project resources. Coverage and source memberships distinguish supported imported metadata from runtime state.</p>';$('assets').after(assetScope);
 mountScriptOperandBundle({after:assetTools,getState:()=>state,context:()=>JSON.stringify([resourceStateKey(),state.project?.mode,state.authored_assets]),canEdit:canEditDialogue,busy:()=>busy,setBusy,api,onError:error=>notify(error.message,true)});
@@ -2001,7 +2001,7 @@ function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false}={})
   if(!keepTrail)assetDetailsTrail.clear();
   assetPlacementSelection?.dispose();assetPlacementSelection=null;animationContributions?.dispose();animationContributions=null;
   const isAuthored=!!record.authoredRecord,inspectorId=assetInspectorDefinition(state.inspector_schema,record);
-  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${inspectorId?'':property('Stable ID',record.id)+property('Record type',record.type)+property(record.data?.scope?.startsWith('global-')?'Source scope':'Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='model'?'Inspect authored model':record.type==='script'?'Open script workspace':record.type==='controller'?'Inspect controller':record.type==='scene'?'Open scene':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
+  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${inspectorId?'':property('Stable ID',record.id)+property('Record type',record.type)+property(record.data?.scope?.startsWith('global-')?'Source scope':'Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='worldmap'?'Open world-map editor':record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='model'?'Inspect authored model':record.type==='script'?'Open script workspace':record.type==='controller'?'Inspect controller':record.type==='scene'?'Open scene':'Select actor'}${!['template','worldmap'].includes(record.type)&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
   const exportContext=resourceStateKey(),exportSnapshot=JSON.stringify(record);
   const previous=assetDetailsTrail.peek();
   if(previous){
@@ -2123,7 +2123,7 @@ function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false}={})
     $('asset-source-data').parentElement.before(usage);
   }
   if(record.type==='controller')mountControllerOwnerInspector(assetDetails,{record,schema:state.inspector_schema,capabilities:state.capabilities,current:exportCurrent,editable:canEdit,busy:()=>busy,onInspect:async(_component,pc)=>{assetDetails.close();await inspectControllerAsset(record,pc);},onError:error=>notify(error.message,true)});
-  if(isAuthored){$('asset-authored-data').textContent=JSON.stringify(record.authored,null,2);if($('open-authored-asset'))$('open-authored-asset').onclick=()=>{assetDetails.close();activateAsset(record);};}
+  if(isAuthored){$('asset-authored-data').textContent=JSON.stringify(record.authored,null,2);if(inspectorId==='AssetWorldPlacements')$('asset-authored-data').hidden=true;if($('open-authored-asset'))$('open-authored-asset').onclick=()=>{assetDetails.close();activateAsset(record);};}
   if(record.authoredRecord?.component_reviews?.length){
     const section=document.createElement('section'),title=document.createElement('h3'),note=document.createElement('p');
     title.textContent='Review authored components';note.textContent='Revert removes every authored setting in the chosen component. Imported data stays available; other components stay authored. Undo restores the removed settings. Shared animation and scenery changes can affect other instances.';
@@ -2192,6 +2192,13 @@ async function inspectControllerAsset(record,focusFlagPc=null){
 async function activateAsset(record,action=null){
   if(busy)return;
   try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
+  if(record.type==='worldmap'){
+    try{const binding=worldPlacementAsset(record);if(binding){
+      if(![null,'inspect-authored-world-scene','edit-authored-world-placements'].includes(action)||!canEdit()||!state.capabilities?.worldmap_placements||worldmapDraftPending)return;
+      const target={scene:binding.scene,sourceKey:state.worldmap_authoring_state_key,projectPath:state.project?.path,entries:binding.entries};
+      if(action==='inspect-authored-world-scene'){if(state.capabilities?.worldmap_geometry)await worldmapGeometryControls.openScene(target);}else await worldPlacementControls.openAuthored(target);return;
+    }}catch(error){notify(error.message,true);return;}
+  }
   if(action==='edit-asset-materials'){
     if(!canEdit()||!state.capabilities?.model_material_authoring||record.type!=='model'||shapeDraft||record.sceneId!==state.scene?.id)return;
     const context=sceneRequestKey();await openModel(record.id,null,null,record.authoredRecord?'authored':'imported');

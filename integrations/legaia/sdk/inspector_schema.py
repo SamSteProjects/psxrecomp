@@ -469,6 +469,20 @@ def inspector_schema():
         ],
         'notes':['Source coordinates are decoded spawn seeds in the retail Y-down coordinate system. Display Y reflection is separate.', 'Runtime visibility and resting transforms are unverified; no authoring or runtime-write capability is inferred.'],
     }
+    schema['authored_asset_inspectors']['world_placements']='AssetWorldPlacements'
+    schema['components']['AssetWorldPlacements']={
+        'label':'World placement overrides','layout':'read-only-properties',
+        'properties':[
+            {'id':'identity','label':'Stable ID','path':['id'],'type':'asset-reference','state':'derived'},
+            {'id':'kingdom','label':'Source kingdom','path':['authoredRecord','authored','WorldMapPlacements','scene'],'type':'string','state':'derived'},
+            {'id':'records','label':'Authored record count','path':['authoredRecord','placement_record_count'],'type':'integer','state':'read-only-project'},
+            *[{'id':key,'label':label,'path':['authoredRecord','authored','WorldMapPlacements',key],'type':'string','state':'derived'} for key,label in [('source_disc_sha256','Retail disc hash'),('source_map_sha256','Retail MAP hash'),('source_floor_lut_sha256','Retail floor lookup hash')]],
+        ],
+        'actions':[{'id':'inspect-authored-world-scene','label':'Inspect Current world scene','capability':'worldmap_geometry','requires_edit':True},
+                   {'id':'edit-authored-world-placements','label':'Edit authored placement records','capability':'worldmap_placements','requires_edit':True}],
+        'notes':['Authored record transforms preserve Retail source ownership. This asset is distinct from menu landmarks and their encoded pixel positions.', 'Current source seeds do not establish runtime visibility, resting transforms or gameplay acceptance.'],
+        'details':[{'label':'Authored record bindings','path':['authoredRecord','authored','WorldMapPlacements','entries']}],
+    }
     schema['components']['WorldPlacementRecord']={
         'label':'World placement record values','layout':'layered-properties',
         'layers':[{'id':'retail','label':'Retail','state':'read-only-retail'},

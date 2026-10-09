@@ -22,6 +22,14 @@ class InspectorSchema(unittest.TestCase):
         self.assertTrue(all('authoring' not in p for p in component['properties']))
         self.assertTrue(all(p['empty_label']=='Not present' for p in component['properties']))
 
+    def test_authored_world_placement_asset_is_distinct_from_landmark(self):
+        schema=inspector_schema();self.assertEqual(schema['authored_asset_inspectors']['world_placements'],'AssetWorldPlacements')
+        component=schema['components']['AssetWorldPlacements'];self.assertEqual(component['label'],'World placement overrides')
+        self.assertEqual([a['id'] for a in component['actions']],['inspect-authored-world-scene','edit-authored-world-placements'])
+        self.assertTrue(all(a.get('requires_edit') for a in component['actions']))
+        self.assertTrue(all('authoring' not in p for p in component['properties']))
+        self.assertFalse(any(p['id']=='menu_x' for p in component['properties']))
+
     def test_model_and_clip_actor_binding_navigation_is_read_only(self):
         for identifier in ('AssetModel','AssetAnimation'):
             component=inspector_schema()['components'][identifier]
@@ -52,7 +60,7 @@ class InspectorSchema(unittest.TestCase):
         self.assertTrue(inspector_schema()['components']['ModelRenderer']['notes'])
 
     def test_npc_draft_asset_schema_is_authored_metadata_with_qualified_navigation(self):
-        schema=inspector_schema();self.assertEqual(schema['authored_asset_inspectors'],{'npc_draft':'AssetNpcDraft'})
+        schema=inspector_schema();self.assertEqual(schema['authored_asset_inspectors']['npc_draft'],'AssetNpcDraft')
         component=schema['components']['AssetNpcDraft'];self.assertEqual(component['layout'],'read-only-properties')
         self.assertTrue(all('authoring' not in prop for prop in component['properties']))
         positions=[p for p in component['properties'] if p['id'] in ('x','z')]

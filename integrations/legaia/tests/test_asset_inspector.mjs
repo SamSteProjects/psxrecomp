@@ -1,3 +1,4 @@
+import {worldPlacementAsset} from '../editor/asset-inspector.js';
 import assert from 'node:assert/strict';
 import {assetInspectorDefinition,assetInspectorRegistry,renderAssetInspector} from '../editor/asset-inspector.js';
 import {registeredActions,bindComponentActions} from '../editor/component-inspector.js';
@@ -80,3 +81,10 @@ const editButton={dataset:{inspectorAction:'edit-asset-materials',inspectorCompo
 bindComponentActions({querySelectorAll:()=>[editButton]},assetInspectorRegistry(record,()=>edited++),{current:()=>true,editable:()=>editMode,busy:()=>false,onError:e=>{throw e;}});
 await editButton.onclick();assert.equal(edited,0);editMode=true;await editButton.onclick();assert.equal(edited,1);editMode=false;await editButton.onclick();assert.equal(edited,1);
 console.log('Model material action requires explicit Edit eligibility and capability; texture assets and mode changes cannot dispatch it.');
+
+const worldBinding={scene:'map01',source_disc_sha256:'a'.repeat(64),source_map_sha256:'b'.repeat(64),source_floor_lut_sha256:'c'.repeat(64),entries:{'0005':{values:{offset:{x:0,y:0,z:0},yaw_units:0},source_record_sha256:'d'.repeat(64),shared_record:false}}};
+const worldAsset={id:'worldmap://map01/placements',type:'worldmap',authoredRecord:{id:'worldmap://map01/placements',kind:'worldmap',scene_id:null,source_scene:'map01',placement_record_count:1,authored:{WorldMapPlacements:worldBinding}}};assert.deepEqual(worldPlacementAsset(worldAsset),worldBinding);const detached=worldPlacementAsset(worldAsset);detached.entries['0005'].values.offset.x=99;assert.equal(worldBinding.entries['0005'].values.offset.x,0);
+const worldSchema=structuredClone(schema);worldSchema.authored_asset_inspectors={world_placements:'AssetWorldPlacements'};worldSchema.components.AssetWorldPlacements={layout:'read-only-properties',properties:[],actions:[{id:'inspect-authored-world-scene',label:'Current scene',capability:'worldmap_geometry',requires_edit:true},{id:'edit-authored-world-placements',label:'Edit records',capability:'worldmap_placements',requires_edit:true}]};assert.equal(assetInspectorDefinition(worldSchema,worldAsset),'AssetWorldPlacements');assert.equal(assetInspectorRegistry(worldAsset,()=>{})['open-asset-worldmap'],undefined);assert.equal(assetInspectorRegistry({type:'worldmap'},()=>{})['edit-authored-world-placements'],undefined);
+assert(registeredActions(worldSchema,'AssetWorldPlacements',worldAsset,{worldmap_geometry:true,worldmap_placements:true},assetInspectorRegistry(worldAsset,()=>{}),false).every(a=>a.disabled));
+for(const mutate of [r=>r.id='worldmap://map02/placements',r=>r.authoredRecord.placement_record_count=2,r=>r.authoredRecord.authored.WorldMapPlacements.entries['0005'].values.offset.x=32768,r=>r.authoredRecord.authored.WorldMapPlacements.source_map_sha256='bad',r=>r.authoredRecord.source_scene='map02']){const invalid=structuredClone(worldAsset);mutate(invalid);assert.throws(()=>worldPlacementAsset(invalid));}
+console.log('Authored world placement Inspector classifies bounded source records separately from menu landmarks and guards Edit actions');
