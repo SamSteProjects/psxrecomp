@@ -1,3 +1,4 @@
+import {mountControllerBranchWalkthrough} from './script-branch-walkthrough.js';
 import {mountScriptFlowOverview} from './script-flow-overview.js';
 import {mountScriptNodeLayers} from './script-node-layers.js';
 import {scriptBranchContext,decodeControllerBranchSnapshot,inspectBranchReport,qualifyBranchSourceBoundaries} from './script-branches.js';
@@ -17,7 +18,7 @@ export function decodeControllerBranchReview(raw,snapshot,id,value){
  return structuredClone(raw);
 }
 const el=(tag,label='')=>{const n=document.createElement(tag);n.textContent=label;return n;};
-export function mountControllerBranches(host,{owner,getContext,busy,setBusy,api,reopen,focusPc=null,onError=()=>{}}){
+export function mountControllerBranches(host,{owner,getContext,busy,setBusy,api,reopen,focusPc=null,getProjectSourceKey=()=>null,onError=()=>{}}){
  const context=scriptBranchContext(getContext());
  if(owner!==context.sceneId+'/controllers/man-p1/0000')fail('Controller branches require their dedicated scene owner.');
  const section=el('section');section.dataset.controllerBranches='';section.style.overflowWrap='anywhere';
@@ -33,16 +34,20 @@ export function mountControllerBranches(host,{owner,getContext,busy,setBusy,api,
  section.append(status,source,layers,destination,actions,assessment,flowHost);host.append(section);
  const nodeLayers=mountScriptNodeLayers(flowHost);
  const chooseBoundary=pc=>{if(!fresh()||busy()||pending||!snapshot?.destinations.some(d=>d.pc===pc))return false;boundary.value=String(pc);drawFlow();return true;};
- const currentFlow=mountScriptFlowOverview(flowHost,{label:'Current controller encoded flow',selectInstruction:chooseBoundary});
+ const currentFlow=mountScriptFlowOverview(flowHost,{label:'Current controller encoded flow',title:'Current Controller Flow Overview',selectInstruction:chooseBoundary});
  const proposedHost=el('div');proposedHost.dataset.controllerProposedFlow='';flowHost.append(proposedHost);
- const proposedFlow=mountScriptFlowOverview(proposedHost,{label:'Reviewed Proposed controller encoded flow',selectInstruction:chooseBoundary});
+ const proposedFlow=mountScriptFlowOverview(proposedHost,{label:'Reviewed Proposed controller encoded flow',title:'Reviewed Proposed Controller Flow Overview',selectInstruction:chooseBoundary});
 
  let snapshot=null,accepted=null,pending=false,disposed=false,generation=0,abort=null;
  const fresh=()=>{try{return !disposed&&same(context,scriptBranchContext(getContext()));}catch{return false;}};
+ const walkthrough=mountControllerBranchWalkthrough(flowHost,{owner,getContext,getProjectSourceKey,current:fresh,busy,selection:()=>Number(boundary.value),selectInstruction:chooseBoundary,onError,
+  request:async(route,body,signal)=>{const response=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal}),raw=await response.json();if(!response.ok||raw.error)fail(raw.error||'Controller walkthrough source could not be verified.');return raw;},
+  decodeSnapshot:decodeControllerBranchSnapshot,decodeReview:(raw,s,id,value)=>({review:decodeControllerBranchReview(raw,s,id,value)})});
  const row=()=>snapshot?.targets.find(t=>t.semantic_id===source.value);
  function invalidate(){generation++;abort?.abort();accepted=null;assessment.textContent='';drawFlow();}
- function updateState(){const disabled=!fresh()||context.mode!=='edit'||pending||busy()||!snapshot?.supported;source.disabled=destination.disabled=disabled;boundary.disabled=!fresh()||pending||busy()||!snapshot;buttons.review.disabled=disabled||!row();buttons.reset.disabled=disabled||!row()?.authored_value;buttons.discard.disabled=disabled;buttons.apply.disabled=disabled||!accepted||accepted.no_op; if(!fresh()){invalidate();section.hidden=true;}}
+ function updateState(){walkthrough.updateState();const disabled=!fresh()||context.mode!=='edit'||pending||busy()||!snapshot?.supported;source.disabled=destination.disabled=disabled;boundary.disabled=!fresh()||pending||busy()||!snapshot;buttons.review.disabled=disabled||!row();buttons.reset.disabled=disabled||!row()?.authored_value;buttons.discard.disabled=disabled;buttons.apply.disabled=disabled||!accepted||accepted.no_op; if(!fresh()){invalidate();section.hidden=true;}}
  function drawFlow(){
+  walkthrough.sync(snapshot,accepted);
   if(!fresh()||!snapshot){nodeLayers.clear('Controller flow source changed. Reopen inspection.');proposedHost.hidden=true;return;}
   const selected=Number(boundary.value);
   nodeLayers.update(snapshot.source_report,snapshot.current_report,accepted?.proposed_report??null,Number.isSafeInteger(selected)&&snapshot.destinations.some(d=>d.pc===selected)?selected:null);
@@ -58,5 +63,5 @@ export function mountControllerBranches(host,{owner,getContext,busy,setBusy,api,
  async function review(value){const t=row();if(!t)return false;invalidate();return request('/api/controller-branch-review',{entity:owner,operand_id:t.semantic_id,value},raw=>{accepted=decodeControllerBranchReview(raw,snapshot,t.semantic_id,value);assessment.textContent=`Current ${pc(t.current_target_pc)} → Proposed ${pc(value?.target_pc??t.target_pc)}\n${accepted.changed_decoded_byte_offsets.length} changed bytes · ${accepted.newly_unreachable_source_pcs.length} newly unvisited boundaries · ${accepted.newly_reached_source_pcs.length} newly reached boundaries`;status.textContent=accepted.no_op?'No authored change.':'Review complete. Explicit Apply is required.';drawFlow();});}
  buttons.review.onclick=()=>buttons.review.disabled?false:review({target_pc:Number(destination.value)});buttons.reset.onclick=()=>buttons.reset.disabled?false:review(null);buttons.discard.onclick=()=>{if(buttons.discard.disabled)return false;invalidate();render();return true;};
  buttons.apply.onclick=async()=>{if(buttons.apply.disabled||!fresh()||pending||busy())return false;const proposal=structuredClone(accepted),focus=row().pc;pending=true;updateState();try{const success=await api('/api/command',{type:'set_controller_branch',entity_id:owner,operand_id:proposal.operand_id,value:proposal.value,review_key:proposal.review_key});accepted=null;const now=getContext();if(success!==true||disposed||['projectPath','sceneId','mode'].some(k=>now[k]!==context[k]))return false;await reopen(focus);return true;}catch(e){if(!disposed){status.textContent=e.message;onError(e);}return false;}finally{pending=false;accepted=null;drawFlow();updateState();}};
- return {ready,updateState,dispose(){if(disposed)return;disposed=true;invalidate();nodeLayers.dispose();currentFlow.dispose();proposedFlow.dispose();section.remove();}};
+ return {ready,updateState,dispose(){if(disposed)return;disposed=true;invalidate();walkthrough.dispose();nodeLayers.dispose();currentFlow.dispose();proposedFlow.dispose();section.remove();}};
 }

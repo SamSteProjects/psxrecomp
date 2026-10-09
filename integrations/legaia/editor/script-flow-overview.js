@@ -88,10 +88,10 @@ export function analyzeScriptFlow(report){
     nodes:pcs.map(pc=>({pc,mnemonic:nodes.get(pc).mnemonic}))};
 }
 
-export function mountScriptFlowOverview(host,{selectInstruction=()=>{},label='Retail encoded flow'}={}){
+export function mountScriptFlowOverview(host,{selectInstruction=()=>{},label='Retail encoded flow',title='Whole-record source flow overview'}={}){
   const create=(tag,value)=>{const node=document.createElement(tag);if(value!==undefined)node.textContent=value;return node;};
   const section=create('details');section.className='script-flow-overview';section.dataset.scriptFlowOverview='';
-  section.append(create('summary','Whole-record source flow overview'));
+  section.append(create('summary',title));
   const summary=create('p'),note=create('p','Encoded edges only. Conditions, story activation and external resumption are not evaluated. A closed cycle does not prove an infinite loop; unvisited decoded nodes do not prove gameplay unreachability.');
   summary.dataset.flowSummary='';summary.setAttribute('role','status');note.className='field-note';
   const content=create('div');section.append(summary,note,content);host.append(section);

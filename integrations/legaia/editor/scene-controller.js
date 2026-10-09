@@ -54,7 +54,7 @@ export async function openSceneController({getState,busy,expectedAsset=null,focu
   if(selectors)await selectors.ready;
   if(!fresh())return;
   if(typeof api==='function'&&typeof setBusy==='function'&&getState().capabilities?.controller_branch_authoring){
-   branches=mountControllerBranches(content,{owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_branch_source_key}),busy,setBusy,api,onError,
+   branches=mountControllerBranches(content,{owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getProjectSourceKey:()=>getState().asset_reference_source_key,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_branch_source_key}),busy,setBusy,api,onError,
     reopen:async pc=>{dialog.close();await openSceneController({getState,busy,api,setBusy,focusFlagPc:pc,onError});}});
   }
   const focusedFlag=renderControllerFlags(content,report,focusFlagPc);
