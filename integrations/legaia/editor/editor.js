@@ -507,17 +507,29 @@ function hiddenSceneEntities(){
   return new Set([...isolatedHidden,...inspectionHidden,...sceneHidden,...(activeScenePreview()?.entities??[]).filter(e=>!sceneLayers[e.kind!=='environment'?'actors':e.entity_id.endsWith('/ground')?'ground':'scenery']).map(e=>e.entity_id)]);
 }
 function visibilitySelection(){return environmentSelection??npcDraftSelection??state.selection?.entity_id;}
+function visibilitySelectionIds(){
+  const ids=isolationSelection(),rows=activeScenePreview()?.entities??[];
+  return scenePreviewCurrent()&&ids.length>=1&&ids.length<=128&&new Set(ids).size===ids.length&&ids.every(id=>rows.filter(row=>row.entity_id===id).length===1)?ids:[];
+}
+function updateSceneVisibilityButtons(){
+  const ids=visibilitySelectionIds(),show=ids.length>0&&ids.every(id=>sceneHidden.has(id));
+  $('hide-selected').disabled=busy||!ids.length;
+  $('hide-selected').textContent=(show?'Show selected':'Hide selected')+(ids.length>1?` (${ids.length})`:'');
+  $('hide-selected').title='Temporary viewport visibility for the complete selection; a partially hidden group is hidden together. Scene layers and isolation remain unchanged.';
+  $('hide-model').disabled=busy||!activeScenePreview()?.entities.find(e=>e.entity_id===visibilitySelection())?.asset_id;
+  $('show-hidden').disabled=busy||sceneHidden.size===0;
+  $('show-hidden').textContent=sceneHidden.size?`Show hidden (${sceneHidden.size})`:'Show hidden';
+}
 for(const [id,label,sameModel] of [['hide-selected','Hide selected',false],['hide-model','Hide model instances',true],['show-hidden','Show hidden',null]]){
   const button=document.createElement('button');button.id=id;button.textContent=label;
   button.title='Temporary viewport visibility only; does not edit or export the scene';
   button.onclick=()=>{
+    if(busy||button.disabled)return;
     hiddenSceneEntities();
     if(sameModel===null)sceneHidden.clear();
     else{
-      const identifier=visibilitySelection();if(!identifier)return;
-      const item=activeScenePreview()?.entities.find(e=>e.entity_id===identifier);
-      if(sameModel){if(!item?.asset_id)return;for(const e of activeScenePreview().entities)if(e.asset_id===item.asset_id)sceneHidden.add(e.entity_id);}
-      else if(sceneHidden.has(identifier))sceneHidden.delete(identifier);else sceneHidden.add(identifier);
+      if(sameModel){const item=activeScenePreview()?.entities.find(e=>e.entity_id===visibilitySelection());if(!item?.asset_id)return;for(const e of activeScenePreview().entities)if(e.asset_id===item.asset_id)sceneHidden.add(e.entity_id);}
+      else{const ids=visibilitySelectionIds();if(!ids.length)return;const show=ids.every(id=>sceneHidden.has(id));for(const id of ids){if(show)sceneHidden.delete(id);else sceneHidden.add(id);}}
     }
     cancelViewportGesture();renderHierarchy();draw();
   };
@@ -877,7 +889,7 @@ function setBusy(value) {
   if($('project-copy-button'))$('project-copy-button').disabled=value||!state.capabilities?.project_copy;
   if($('project-animation-inputs'))$('project-animation-inputs').disabled=value||!state.project?.path;
   document.querySelectorAll('#script-report [data-script-family]').forEach(button=>button.disabled=value);
-  busy=value;hierarchyHistory?.refresh();sceneCameraInspector?.update();if($('select-matching-actors'))hierarchyMatchSelect.disabled=!canSelectHierarchyMatches()||!hierarchyMatchIds.length||hierarchyMatchKey!==resourceStateKey();npcPresetControls?.update();triggerScriptsDialog?.refresh?.();triggerGroupDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
+  busy=value;hierarchyHistory?.refresh();sceneCameraInspector?.update();if($('select-matching-actors'))hierarchyMatchSelect.disabled=!canSelectHierarchyMatches()||!hierarchyMatchIds.length||hierarchyMatchKey!==resourceStateKey();npcPresetControls?.update();triggerScriptsDialog?.refresh?.();triggerGroupDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();updateSceneVisibilityButtons();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);updateAssetPlacementActions();
@@ -1623,13 +1635,8 @@ function updateSceneBadge(){
   $('entity-count').textContent=entities().length+environmentEntities().length+draftCount;
   const ready=sceneModelsReady(),count=ready?sceneRenderer.instances.length:0;
   const hidden=hiddenSceneEntities(),visible=ready?sceneRenderer.instances.filter(instance=>!hidden.has(instance.entity_id)).length:0;
-  const visibilityId=visibilitySelection(),visibilityItem=activeScenePreview()?.entities.find(e=>e.entity_id===visibilityId);
   updateSceneIsolation();
-  $('hide-selected').disabled=!visibilityId;
-  $('hide-selected').textContent=sceneHidden.has(visibilityId)?'Show selected':'Hide selected';
-  $('hide-model').disabled=!visibilityItem?.asset_id;
-  $('show-hidden').disabled=sceneHidden.size===0;
-  $('show-hidden').textContent=sceneHidden.size?`Show hidden (${sceneHidden.size})`:'Show hidden';
+  updateSceneVisibilityButtons();
   $('scene-models').hidden=!ready;
   modelToggle.hidden=!state.capabilities?.scene_preview;modelToggle.textContent=sceneError?'Retry models':'Models';modelToggle.title=sceneError ?? 'Show supported SDK meshes at authored placements';
   document.querySelector('.preview-badge span').textContent=sceneError?'Models unavailable · placement markers remain usable':scenePendingKey?(ready?'Updating scene · showing previous preview (scenery editing paused)':'Loading supported scene models…'):ready?`${currentNpcCreationInspection()?'Prospective NPC · not created · ':''}${sceneRepresentation==='retail'?'Retail comparison · ':'Authored · '}${count} / ${activeScenePreview()?.entities.length??0} meshes loaded · ${visible} visible · approximate blends`:modelsEnabled?'Placement markers · model data unavailable':'Placement markers · models hidden';
