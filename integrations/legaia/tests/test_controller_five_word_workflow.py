@@ -62,12 +62,12 @@ class ControllerFiveWordWorkflow(unittest.TestCase):
         self.p.mode='edit';self.p.overrides[OWNER]['Transform']={'position':{'x':1}}
         with self.assertRaises(ProjectError):ProjectService.open(self.p.save())
 
-    def test_pending_build_refuses_collection(self):
+    def test_build_collection_retains_five_word_components(self):
         from sdk.controller_selector_build import collect
-        from sdk.build import BuildError
         self.apply(VALUES)
-        with self.assertRaisesRegex(BuildError,'native Build integration is pending'):
-            collect(self.p,OWNER,self.p.overrides[OWNER])
+        scene,components=collect(self.p,OWNER,self.p.overrides[OWNER])
+        self.assertEqual(scene,'scene://fixture')
+        self.assertEqual(components[COMPONENT]['entries'][ID],VALUES)
 
     def test_nine_families_compose_complete_MAN_and_reset_independently(self):
         families=[

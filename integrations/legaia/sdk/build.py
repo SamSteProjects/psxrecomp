@@ -162,6 +162,7 @@ def package_change_kinds(edits) -> list[str]:
         'controller-fade-operands-only': 'controller fade operands',
         'controller-table-copy-operands-only': 'controller table-copy operands',
         'controller-scene-byte-operand-only': 'controller scene-state byte',
+        'controller-five-word-operands-only': 'controller five-word operands',
         'controller-three-word-operands-only': 'controller three-word operands',
         'controller-word-triplet-operands-only': 'controller word-triplet operands',
     }
@@ -213,7 +214,7 @@ def build_report(audit) -> dict:
         elif change.get('scope') == 'script-facing-sector-only':
             field = 'script.facing_sector'
             before, after = change['before_sector'], change['after_sector']
-        elif change.get("scope") in ("controller-tile-rect-operands-only", "controller-fade-operands-only", "controller-table-copy-operands-only", "controller-word-triplet-operands-only", "controller-three-word-operands-only", "controller-scene-byte-operand-only"):
+        elif change.get("scope") in ("controller-tile-rect-operands-only", "controller-fade-operands-only", "controller-table-copy-operands-only", "controller-word-triplet-operands-only", "controller-three-word-operands-only", "controller-scene-byte-operand-only", "controller-five-word-operands-only"):
             before, after = change["before_values"], change["after_values"]
         elif field == "dialogue.text":
             before = bytes.fromhex(change["before_hex"]).decode("ascii")
@@ -223,7 +224,7 @@ def build_report(audit) -> dict:
         else:
             before = change.get("before_value", change.get("before_byte"))
             after = change.get("after_value", change.get("after_byte"))
-        changes.append({"scene": change["scene"], "asset_id": change.get("scene_byte_id") or change.get("three_word_id") or change.get("word_triplet_id") or change.get("table_copy_id") or change.get("fade_id") or change.get("tile_rect_id") or change.get("animation_operand_id") or change.get("system_flag_id") or change.get("worldmap_placement_id") or change.get("effect_color_id") or change.get("branch_id") or change.get("model_selector_id", change.get("wait_id", change.get("flag_id", change.get("movement_id", change.get("transition_id", change.get("run_id", change["semantic_id"])))))),
+        changes.append({"scene": change["scene"], "asset_id": change.get("scene_byte_id") or change.get("five_word_id") or change.get("three_word_id") or change.get("word_triplet_id") or change.get("table_copy_id") or change.get("fade_id") or change.get("tile_rect_id") or change.get("animation_operand_id") or change.get("system_flag_id") or change.get("worldmap_placement_id") or change.get("effect_color_id") or change.get("branch_id") or change.get("model_selector_id", change.get("wait_id", change.get("flag_id", change.get("movement_id", change.get("transition_id", change.get("run_id", change["semantic_id"])))))),
                         "owner_id": change["semantic_id"],
                         "field": field, "before": before, "after": after,
                         **({"frame_index": change["frame_index"], "object_index": change["object_index"],
