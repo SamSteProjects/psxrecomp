@@ -47,6 +47,18 @@ export function offsetActorPlacementProposal(proposal,axis,amount){
   return {actor_ids:proposal.targets.map(row=>row.entity_id).sort(),delta};
 }
 
+export function actorGridSnapLayout(axes,spacing){
+  if(![['x'],['z'],['x','z']].some(value=>JSON.stringify(value)===JSON.stringify(axes))||!Number.isSafeInteger(spacing)||spacing<64||spacing>4096||spacing%64)throw Error('Actor snap requires X, Z or X/Z and grid spacing in multiples of 64 from 64 through 4096');
+  return {kind:'snap',axes:[...axes],spacing};
+}
+export function validateActorGridSnapReport(report){
+  const layout=actorGridSnapLayout(report?.layout?.axes,report?.layout?.spacing);
+  if(JSON.stringify(report.layout)!==JSON.stringify(layout)||!Array.isArray(report.targets)||report.targets.length<2||report.targets.length>128)throw Error('Invalid actor grid snap report');
+  let changed=0;
+  for(const row of report.targets){let different=false;for(const axis of ['x','z']){const n=row.effective?.[axis];if(!Number.isSafeInteger(n)||n<64||n>16384||n%64)throw Error('Invalid Current actor coordinate');const value=layout.axes.includes(axis)?Math.floor((n+layout.spacing/2)/layout.spacing)*layout.spacing:n;if(value<64||value>16384||row.proposed?.[axis]!==value)throw Error('Actor grid snap proposal differs from native arithmetic');different||=value!==n;}if(row.proposed.y!==row.effective.y)throw Error('Actor grid snap changed source height');changed+=different;}
+  if(report.changed_count!==changed)throw Error('Actor grid snap change count differs from proposal');return report;
+}
+
 export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,setBusy,api,after,canInspectScene,onSceneInspection,frameGroup,notify,getSelection=()=>[]}){
   const button=document.createElement('button');button.id='actor-batch-button';button.textContent='Actor group placements';after.after(button);
   const dialog=document.createElement('dialog');dialog.id='actor-batch-dialog';document.body.append(dialog);
@@ -58,6 +70,7 @@ export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,se
   const payload=()=>{
     const actor_ids=[...selected].sort(),mode=dialog.querySelector('[name="layout-mode"]').value;
     if(mode==='offset')return {actor_ids,delta:{x:Number(dialog.querySelector('[name="x"]').value),z:Number(dialog.querySelector('[name="z"]').value)}};
+    if(mode.startsWith('snap_'))return {actor_ids,layout:{kind:'snap',axes:mode==='snap_xz'?['x','z']:[mode.split('_')[1]],spacing:Number(dialog.querySelector('[name="layout-spacing"]').value)}};
     const [kind,axis]=mode.split('_'),layout={kind,axis};if(kind==='align')layout.anchor_entity_id=dialog.querySelector('[name="layout-anchor"]').value;
     return {actor_ids,layout};
   };
@@ -65,11 +78,12 @@ export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,se
   const invalidate=()=>{generation++;preview=null;clearInspection();dialog.querySelector('.batch-result')?.replaceChildren();update();};
   function update(){
     if(!dialog.open)return;
-    const busy=isBusy(),request=payload(),layout=!!request.layout,valid=(layout||dialog.querySelector('form').checkValidity())&&selected.size>=2&&selected.size<=128&&(request.layout?.kind!=='align'||selected.has(request.layout.anchor_entity_id));
+    const busy=isBusy(),request=payload(),layout=!!request.layout;let snapValid=true;if(request.layout?.kind==='snap'){try{actorGridSnapLayout(request.layout.axes,request.layout.spacing);}catch{snapValid=false;}}const valid=snapValid&&(layout||dialog.querySelector('form').checkValidity())&&selected.size>=2&&selected.size<=128&&(request.layout?.kind!=='align'||selected.has(request.layout.anchor_entity_id));
     dialog.querySelectorAll('input,button,select').forEach(item=>{if(!item.matches('[data-close-batch]'))item.disabled=busy||!canEdit();});
     dialog.querySelector('[data-preview-batch]').disabled=busy||!canEdit()||!valid;
     for(const input of dialog.querySelectorAll('[name="x"],[name="z"]')){input.parentElement.hidden=layout;input.disabled=busy||!canEdit()||layout;}
     const anchor=dialog.querySelector('[name="layout-anchor"]');anchor.parentElement.hidden=request.layout?.kind!=='align';anchor.disabled=busy||!canEdit()||request.layout?.kind!=='align';
+    const spacing=dialog.querySelector('[name="layout-spacing"]');spacing.parentElement.hidden=request.layout?.kind!=='snap';spacing.disabled=busy||!canEdit()||request.layout?.kind!=='snap';
     dialog.querySelector('[data-preview-batch]').textContent=layout?'Preview group layout':'Preview group offset';dialog.querySelector('[data-apply-batch]').textContent=layout?'Apply group layout':'Apply group offset';
     const delta=request.delta??{};
     dialog.querySelector('[data-apply-batch]').disabled=busy||!canEdit()||!valid||!preview||(layout?!preview?.changed_count:(!delta.x&&!delta.z));
@@ -100,9 +114,9 @@ export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,se
   button.onclick=()=>{
     if(isBusy()||!canEdit())return;
     clearInspection();selected=new Set(getSelection().filter(id=>getEntities().some(entity=>entity.id===id)));preview=null;context=contextKey();generation++;
-    dialog.innerHTML='<div class="dialog-heading"><h2>Actor group placements</h2><button type="button" data-close-batch aria-label="Close actor group">×</button></div><p>Select imported actors in this scene. Offset, align or distribute their effective X/Z placements. Proposed coordinates must fit the exact retail 64-unit grid, from 64 through 16384. Source height, facing, scripts and scheduling stay unchanged.</p><form><label>Find actors<input name="search" type="search" aria-label="Find group actors"></label><div class="batch-actors"></div><p class="batch-count" role="status"></p><div class="dialog-actions"><label>X offset<input name="x" type="number" step="64" min="-16320" max="16320" value="0" required></label><label>Z offset<input name="z" type="number" step="64" min="-16320" max="16320" value="0" required></label></div><div class="dialog-actions"><button type="submit" data-preview-batch>Preview group offset</button><button type="button" data-apply-batch disabled>Apply group offset</button></div><p class="dialog-error" role="alert"></p><div class="batch-result"></div></form>';
-    const layoutControls=document.createElement('div');layoutControls.className='dialog-actions';layoutControls.innerHTML='<label>Placement operation<select name="layout-mode" aria-label="Group placement operation"><option value="offset">Offset X/Z together</option><option value="align_x">Align X to anchor</option><option value="align_z">Align Z to anchor</option><option value="distribute_x">Distribute along X</option><option value="distribute_z">Distribute along Z</option></select></label><label hidden>Alignment anchor<select name="layout-anchor" aria-label="Group alignment anchor"></select></label>';dialog.querySelector('form').prepend(layoutControls);
-    for(const control of layoutControls.querySelectorAll('select'))control.onchange=invalidate;
+    dialog.innerHTML='<div class="dialog-heading"><h2>Actor group placements</h2><button type="button" data-close-batch aria-label="Close actor group">×</button></div><p>Select imported actors in this scene. Offset, align, distribute or snap their effective X/Z placements. Grid snap uses scene-origin spacing in multiples of 64 from 64 through 4096, with halfway positions rounded upward; invalid native results reject the entire group. Proposed coordinates must fit the exact retail 64-unit grid, from 64 through 16384. Source height, facing, scripts and scheduling stay unchanged.</p><form><label>Find actors<input name="search" type="search" aria-label="Find group actors"></label><div class="batch-actors"></div><p class="batch-count" role="status"></p><div class="dialog-actions"><label>X offset<input name="x" type="number" step="64" min="-16320" max="16320" value="0" required></label><label>Z offset<input name="z" type="number" step="64" min="-16320" max="16320" value="0" required></label></div><div class="dialog-actions"><button type="submit" data-preview-batch>Preview group offset</button><button type="button" data-apply-batch disabled>Apply group offset</button></div><p class="dialog-error" role="alert"></p><div class="batch-result"></div></form>';
+    const layoutControls=document.createElement('div');layoutControls.className='dialog-actions';layoutControls.innerHTML='<label>Placement operation<select name="layout-mode" aria-label="Group placement operation"><option value="offset">Offset X/Z together</option><option value="align_x">Align X to anchor</option><option value="align_z">Align Z to anchor</option><option value="distribute_x">Distribute along X</option><option value="distribute_z">Distribute along Z</option><option value="snap_x">Snap X to grid</option><option value="snap_z">Snap Z to grid</option><option value="snap_xz">Snap X/Z to grid</option></select></label><label hidden>Grid spacing<input name="layout-spacing" type="number" min="64" max="4096" step="64" value="256" aria-label="Actor group grid spacing"></label><label hidden>Alignment anchor<select name="layout-anchor" aria-label="Group alignment anchor"></select></label>';dialog.querySelector('form').prepend(layoutControls);
+    for(const control of layoutControls.querySelectorAll('select'))control.onchange=invalidate;layoutControls.querySelector('[name="layout-spacing"]').oninput=invalidate;
     dialog.querySelector('[data-close-batch]').onclick=()=>dialog.close();
     dialog.querySelector('[name="search"]').oninput=renderActors;
     for(const input of dialog.querySelectorAll('[name="x"],[name="z"]'))input.oninput=invalidate;
@@ -118,6 +132,7 @@ export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,se
           !Array.isArray(report.targets)||report.targets.length!==request.actor_ids.length||
           report.targets.some((row,index)=>row.entity_id!==request.actor_ids[index])||
           typeof report.review_key!=='string'||!/^[0-9a-f]{64}$/.test(report.review_key))throw new Error('Invalid or stale group placement preview');
+        if(request.layout?.kind==='snap')validateActorGridSnapReport(report);
         preview=report;
         renderPreviewTable(report);
       }catch(error){if(error.name!=='AbortError'&&dialog.open&&token===generation)dialog.querySelector('.dialog-error').textContent=error.message;}
