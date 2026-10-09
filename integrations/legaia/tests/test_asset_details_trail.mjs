@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {createAssetDetailsTrail} from '../editor/asset-details-trail.js';
+const trail=createAssetDetailsTrail(),source='source-key',npc={id:'authored-actor://fixture/1',label:'NPC',type:'actor',sceneId:'scene://town01'},model={id:'asset://town01/model/1',label:'Model',type:'model'},rows=[npc,model];
+assert.equal(trail.back(source),null);assert.equal(trail.peek(),null);
+trail.remember(npc,source,()=>rows);trail.remember(model,source,()=>rows);const peek=trail.peek();peek.label='Changed';assert.equal(trail.peek().label,'Model');assert.equal(trail.back(source).record,model);assert.equal(trail.size(),1);
+assert.throws(()=>trail.back('changed-source'));assert.equal(trail.size(),1);
+const saved=npc.type;npc.type='scene';assert.throws(()=>trail.back(source));assert.equal(trail.size(),1);npc.type=saved;
+assert.equal(trail.back(source).record,npc);assert.equal(trail.size(),0);
+let catalog=[];trail.remember(npc,source,()=>catalog);assert.throws(()=>trail.back(source));catalog=[npc,npc];assert.throws(()=>trail.back(source));catalog=null;assert.throws(()=>trail.back(source));catalog=[npc];assert.equal(trail.back(source).record,npc);
+const variant={...npc,sceneId:'scene://town0c'},variantRows=[variant];trail.remember(variant,source,()=>variantRows);assert.equal(trail.back(source).record,variant);
+for(let index=0;index<20;index++)trail.remember({...model,id:'asset://fixture/'+index},source,()=>[]);assert.equal(trail.size(),16);assert.equal(trail.peek().id,'asset://fixture/19');trail.clear();assert.equal(trail.size(),0);
+for(const record of [{id:'C:/private/file'},null,{...npc,payload:'x'.repeat(2097152)}])assert.throws(()=>trail.remember(record,source,()=>rows));assert.throws(()=>trail.remember(npc,'',()=>rows));assert.throws(()=>trail.remember(npc,source,null));assert.equal(trail.size(),0);
+console.log('Bounded Asset Details Back trail retains catalog membership, exact snapshots and detached labels; stale, missing, ambiguous or oversized targets refuse without popping history.');

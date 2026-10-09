@@ -476,3 +476,31 @@ The initial NPC harness matched a scene ID inside longer donor-ID text; its fail
 attempt is retained, and the passing check uses exact reference attributes.
 No game, runtime attachment, native recomp compilation, installation or disc
 export occurred. Gameplay remains unverified; the full SDK goal stays active.
+## Asset Details Back Trail — 2026-10-09
+
+Following a metadata asset/entity reference now remembers its origin and exposes
+Back in the destination Asset Details. The editor keeps at most sixteen origins,
+each retaining its original catalog lookup, exact record snapshot and project/
+scene/schema/capability context. Back re-resolves the original stable ID in that
+catalog and requires one unchanged record. Missing, ambiguous or changed records,
+and changed source contexts, refuse without consuming history. The source snapshot
+is bounded to 2 MiB and its context key to 256 KiB. This is transient editor
+navigation, separate from project Undo/Redo or authored commands.
+
+Independent Asset Details openings and dialog close clear the trail. Reference
+navigation preserves it; a successful Back removes one origin. Detached Back
+buttons and busy state cannot navigate. Newly rendered details start at the top
+so the Back control stays accessible. Existing typed property references,
+source membership and action permissions remain unchanged.
+
+Four focused Node suites, two JavaScript syntax checks and server AST validation
+passed. Actual private Town01 NPC-to-model-to-Back and NPC-to-scene-to-Back restored
+exact NPC property values. Project scope restored the authored NPC's membership
+panel. Controlled stale-source/busy checks and calls to a detached Back button
+could not navigate or consume the held origin; close cleared it. Fresh details
+started at scroll zero. Desktop and 400px captures were visually inspected. Zero
+page errors, scene-switch or authoring requests occurred. Project document,
+imports, history and every project file byte remained unchanged. Private evidence:
+`local-output/sdk-20260909/asset-details-back-trail-20261009/`.
+No Build, game, runtime attachment, native recomp compilation, install or disc
+export occurred. Gameplay remains unverified; the full SDK goal stays active.

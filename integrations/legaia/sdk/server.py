@@ -1007,6 +1007,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-allocation.js": ("model-allocation.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
+                 "/asset-details-trail.js": ("asset-details-trail.js", "text/javascript"),
                  "/asset-record-export.js": ("asset-record-export.js", "text/javascript"),
                  "/asset-metadata-comparison.js": ("asset-metadata-comparison.js", "text/javascript"),
                  "/environment-inspector.js": ("environment-inspector.js", "text/javascript"),

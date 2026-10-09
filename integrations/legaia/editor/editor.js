@@ -64,6 +64,7 @@ import {mountScriptOperandBundle} from '/script-operand-bundle.js';
 import {appendCaptureSummary} from '/script-capture.js';
 import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files.js';
 import {npcDonorModel,npcDonorScript,mountAssetInspector,assetInspectorDefinition,mountTriggerBindingInspector} from '/asset-inspector.js';
+import {createAssetDetailsTrail} from '/asset-details-trail.js';
 import {mountAssetRecordDownload} from '/asset-record-export.js';
 import {createAssetMetadataPin,mountAssetMetadataComparison} from '/asset-metadata-comparison.js';
 import {renderEnvironmentInspector} from '/environment-inspector.js';
@@ -2002,11 +2003,20 @@ function initialAssetUsage(record,modelReferences){
   }
   return [...references.values()];
 }
-function showAssetDetails(record,lookup=()=>assetRecords()){
+const assetDetailsTrail=createAssetDetailsTrail();
+assetDetails.addEventListener('close',()=>{if(!assetDetails.open)assetDetailsTrail.clear();});
+const assetDetailsTrailContext=()=>JSON.stringify([resourceStateKey(),state.inspector_schema,state.capabilities]);
+function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false}={}){
+  if(!keepTrail)assetDetailsTrail.clear();
   assetPlacementSelection?.dispose();assetPlacementSelection=null;animationContributions?.dispose();animationContributions=null;
   const isAuthored=!!record.authoredRecord,inspectorId=assetInspectorDefinition(state.inspector_schema,record);
   assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${inspectorId?'':property('Stable ID',record.id)+property('Record type',record.type)+property(record.data?.scope?.startsWith('global-')?'Source scope':'Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='model'?'Inspect authored model':record.type==='script'?'Open script workspace':record.type==='controller'?'Inspect controller':record.type==='scene'?'Open scene':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
   const exportContext=resourceStateKey(),exportSnapshot=JSON.stringify(record);
+  const previous=assetDetailsTrail.peek();
+  if(previous){
+    const navigation=document.createElement('div'),back=document.createElement('button');navigation.className='dialog-actions';navigation.dataset.assetDetailsNavigation='';back.type='button';back.textContent='Back to '+previous.label;back.style.whiteSpace='normal';back.title=previous.id;back.setAttribute('aria-label','Back to asset: '+previous.id);navigation.append(back);assetDetails.querySelector('.dialog-heading').after(navigation);
+    back.onclick=()=>{if(busy||!assetDetails.open||!assetDetails.contains(back))return;try{const target=assetDetailsTrail.back(assetDetailsTrailContext());if(target)showAssetDetails(target.record,target.lookup,{keepTrail:true});}catch(error){notify(error.message,true);}};
+  }
   const exportCurrent=()=>assetDetails.open&&exportContext===resourceStateKey()&&JSON.stringify(lookup().find(item=>item.id===record.id))===exportSnapshot;
   const evidence=document.createElement('div');evidence.className='dialog-actions';evidence.style.flexWrap='wrap';
   try{mountAssetRecordDownload(evidence,{record,getState:()=>state,current:exportCurrent,busy:()=>busy,onError:error=>notify(error.message,true)});}catch(error){const note=document.createElement('p');note.className='field-note';note.textContent=error.message;evidence.append(note);}
@@ -2061,7 +2071,7 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
     const context=resourceStateKey(),snapshot=JSON.stringify(record),contract=JSON.stringify([state.inspector_schema,state.capabilities]);
     const current=()=>assetDetails.open&&assetDetails.contains(section)&&context===resourceStateKey()&&contract===JSON.stringify([state.inspector_schema,state.capabilities])&&JSON.stringify(lookup().find(item=>item.id===record.id))===snapshot;
     mountAssetInspector(section,{schema:state.inspector_schema,record,capabilities:state.capabilities,current,busy:()=>busy,
-      references:{records:lookup,discover:()=>refreshResources(),open:item=>showAssetDetails(item,lookup)},
+      references:{records:lookup,discover:()=>refreshResources(),open:item=>{assetDetailsTrail.remember(record,assetDetailsTrailContext(),lookup);showAssetDetails(item,lookup,{keepTrail:true});}},
       activate:async (item,action)=>{if(!current())return;assetDetails.close();if(action==='inspect-landmark-destination'){const label=item.data?.destination_source_label;if(!label)return;$('import-button').click();$('catalog-prefix').value=label;clearSceneCatalog();$('catalog-search').click();}else await activateAsset(item,action);},onError:error=>notify(error.message,true)});
     const triggerBindingInspector=mountTriggerBindingInspector(section,{record,getState:()=>state,current,busy:()=>busy,onInspect:async node=>{
       if(!current())return;const target=lookup().find(item=>item.id===node.id&&item.type==='script'&&item.sceneId===state.scene?.id);
@@ -2148,7 +2158,7 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
     }
     $('asset-authored-data').before(actions);
   }
-  $('close-asset-details').onclick=()=>assetDetails.close();assetDetails.showModal();assetPlacementSelection?.synchronize();animationContributions?.synchronize();
+  $('close-asset-details').onclick=()=>assetDetails.close();assetDetails.showModal();assetDetails.scrollTop=0;assetPlacementSelection?.synchronize();animationContributions?.synchronize();
 }
 function projectAssetContext(){return state.capabilities?.project_assets?{projectPath:state.project.path,sourceKey:state.project_assets_source_key,scenes:(state.scenes??[]).map(({id,name})=>({id,name})),activeSceneId:state.scene?.id??null}:null;}
 async function resolveProjectAsset(record){
