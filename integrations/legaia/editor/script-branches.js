@@ -23,7 +23,7 @@ function ownerValid(owner,scene){return typeof owner==='string'&&new RegExp('^'+
 function successors(value){
   if(!Array.isArray(value)||value.length>64||value.some(edge=>!object(edge)||!int(edge.pc,0,65536)||!(edge.condition===null||text(edge.condition,256))))fail('Invalid encoded successor collection.');
 }
-function inspectReport(report){
+export function inspectBranchReport(report){
   if(!object(report)||!['partial','decoded_supported_paths'].includes(report.status)||!Array.isArray(report.instructions)||report.instructions.length>8192||!Array.isArray(report.dialogues)||report.dialogues.length>8192||!Array.isArray(report.stops)||report.stops.length>8192||!Array.isArray(report.opaque_regions)||report.opaque_regions.length>8192)fail('Script flow inspection is invalid or exceeds its bounds.');
   const nodes=new Map();
   for(const row of report.instructions){
@@ -38,16 +38,16 @@ function inspectReport(report){
   for(const row of report.opaque_regions)if(!object(row)||!int(row.pc,0,65535)||!int(row.length,1,65536-row.pc)||!text(row.reason))fail('Invalid opaque source region.');
   return nodes;
 }
-function sourceBound(nodes,source){
+export function qualifyBranchSourceBoundaries(nodes,source){
   for(const node of nodes.values()){const original=source.get(node.pc);if(!original||node.kind!==original.kind||node.mnemonic!==original.mnemonic||node.length!==original.length||node.kind==='instruction'&&node.target_context!==original.target_context)fail('An inspected path reaches a new or changed source boundary.');}
 }
 
-export function decodeScriptBranchSnapshot(value,owner,context){
+function decodeBranchSnapshot(value,owner,context,controller=false){
   context=scriptBranchContext(context);
   const keys=['schema_version','owner_id','state_key','source_record_sha256','source_report','current_report','targets','destinations','supported','reason','limitations','gameplay_verified'];
-  if(!ownerValid(owner,context.sceneId)||!object(value)||!keys.every(key=>Object.hasOwn(value,key))||Object.keys(value).some(key=>!keys.includes(key)&&key!=='review')||value.schema_version!=='legaia.script-branches.v1'||value.owner_id!==owner||value.state_key!==context.scriptKey||!hash(value.source_record_sha256)||typeof value.supported!=='boolean'||!(value.reason===null||text(value.reason))||value.gameplay_verified!==false||!Array.isArray(value.targets)||value.targets.length>4096||!Array.isArray(value.destinations)||value.destinations.length>8192||!Array.isArray(value.limitations)||value.limitations.length>64||value.limitations.some(line=>!text(line)))fail('Script branch sources changed or returned invalid qualification.');
-  const source=inspectReport(value.source_report),current=value.current_report===null?null:inspectReport(value.current_report);
-  if(current!==null)sourceBound(current,source);
+  if(!(controller?owner===context.sceneId+'/controllers/man-p1/0000':ownerValid(owner,context.sceneId))||!object(value)||!keys.every(key=>Object.hasOwn(value,key))||Object.keys(value).some(key=>!keys.includes(key)&&key!=='review'&&!(controller&&key==='current_record_sha256'))||value.schema_version!==(controller?'legaia.controller-branches.v1':'legaia.script-branches.v1')||controller&&!hash(value.current_record_sha256)||value.owner_id!==owner||value.state_key!==context.scriptKey||!hash(value.source_record_sha256)||typeof value.supported!=='boolean'||!(value.reason===null||text(value.reason))||value.gameplay_verified!==false||!Array.isArray(value.targets)||value.targets.length>4096||!Array.isArray(value.destinations)||value.destinations.length>8192||!Array.isArray(value.limitations)||value.limitations.length>64||value.limitations.some(line=>!text(line)))fail('Script branch sources changed or returned invalid qualification.');
+  const source=inspectBranchReport(value.source_report),current=value.current_report===null?null:inspectBranchReport(value.current_report);
+  if(current!==null)qualifyBranchSourceBoundaries(current,source);
   if(value.current_report===null&&value.supported)fail('Supported branch editing requires a verified Current report.');
   if(value.supported&&(value.source_report.stops.length||value.current_report.stops.length))fail('Branch editing requires verified source and Current paths without decoder stops.');
   const destinations=new Set();
@@ -56,7 +56,8 @@ export function decodeScriptBranchSnapshot(value,owner,context){
   for(const row of value.targets){
     const node=source.get(row?.pc);
     if(!object(row)||!int(row.pc,0,65535)||row.semantic_id!==prefix+row.pc.toString(16).padStart(4,'0')||ids.has(row.semantic_id)||locations.has(row.pc)||!node||row.mnemonic!==node.mnemonic||!text(row.condition,256)||!['relative_u16','absolute_i16','relative_u16_wrap16','relative_i16_wrap16'].includes(row.encoding)||!int(row.target_pc,0,32767)||!int(row.current_target_pc,0,32767)||!valueValid(row.authored_value)||row.current_target_pc!==(row.authored_value?.target_pc??row.target_pc)||!destinations.has(row.target_pc)||!destinations.has(row.current_target_pc)||JSON.stringify(row).length>16384)fail('Branch identity, source destination, or authored layer is invalid.');
-    successors(row.successors);if(!same(row.successors,node.successors)||row.successors.filter(edge=>edge.pc===row.target_pc&&edge.condition===row.condition).length!==1)fail('Branch target differs from its encoded source edges.');
+    const edges=controller?node.successors:row.successors;successors(edges);if(!same(edges,node.successors)||edges.filter(edge=>edge.pc===row.target_pc&&edge.condition===row.condition).length!==1)fail('Branch target differs from its encoded source edges.');
+    if(controller&&current?.has(row.pc)&&current.get(row.pc).successors.filter(edge=>edge.pc===row.current_target_pc&&edge.condition===row.condition).length!==1)fail('Current controller branch differs from its authored destination.');
     if(Object.hasOwn(row,'current_successors')){successors(row.current_successors);const effective=current?.get(row.pc);if(effective&&!same(row.current_successors,effective.successors)||row.current_successors.filter(edge=>edge.pc===row.current_target_pc&&edge.condition===row.condition).length!==1)fail('Current branch edges differ from their authored destination.');}
     if(Object.hasOwn(row,'decoded_byte_offset')&&!int(row.decoded_byte_offset,0,4*1024*1024-2)||Object.hasOwn(row,'source_record_sha256')&&row.source_record_sha256!==value.source_record_sha256||Object.hasOwn(row,'owner_id')&&row.owner_id!==owner)fail('Branch source locator differs from its owner.');
     ids.add(row.semantic_id);locations.add(row.pc);
@@ -64,11 +65,14 @@ export function decodeScriptBranchSnapshot(value,owner,context){
   return clone(value);
 }
 
+export function decodeScriptBranchSnapshot(value,owner,context){return decodeBranchSnapshot(value,owner,context);}
+export function decodeControllerBranchSnapshot(value,owner,context){return decodeBranchSnapshot(value,owner,context,true);}
+
 export function decodeScriptBranchReview(value,snapshot,branchId,requested,context){
   const reviewed=decodeScriptBranchSnapshot(value,snapshot.owner_id,context),review=reviewed.review,target=snapshot.targets.find(row=>row.semantic_id===branchId);
   if(!target||!valueValid(requested)||requested!==null&&!snapshot.destinations.some(row=>row.pc===requested.target_pc)||!same({...reviewed,review:undefined},{...snapshot,review:undefined})||!object(review)||!hash(review.review_key)||review.branch_id!==branchId||!same(review.value,requested)||typeof review.no_op!=='boolean'||!Array.isArray(review.audit)||review.audit.length>1||!Array.isArray(review.source_audit)||review.source_audit.length>4096)fail('Branch review differs from the current source or chosen destination.');
-  const proposedNodes=inspectReport(review.proposed_report);
-  sourceBound(proposedNodes,inspectReport(snapshot.source_report));
+  const proposedNodes=inspectBranchReport(review.proposed_report);
+  qualifyBranchSourceBoundaries(proposedNodes,inspectBranchReport(snapshot.source_report));
   if(review.proposed_report.stops.length)fail('A branch proposal must preserve qualified decoded paths.');
   const destination=requested?.target_pc??target.target_pc;
   for(const row of review.audit){
@@ -77,7 +81,7 @@ export function decodeScriptBranchReview(value,snapshot,branchId,requested,conte
   if(review.no_op&&review.audit.length||review.audit.length===0&&destination!==target.current_target_pc)fail('Branch review change count differs from its destination.');
   for(const key of ['newly_unreachable_source_pcs','newly_reached_source_pcs'])if(!Array.isArray(review[key])||review[key].length>8192||review[key].some(value=>!int(value,0,65535))||new Set(review[key]).size!==review[key].length)fail('Invalid decoded reachability difference.');
   if(review.newly_reached_source_pcs.some(value=>review.newly_unreachable_source_pcs.includes(value)))fail('Conflicting decoded reachability differences.');
-  const currentNodes=inspectReport(snapshot.current_report),beforePCs=[...currentNodes.keys()],afterPCs=[...proposedNodes.keys()];
+  const currentNodes=inspectBranchReport(snapshot.current_report),beforePCs=[...currentNodes.keys()],afterPCs=[...proposedNodes.keys()];
   if(!same([...review.newly_unreachable_source_pcs].sort((a,b)=>a-b),beforePCs.filter(value=>!proposedNodes.has(value)).sort((a,b)=>a-b))||!same([...review.newly_reached_source_pcs].sort((a,b)=>a-b),afterPCs.filter(value=>!currentNodes.has(value)).sort((a,b)=>a-b)))fail('Reachability differences disagree with the inspected Current and Proposed paths.');
   const proposedBranch=proposedNodes.get(target.pc);
   if(proposedBranch&&proposedBranch.successors.filter(edge=>edge.pc===destination&&edge.condition===target.condition).length!==1)fail('The proposed flow differs from its reviewed destination.');
@@ -86,7 +90,7 @@ export function decodeScriptBranchReview(value,snapshot,branchId,requested,conte
 
 /** A bounded, explicit one-hop comparison. Omitted nodes are not decoder stops. */
 export function scriptBranchNeighborhood(current,proposed,selected){
-  const currentNodes=inspectReport(current),proposedNodes=proposed===null?new Map():inspectReport(proposed);
+  const currentNodes=inspectBranchReport(current),proposedNodes=proposed===null?new Map():inspectBranchReport(proposed);
   if(!currentNodes.has(selected)&&!proposedNodes.has(selected))return {nodes:[],edges:[],omitted_edge_count:0,total_node_count:currentNodes.size};
   const edges=new Map();
   const add=(nodes,layer)=>{for(const node of nodes.values())for(const [index,edge] of node.successors.entries()){if(node.pc!==selected&&edge.pc!==selected)continue;const key=JSON.stringify([node.pc,edge.pc,edge.condition,index]);const old=edges.get(key);if(old)old.layer='both';else edges.set(key,{source:node.pc,target:edge.pc,condition:edge.condition,layer});}};
@@ -101,7 +105,7 @@ export function scriptBranchNeighborhood(current,proposed,selected){
 /** Page the complete qualified inspected paths; no opaque or unvisited byte recovery. */
 export function scriptBranchPage(current,proposed,page=0){
   if(!int(page,0,8192))fail('Choose a bounded whole-flow page.');
-  const currentNodes=inspectReport(current),proposedNodes=proposed===null?new Map():inspectReport(proposed),allPCs=[...new Set([...currentNodes.keys(),...proposedNodes.keys()])].sort((a,b)=>a-b);
+  const currentNodes=inspectBranchReport(current),proposedNodes=proposed===null?new Map():inspectBranchReport(proposed),allPCs=[...new Set([...currentNodes.keys(),...proposedNodes.keys()])].sort((a,b)=>a-b);
   if(allPCs.length>8192)fail('Whole-flow comparison exceeds its decoded node budget.');
   const pageCount=Math.max(1,Math.ceil(allPCs.length/24));page=Math.min(page,pageCount-1);
   const pagePCs=allPCs.slice(page*24,(page+1)*24),own=new Set(pagePCs),edges=new Map();
@@ -181,7 +185,7 @@ export function mountScriptBranches(host,{owner,getContext,busy,setBusy,api,sele
   }
   function focusGraphPage(offset){if(graphScope.value!=='whole'||!snapshot)return;const retail=layer.value==='retail'||snapshot.current_report===null,report=retail?snapshot.source_report:snapshot.current_report,proposal=!retail&&reviewed()?accepted.proposed_report:null,index=scriptBranchPage(report,proposal).all_pcs.indexOf(offset);if(index>=0)flowPage=Math.floor(index/24);}
   function setBranch(id,notify=false){if(!snapshot?.targets.some(row=>row.semantic_id===id))return false;if(activeId!==id){invalidate();activeId=id;}selectedPC=target().pc;focusGraphPage(selectedPC);renderFields();draw();updateState();if(notify)notifySelection(selectedPC);return true;}
-  function select(offset){if(!snapshot||!current())return false;const source=inspectReport(snapshot.source_report),present=source.has(offset)||snapshot.current_report!==null&&inspectReport(snapshot.current_report).has(offset)||accepted&&inspectReport(accepted.proposed_report).has(offset);if(!present)return false;const row=snapshot.targets.find(item=>item.pc===offset);if(row&&row.semantic_id!==activeId&&!walkthroughSelecting)setBranch(row.semantic_id);selectedPC=offset;focusGraphPage(offset);draw();return true;}
+  function select(offset){if(!snapshot||!current())return false;const source=inspectBranchReport(snapshot.source_report),present=source.has(offset)||snapshot.current_report!==null&&inspectBranchReport(snapshot.current_report).has(offset)||accepted&&inspectBranchReport(accepted.proposed_report).has(offset);if(!present)return false;const row=snapshot.targets.find(item=>item.pc===offset);if(row&&row.semantic_id!==activeId&&!walkthroughSelecting)setBranch(row.semantic_id);selectedPC=offset;focusGraphPage(offset);draw();return true;}
   function selectNode(offset){if(select(offset))notifySelection(offset);}
   function renderFields(){
     branch.replaceChildren();for(const row of snapshot?.targets??[]){const option=element('option',`${pc(row.pc)} · ${row.mnemonic} · ${row.condition}`);option.value=row.semantic_id;branch.append(option);}branch.value=activeId??'';
@@ -196,10 +200,10 @@ export function mountScriptBranches(host,{owner,getContext,busy,setBusy,api,sele
   function draw(){
     walkthrough.sync(snapshot,reviewed()?accepted:null);
     graph.replaceChildren();links.replaceChildren();unknown.replaceChildren();if(!snapshot||!current()){nodeLayers.clear('The source selection is unavailable or stale. Reopen this script.');return;}
-    let retail=layer.value==='retail'||snapshot.current_report===null,base=retail?snapshot.source_report:snapshot.current_report,proposal=!retail&&reviewed()?accepted.proposed_report:null,nodes=inspectReport(base),fallback=false;
-    if(selectedPC!==null&&!nodes.has(selectedPC)&&!(proposal&&inspectReport(proposal).has(selectedPC))&&inspectReport(snapshot.source_report).has(selectedPC)){retail=true;fallback=true;base=snapshot.source_report;proposal=null;nodes=inspectReport(base);layer.value='retail';}
-    if(selectedPC===null||!nodes.has(selectedPC)&&!(proposal&&inspectReport(proposal).has(selectedPC)))selectedPC=nodes.keys().next().value??null;
-    if(retail&&selectedPC!==null&&snapshot.current_report!==null&&!inspectReport(snapshot.current_report).has(selectedPC))fallback=true;
+    let retail=layer.value==='retail'||snapshot.current_report===null,base=retail?snapshot.source_report:snapshot.current_report,proposal=!retail&&reviewed()?accepted.proposed_report:null,nodes=inspectBranchReport(base),fallback=false;
+    if(selectedPC!==null&&!nodes.has(selectedPC)&&!(proposal&&inspectBranchReport(proposal).has(selectedPC))&&inspectBranchReport(snapshot.source_report).has(selectedPC)){retail=true;fallback=true;base=snapshot.source_report;proposal=null;nodes=inspectBranchReport(base);layer.value='retail';}
+    if(selectedPC===null||!nodes.has(selectedPC)&&!(proposal&&inspectBranchReport(proposal).has(selectedPC)))selectedPC=nodes.keys().next().value??null;
+    if(retail&&selectedPC!==null&&snapshot.current_report!==null&&!inspectBranchReport(snapshot.current_report).has(selectedPC))fallback=true;
     nodeLayers.update(snapshot.source_report,snapshot.current_report,reviewed()?accepted.proposed_report:null,selectedPC);
     updateState();
     overview.update(base,{label:retail?'Retail source flow':'Current encoded flow'});
