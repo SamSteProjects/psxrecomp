@@ -44,3 +44,8 @@ const host2=new Element('div'),errors=[];let release;
 const pending=new Promise(resolve=>release=resolve),view2=mountScriptWalkthrough(host2,{report,getContext:()=>context,requalify:()=>pending,onError:e=>errors.push(e.message)}),button2=text=>tree(host2).find(n=>n.tagName==='button'&&n.textContent===text);
 button2('Start at source entry').onclick();const exportTask=button2('Download source walkthrough').onclick();assert.equal(button2('Start at source entry').disabled,true);tree(host2).find(n=>n.dataset.walkthroughSuccessor===0).onclick();assert.equal(view2.snapshot.trace.length,1);release(false);await exportTask;assert.equal(view2.snapshot.state,'not_started');assert.equal(button2('Download source walkthrough').disabled,true);assert.equal(errors.length,1);assert.match(tree(host2).find(n=>n.dataset.walkthroughStatus==='').textContent,/requalification failed/);view2.dispose();assert.equal(timers.size,0);
 console.log('Source walkthrough export: pending ownership locks traversal and failed authoritative requalification withdraws trace/download');
+
+const isolatedHost=new Element('div'),isolated=mountScriptWalkthrough(isolatedHost,{report,getContext:()=>context,includeFlagSandbox:false});
+assert.equal(tree(isolatedHost).some(n=>Object.hasOwn(n.dataset,'flagSandbox')),false);
+const isolatedStart=tree(isolatedHost).find(n=>n.textContent==='Start at source entry');isolatedStart.onclick();assert.equal(isolated.snapshot.pc,0);isolated.dispose();assert.equal(timers.size,0);
+console.log('Source-only walkthrough omits hypothetical simulation and disposes cleanly');
