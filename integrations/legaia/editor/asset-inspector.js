@@ -1,6 +1,6 @@
 import {triggerScriptEditable} from './trigger-scripts.js';
 import {decodeAssetReferences} from './asset-references.js';
-import {renderComponentProperties,renderComponentActions,bindComponentActions} from './component-inspector.js';
+import {renderComponentSection,bindComponentActions} from './component-inspector.js';
 
 const TYPES={audio:'AssetAudio',actor:'AssetActor',scene:'AssetScene',template:'AssetTemplate',worldmap:'AssetWorldmap',model:'AssetModel',texture:'AssetTexture',animation:'AssetAnimation',controller:'AssetController',script:'AssetScript',dialogue:'AssetDialogue',flag:'AssetFlag',transition:'AssetTransition',collision:'AssetCollision',trigger:'AssetTrigger',region:'AssetRegion'};
 const ACTION_TYPES={'inspect-midi-input':['audio'],'inspect-audio-input':['audio'],'inspect-audio-bank':['audio'],'inspect-audio-sequence':['audio'],'edit-sequence-replacement':['audio'],'select-asset-actor':['actor'],'inspect-npc-donor-model':['actor'],'inspect-npc-donor-script':['actor'],'inspect-npc-build-script':['actor'],'inspect-npc-current-script':['actor'],'edit-npc-transitions':['actor'],'edit-npc-system-flags':['actor'],'edit-npc-branches':['actor'],'edit-npc-model-selectors':['actor'],'edit-npc-flags':['actor'],'reset-npc-script':['actor'],'edit-npc-effect-colors':['actor'],'edit-npc-dialogue':['actor'],'edit-npc-waits':['actor'],'edit-npc-facing':['actor'],'edit-npc-movement':['actor'],'edit-npc-appearance':['actor'],'open-asset-scene':['scene'],'open-asset-template':['template'],'open-asset-worldmap':['worldmap'],'inspect-landmark-destination':['worldmap'],'inspect-asset-model':['model'],'inspect-asset-texture':['texture'],'inspect-asset-animation':['animation'],'inspect-asset-controller':['controller'],'inspect-asset-script':['script','dialogue'],'inspect-asset-flag':['flag'],'inspect-asset-transition':['transition'],'inspect-asset-field':['collision','trigger','region'],'inspect-asset-region-bounds':['region'],'inspect-asset-trigger-cells':['trigger'],'inspect-asset-trigger-scripts':['trigger'],'inspect-asset-trigger-group':['trigger']};
@@ -29,13 +29,15 @@ export function npcDonorScript(record){
 export function assetInspectorRegistry(record,activate){
   return Object.fromEntries(Object.entries(ACTION_TYPES).filter(([id,types])=>types.includes(record.type)&&(id!=='inspect-midi-input'||record.data?.source_kind==='retained_midi_input')&&(id!=='inspect-audio-input'||record.data?.source_kind==='retained_wav_input')&&(id!=='inspect-audio-bank'||record.data?.bank_inspection?.status==='available')&&(!['inspect-audio-sequence','edit-sequence-replacement'].includes(id)||record.data?.container_validated===true&&record.data?.sequence!==null&&typeof record.data?.sequence==='object')&&(id!=='inspect-npc-donor-model'||npcDonorModel(record)!==null)&&(!['inspect-npc-donor-script','inspect-npc-build-script','inspect-npc-current-script','edit-npc-transitions','edit-npc-system-flags','edit-npc-branches','edit-npc-model-selectors','edit-npc-flags','reset-npc-script','edit-npc-effect-colors','edit-npc-dialogue','edit-npc-waits','edit-npc-facing','edit-npc-movement','edit-npc-appearance'].includes(id)||npcDonorScript(record)!==null)&&(id!=='inspect-asset-trigger-group'||record.data?.table_source==='primary'&&[0,1].includes(record.data?.table_kind))&&(id!=='inspect-asset-trigger-scripts'||triggerScriptEditable(record))).map(([id])=>[id,{run:()=>activate(record,id)}]));
 }
-export function mountAssetInspector(host,{schema,record,capabilities,current,busy,activate,onError}){
+export function renderAssetInspector(schema,record,capabilities,activate=()=>{}){
   const id=assetInspectorDefinition(schema,record);if(!id)return false;
-  const registry=assetInspectorRegistry(record,activate),definition=schema.components[id];
-  const heading=document.createElement('h3');heading.textContent=definition.label;host.append(heading);
-  const properties=document.createElement('div');properties.innerHTML=renderComponentProperties(schema,id,record);host.append(properties);
-  const actions=document.createElement('div');actions.className='dialog-actions';actions.innerHTML=renderComponentActions(schema,id,record,capabilities,registry,false);host.append(actions);
-  bindComponentActions(actions,registry,{current,editable:()=>false,busy,onError});
+  const registry=assetInspectorRegistry(record,activate);
+  return renderComponentSection(schema,id,record,{capabilities,registry,attributes:{'data-asset-inspector':id},decorate:parts=>parts.properties+`<div class="dialog-actions">${parts.actions}</div>`+parts.details});
+}
+export function mountAssetInspector(host,{schema,record,capabilities,current,busy,activate,onError}){
+  const html=renderAssetInspector(schema,record,capabilities,activate);if(html===false)return false;
+  const registry=assetInspectorRegistry(record,activate),content=document.createElement('div');content.innerHTML=html;host.append(content);
+  bindComponentActions(content,registry,{current,editable:()=>false,busy,onError});
   return true;
 }
 

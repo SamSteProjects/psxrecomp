@@ -44,6 +44,8 @@ for(const classes of [['bad" onclick="evil'],['component'],['x','x'],['one','two
 const button={dataset:{inspectorAction:'choose'}},root={querySelectorAll:()=>[button]};bindComponentActions(root,registry,{current:()=>current,editable:()=>editing,busy:()=>isBusy,onError:e=>errors.push(e.message)});
 await button.onclick();assert.equal(calls,1);
 for(const field of ['current','editing','isBusy','allowed']){current=true;editing=true;isBusy=false;allowed=true;if(field==='current')current=false;if(field==='editing')editing=false;if(field==='isBusy')isBusy=true;if(field==='allowed')allowed=false;await button.onclick();assert.equal(calls,1);}
+current=true;editing=true;isBusy=false;allowed=true;button.disabled=true;await button.onclick();assert.equal(calls,1);button.disabled=false;
+const declaredEdit={disabled:false,dataset:{inspectorAction:'preview',inspectorEdit:'true'}};bindComponentActions({querySelectorAll:()=>[declaredEdit]},registry,{current:()=>current,editable:()=>editing,busy:()=>isBusy,onError:e=>errors.push(e.message)});editing=false;await declaredEdit.onclick();assert.equal(calls,1);editing=true;await declaredEdit.onclick();assert.equal(calls,2);
 console.log('Registered actions filter capabilities/conditions/unknown handlers and guard Edit/busy/stale dispatch.');
 
 const animationSchema=structuredClone(actionsSchema);animationSchema.components.Animation={layout:'read-only-properties',properties:[],actions:[{id:'author',label:'Author animation channels',capability:'authoring',requires_edit:true,when:['preview_support','supported']},{id:'scene',label:'Preview imported scene animation',capability:'preview',when:['preview_support','supported']}]};

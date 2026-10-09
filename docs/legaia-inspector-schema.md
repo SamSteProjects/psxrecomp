@@ -397,3 +397,28 @@ All registered actor component sections now use `renderComponentSection`, includ
 NPC draft Identity, authored Transform, optional ScriptBinding and Preview snapshot sections use the same renderer. Their explicit read-only snapshot checks remain, alongside independent script-action mounting and specialized donor/placement authoring adapters. Pending/unavailable/proposal snapshots do not substitute donor, authored or Proposed coordinates for missing preview values. No new writable component or runtime binding is introduced.
 
 Fourteen Python schema tests, six focused Node suites and three editor syntax checks passed, covering metadata-only evidence/notes, safe local styling, source/reference/action guards, NPC script ownership, snapshot separation and existing environment/controller behavior. Actual Town01 actor sections retain appearance evidence, model reference units, filtering/collapse controls and numeric Transform eligibility. Registered model inspection and source animation preview opened and closed with empty error fields. NPC browser checks matched source/authored/preview values and retained authoring controls through pending-source, detached proposal and Retail/Authored switches. Desktop/400px actor and 540px NPC captures inspected. Project/imports/history/files stayed exact, with no authoring, Save, Build, game or runtime attachment. The early NPC readiness-probe race is preserved separately from the successful proof. An older NPC script-binding fixture omitted the already-supported animation-operand family; it now checks the complete eleven-family count and fifteen-action contract, including missing-family refusal. Evidence: `local-output/sdk-20260909/registered-inspector-migration-20261009/`. Specialized command adapters and broader asset/runtime work remain separate SDK tasks; gameplay remains deferred and the full goal active.
+## Asset Section Rendering and Action Dispatch — 2026-10-09
+
+Asset Details now uses the shared SDK component section renderer for all sixteen
+registered asset categories and the separately qualified authored NPC draft.
+Metadata owns headings, units, property layers and evidence details; the typed
+local action registry retains source, capability and donor qualification. Asset
+properties remain read only, and unsupported types keep their existing fallback.
+
+The shared action handler now refuses disabled buttons and enforces the metadata
+Edit requirement as well as the local registry requirement. Direct handler calls
+cannot bypass those checks; existing freshness, busy and can-run checks remain.
+
+Seven focused Node suites and two JavaScript syntax checks passed. Actual private
+Town01 Asset Details checks covered ten categories with exact SDK property values,
+plus authored NPC selection in Scene and Project scopes. Disabled action calls
+issued no authoring requests. Project documents, imports, history and file bytes
+remained unchanged. Desktop/400px model and 540px NPC layouts were inspected.
+Evidence is retained under
+`local-output/sdk-20260909/asset-section-renderer-20261009/`.
+The harness corrections and failed attempts remain alongside successful evidence:
+resource loading requires a catalog query, headings now include metadata units,
+and one NPC startup attempt failed to fetch the main module before a successful
+retry returned HTTP 200. No game, runtime attachment, native recomp compilation,
+Build, installation or disc export occurred. Gameplay remains unverified and the
+full SDK goal remains active.

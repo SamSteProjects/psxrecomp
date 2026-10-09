@@ -88,7 +88,7 @@ export function bindComponentActions(root,registry,{current,editable,busy,onErro
     const action=registry[button.dataset.inspectorAction];
     if(!action||typeof action.run!=='function'){button.disabled=true;continue;}
     button.onclick=async()=>{
-      if(busy()||!current()||(action.requiresEdit&&!editable())||(action.canRun&&!action.canRun()))return;
+      if(button.disabled===true||busy()||!current()||((action.requiresEdit||button.dataset.inspectorEdit==='true')&&!editable())||(action.canRun&&!action.canRun()))return;
       try{await action.run({componentId:button.dataset.inspectorComponent??null,actionId:button.dataset.inspectorAction});}catch(error){onError(error);}
     };
   }
