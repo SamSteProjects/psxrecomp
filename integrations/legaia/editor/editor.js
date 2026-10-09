@@ -102,7 +102,7 @@ import {mountHierarchyGroups,revealHierarchyEntities,matchingHierarchyPlacementI
 import {captureSceneViewHierarchy} from '/hierarchy-views.js';
 import {mountSceneToolDrawer} from '/scene-tool-drawer.js';
 import {mountSceneViews,decodeSavedSceneView,captureSceneViewVisibility,sceneViewIsolationIds,unavailableSceneViewNpcs} from '/scene-views.js';
-import {sceneCameraBasis,sceneCameraPlanePoint,sceneAxisCamera,sceneFrameCamera,sceneFrameAllCamera} from '/scene-camera.js';
+import {sceneCameraBasis,sceneCameraPlanePoint,sceneAxisCamera,sceneFrameCamera,sceneFrameAllCamera,sceneFrameMarkerCamera} from '/scene-camera.js';
 import {mountSceneCameraInspector} from '/scene-camera-inspector.js';
 import {appendPresetImport,presetExportButton} from '/preset-files.js';
 import {openActorPresetReview} from '/actor-preset-review.js';
@@ -217,7 +217,7 @@ const historicalStatus=document.createElement('span');historicalStatus.setAttrib
 const historicalLayerLabel=document.createElement('label');historicalLayerLabel.textContent='Historical samples ';historicalLayerLabel.style.marginRight='8px';const historicalLayer=document.createElement('select');historicalLayer.id='historical-sample-layer';historicalLayer.setAttribute('aria-label','Historical sample layer');for(const [value,text] of [['both','Both files'],['baseline','Baseline (blue)'],['comparison','Comparison (amber)']]){const option=document.createElement('option');option.value=value;option.textContent=text;historicalLayer.append(option);}historicalLayerLabel.append(historicalLayer);historicalTools.append(historicalLayerLabel);historicalLayerLabel.hidden=true;
 historicalLayer.onchange=()=>{const overlay=currentHistoricalPositions();if(busy||!overlay?.comparison)return;try{const value=historicalRuntimeComparisonPositions(overlay.comparison.before,overlay.comparison.after,{scene_id:state.scene?.id,mode:state.project?.mode},historicalLayer.value);cancelViewportGesture();Object.assign(overlay,value);draw();}catch(error){notify(error.message,true);}};
 
-for(const [id,label,action] of [['historical-frame','Frame historical positions',()=>{const overlay=currentHistoricalPositions();if(!overlay||busy)return;try{cancelViewportGesture();const points=overlay.nodes.map(node=>displayPosition(node.observed_position));Object.assign(camera,sceneFrameCamera(camera,{width,height},points));pendingEntityFrame=null;cameraRevision++;draw();}catch(error){notify(error.message,true);}}],['historical-review','Return to historical review',()=>{const overlay=currentHistoricalPositions();if(overlay&&!busy){if(overlay.comparison)renderRuntimeComparison(overlay.comparison);else renderSavedNodeReview(overlay.review);}} ],['historical-clear','Clear historical positions',()=>{historicalPositions=null;draw();}]]){const button=document.createElement('button');button.id=id;button.textContent=label;button.onclick=action;historicalTools.append(button);}
+for(const [id,label,action] of [['historical-frame','Frame historical positions',()=>{const overlay=currentHistoricalPositions();if(!overlay||busy)return;frameDisplayMarkers(overlay.nodes.map(node=>displayPosition(node.observed_position)));}],['historical-review','Return to historical review',()=>{const overlay=currentHistoricalPositions();if(overlay&&!busy){if(overlay.comparison)renderRuntimeComparison(overlay.comparison);else renderSavedNodeReview(overlay.review);}} ],['historical-clear','Clear historical positions',()=>{historicalPositions=null;draw();}]]){const button=document.createElement('button');button.id=id;button.textContent=label;button.onclick=action;historicalTools.append(button);}
 $('viewport-wrap').before(historicalTools);
 const historicalSample=document.createElement('select');historicalSample.id='historical-sample';historicalSample.setAttribute('aria-label','Historical node sample');historicalSample.style.maxWidth='100%';historicalTools.append(historicalSample);
 const inspectHistorical=document.createElement('button');inspectHistorical.id='historical-inspect';inspectHistorical.textContent='Inspect historical sample';inspectHistorical.onclick=()=>openHistoricalSample(historicalSample.value);historicalTools.append(inspectHistorical);
@@ -369,12 +369,14 @@ function currentScriptTargets(){
   if(scriptTargetOverlay&&(scriptTargetOverlay.key!==resourceStateKey()||scriptTargetOverlay.isCurrent&&!scriptTargetOverlay.isCurrent())){scriptTargetOverlay.onClear?.();scriptTargetOverlay=null;}
   return scriptTargetOverlay;
 }
+function frameDisplayMarkers(points){
+  if(busy||!points.length)return false;
+  try{const framed=sceneFrameMarkerCamera(camera,{width,height},points);cancelViewportGesture();pendingEntityFrame=null;Object.assign(camera,framed);cameraRevision++;draw();return true;}
+  catch(error){notify(error.message,true);return false;}
+}
 function frameScriptTargets(){
   const overlay=currentScriptTargets();if(!overlay||busy)return;
-  cancelViewportGesture();
-  const points=overlay.targets.map(target=>displayPosition({...target.position,y:overlay.height}));
-  const min={},max={};for(const axis of ['x','y','z']){min[axis]=Math.min(...points.map(p=>p[axis]));max[axis]=Math.max(...points.map(p=>p[axis]));camera.target[axis]=(min[axis]+max[axis])/2;}
-  camera.distance=Math.max(800,Math.hypot(max.x-min.x,max.y-min.y,max.z-min.z)*1.5);cameraRevision++;draw();
+  return frameDisplayMarkers(overlay.targets.map(target=>displayPosition({...target.position,y:overlay.height})));
 }
 function drawScriptTargets(){
   scriptTargetHits=[];
@@ -413,7 +415,7 @@ npcArrivalTools.style.overflowY='auto';npcArrivalTools.style.overflowX='hidden';
 $('viewport-wrap').before(npcArrivalTools);
 const npcArrivalAuthoring=mountNpcArrivalAuthoring(npcArrivalTools,{getState:()=>state,getPreview:()=>currentNpcArrivalPreview(),current:()=>canEdit()&&!!currentNpcArrivalPreview(),busy:()=>busy,setBusy,api,onApplied:preview=>{npcArrivalOverlay=preview;draw();},onDraftChange:()=>draw(),onCancelGesture:()=>npcArrivalGizmo?.cancel('NPC arrival input changed'),onError:error=>notify(error.message,true)});
 function currentNpcArrivalPreview(){if(npcArrivalOverlay&&!npcArrivalPreviewCurrent(npcArrivalOverlay,state))npcArrivalOverlay=null;return npcArrivalOverlay;}
-function frameNpcArrivalPreview(){const report=currentNpcArrivalPreview();if(!report||busy)return;cancelViewportGesture();const points=npcArrivalPreviewMarkers(report,npcArrivalHeight,npcArrivalAuthoring.getPreview()).map(displayPosition);for(const axis of ['x','y','z'])camera.target[axis]=(Math.min(...points.map(p=>p[axis]))+Math.max(...points.map(p=>p[axis])))/2;camera.distance=Math.max(1000,Math.hypot(points[0].x-points[1].x,points[0].z-points[1].z)*1.5);cameraRevision++;draw();}
+function frameNpcArrivalPreview(){const report=currentNpcArrivalPreview();if(!report||busy)return;return frameDisplayMarkers(npcArrivalPreviewMarkers(report,npcArrivalHeight,npcArrivalAuthoring.getPreview()).map(displayPosition));}
 async function openNpcArrivalDestination(source,row){
  if(busy||!canEdit()||source.project_source_key!==state.project_copy_source_key)throw Error('NPC arrival source changed. Reopen the editor.');
  const request={entity_id:source.entity_id,transition_id:row.semantic_id,project_source_key:source.project_source_key};setBusy(true);
@@ -446,7 +448,7 @@ try{const response=await fetch('/api/transition-arrival-review',{method:'POST',h
 arrivalForm.querySelector('[data-apply]').onclick=async()=>{const proposal=transitionArrivalProposal,report=currentTransitionArrival();if(!proposal||!report||busy||!proposal.authored_change)return;const root=state.project?.path,request=proposal.request;if(!await api('/api/transition-arrival-apply',{...request,review_key:proposal.review_key}))return;if(root!==state.project?.path||state.scene?.id!==report.destination_scene_id)return;const freshRequest={...request,project_state_key:state.project_transition_state_key,destination_source_key:state.scene_preview_source_key};setBusy(true);try{const response=await fetch('/api/transition-arrival-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(freshRequest)}),value=await response.json();if(!response.ok)throw new Error(value.error||'Saved arrival refresh failed');const fresh=decodeTransitionArrivalReview(value,freshRequest);if(root!==state.project?.path||!transitionArrivalCurrent(fresh.preview,state))return;transitionArrivalOverlay=fresh.preview;setBusy(false);discardArrivalDraft();arrivalStatus.textContent='Arrival saved to its source entry. Undo/Redo and Build use the normal project workflow.';}catch(error){notify(error.message,true);}finally{setBusy(false);draw();}};
 
 function currentTransitionArrival(){if(transitionArrivalOverlay&&!transitionArrivalCurrent(transitionArrivalOverlay,state)){transitionArrivalOverlay=null;transitionArrivalProposal=null;arrivalDraft=null;transitionArrivalReviewGeneration++;}return transitionArrivalOverlay;}
-function frameTransitionArrival(){const report=currentTransitionArrival();if(!report||busy)return;cancelViewportGesture();const points=transitionArrivalMarkers(report,transitionArrivalHeight,transitionArrivalProposal??arrivalDraft).map(point=>displayPosition(point));for(const axis of ['x','y','z'])camera.target[axis]=(Math.min(...points.map(p=>p[axis]))+Math.max(...points.map(p=>p[axis])))/2;camera.distance=Math.max(1000,Math.hypot(Math.max(...points.map(p=>p.x))-Math.min(...points.map(p=>p.x)),Math.max(...points.map(p=>p.z))-Math.min(...points.map(p=>p.z)))*1.5);cameraRevision++;draw();}
+function frameTransitionArrival(){const report=currentTransitionArrival();if(!report||busy)return;return frameDisplayMarkers(transitionArrivalMarkers(report,transitionArrivalHeight,transitionArrivalProposal??arrivalDraft).map(displayPosition));}
 transitionArrivalTools.querySelector('[data-frame]').onclick=frameTransitionArrival;
 transitionArrivalTools.querySelector('[data-clear]').onclick=()=>{arrivalGizmo?.cancel('Arrival comparison cleared');transitionArrivalOverlay=null;transitionArrivalProposal=null;arrivalDraft=null;arrivalMove.checked=false;transitionArrivalReviewGeneration++;draw();};
 transitionArrivalTools.querySelector('[data-return]').onclick=async()=>{const report=currentTransitionArrival();if(!report||busy)return;await api('/api/scene',{scene_id:report.source_scene_id});};
@@ -491,12 +493,7 @@ function drawCoordinateProbe(){
 }
 
 const frameSamplesButton=document.createElement('button');frameSamplesButton.textContent='Frame live samples';frameSamplesButton.disabled=true;frameSamplesButton.title='Frame all accepted-epoch candidates for the selected actor without changing authored placement';$('frame-selected').after(frameSamplesButton);
-frameSamplesButton.onclick=()=>{
-  const points=observedCandidatePoints();if(!points.length)return;
-  cancelViewportGesture();
-  const min={},max={};for(const axis of ['x','y','z']){min[axis]=Math.min(...points.map(p=>p[axis]));max[axis]=Math.max(...points.map(p=>p[axis]));camera.target[axis]=(min[axis]+max[axis])/2;}
-  camera.distance=Math.max(800,Math.hypot(max.x-min.x,max.y-min.y,max.z-min.z)*1.5);cameraRevision++;draw();
-};
+frameSamplesButton.onclick=()=>frameDisplayMarkers(observedCandidatePoints());
 
 let sceneHidden=new Set(),sceneHiddenScope=null,sceneIsolated=null;
 function hiddenSceneEntities(){

@@ -46,3 +46,10 @@ export function sceneFrameAllCamera(camera,viewport,points){
  const corners=Array.from({length:8},(_,i)=>({x:(i&1?hi:lo).x,y:(i&2?hi:lo).y,z:(i&4?hi:lo).z}));
  return sceneFrameCamera(camera,viewport,corners);
 }
+
+
+// Marker views retain a useful context distance while fitting all display points.
+export function sceneFrameMarkerCamera(camera,viewport,points){
+ const framed=sceneFrameCamera(camera,viewport,points);
+ return {...framed,distance:Math.max(800,framed.distance)};
+}

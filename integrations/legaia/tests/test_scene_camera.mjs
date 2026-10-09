@@ -35,3 +35,14 @@ for(const projection of ['perspective','orthographic'])for(const shape of [{widt
 assert.deepEqual(scenePoints,sceneCopy);assert.deepEqual(original,before);
 for(const bad of [[],[{}],[{x:0,y:NaN,z:0}],Array(262145).fill(corners[0])])assert.throws(()=>sceneFrameAllCamera(original,viewport,bad));
 console.log('Whole-scene framing retains every display point beyond the group bound, with padded wide/tall perspective and orthographic fits.');
+
+const {sceneFrameMarkerCamera}=await import('../editor/scene-camera.js');
+const markers=[{x:-18000,y:-900,z:400},{x:25000,y:1700,z:13000}];
+for(const projection of ['perspective','orthographic'])for(const shape of [{width:1200,height:300},{width:250,height:1200}]){
+ const current={...original,projection},framed=sceneFrameMarkerCamera(current,shape,markers);
+ assert(framed.distance>=800);assert.equal(framed.yaw,current.yaw);assert.equal(framed.pitch,current.pitch);assert.equal(framed.projection,projection);
+ for(const point of markers){const pixel=renderer.projectPoint(point,{...shape,camera:framed,basis:sceneCameraBasis(framed)});assert(pixel.x>=shape.width*.1-.001&&pixel.x<=shape.width*.9+.001&&pixel.y>=shape.height*.1-.001&&pixel.y<=shape.height*.9+.001);}
+}
+assert.equal(sceneFrameMarkerCamera(original,viewport,[{x:0,y:0,z:0}]).distance,800);
+assert.throws(()=>sceneFrameMarkerCamera(original,viewport,[]));assert.deepEqual(original,before);
+console.log('Display marker framing preserves context distance, angles/projection and padded wide/tall fits.');
