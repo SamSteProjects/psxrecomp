@@ -668,3 +668,42 @@ The initial harness used a nonexistent model close selector; its failure log is
 retained, and the corrected full workflow passed. These are editor sampling and
 routing checks, not gameplay timing/playback acceptance. No game, runtime attach
 or native Build was used; the full SDK goal remains active.
+
+## Project-Wide SDK Animation Usage — 2026-10-09
+
+ProjectService now exposes `animation_references()` and a detached
+`animation_references` state projection across all imported scenes. Each recorded
+initial clip has stable actor/scene/clip identities, independent Retail/Current
+flags, layer-qualified model identities and Current source metadata. Retained
+assignments preserve their recorded IDs. NPC drafts reference the Retail initial
+clip of their independent appearance witness, without inheriting the script
+donor's authored assignments. Zero/unresolved/global-pool initial clip identities
+remain absent under the existing SDK local-clip rule. These are derived project
+bindings, not verified runtime residency or native allocation receipts.
+
+The local initial-animation identity rule is shared with existing scene component
+projection. Animation Asset Details Used by now consumes SDK references for both
+active and inactive scenes. The editor donor/model inference and interim active
+scene replacement helper are removed. Usage navigation recognizes NPC animation
+references and retains source scene selection semantics. Its freshness snapshot
+includes animation references, so a changed inactive-scene or draft assignment
+also invalidates a retained callback. Native serializers and authoring commands
+are unchanged.
+
+Twenty focused Python checks passed, with one existing retail-disc-gated check
+skipped because its environment input was absent. Two Node suites, two JS syntax
+checks and three SDK AST checks passed. Focused checks cover appearance history,
+Save/Open, Undo/Redo, inactive-scene independence, detached nested source metadata,
+retained IDs, unresolved clips, NPC appearance/script donor separation and unchanged
+native authored input keys. An in-memory integration fixture combined existing
+saved Town01 and Town0b source evidence, assigned clip overrides and NPC draft
+metadata without changing the original fixtures. Its 89 references across two
+scenes matched every imported actor's SDK layer values. Actual muted browser
+checks matched SDK usage rows for retained clips, NPC witnesses and inactive
+Town0b Retail/Current assignments in Project scope. Changed usage callbacks were
+refused; desktop/400px layouts were inspected. Zero page errors or command/Build/
+Run/Save/scene/selection requests occurred; browser project/imports/history and
+all original fixture files remained unchanged. Private evidence:
+`local-output/sdk-20260909/project-animation-usage-20261009/`.
+No game, runtime attachment or native Build was used. Gameplay remains unverified;
+the full SDK goal stays active.

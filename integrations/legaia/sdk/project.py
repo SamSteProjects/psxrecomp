@@ -4120,6 +4120,10 @@ class ProjectService:
                                        'runtime_binding': 'not_asserted'})
         return references
 
+    def animation_references(self) -> list[dict]:
+        from .animation_usage import references
+        return references(self)
+
     def state(self) -> dict:
         from .animation_labels import key as label_key
         from .model_vertex_groups import review_key as vertex_group_review_key
@@ -4210,7 +4214,8 @@ class ProjectService:
                                     for template in self.actor_templates.values()],
                 "assets": deepcopy(list(self.assets.records.values())),
                 "active_scene_assets": AssetDatabase.scene_models(document),
-                "model_references": self.model_references(), "selection": {"entity_id": self.selected},
+                "model_references": self.model_references(), "animation_references": self.animation_references(),
+                "selection": {"entity_id": self.selected},
                 "texture_overrides": deepcopy(self.texture_overrides),
                 "texture_additions": deepcopy(self.texture_additions),
                 "actor_drafts": deepcopy(self.actor_drafts),

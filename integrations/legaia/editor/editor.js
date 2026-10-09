@@ -99,7 +99,7 @@ import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {parseHierarchyQuery,hierarchyMatches,matchingActorIds,hierarchyAttachedComponents,hierarchyActorBindings,hierarchyAssetBindingQuery} from '/hierarchy-query.js';
 import {mountHierarchyNavigation} from '/hierarchy-navigation.js';
 import {mountModelPlacementUsers} from '/model-placement-users.js';
-import {mountAnimationPlacementUsers,currentAnimationPlacementIds,initialAnimationActorUsage} from '/animation-placement-users.js';
+import {mountAnimationPlacementUsers,currentAnimationPlacementIds} from '/animation-placement-users.js';
 import {animationResourceChoices} from '/animation-resource-choices.js';
 import {mountAnimationContributions} from '/animation-contributions.js';
 import {openStabilitySourceAudit} from '/sdk-stability-sources.js';
@@ -1990,20 +1990,8 @@ function assetRecords(activeOnly=false){
   for(const record of records.values())if(record.data?.scope==='authored-retained')record.label=state.animation_labels?.[record.id]?.name??'Retained clip '+record.data.retained_record.record_id;
   return [...records.values()];
 }
-function initialAssetUsage(record,modelReferences){
-  if(record.type==='model')return modelReferences.filter(ref=>ref.target_id===record.id);
-  if(record.type!=='animation')return [];
-  const bindings=record.data?.bindings??[],references=new Map();
-  for(const ref of modelReferences){
-    const imported=ref.imported&&bindings.some(binding=>binding.actor_semantic_id===ref.source_id&&binding.model_asset_semantic_id===ref.target_id);
-    const effective=ref.effective&&bindings.some(binding=>binding.actor_semantic_id===ref.effective_donor_id&&binding.model_asset_semantic_id===ref.target_id);
-    if(!imported&&!effective)continue;
-    const previous=references.get(ref.source_id);
-    references.set(ref.source_id,{source_id:ref.source_id,scene_id:ref.scene_id,source_name:ref.source_name,kind:ref.kind,
-      imported:!!(imported||previous?.imported),effective:!!(effective||previous?.effective)});
-  }
-  return [...references.values()];
-}
+function initialAssetUsage(record,projectState){return ((record.type==='model'?projectState.model_references:record.type==='animation'?projectState.animation_references:[])??[]).filter(ref=>ref.target_id===record.id);}
+const initialAssetUsageContext=projectState=>JSON.stringify([modelUsageContext(projectState),projectState.animation_references]);
 const assetDetailsTrail=createAssetDetailsTrail();
 assetDetails.addEventListener('close',()=>{if(!assetDetails.open)assetDetailsTrail.clear();});
 const assetDetailsTrailContext=()=>JSON.stringify([resourceStateKey(),state.inspector_schema,state.capabilities]);
@@ -2087,10 +2075,10 @@ function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false}={})
   }
 
   if(['model','animation'].includes(record.type)){
-    const usage=document.createElement('section');usage.innerHTML=`<h3>Used by</h3><p>${record.type==='model'?'Initial model assignments across imported scenes.':'Verified initial animation bindings and authored donor assignments.'} Scripts may change these assignments during gameplay.</p>`;
+    const usage=document.createElement('section');usage.innerHTML=`<h3>Used by</h3><p>${record.type==='model'?'Initial model assignments across imported scenes.':'Recorded Retail/Current initial animation bindings across imported scenes and NPC draft donor witnesses.'} Scripts may change these assignments during gameplay.</p>`;
     if(record.type==='animation')usage.dataset.initialAnimationUsage='true';
-    const legacy=initialAssetUsage(record,state.model_references??[]),references=record.type==='animation'?initialAnimationActorUsage(entities(),record.id,state.scene.id,legacy):legacy,usageContext=modelUsageContext(state);
-    for(const ref of references){const button=document.createElement('button');Object.assign(button.style,{maxWidth:'100%',whiteSpace:'normal',overflowWrap:'anywhere',textAlign:'left'});button.textContent=`${ref.source_name??ref.source_id} · ${ref.kind==='draft_initial_model_assignment'?'NPC draft':`${ref.imported?'Imported':''}${ref.imported&&ref.effective?' + ':''}${ref.effective?'Effective':''}`}`;button.title=ref.source_id;button.onclick=async()=>{if(busy||!assetDetails.contains(usage)||!exportCurrent()||usageContext!==modelUsageContext(state))return;assetDetails.close();if(ref.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:ref.scene_id}))return;if(ref.kind==='draft_initial_model_assignment'){selectNpcDraft(ref.source_id);frameNpcDraft();}else if(await api('/api/selection',{entity_id:ref.source_id}))frame(selected());};usage.append(button);}
+    const references=initialAssetUsage(record,state),usageContext=initialAssetUsageContext(state);
+    for(const ref of references){const button=document.createElement('button');Object.assign(button.style,{maxWidth:'100%',whiteSpace:'normal',overflowWrap:'anywhere',textAlign:'left'});button.textContent=`${ref.source_name??ref.source_id} · ${['draft_initial_model_assignment','draft_initial_animation_assignment'].includes(ref.kind)?'NPC draft':`${ref.imported?'Imported':''}${ref.imported&&ref.effective?' + ':''}${ref.effective?'Effective':''}`}`;button.title=ref.source_id;button.onclick=async()=>{if(busy||!assetDetails.contains(usage)||!exportCurrent()||usageContext!==initialAssetUsageContext(state))return;assetDetails.close();if(ref.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:ref.scene_id}))return;if(['draft_initial_model_assignment','draft_initial_animation_assignment'].includes(ref.kind)){selectNpcDraft(ref.source_id);frameNpcDraft();}else if(await api('/api/selection',{entity_id:ref.source_id}))frame(selected());};usage.append(button);}
     if(!references.length){const empty=document.createElement('p');empty.textContent='No imported or effective initial actor assignments in this project.';usage.append(empty);}
     if(record.type==='model'){
       const groups=(state.scenes??[]).map(scene=>({scene,ids:effectiveModelUsers(state,record.id,scene.id)})).filter(row=>row.ids.length>=2&&row.ids.length<=128);
@@ -2103,13 +2091,13 @@ function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false}={})
           if(busy||!canEdit()||scenePose||actorGroupInspection||shapeDraft)return;
           try{
             const sceneId=choice.value,expected=groups.find(group=>group.scene.id===sceneId)?.ids;
-            if(!expected||usageContext!==modelUsageContext(state))throw new Error('Model usage changed; reopen the asset details');
-            const response=await fetch('/api/state'),fresh=await response.json();if(!response.ok||fresh.project?.mode!=='edit'||usageContext!==modelUsageContext(fresh))throw new Error('Model usage changed; refresh the project and reopen the asset');
+            if(!expected||usageContext!==initialAssetUsageContext(state))throw new Error('Model usage changed; reopen the asset details');
+            const response=await fetch('/api/state'),fresh=await response.json();if(!response.ok||fresh.project?.mode!=='edit'||usageContext!==initialAssetUsageContext(fresh))throw new Error('Model usage changed; refresh the project and reopen the asset');
             assetDetails.close();
             if(sceneId!==state.scene.id&&!await api('/api/scene',{scene_id:sceneId}))return;
             validateModelUserSelection(state,record.id,sceneId,expected);
             if(!await api('/api/selection',{entity_id:expected[0]}))return;
-            if(!canEdit()||usageContext!==modelUsageContext(state))throw new Error('Model usage changed during selection');
+            if(!canEdit()||usageContext!==initialAssetUsageContext(state))throw new Error('Model usage changed during selection');
             const ids=validateModelUserSelection(state,record.id,sceneId,expected);
             actorGroupSelection=mergeActorGroupSelection([],ids,entities().map(entity=>entity.id));actorGroupSelectionKey=resourceStateKey();actorGroupRangeAnchor=ids[0];cancelViewportGesture();renderHierarchy();frameActorGroupSelection();draw();
             notify(`Selected ${ids.length} effective actor users. Scripts may replace initial assignments.`);
