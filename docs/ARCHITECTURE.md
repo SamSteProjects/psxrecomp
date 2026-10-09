@@ -2398,3 +2398,6 @@ Controller table-copy editor controls use source-qualified SDK snapshots and Rev
 
 
 Controller editing modules expose a shared source-qualified PC navigation contract. Retail instruction rows ask each mounted module for target membership, then select/focus existing controls by stable identity; no editor-side binary dispatch or additional command path is introduced. Same-target Review persists and stale/busy links refuse.
+
+
+Retail VRAM STP source inspection now decodes fixed-width D4/D5 requests with proven rectangle dimensions/pixel rules and exact continuation. Source asset binding/effects remain unknown; no simulation or authoring path is inferred. Existing source instruction/search/flow services consume these SDK nodes.

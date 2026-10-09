@@ -1011,3 +1011,6 @@ Controller Table-Copy Editor Controls — 2026-10-09: actual Conc/Rikuroa source
 
 
 Controller Instruction-to-Editor Navigation — 2026-10-09: links rely exclusively on current qualified SDK target lists and verified Retail instruction rows; no new dispatch or runtime semantic assumptions. Actual Conc/Rikuroa navigation produced zero authored commands and unchanged project state. Evidence: `local-output/sdk-20260909/controller-authoring-navigation-20261009/`.
+
+
+Retail VRAM STP Controller Decoding — 2026-10-09: pinned nibble_d blob80d71c4a03b43b000dd0ff82acacf9bcc6d719c2 and fresh hash-bound Retail PROT[897] D4/D5 loads, rectangle constants, masks, StoreImage/LoadImage and PC+6 corroborate the read-only decoder. All99 bounded source records retain their prior hashes;85 literal requests matched. Runtime source asset binding and visible effects remain unverified. Evidence: `local-output/sdk-20260909/controller-vram-stp-20261009/`.

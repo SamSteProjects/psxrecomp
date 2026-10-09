@@ -10181,3 +10181,6 @@ Controller Table-Copy Editor Controls: FUNCTIONAL for source-qualified16-word Re
 
 
 Controller Instruction-to-Editor Navigation: FUNCTIONAL across all five qualified controller families, with exact source/focus, same-target Review preservation and changed-target withdrawal. Actual Conc/Rikuroa wide/400-pixel checks passed with unchanged project/import/history and zero commands. Runtime/gameplay unchanged and unverified.
+
+
+Retail VRAM STP Controller Decoding: FUNCTIONAL read-only D4/D5 source operands and continuation;85 literal boundaries matched across99 bounded controllers. Four scenes now decode fully, bringing the bounded inventory to60 decoded/39 partial (prior25 refused retained). Texture ownership, live VRAM effects and authoring remain unsupported/unverified.

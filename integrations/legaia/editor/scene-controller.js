@@ -26,7 +26,7 @@ export function renderControllerInstruction(row,report,selectSource,authoring=[]
  const details=create('details'),summary=create('summary',`PC ${pc(row.pc)} · ${row.mnemonic}`),fields=create('dl');details.dataset.controllerInstructionPc=row.pc;fields.dataset.controllerInstructionFields='';
  const field=(name,value)=>{const label=create('dt',name),text=create('dd',String(value));label.style.fontWeight='600';text.style.cssText='margin:0 0 8px;overflow-wrap:anywhere';fields.append(label,text);};
  field('Record PC',`${pc(row.pc)} (${row.pc})`);field('Decoded MAN Offset',`${pc(row.byte_offset)} (${row.byte_offset})`);field('Encoded Length',`${row.length} bytes`);field('Dispatch Context',row.target_context===null?'Current controller context':`Extended target ${row.target_context} · runtime binding unresolved`);
- const human=value=>value.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase()).replace(/\bPc\b/g,'PC');
+ const human=value=>value.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase()).replace(/\bPc\b/g,'PC').replace(/\bVram\b/g,'VRAM');
  const flatten=(value,path,depth=0)=>{
   if(depth>8)throw Error('Controller operand nesting exceeds inspector bounds.');
   if(Array.isArray(value)){field(path,value.map(item=>typeof item==='object'?JSON.stringify(item):String(item)).join(', ')||'None');return;}

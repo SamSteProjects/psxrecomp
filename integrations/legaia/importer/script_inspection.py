@@ -599,6 +599,20 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "signed_words": list(struct.unpack_from("<hhh", data, operand + 1)),
                     "packed_u24": int.from_bytes(data[operand + 7:operand + 10], "little"),
                     "destination_semantics": "host_defined"}
+        elif sub in (0xD4, 0xD5):
+            # Retail PROT[897] 801E2C3C/2CC8: two word loads into a
+            # fixed16x1 VRAM rectangle; StoreImage/pixel mask/LoadImage,
+            # then common801E2D58 adds6 to adjusted PC. Pinned nibble_d
+            # agrees. This is source inspection, not a VRAM simulation.
+            size = 5
+            need(size)
+            mnemonic = "VRAM_STP_SET_REQUEST" if sub == 0xD4 else "VRAM_STP_CLEAR_REQUEST"
+            args = {"sub_op": sub, "vram_x": int.from_bytes(data[operand+1:operand+3], "little"),
+                    "vram_y": int.from_bytes(data[operand+3:operand+5], "little"),
+                    "width": 16, "height": 1,
+                    "pixel_rule": "set_bit_15_for_nonzero_pixels" if sub == 0xD4 else "clear_bit_15_except_0x8000",
+                    "asset_binding": "runtime_vram_source_asset_unresolved",
+                    "runtime_effect": "not_evaluated"}
         elif sub == 0xCD:
             size, mnemonic, branches = 1, "SCRIPT_CONTEXT_ALLOC", []
             args = {"sub_op": sub, "can_wait_for_external_state": True}
