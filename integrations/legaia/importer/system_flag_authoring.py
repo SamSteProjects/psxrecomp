@@ -64,6 +64,7 @@ def patch_system_flag_selector(record, entry, pc, values, *, base_offset=0):
 
 
 class SystemFlagAuthoringContext:
+    OWNER_PATTERN = r'[A-Za-z0-9_-]+/(?:actors/man-p1|scripts/man-p2)/[0-9]{4}'
     def __init__(self, source):
         self._source, self._man = source, source._man
 
@@ -96,7 +97,7 @@ class SystemFlagAuthoringContext:
             raise ImportError('System selector edit collection exceeds bounds')
         audit, occupied = [], set()
         for key, values in edits.items():
-            match = re.fullmatch(r'script://([A-Za-z0-9_-]+/(?:actors/man-p1|scripts/man-p2)/[0-9]{4})/system-flag/([0-9a-f]{4})', key) if isinstance(key, str) else None
+            match = re.fullmatch(r'script://(' + self.OWNER_PATTERN + r')/system-flag/([0-9a-f]{4})', key) if isinstance(key, str) else None
             if match is None:
                 raise ImportError('System selector identity requires source owner and hexadecimal PC')
             owner = 'scene://' + match[1]
