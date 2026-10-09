@@ -22,3 +22,13 @@ const unknown=hierarchyActorBindings({ActorAnimation:{imported:{initial_animatio
 const detached=hierarchyActorBindings(bindingComponents);detached.model.length=0;detached.current_animation[0]='changed';assert.deepEqual(bindingComponents,bindingBefore);assert.equal(hierarchyActorBindings(bindingComponents).current_animation[0],'animation://fixture/authored-record/example');
 assert.throws(()=>parseAssetQuery('current_animation:example'));assert.throws(()=>parseHierarchyQuery('current_animation:'));
 console.log('Hierarchy Retail/Current model and clip bindings, combined filters, exclusions, unknowns, detached projections and bounded matching actor selection passed.');
+const {hierarchyAssetBindingQuery}=await import('../editor/hierarchy-query.js');
+for(const [type,id] of [['model','asset://fixture/models/0001'],['animation','animation://fixture/scene-anm/0001']]){
+ const field=type==='model'?'model':'animation';const original={type,id},held=structuredClone(original);
+ for(const layer of ['retail','current']){const query=hierarchyAssetBindingQuery(original,layer),tokens=parseHierarchyQuery(query);assert.equal(tokens[1].field,layer+'_'+field);assert.equal(tokens[1].text,id);assert(hierarchyMatches({type:'actor',[layer+'_'+field]:[id]},tokens));assert(!hierarchyMatches({type:'actor',[layer+'_'+field]:[id+'0']},tokens));}
+ assert.deepEqual(original,held);
+}
+for(const [record,layer] of [[{type:'model',id:'guest://pointer'},'retail'],[{type:'script',id:'script://fixture'},'retail'],[{type:'animation',id:'animation://fixture'},'live'],[{type:'model',id:'asset://fixture\n'},'retail'],[{type:'model',id:'asset://'+'a'.repeat(1025)},'current']])assert.throws(()=>hierarchyAssetBindingQuery(record,layer));
+assert(hierarchyMatches(bindingActor,parseHierarchyQuery('current_animation:authored-record')));
+assert(!hierarchyMatches(bindingActor,parseHierarchyQuery('current_animation:animation://fixture/authored-record/exam')));
+console.log('Asset-to-hierarchy queries qualify type/layer/identity and use exact full URI matching without accepting similarly prefixed identities.');

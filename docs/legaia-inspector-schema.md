@@ -598,3 +598,38 @@ were unchanged. Private evidence:
 `local-output/sdk-20260909/hierarchy-asset-bindings-20261009/`.
 No game or runtime attachment was used. Runtime residency, initial assignment
 behavior and playback remain unverified; the full SDK goal is active.
+
+## Asset Binding Navigation and Usage — 2026-10-09
+
+Model and animation Asset Details expose SDK-registered Find Retail actor bindings
+and Find Current actor bindings actions. Navigation retains the selected Project
+source membership through the existing verified asset resolver, then opens the
+source scene hierarchy with a layer-qualified actor query. It does not implicitly
+select or author actors. The narrow workspace reveals Hierarchy & assets; existing
+Select matching actors remains available. Full model/animation URI filters now
+match exact identities, while shorter filter text retains substring search.
+Qualified type/layer, bounded identity and existing source/busy/mounted-action
+checks prevent foreign, stale or detached navigation.
+
+Visual verification exposed an older contradiction: a retained clip had a Current
+actor assignment, but Used by said there were no initial users. Animation Used by
+now replaces the active imported-actor donor/model join with explicit Retail and
+Current SDK animation components. This also preserves Retail-only users when
+Current points elsewhere. Other-scene and NPC witness rows retain their existing
+evidence, detached from source data. Preview-choice construction is unchanged.
+Usage callbacks now also require the original mounted Asset Details and fresh
+resource snapshot, refusing callbacks retained from a closed/replaced panel.
+
+Nineteen focused Python tests, four Node suites, four JS syntax checks and SDK
+schema AST passed. Actual muted editor workflows compared exact matching IDs
+against SDK components for both layers of model and animation resources, including
+a retained clip with zero Retail users and one Current user. Active/Project actions,
+source membership retention, narrow hierarchy handoff, busy/detached refusal,
+correct imported/effective Used by labels and absence of detached selection
+requests passed. Desktop and 400px layouts were inspected; zero page errors or
+command/Build/Run/Save/scene requests occurred, with unchanged project/imports/
+history/file bytes. Private evidence:
+`local-output/sdk-20260909/asset-binding-hierarchy-navigation-20261009/`.
+No game, runtime attachment or native Build was used. Initial bindings do not
+prove runtime residency, script-selected use or playback; gameplay remains
+unverified and the full SDK goal active.

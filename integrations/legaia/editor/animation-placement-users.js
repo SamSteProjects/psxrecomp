@@ -2,6 +2,22 @@ import {MAX_SOURCE_ENTITIES} from './scene-limits.js';
 import {mergeScenePlacementSelection} from './scene-placement-selection.js';
 import {mountModelPlacementUsers} from './model-placement-users.js';
 
+// Replace active imported-actor witness joins with the SDK's explicit layer values.
+// Other scene and NPC donor-witness rows retain their existing evidence.
+export function initialAnimationActorUsage(rows,assetId,sceneId,legacy=[]){
+ if(!Array.isArray(rows)||rows.length>MAX_SOURCE_ENTITIES||typeof sceneId!=='string'||!sceneId||typeof assetId!=='string'||!assetId.startsWith('animation://')||assetId.length>1024||!Array.isArray(legacy))throw Error('Initial animation usage source is unavailable.');
+ const seen=new Set(),result=legacy.filter(ref=>ref.scene_id!==sceneId||!ref.source_id?.startsWith(sceneId+'/actors/'));
+ for(const row of rows){
+  const id=row?.id,component=row?.components?.ActorAnimation;
+  if(typeof id!=='string'||!id.startsWith(sceneId+'/actors/')||seen.has(id)||!component)throw Error('Initial animation usage has ambiguous actors or missing SDK bindings.');
+  seen.add(id);
+  for(const layer of ['imported','effective']){const value=component[layer]?.animation_asset_id;if(value!==null&&(typeof value!=='string'||!value.startsWith('animation://')||value.length>1024))throw Error('Initial animation usage has an unresolved SDK layer.');}
+  const imported=component.imported.animation_asset_id===assetId,effective=component.effective.animation_asset_id===assetId;
+  if(imported||effective)result.push({source_id:id,source_name:row.name,scene_id:sceneId,kind:'initial_animation_assignment',imported,effective,runtime_binding:'not_asserted'});
+ }
+ return structuredClone(result);
+}
+
 // Effective initial SDK assignment only. Scripts may choose another runtime clip.
 export function animationPlacementIdsForAsset(rows,assetId,eligible,sceneId){
   if(!Array.isArray(rows)||rows.length>MAX_SOURCE_ENTITIES||typeof sceneId!=='string'||!sceneId||typeof assetId!=='string'||!assetId||assetId.length>1024||!(eligible instanceof Set))throw Error('Current animation actor source is unavailable.');

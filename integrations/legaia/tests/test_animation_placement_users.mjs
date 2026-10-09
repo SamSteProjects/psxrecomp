@@ -24,3 +24,11 @@ assert.deepEqual(draftAnimationPlacementIds(bindings,[{...references[0],effectiv
 for(const refs of [[references[0],references[0]],[{...references[0],target_id:null}],[{...references[0],runtime_binding:'observed'}]])assert.throws(()=>draftAnimationPlacementIds(bindings,refs,drafts,scene,members));
 assert.throws(()=>draftAnimationPlacementIds([...bindings,bindings[0]],references,drafts,scene,members));assert.deepEqual(draftAnimationPlacementIds(bindings,references,drafts,scene,new Set(eligible)),[]);
 console.log('NPC catalog/model/donor witness join, independent appearance, unmatched and ineligible drafts, duplicate and contradictory evidence refusal passed.');
+
+const {initialAnimationActorUsage}=await import('../editor/animation-placement-users.js');
+const stale=[{source_id:rows[2].id,scene_id:scene,imported:true,effective:true},{source_id:npc,scene_id:scene,kind:'draft_initial_model_assignment',imported:false,effective:true},{source_id:'scene://other/actors/a',scene_id:'scene://other',imported:true,effective:true}],staleBefore=structuredClone(stale);
+const currentUsers=initialAnimationActorUsage(rows,'animation://fixture/authored-record/clip',scene,stale);assert(currentUsers.some(ref=>ref.source_id===rows[2].id&&!ref.imported&&ref.effective&&ref.runtime_binding==='not_asserted'));
+const retailUsers=initialAnimationActorUsage(rows,asset,scene,stale);assert(retailUsers.some(ref=>ref.source_id===rows[2].id&&ref.imported&&!ref.effective));assert(retailUsers.some(ref=>ref.source_id===npc));assert(retailUsers.some(ref=>ref.scene_id==='scene://other'));assert.deepEqual(stale,staleBefore);retailUsers[0].source_id='changed';assert.deepEqual(stale,staleBefore);
+assert.deepEqual(initialAnimationActorUsage(rows,'animation://fixture/missing',scene),[]);assert.deepEqual(rows,before);
+for(const invalid of [[rows,asset,'other'],[[rows[0],rows[0]],asset,scene],[[{...rows[0],components:{}}],asset,scene],[[{...rows[0],components:{ActorAnimation:{imported:{animation_asset_id:'guest://pointer'},effective:{animation_asset_id:null}}}}],asset,scene]])assert.throws(()=>initialAnimationActorUsage(...invalid));
+console.log('Used-by presentation honors exact Retail/Current SDK layers and allocated clips, replaces stale active joins, retains other scene/NPC evidence and detaches results.');

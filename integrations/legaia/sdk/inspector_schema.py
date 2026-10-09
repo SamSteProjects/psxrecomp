@@ -216,6 +216,11 @@ def inspector_schema():
             'actions': [{'id': action, 'label': action_label, 'capability': capability}],
         }
     schema['asset_inspectors']['audio'] = 'AssetAudio'
+    for identifier in ('AssetModel', 'AssetAnimation'):
+        schema['components'][identifier]['actions'] += [
+            {'id':'find-retail-asset-actors','label':'Find Retail actor bindings','capability':'project_navigation'},
+            {'id':'find-current-asset-actors','label':'Find Current actor bindings','capability':'project_navigation'}]
+        schema['components'][identifier]['notes'].append('Find actors searches exact recorded initial bindings in the selected source scene. Retail and Current remain separate; live playback, script-selected use, NPC drafts and static scenery are not inferred.')
     actor = schema['components']['AssetActor']
     actor['properties'] += [
         {'id':'retail-model','label':'Retail initial model','path':['data','components','ActorAppearance','imported','asset_id'],'type':'asset-reference','state':'read-only-retail','empty_label':'Unresolved'},

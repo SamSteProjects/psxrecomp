@@ -1,6 +1,14 @@
 import unittest
 from sdk.inspector_schema import inspector_schema
 class InspectorSchema(unittest.TestCase):
+    def test_model_and_clip_actor_binding_navigation_is_read_only(self):
+        for identifier in ('AssetModel','AssetAnimation'):
+            component=inspector_schema()['components'][identifier]
+            actions=component['actions'][-2:]
+            self.assertEqual([a['id'] for a in actions],['find-retail-asset-actors','find-current-asset-actors'])
+            self.assertTrue(all(a['capability']=='project_navigation' and not a.get('requires_edit') for a in actions))
+            self.assertTrue(any('exact recorded initial bindings' in note for note in component['notes']))
+
     def test_actor_asset_bindings_are_read_only_and_keep_initial_layers_separate(self):
         component=inspector_schema()['components']['AssetActor'];properties={p['id']:p for p in component['properties']}
         self.assertEqual(properties['retail-model']['path'],['data','components','ActorAppearance','imported','asset_id'])
@@ -125,7 +133,7 @@ class InspectorSchema(unittest.TestCase):
             definition=schema['components'][identifier]
             self.assertEqual(definition['layout'],'read-only-properties')
             self.assertTrue(all('authoring' not in prop for prop in definition['properties']))
-            self.assertEqual(len(definition['actions']),4 if kind == 'trigger' else 5 if kind == 'audio' else 2 if kind in ('worldmap','region') else 1)
+            self.assertEqual(len(definition['actions']),4 if kind == 'trigger' else 5 if kind == 'audio' else 2 if kind in ('worldmap','region') else 3 if kind in ('model','animation') else 1)
             if kind == 'audio':
                 self.assertEqual({a['id'] for a in definition['actions']}, {'inspect-midi-input','inspect-audio-input','inspect-audio-bank','edit-sequence-replacement','inspect-audio-sequence'})
             for action in definition['actions']:self.assertNotIn('command',action)

@@ -18,7 +18,10 @@ assert.equal(registeredActions(schema,'AssetModel',record,{model_preview:false},
 const button={dataset:{inspectorAction:'inspect-asset-model'}};
 bindComponentActions({querySelectorAll:()=>[button]},registry,{current:()=>current,editable:()=>false,busy:()=>busy,onError:e=>{throw e;}});
 await button.onclick();assert.equal(calls,1);current=false;await button.onclick();assert.equal(calls,1);current=true;busy=true;await button.onclick();assert.equal(calls,1);
-for(const type of ['texture','animation','script','dialogue','flag','transition','collision'])assert.equal(Object.keys(assetInspectorRegistry({type},()=>{})).length,1);
+for(const type of ['texture','script','dialogue','flag','transition','collision'])assert.equal(Object.keys(assetInspectorRegistry({type},()=>{})).length,1);
+for(const type of ['model','animation'])assert.deepEqual(Object.keys(assetInspectorRegistry({type},()=>{})).slice(0,2),['find-retail-asset-actors','find-current-asset-actors']);
+const bindingSchema=structuredClone(schema);bindingSchema.components.AssetModel.actions=[{id:'find-retail-asset-actors',capability:'project_navigation'},{id:'find-current-asset-actors',capability:'project_navigation'}];
+assert.equal(registeredActions(bindingSchema,'AssetModel',record,{project_navigation:true},registry,false).length,2);assert.equal(registeredActions(bindingSchema,'AssetModel',record,{project_navigation:false},registry,false).length,0);
 assert.deepEqual(Object.keys(assetInspectorRegistry({type:'region'},()=>{})),['inspect-asset-field','inspect-asset-region-bounds']);
 assert.deepEqual(Object.keys(assetInspectorRegistry({type:'trigger'},()=>{})),['inspect-asset-field','inspect-asset-trigger-cells']);
 assert.deepEqual(Object.keys(assetInspectorRegistry({type:'trigger',id:'trigger://fixture/field-map/primary/kind-1/0000',data:{table_source:'primary',table_kind:1,encoded:{gate:1}}},()=>{})),['inspect-asset-field','inspect-asset-trigger-cells','inspect-asset-trigger-scripts','inspect-asset-trigger-group']);
