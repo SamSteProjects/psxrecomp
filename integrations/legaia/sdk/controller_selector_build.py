@@ -6,6 +6,9 @@ from importer.controller_system_flags import load_controller_system_flag_context
 
 
 def collect(project,owner,components):
+    from .build import BuildError
+    if 'ControllerThreeWords' in components:
+        raise BuildError('Controller three-word native Build integration is pending; remove the override before Build')
     value=validate_components(project,owner,components)
     return scene_document(project,owner)['scene']['semantic_id'],value
 
@@ -14,6 +17,8 @@ def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
     from .build import BuildError
     owner=scene_id+'/controllers/man-p1/0000'
     components=validate_components(project,owner,project.overrides[owner])
+    if 'ControllerThreeWords' in components:
+        raise BuildError('Controller three-word native Build integration is pending; remove the override before Build')
     value=components.get(COMPONENT,dict(entries={}))
     scene=project.imports[scene_id]['scene']['name']
     context=load_controller_system_flag_context(project.disc_path,scene)

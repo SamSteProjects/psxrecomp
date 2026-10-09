@@ -2158,6 +2158,10 @@ class ProjectService:
             from .script_branches import apply
             apply(self, command)
             return
+        if command.get('type') == 'set_controller_three_word':
+            from .controller_three_words import apply
+            apply(self,command)
+            return
         if command.get('type') == 'set_controller_word_triplet':
             from .controller_word_triplets import apply
             apply(self,command)
