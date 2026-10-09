@@ -1093,7 +1093,15 @@ function scenePlacementCenter(temporary=true){
   const points=scenePlacementInspection.report.targets.map(row=>scenePlacementPosition(row,temporary));if(points.some(p=>!p))return null;
   return Object.fromEntries(['x','y','z'].map(axis=>[axis,points.reduce((sum,p)=>sum+p[axis],0)/points.length]));
 }
-function frameScenePlacementGroup(report){const view=sceneView(),corners=report.targets.flatMap(row=>sceneRenderer?.bounds(view.positions,row.entity_id,new Set(),view.transforms)??[]);if(!corners.length)return;const lo={},hi={};for(const axis of ['x','y','z']){lo[axis]=Math.min(...corners.map(p=>p[axis]));hi[axis]=Math.max(...corners.map(p=>p[axis]));camera.target[axis]=(lo[axis]+hi[axis])/2;}camera.distance=Math.max(100,Math.hypot(...['x','y','z'].map(axis=>hi[axis]-lo[axis]))*1.8);cameraRevision++;draw();}
+function frameScenePlacementGroup(report){
+  try{
+    if(!scenePreviewCurrent()||!sceneModelsReady()||!Array.isArray(report?.targets)||!report.targets.length||report.targets.length>128)throw Error('Load current geometry for 1–128 selected placements before framing.');
+    const ids=report.targets.map(row=>row.entity_id);if(ids.some(id=>typeof id!=='string'||!id)||new Set(ids).size!==ids.length)throw Error('Framing requires unique current placement identities.');
+    const view=sceneView(),points=[];
+    for(const id of ids){const corners=sceneRenderer.bounds(view.positions,id,new Set(),view.transforms);if(!corners?.length)throw Error('Current mesh bounds are unavailable for '+id+'.');points.push(...corners);}
+    const framed=sceneFrameCamera(camera,{width,height},points);cancelViewportGesture();pendingEntityFrame=null;Object.assign(camera,framed);cameraRevision++;draw();return true;
+  }catch(error){notify(error.message,true);return false;}
+}
 function staticDecorations(){return environmentEntities().filter(e=>e.entity_id.includes('/decorations/')&&e.source_record?.object_record_index>=4);}
 function clearEnvironmentGroupSelection(){environmentGroupSelection=[];environmentGroupKey=null;environmentGroupAnchor=null;if(environmentGroupInspection){environmentGroupTool?.restore();environmentLayoutTool?.restore();environmentRotationGroupTool?.restore();}environmentGroupTool?.refresh();environmentLayoutTool?.refresh();environmentRotationGroupTool?.refresh();}
 function updateEnvironmentGroupSelection(){
@@ -1491,12 +1499,12 @@ function sceneSelectionState(){return {...state,scene_selection_eligible_ids:[..
 savedSceneSelections=mountSceneSelectionSets({host:scenePlacementHost,getState:sceneSelectionState,getSelection:currentPlacementSelection,isBusy:()=>busy,canEdit,api,
   canRecall:()=>canEdit()&&modelsEnabled&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!wallInspection&&!wallSelectMode,
   onError:error=>notify(typeof error==='string'?error:error.message,true),
-  recall:async(value,projectPath,current,memberId=null)=>{
+  recall:async(value,projectPath,current,memberId=null,frameRecalled=true)=>{
     const check=()=>{if(!current()||state.project.path!==projectPath||!canEdit()||sceneRepresentation!=='authored'||scenePose||shapeDraft||actorGroupInspection||environmentGroupInspection||scenePlacementInspection||wallInspection||wallSelectMode||!state.scene_selection_sets?.some(row=>row.id===value.id&&row.review_key===value.review_key))throw new Error('Saved scene selection changed during recall. Review it again.');};
     check();if(!await api('/api/state',undefined))return false;check();
     if(value.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:value.scene_id}))return false;check();
     const deadline=performance.now()+60000;
-    while(!scenePreviewCurrent()){check();if(sceneError||!modelsEnabled||performance.now()>deadline)throw new Error(sceneError||'Scene preview is not ready for placement recall');await new Promise(resolve=>setTimeout(resolve,50));}
+    while(!scenePreviewCurrent()||(frameRecalled&&!sceneModelsReady())){check();if(sceneError||!modelsEnabled||performance.now()>deadline)throw new Error(sceneError||'Scene preview is not ready for placement recall');await new Promise(resolve=>setTimeout(resolve,50));}
     check();const sourceKey=state.project_copy_source_key;
     const response=await fetch('/api/scene-selection-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({selection_set_id:value.id,review_key:value.review_key})});const report=await response.json();check();
     if(!response.ok||report.error)throw new Error(report.error||'Saved placement verification failed');
@@ -1508,7 +1516,7 @@ savedSceneSelections=mountSceneSelectionSets({host:scenePlacementHost,getState:s
     if(npcIds.length>1||[actorIds,npcIds,decorIds].filter(group=>group.length).length>1){scenePlacementSelection=ids;scenePlacementKey=resourceStateKey();scenePlacementMode=false;}
     else if(actorIds.length>1){actorGroupSelection=ids;actorGroupSelectionKey=resourceStateKey();actorGroupRangeAnchor=ids[0];}
     else if(decorIds.length){environmentGroupSelection=ids;environmentGroupKey=resourceStateKey();environmentGroupAnchor=ids[0];}
-    cancelViewportGesture();renderHierarchy();renderInspector();draw();return true;
+    cancelViewportGesture();renderHierarchy();renderInspector();if(frameRecalled)frameScenePlacementGroup({targets:ids.map(entity_id=>({entity_id}))});draw();return true;
   }
 });
 
