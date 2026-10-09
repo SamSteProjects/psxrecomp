@@ -18,7 +18,13 @@ export function decodeModelResolution(value,sceneId,key){
  if(retail!==counts.retail_unresolved||current!==counts.current_unresolved||value.rows.length>counts.source_actors+counts.npc_drafts)fail();return structuredClone(value);
 }
 
-export async function openModelResolution({getState,busy,onSelect,onInspectSource=null,onError=()=>{}}){
+export function modelResolutionPlacementIds(value,scene,key){
+ const report=decodeModelResolution(value,scene,key);
+ if(!report.rows.length||report.rows.length>128)throw Error('Select affected placements requires a complete group of 1–128 entities.');
+ return report.rows.map(row=>row.entity_id).sort();
+}
+
+export async function openModelResolution({getState,busy,onSelect,onSelectGroup=null,onInspectSource=null,onError=()=>{}}){
  const state=getState(),scene=state.scene?.id,key=state.asset_reference_source_key;if(!scene||busy())return;
  const dialog=document.createElement('dialog');dialog.id='model-resolution-dialog';dialog.style.maxWidth='min(760px, calc(100vw - 32px))';
  const heading=document.createElement('h2');heading.textContent='Initial Model Resolution';const close=document.createElement('button');close.textContent='Close';close.onclick=()=>dialog.close();
@@ -31,6 +37,7 @@ export async function openModelResolution({getState,busy,onSelect,onInspectSourc
   const response=await fetch('/api/model-resolution',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scene_id:scene,expected_source_key:key}),signal:controller.signal}),value=await response.json();if(!response.ok||value.error)throw Error(value.error||'Model resolution failed');if(!fresh())return;
   accepted=decodeModelResolution(value,scene,key);status.textContent=`${accepted.counts.retail_unresolved} unresolved Retail references; ${accepted.counts.current_unresolved} unresolved Current references; ${accepted.rows.length} affected entities.`;
   if(!accepted.rows.length)content.textContent='No unresolved initial model references in this scene.';
+  if(onSelectGroup&&accepted.rows.length){const group=document.createElement('button');group.type='button';group.textContent='Select All Affected Placements';group.disabled=accepted.rows.length>128;group.title=group.disabled?'The complete group exceeds 128 placements; no partial group is selected.':accepted.rows.length+' affected placements, including hidden members';group.onclick=async()=>{if(group.disabled||!accepted||!fresh()||busy())return;try{const ids=modelResolutionPlacementIds(accepted,scene,key);dialog.close();await onSelectGroup(ids,scene,key);}catch(error){onError(error);}};content.append(group);}
   for(const row of accepted.rows){
    const section=document.createElement('section');section.style.overflowWrap='anywhere';const title=document.createElement('h3');title.textContent=row.entity_id;section.append(title);if(row.kind==='npc'){const note=document.createElement('p');note.textContent='Source script navigation opens the model donor editor. NPC authored script edits remain independent.';section.append(note);}
    for(const [label,layer] of [['Retail',row.retail],['Current',row.current]]){const p=document.createElement('p');p.textContent=layer?`${label}: encoded index ${layer.model_index}; ${layer.model_pool} slot ${layer.slot_index}; ${layer.status}; ${layer.source_actor_id}`:`${label}: no imported NPC instance`;section.append(p);if(layer){const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent=label+' native source record';pre.textContent=JSON.stringify(layer.source_record,null,2);pre.style.whiteSpace='pre-wrap';details.append(summary,pre);section.append(details);if(onInspectSource){const inspect=document.createElement('button');inspect.textContent='Inspect '+label+' source script';inspect.onclick=async()=>{if(!accepted||!fresh()||busy())return;const source=structuredClone(layer);dialog.close();try{await onInspectSource(source,row.kind);}catch(error){onError(error);}};section.append(inspect);}}}
