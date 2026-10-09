@@ -1,6 +1,6 @@
 """Bound the Retail scene-entry controller without treating it as a placed actor."""
 from hashlib import sha256
-from .core import ImportError, parse_man
+from .core import ImportError, parse_man, validate_metadata_only
 from .man_source import read_man_source
 from .pipeline import _disc_context, _bounded_scene_range, REFERENCE_COMMIT
 from .script_inspection import inspect_record, MAX_RECORD_BYTES
@@ -33,6 +33,9 @@ def inspect_scene_controller(disc, scene):
         carrier = read_man_source(archive, start, end, scene)
         offset, record, entry = controller_record(carrier.payload, scene)
         identity = f'script://{scene}/controllers/man-p1/0000'
+        from .script_catalog import _flag_reference
+        decoded=inspect_record(record, entry, semantic_id=identity, base_offset=offset)
+        flags=[ref for row in decoded['instructions'] if (ref:=_flag_reference(row)) is not None]
         return dict(schema_version='legaia.scene-controller-inspection.v1', scene_id=f'scene://{scene}',
                     semantic_id=identity, read_only=True, representation='retail',
                     reference_commit=REFERENCE_COMMIT, runtime_execution='not_asserted',
@@ -46,7 +49,7 @@ def inspect_scene_controller(disc, scene):
                     limitations=['Retail controller only; no authored controller or runtime PC is substituted.',
                         'Controller header values have no inferred actor placement semantics.',
                         'Encoded instructions do not prove scheduling, branch activation or gameplay behavior.'],
-                    **inspect_record(record, entry, semantic_id=identity, base_offset=offset))
+                    flag_references=flags, flag_reference_count=len(flags), **decoded)
 
 
 def load_controller_asset_catalog(disc, scene):
@@ -58,6 +61,9 @@ def load_controller_asset_catalog(disc, scene):
                  owner_scene_id=report['scene_id'], read_only=True, runtime_binding='not_asserted',
                  entry_pc=report['entry_pc'], local_count=report['record']['local_count'],
                  inspection_status=report['status'], decoded_instruction_count=len(report['instructions']),
-                 dialogue_segment_count=len(report['dialogues']), reference_commit=report['reference_commit'],
+                 dialogue_segment_count=len(report['dialogues']), flag_reference_count=report['flag_reference_count'],
+                 flag_references=report['flag_references'], reference_commit=report['reference_commit'],
                  dependencies=[report['scene_id']], references=[])
-    return dict(assets=[asset], limitations=report['limitations'])
+    catalog=dict(assets=[asset], limitations=report['limitations'])
+    validate_metadata_only(catalog)
+    return catalog

@@ -21,7 +21,7 @@ class SceneController(unittest.TestCase):
         report = dict(semantic_id='script://fixture/controllers/man-p1/0000',
             scene_id='scene://fixture', source_record={'sha256':'a'*64},
             entry_pc=5, record={'local_count':0,'raw_hex':'00'}, status='partial',
-            instructions=[{'raw_hex':'ff'}], dialogues=[], reference_commit='b'*40,
+            instructions=[{'raw_hex':'ff'}], dialogues=[], flag_references=[], flag_reference_count=0, reference_commit='b'*40,
             limitations=['Runtime execution remains unverified.'])
         with patch('importer.scene_controller.inspect_scene_controller', return_value=report):
             catalog=load_controller_asset_catalog(None,'fixture')

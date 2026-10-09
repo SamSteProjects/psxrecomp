@@ -1057,6 +1057,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-resolution.js": ("model-resolution.js", "text/javascript"),
                  "/scene-controller.js": ("scene-controller.js", "text/javascript"),
                  "/controller-references.js": ("controller-references.js", "text/javascript"),
+                 "/controller-flags.js": ("controller-flags.js", "text/javascript"),
                  "/script-branches.js": ("script-branches.js", "text/javascript"),
                  "/system-flag-selectors.js": ("system-flag-selectors.js", "text/javascript"),
                  "/source-build-script.js": ("source-build-script.js", "text/javascript"),

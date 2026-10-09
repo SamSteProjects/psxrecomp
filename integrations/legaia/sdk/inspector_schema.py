@@ -189,6 +189,7 @@ def inspector_schema():
         {'id':'owner','label':'Owning Scene','path':['data','owner_scene_id'],'type':'asset-reference','state':'read-only-retail'},
         {'id':'entry','label':'Entry PC','path':['data','entry_pc'],'type':'integer','state':'read-only-retail'},
         {'id':'status','label':'Decoder Status','path':['data','inspection_status'],'type':'string','state':'derived'},
+        {'id':'flag_reference_count','label':'Encoded Flag References','path':['data','flag_reference_count'],'type':'integer','state':'derived'},
         {'id':'instruction_count','label':'Decoded Instructions','path':['data','decoded_instruction_count'],'type':'integer','state':'derived'}]
     controller['notes'] = ['Retail partition-1 record zero is the scene controller, not a placed actor. Controller authoring and runtime execution remain unsupported.']
     schema['components']['AssetAudio'] = {
