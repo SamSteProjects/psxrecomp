@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {worldPlacementBuildTarget} from '../editor/worldmap-placement-state.js';
+const sha='a'.repeat(64),scene='map02',root=`worldmap://${scene}/placements`,id=root+'/records/0461';
+const values={offset:{x:32,y:-16,z:64},yaw_units:512},entry={values,source_record_sha256:sha,shared_record:true};
+const asset={id:root,kind:'worldmap',placement_record_count:1,scene_id:null,source_scene:scene,authored:{WorldMapPlacements:{scene,entries:{'0461':entry},source_disc_sha256:sha,source_map_sha256:sha,source_floor_lut_sha256:sha}}};
+const change={scene,asset_id:id,owner_id:id,field:'world_placement.offset.x',before:0,after:32,scope:'worldmap-source-record-transform-only',record_index:461,source_record_sha256:sha,affected_source_entities:[`scene://${scene}/worldmap/placements/0001`,`scene://${scene}/worldmap/placements/3fff`]};
+for(const [field,after] of [['offset.x',32],['offset.y',-16],['offset.z',64],['yaw_units',512]])assert.equal(worldPlacementBuildTarget({...change,field:'world_placement.'+field,after},[asset]).recordId,'0461');
+const detached=worldPlacementBuildTarget(change,[asset]);detached.entries['0461'].values.offset.x=2;detached.affectedEntityIds.pop();assert.equal(values.offset.x,32);assert.equal(change.affected_source_entities.length,2);
+for(const patch of [{scene:'town01'},{owner_id:root},{asset_id:root},{record_index:512},{record_index:true},{source_record_sha256:'b'.repeat(64)},{after:31},{before:32768},{field:'world_placement.offset.w'},{affected_source_entities:[]},{affected_source_entities:[change.affected_source_entities[0],change.affected_source_entities[0]]},{affected_source_entities:['scene://map01/worldmap/placements/0001']},{affected_source_entities:[`scene://${scene}/worldmap/placements/4000`]}])assert.throws(()=>worldPlacementBuildTarget({...change,...patch},[asset]));
+assert.throws(()=>worldPlacementBuildTarget(change,[asset,asset]));assert.throws(()=>worldPlacementBuildTarget(change,[]));const foreign=structuredClone(asset);foreign.authored.WorldMapPlacements.entries['0461'].shared_record=false;assert.throws(()=>worldPlacementBuildTarget(change,[foreign]));assert.equal(worldPlacementBuildTarget({scope:'other'},[asset]),null);
+console.log('World placement Build targets qualify all four fields and refuse stale, foreign, duplicate and unbounded ownership.');

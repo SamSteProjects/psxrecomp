@@ -24,6 +24,13 @@ class WorldPlacementGuards(unittest.TestCase):
   entry['shared_record']=True;candidate,edits,reopened=patch_map(original,{'0005':row},{'0005':entry},scene='map01',floor=floor)
   expected=bytearray(original);struct.pack_into('<3h',expected,at,128,-16,48);struct.pack_into('<H',expected,at+10,0xa400)
   self.assertEqual(candidate,bytes(expected));self.assertEqual(len(reopened),2);self.assertEqual(len(edits),4)
+  from sdk.build import build_report
+  reported=build_report(dict(edits=edits,validation={},overlays=[]))['changes']
+  for item in reported:
+   self.assertEqual(item['record_index'],5);self.assertEqual(item['source_record_sha256'],sha256(original[at:at+32]).hexdigest())
+   self.assertEqual(item['affected_source_entities'],[p['entity_id'] for p in placements])
+  reported[0]['affected_source_entities'].clear();self.assertEqual(len(edits[0]['affected_source_entities']),2)
+
   for bad in [dict(offset=dict(x=True,y=0,z=0),yaw_units=0),dict(offset=dict(x=32768,y=0,z=0),yaw_units=0),dict(offset=dict(x=0,y=0,z=0),yaw_units=4096)]:
    with self.assertRaises(ProjectError):values(bad)
   with patch('sdk.worldmap_placements.context',return_value=(original,{}, {'0005':row},200,floor,dict(entries={'0005':entry}),candidate,reopened)):

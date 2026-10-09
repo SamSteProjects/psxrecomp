@@ -241,6 +241,8 @@ def build_report(audit) -> dict:
                            if field == 'model.shape' and 'coordinate_changes' in change else {}),
                         **({"affected_grid_cell_count":len(change["affected_grid_cells"])}
                            if "affected_grid_cells" in change else {}),
+                        **({key: deepcopy(change[key]) for key in ('record_index', 'source_record_sha256', 'affected_source_entities')}
+                           if change.get('scope') == 'worldmap-source-record-transform-only' else {}),
                         "scope": change.get("scope", "initial-man-placement-only"),
                         **({"event_offset": change["event_offset"], "entry_byte_offset": change["entry_byte_offset"], "byte_length": change["byte_length"]}
                            if change.get("scope") == "audio-SEQ-fixed-operands-only" else {}),

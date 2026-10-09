@@ -100,7 +100,8 @@ def patch(raw, records, entries, *, scene, floor):
             if before!=after:
                 edits.append(dict(scene=scene,semantic_id=f'{owner(scene)}/records/{key}',field='world_placement.'+field,
                     before_value=before,after_value=after,scope='worldmap-source-record-transform-only',
-                    affected_source_entities=[s['entity_id'] for s in row['placements']],record_index=int(key)))
+                    affected_source_entities=[s['entity_id'] for s in row['placements']],record_index=int(key),
+                    source_record_sha256=row['source_record_sha256']))
     reopened=decode_worldmap_placements(bytes(result),floor,scene=scene)
     if {p['entity_id'] for p in reopened['placements']} != {p['entity_id'] for row in records.values() for p in row['placements']}:
         raise ProjectError('World placement transform changed source selection or placement coverage')

@@ -23,3 +23,17 @@ export function worldPlacementComparison(base,geometry,placements){
   if(!geometry||!placements||geometry.scene!==placements.scene||geometry.project_source_key!==placements.source_key||!hash(placements.source_key)||geometry.source_record?.map_sha256!==placements.source_record?.source_map_sha256||geometry.source_record?.floor_lut_sha256!==placements.source_record?.source_floor_lut_sha256||geometry.source_record?.disc_sha256!==placements.source_record?.source_disc_sha256)fail('Retail and Current world placement sources differ.');
   return placementSceneView(base,placements);
 }
+
+// Build rows identify native source records, not imported field-scene entities.
+export function worldPlacementBuildTarget(change,authoredAssets){
+  if(change?.scope!=='worldmap-source-record-transform-only')return null;
+  const scene=change.scene,index=change.record_index,recordId=String(index).padStart(4,'0'),ownerId=`worldmap://${scene}/placements/records/${recordId}`;
+  const field=change.field,axis=field?.startsWith('world_placement.offset.')?field.slice(-1):null;
+  const integer=v=>Number.isSafeInteger(v)&&(axis?v>=-32768&&v<=32767:v>=0&&v<4096);
+  const affected=change.affected_source_entities;
+  if(!scenes.includes(scene)||!Number.isSafeInteger(index)||index<0||index>=512||change.owner_id!==ownerId||change.asset_id!==ownerId||!['world_placement.offset.x','world_placement.offset.y','world_placement.offset.z','world_placement.yaw_units'].includes(field)||!integer(change.before)||!integer(change.after)||!hash(change.source_record_sha256)||!Array.isArray(affected)||!affected.length||affected.length>512||new Set(affected).size!==affected.length||affected.some(id=>typeof id!=='string'||!id.startsWith(`scene://${scene}/worldmap/placements/`)||!/^[0-3][0-9a-f]{3}$/.test(id.slice(`scene://${scene}/worldmap/placements/`.length))))fail('World placement Build change lacks exact source ownership.');
+  const owners=(authoredAssets??[]).filter(a=>a.id===`worldmap://${scene}/placements`);
+  const asset=owners[0],binding=asset?.authored?.WorldMapPlacements,entries=binding?.entries,entry=entries?.[recordId];
+  if(owners.length!==1||asset.kind!=='worldmap'||asset.scene_id!==null||asset.source_scene!==scene||binding.scene!==scene||Object.keys(binding).sort().join(',')!=='entries,scene,source_disc_sha256,source_floor_lut_sha256,source_map_sha256'||!['source_disc_sha256','source_map_sha256','source_floor_lut_sha256'].every(k=>hash(binding[k]))||!entries||Array.isArray(entries)||Object.keys(entries).length<1||Object.keys(entries).length>512||asset.placement_record_count!==Object.keys(entries).length||!entry||Object.keys(entry).sort().join(',')!=='shared_record,source_record_sha256,values'||!validValues(entry.values)||typeof entry.shared_record!=='boolean'||entry.source_record_sha256!==change.source_record_sha256||(axis?entry.values.offset[axis]:entry.values.yaw_units)!==change.after||affected.length>1&&!entry.shared_record)fail('World placement values differ from this Build report. Rebuild to inspect current changes.');
+  return {scene,ownerId,recordId,recordIndex:index,sourceRecordHash:change.source_record_sha256,entries:{[recordId]:structuredClone(entry)},affectedEntityIds:[...affected]};
+}
