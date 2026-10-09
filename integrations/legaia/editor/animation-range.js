@@ -95,3 +95,26 @@ export function removeAnimationRange({start,end,frameCount,objectCount,object=nu
   const order=(a,b)=>a.frame_index-b.frame_index||a.object_index-b.object_index;next.sort(order);removed.sort(order);
   return {proposed:removed,edits:next,removedAxes:removed.reduce((n,r)=>n+Object.keys(r.translation??{}).length+Object.keys(r.rotation_psx??{}).length,0)};
 }
+
+export function moveAnimationRange(args){
+  const {offset,frameCount}=args;
+  if(!Number.isSafeInteger(offset)||!offset||Math.abs(offset)>=frameCount)throw Error('Choose a nonzero integer frame shift within the clip.');
+  const selected=removeAnimationRange(args);
+  if(!selected.removedAxes)throw Error('This actor has no contributions matching that range, scope and axes.');
+  // Remove the complete selection first, so overlapping source/destination ranges move simultaneously.
+  const rows=new Map(selected.edits.map(row=>[row.frame_index+':'+row.object_index,structuredClone(row)])),proposed=[];
+  for(const source of selected.proposed){
+    const frame=source.frame_index+offset;
+    if(frame<0||frame>=frameCount)throw Error('Moving this selection would place authored channels outside the existing clip.');
+    const moved={...structuredClone(source),frame_index:frame},key=frame+':'+source.object_index;
+    const destination=rows.get(key)??{frame_index:frame,object_index:source.object_index};
+    for(const kind of ['translation','rotation_psx'])for(const [axis,value] of Object.entries(moved[kind]??{})){
+      if(Object.hasOwn(destination[kind]??{},axis))throw Error('Destination frame '+frame+', object '+source.object_index+' already has '+kind+'.'+axis+'. Choose an unoccupied destination or remove that contribution first.');
+      (destination[kind]??={})[axis]=value;
+    }
+    rows.set(key,destination);proposed.push(moved);
+  }
+  const order=(a,b)=>a.frame_index-b.frame_index||a.object_index-b.object_index;proposed.sort(order);const edits=[...rows.values()].sort(order);
+  if(edits.length>4096)throw Error('Moved and retained contributions exceed the 4096-channel limit.');
+  return {proposed,edits,movedAxes:selected.removedAxes};
+}

@@ -52,7 +52,7 @@ import {validateVertexRetarget} from '/vertex-retarget.js';
 import {qualifySourceNormals,rigidFrameNormals} from '/source-normal-view.js';
 import {mountAssetNavigation} from '/asset-navigation.js';
 import {wallCellAt,wallDragRectangle,wallSelectionGeometry} from '/wall-viewport.js';
-import {interpolateAnimationRange,interpolateAnimationFrameRange,holdAnimationFrameRange,removeAnimationRange,decodeImportedFrame} from '/animation-range.js';
+import {interpolateAnimationRange,interpolateAnimationFrameRange,holdAnimationFrameRange,removeAnimationRange,moveAnimationRange,decodeImportedFrame} from '/animation-range.js';
 import {decodeChannelPoseProposal} from '/animation-channel-proposal.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
 import {appendCaptureSummary} from '/script-capture.js';
@@ -3865,7 +3865,8 @@ async function openAnimationChannels(entity,initialChannel=null){
     const holdNote=document.createElement('p');holdNote.className='field-note';holdNote.textContent='Hold uses All rigid objects and repeats the copied complete pose exactly. Use the same first and last target frame to paste a single frame. The interpolation curve and selected end pose do not alter a held pose.';
     const interpolationReview=document.createElement('div');interpolationReview.dataset.animationInterpolation='review';
     const removalAxes=document.createElement('select');removalAxes.setAttribute('aria-label','Animation range removal axes');for(const [value,label] of [['all','All channel axes'],['translation','Translation XYZ'],['rotation_psx','Rotation XYZ'],...['translation','rotation_psx'].flatMap(kind=>[...'xyz'].map(axis=>[kind+'.'+axis,(kind==='translation'?'Translation ':'Rotation ')+axis.toUpperCase()]))]){const option=document.createElement('option');option.value=value;option.textContent=label;removalAxes.append(option);}
-    const interpolationKey=()=>JSON.stringify([context,state.scene_preview_source_key,state.authored_assets,copiedChannel,copiedFrame,verifiedChannel,channelFrame,channelObject,rangeInputs.start.value,rangeInputs.end.value,importedCurve.value,importedScope.value,importedOperation.value,removalAxes.value,channelDirty]);
+    const moveOffset=document.createElement('input');moveOffset.type='number';moveOffset.min=String(1-binding.frame_count);moveOffset.max=String(binding.frame_count-1);moveOffset.step='1';moveOffset.value='1';moveOffset.required=true;moveOffset.setAttribute('aria-label','Animation contribution frame shift');
+    const interpolationKey=()=>JSON.stringify([context,state.scene_preview_source_key,state.authored_assets,copiedChannel,copiedFrame,verifiedChannel,channelFrame,channelObject,rangeInputs.start.value,rangeInputs.end.value,importedCurve.value,importedScope.value,importedOperation.value,removalAxes.value,moveOffset.value,channelDirty]);
     importedCurve.onchange=()=>{interpolationReview.replaceChildren();};
     importedScope.onchange=()=>{interpolationReview.replaceChildren();};
     importedOperation.onchange=()=>{interpolationReview.replaceChildren();interpolate.textContent=importedOperation.value==='hold'?'Review held complete pose':'Review interpolated frame range';importedCurve.disabled=importedOperation.value==='hold';};
@@ -3906,7 +3907,7 @@ async function openAnimationChannels(entity,initialChannel=null){
         const copied=all?copiedFrame:copiedChannel;showChannelReview(result,key,`${hold?'Hold copied complete pose':importedCurve.selectedOptions[0].textContent} · ${importedScope.selectedOptions[0].textContent} · ${result.proposed.length} proposed channels · copied ${copied.layer} frame ${copied.frame} ${hold?'held across target frames '+args.start+' through '+args.end:'to effective frame '+channelFrame} · project unchanged. Apply replaces this actor’s contributions in the target range; shared conflicts are checked on Apply.`,hold?'Apply reviewed held pose':'Apply reviewed interpolation');
       }catch(exc){if(current())error.textContent=exc.message;}finally{setBusy(false);}
     };
-    const removalLabel=document.createElement('label');removalLabel.textContent='Remove this actor’s contributions ';removalLabel.append(removalAxes);const removeRange=document.createElement('button');removeRange.type='button';removeRange.textContent='Review channel range removal';
+    const removalLabel=document.createElement('label');removalLabel.textContent='Contribution axes ';removalLabel.append(removalAxes);const removeRange=document.createElement('button');removeRange.type='button';removeRange.textContent='Review channel range removal';
     removalAxes.onchange=()=>interpolationReview.replaceChildren();
     removeRange.onclick=()=>{interpolationReview.replaceChildren();if(!current()||busy)return;try{
       if(channelDirty)throw Error('Apply or discard the current draft before removing contributions.');
@@ -3916,7 +3917,16 @@ async function openAnimationChannels(entity,initialChannel=null){
       if(!result.removedAxes)throw Error('This actor has no contributions matching that range, scope and axes.');
       showChannelReview(result,interpolationKey(),`${result.removedAxes} ${result.removedAxes===1?'axis':'axes'} across ${result.proposed.length} ${result.proposed.length===1?'channel':'channels'} proposed for removal from this actor only. Other axes, frames, objects and shared owners remain. Preview shows the resulting clip; project unchanged until Apply.`,'Apply reviewed range removal');
     }catch(exc){if(current())error.textContent=exc.message;}};
-    rangeControls.append(interpolationNote,scopeLabel,operationLabel,holdNote,curveLabel,interpolate,removalLabel,removeRange,interpolationReview);
+    const moveLabel=document.createElement('label');moveLabel.textContent='Shift selected contributions by frames ';moveLabel.append(moveOffset);const moveRange=document.createElement('button');moveRange.type='button';moveRange.textContent='Review channel range move';const moveNote=document.createElement('p');moveNote.className='field-note';moveNote.textContent='Move this actor’s selected stored axes to different existing frames. Positive shifts move later; negative shifts move earlier. Source axes are removed, values stay exact, and occupied destination axes reject. This does not change clip length or playback timing.';
+    moveOffset.oninput=()=>interpolationReview.replaceChildren();
+    moveRange.onclick=()=>{interpolationReview.replaceChildren();if(!current()||busy)return;try{
+      if(channelDirty)throw Error('Apply or discard the current draft before moving contributions.');
+      if(loadedAuthoringState!==JSON.stringify([state.scene_preview_source_key,state.authored_assets]))throw Error('Project changed. Reopen the animation editor.');
+      if(!rangeInputs.start.reportValidity()||!rangeInputs.end.reportValidity()||!moveOffset.reportValidity())return;
+      const result=moveAnimationRange({start:Number(rangeInputs.start.value),end:Number(rangeInputs.end.value),frameCount:binding.frame_count,objectCount:binding.bone_count,object:importedScope.value==='all_objects'?null:channelObject,axes:removalAxes.value,offset:Number(moveOffset.value),edits});
+      showChannelReview(result,interpolationKey(),`${result.movedAxes} stored ${result.movedAxes===1?'axis':'axes'} proposed for a shift of ${moveOffset.value} frames. Source contributions are withdrawn and destination values remain exact. Other contributions remain; project unchanged until Apply.`,'Apply reviewed range move');
+    }catch(exc){if(current())error.textContent=exc.message;}};
+    rangeControls.append(interpolationNote,scopeLabel,operationLabel,holdNote,curveLabel,interpolate,removalLabel,removeRange,moveLabel,moveNote,moveRange,interpolationReview);
     clearChannel.onclick=()=>{
       if(channelDirty){error.textContent='Apply or discard unapplied channel changes before clearing the selected contribution.';return;}
       const next=edits.filter(edit=>edit.frame_index!==channelFrame||edit.object_index!==channelObject);
