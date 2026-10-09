@@ -1,0 +1,9 @@
+import assert from 'node:assert/strict';
+import {worldmapHierarchyRows} from '../editor/worldmap-scene.js';
+const entities=[{entity_id:'scene://map01/worldmap/ground',asset_id:'asset://map01/worldmap/walk-ground',placement_scope:'source_ground'},...Array.from({length:3},(_,i)=>({entity_id:'scene://map01/worldmap/placements/'+i,asset_id:'asset://map01/worldmap/models/'+i,placement_scope:'source_spawn_seed',model_pool_index:i,object_record_index:i+20,source_cell:i+100}))],view={entities};
+assert.equal(worldmapHierarchyRows(view).matching,4);
+for(const query of ['MODELS/1','model:1','record:21','cell:101']){const rows=worldmapHierarchyRows(view,query);assert.equal(rows.matching,1);assert.equal(rows.rows[0].entityId,entities[2].entity_id);}
+let result=worldmapHierarchyRows(view,'absent',entities[2].entity_id);assert.equal(result.matching,0);assert.equal(result.rows.length,1);assert.equal(result.selectedOutsideFilter,true);assert.ok(result.rows[0].label.endsWith('selected outside filter'));
+result=worldmapHierarchyRows(view,'source seed',entities[0].entity_id);assert.equal(result.matching,3);assert.equal(result.rows.length,4);assert.equal(result.rows[0].entityId,entities[0].entity_id);result.rows[0].label='changed';assert.equal(worldmapHierarchyRows(view).rows[0].label,'Walk ground');
+for(const [scene,query,selected] of [[view,'model:no',null],[view,'record:-1',null],[view,'cell:65536',null],[view,'x'.repeat(513),null],[view,'x '.repeat(17),null],[view,'','foreign'],[{entities:[entities[0],entities[0]]},'',null],[{entities:Array(513).fill(entities[0])},'',null]])assert.throws(()=>worldmapHierarchyRows(scene,query,selected));
+console.log('World hierarchy identity/model/record/cell search, detached display rows, preserved filtered selection and bounded/foreign/ambiguous refusal passed.');

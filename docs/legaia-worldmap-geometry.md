@@ -32,3 +32,38 @@ See [sparse placements](legaia-worldmap-placements.md) for provenance, model
 texture coverage and the limits on runtime visibility and resting transforms.
 
 The inspection now supports [source scene and selected-entity GLB export](legaia-worldmap-export.md) with the same geometry, transforms and confidence limits.
+
+
+## Source Hierarchy Search — 2026-10-09
+
+The source scene hierarchy now filters its recorded entities by case-insensitive
+plain terms or exact `model:`, `record:` and `cell:` unsigned indices. `id:`,
+`asset:` and `scope:` terms search their recorded identity fields. Terms combine
+with AND; searches are bounded to 512 characters and 16 terms. Duplicate/missing
+identities and a selected ID outside the qualified source view refuse. Numeric
+filters reject malformed or oversized values without replacing the prior options.
+These fields describe source model pools, object records and cell indices; they
+are not semantic object names, runtime identities or authoring assignments.
+
+A selected entity stays in the hierarchy when it does not match, labelled selected
+outside filter. Match counts distinguish this retained row from search matches.
+Filtering preserves the selected stable ID, Inspector and rendered scene; it does
+not hide meshes or alter geometry/export scope. Mesh picking can retain its selected
+entity outside the filter. Busy or stale source contexts do not apply search events.
+Kingdom/source withdrawal and close clear the display filter.
+
+Four Node suites and two JS syntax checks passed. Focused checks cover field and
+identity matching, detached labels, exact preserved selection, query limits and
+foreign/duplicate refusal. Actual muted editor workflows loaded fresh SDK source
+geometry for map01/map02/map03: 302/273/237 entities including ground. Model, record
+and cell results matched independent filtering of every source report; selection
+and Inspector text stayed exact, including no-match filters and Frame selected.
+Invalid filters retained the prior selection/options; clearing restored every row.
+Close/reopen cleared the filter. Desktop/400px screenshots were inspected. Zero page
+errors or command/Build/Run/Save/scene/selection/export requests occurred. Project,
+imports, history and saved fixture files stayed exact. Private evidence:
+`local-output/sdk-20260909/worldmap-hierarchy-search-20261009/`.
+The browser harness first exhausted Chromium response-body inspection cache for a
+large geometry response; bounded API route capture qualified the same response
+before the final pass. No game, runtime attachment or native Build ran. Source spawn
+seeds do not establish runtime resting positions or visibility; full SDK goal active.

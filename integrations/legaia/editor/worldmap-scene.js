@@ -33,3 +33,20 @@ export function worldmapSceneView(report){
   if(instances.filter(e=>e.placement_scope==='source_ground').length!==1)fail('World source scene requires exactly one ground entity.');
   return {assets:[...assets.values()],entities:instances};
 }
+
+
+export function worldmapHierarchyRows(sceneView,query='',selectedId=null){
+  const entities=sceneView?.entities;
+  if(!Array.isArray(entities)||entities.length>512||typeof query!=='string'||query.length>512||selectedId!==null&&typeof selectedId!=='string')fail('World hierarchy filters require bounded source entities and text.');
+  const terms=query.trim().toLowerCase().split(/\s+/).filter(Boolean);if(terms.length>16)fail('World hierarchy search is limited to 16 terms.');
+  const filters=terms.map(term=>{const match=/^(model|record|cell|id|asset|scope):(.*)$/.exec(term);if(!match)return {text:term};const [,field,value]=match;if(!value||['model','record','cell'].includes(field)&&(!/^[0-9]+$/.test(value)||Number(value)>65535))fail('World hierarchy field filters require an identity or bounded unsigned index.');return {field,value};});
+  const seen=new Set();for(const entity of entities){if(typeof entity?.entity_id!=='string'||!entity.entity_id||entity.entity_id.length>1024||typeof entity.asset_id!=='string'||entity.asset_id.length>1024||seen.has(entity.entity_id))fail('World hierarchy has missing or duplicate source identities.');seen.add(entity.entity_id);}
+  if(selectedId!==null&&!seen.has(selectedId))fail('Selected world entity is outside the qualified hierarchy.');
+  let matching=0;const rows=[];
+  for(const entity of entities){
+    const ground=entity.placement_scope==='source_ground',label=ground?'Walk ground':`${entity.entity_id.split('/').pop()} · model ${entity.model_pool_index} · record ${entity.object_record_index} · source seed`;
+    const text=[label,entity.entity_id,entity.asset_id,entity.placement_scope,JSON.stringify(entity.source_cell??null)].join(' ').toLowerCase(),matches=filters.every(filter=>filter.text?text.includes(filter.text):['model','record','cell'].includes(filter.field)?entity[{model:'model_pool_index',record:'object_record_index',cell:'source_cell'}[filter.field]]===Number(filter.value):String(entity[{id:'entity_id',asset:'asset_id',scope:'placement_scope'}[filter.field]]??'').toLowerCase().includes(filter.value));if(matches)matching++;
+    if(matches||entity.entity_id===selectedId)rows.push({entityId:entity.entity_id,label:label+(matches?'':' · selected outside filter'),matches});
+  }
+  return {rows,total:entities.length,matching,selectedOutsideFilter:rows.some(row=>!row.matches)};
+}
