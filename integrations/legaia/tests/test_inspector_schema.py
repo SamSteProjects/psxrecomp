@@ -118,7 +118,7 @@ class InspectorSchema(unittest.TestCase):
         self.assertEqual({key for key in schema['components'] if key.startswith('Controller')},CONTROLLER_COMPONENTS)
         for family in CONTROLLER_COMPONENTS:
             definition=schema['components'][family]
-            self.assertEqual(definition['actions'],[{'id':'inspect-controller-component','label':'Inspect Component Source' if family=='ControllerFlagBits' else 'Inspect and Edit Component','capability':'controller_workspace_snapshot','requires_edit':True}])
+            self.assertEqual(definition['actions'],[{'id':'inspect-controller-component','label':'Inspect and Edit Component','capability':'controller_workspace_snapshot','requires_edit':True}])
             self.assertTrue(all('authoring' not in prop for prop in definition['properties']))
             self.assertIn('gameplay remain unverified',definition['notes'][0])
         self.assertIn('native Build delivers qualified bit indices',schema['components']['ControllerFlagBits']['notes'][0])

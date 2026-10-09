@@ -1,5 +1,16 @@
 # Controller Source Coverage Survey
 
+## Controller Flag-Bit Editor Controls — 2026-10-09
+
+The dedicated controller source editor now offers bit-index selection, local0–15/global-context0–31 decimal fields, separate Retail/Current/Authored layers, keyed Review, explicit Apply, Discard and reset to Retail. Context SET8/CLEAR10 are refused before Review. Source instructions, the editing navigator and unified comparison links focus exact operands. Shared bookmark, reset and file workflows see pending bit drafts; Edit/source/scene changes withdraw stale views and reviews.
+
+The frontend independently checks literal opcode, ordinary/extended header, source mask, context, continuation, retained boundaries and complete candidate coverage. Excluded legitimate indices remain unavailable; malformed source bytes cannot be silently hidden as unsupported entries. Review checks changed bytes and unrelated instructions against the selected request. Late responses, failed Apply, invalid drafts and target changes withdraw proposals; selecting the same target preserves a reviewed draft.
+
+Thirty-four focused Python checks and four Node suites passed. Actual Cave01/Rikuroa2 editor workflows qualified3/14 targets, used one combined workspace request per opening, issued exactly two typed Apply/reset commands per scene, preserved imports and restored the project document. Desktop/400-pixel tests reported zero browser errors or horizontal overflow; four screenshots passed visual inspection. Save/Open and Undo/Redo preserved the browser-authored entry. Native packages matched independent complete literal MANs with only byte196/601 changed; package receipts verified. Evidence: `local-output/sdk-20260909/controller-flag-bit-editor-20261009/`.
+
+This completes the qualified encoded-bit editor-to-package path. It does not establish runtime flag values, story meaning, scheduler behavior or gameplay. No game or native recomp compile occurred; the full SDK goal remains active.
+
+
 ## Controller Flag-Bit Native Build — 2026-10-09
 
 ControllerFlagBits now delivers through normal and appended-NPC Build. The temporary refusal is removed. Independent receipts verify exact Retail opcode/context/mask, source and current preimages, typed bit values, byte positions, complete serializer audit coverage and unchanged MAN layout. Only one low-five-bit operand byte changes per request; upper bits, continuation and excluded local/context cases remain protected. No-op entries produce no changed receipt; occupied spans still refuse. All twelve controller families compose in one record.
