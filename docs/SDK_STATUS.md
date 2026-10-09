@@ -10705,3 +10705,7 @@ and unsupported layouts reject. Undo/Redo, Save/Open and normal Build retain the
 existing record and capacity checks. Counts, skinning, general retargeting and
 retail timing/runtime acceptance remain unfinished. See
 [animation GLB workflow](legaia-animation-glb.md).
+
+## Controller BGM Build Composition — 2026-10-09
+
+Offline checks passed — 2026-10-09: [Controller BGM Build Composition](legaia-controller-bgm.md#native-build-composition--2026-10-09) adds independently checked two-byte native receipts, composition with unrelated authored controller bytes, and relocated-record support. Both byte spans, immutable header/context/dispatch and source preimages are checked; missing, duplicate, forged and unaudited serializer output refuse. Build reporting retains exact BGM identity and typed before/after values. Twelve focused Python tests and 1,626 whole-MAN comparisons across 271 targets in 96 scenes passed, including descriptor and raw carriers. This composer is not yet registered in project commands or normal package Build; editor workflow remains pending. No game, runtime attachment, native recomp compile, installation or disc export; full SDK goal active, solo work continues. Evidence: `local-output/sdk-20260909/controller-bgm-build-20261009/`.
