@@ -698,6 +698,23 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "on_lookup_miss": "no_field_copy",
                     "source_lookup": "0x8003C83C", "actor_binding": "runtime_lookup_unresolved",
                     "runtime_effect": "not_evaluated"}
+        elif sub == 0xEB:
+            # Retail801E34DC advances adjusted PC5 before actor lookup.
+            # On miss,801E360C loads the word at sub-op+2, subtracts2,
+            # and adds it to that advanced PC. Thus the relative base is
+            # the word location, not an absolute PC as pinned Andrew claims.
+            size, mnemonic = 4, "ACTOR_LOOKUP_BRANCH"
+            need(size)
+            word_pc = operand + 2
+            raw = struct.unpack_from("<H", data, word_pc)[0]
+            target = (word_pc + raw) & 0xFFFF
+            args = {"sub_op": sub, "actor_selector": data[operand + 1],
+                    "target_word": raw, "target_word_pc": word_pc,
+                    "target_pc": target, "encoding": "relative_u16_wrap16",
+                    "actor_binding": "runtime_lookup_unresolved",
+                    "runtime_effect": "not_evaluated"}
+            branches = [{"pc": operand + size, "condition": "actor_lookup_found"},
+                        {"pc": target, "condition": "actor_lookup_missing"}]
         elif sub == 0xEA:
             # Retail table801CF030 ->801E34CC calls8003C7EC and adds2
             # to PC in its delay slot, then returns advanced s8. Pinned halt is false.
