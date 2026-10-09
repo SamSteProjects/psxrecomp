@@ -65,12 +65,14 @@ def prepare(project,owner):
 
 def snapshot(project,owner):
     key,context,offset,record,entry,components,current,options=prepare(project,owner)
+    from importer.script_inspection import inspect_record
+    current_report=inspect_record(current[offset:offset+len(record)],entry,semantic_id=owner.replace('scene://','script://',1),base_offset=offset)
     entries=components.get(COMPONENT,{}).get('entries',{})
     targets=[]
     for target in options['targets']:
         pc=target['pc'];at=offset+pc
         targets.append(dict(target,authored_values=deepcopy(entries.get(target['semantic_id'])),current_index=((current[at]&15)<<8)|current[at+1]))
-    return dict(schema_version=SCHEMA,owner_id=owner,state_key=key,source_record_sha256=sha256(record).hexdigest(),current_record_sha256=sha256(current[offset:offset+len(record)]).hexdigest(),targets=targets,supported=bool(targets),reason=options['reason'],limitations=options['limitations'],gameplay_verified=False)
+    return dict(schema_version=SCHEMA,owner_id=owner,state_key=key,source_record_sha256=sha256(record).hexdigest(),current_record_sha256=sha256(current[offset:offset+len(record)]).hexdigest(),targets=targets,current_report=current_report,supported=bool(targets),reason=options['reason'],limitations=options['limitations'],gameplay_verified=False)
 
 
 def review(project,owner,operand,value):
@@ -88,9 +90,12 @@ def review(project,owner,operand,value):
     except RetailImportError as exc:raise ProjectError(str(exc)) from exc
     differences=[i for i,(a,b) in enumerate(zip(current,candidate)) if a!=b]
     if any(i not in (offset+target['pc'],offset+target['pc']+1) for i in differences):raise ProjectError('Controller selector Review changed an unrelated byte')
+    from importer.script_inspection import inspect_record
+    current_report=inspect_record(current[offset:offset+len(record)],entry,semantic_id=owner.replace('scene://','script://',1),base_offset=offset)
+    proposed_report=inspect_record(candidate[offset:offset+len(record)],entry,semantic_id=owner.replace('scene://','script://',1),base_offset=offset)
     proof=dict(owner_id=owner,operand_id=operand,value=deepcopy(value),state_key=key,source_record_sha256=sha256(record).hexdigest(),current_record_sha256=sha256(current[offset:offset+len(record)]).hexdigest(),proposed_record_sha256=sha256(candidate[offset:offset+len(record)]).hexdigest(),proposed=proposed)
     if key!=state_key(project):raise ProjectError('Controller selector source changed during Review')
-    return dict(schema_version=SCHEMA,**proof,review_key=digest(proof),changed_decoded_byte_offsets=differences,no_op=components==proposed,native_bytes_changed=current!=candidate,project_changed=False,gameplay_verified=False)
+    return dict(schema_version=SCHEMA,**proof,review_key=digest(proof),current_report=current_report,proposed_report=proposed_report,changed_decoded_byte_offsets=differences,no_op=components==proposed,native_bytes_changed=current!=candidate,project_changed=False,gameplay_verified=False)
 
 
 def apply(project,command):

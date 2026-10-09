@@ -799,8 +799,7 @@ function projectSaveStatus(){
 function buildValue(value){return typeof value==='string'?value:JSON.stringify(value) ?? 'Unknown';}
 function buildChangeResource(change){
   if(typeof change.owner_id!=='string')return null;
-  return assetRecords().find(record=>['texture','script'].includes(record.type)&&
-    record.authoredRecord?.id===change.owner_id) ?? null;
+  return assetRecords().find(record=>record.type==='controller'?record.id===change.owner_id.replace('scene://','script://'):['texture','script'].includes(record.type)&&record.authoredRecord?.id===change.owner_id) ?? null;
 }
 function modelAuditLabel(row){
   if(row.kind==='primitive_removal')return `Object ${row.object_index} · Retail face ${row.primitive_index} removed · retained topology override`;
@@ -815,6 +814,12 @@ async function openBuildChange(change,vector=null){
   const owner=change.owner_id,resource=buildChangeResource(change);
   buildDialog.close();
   if(scene.id!==state.scene?.id&&!await api('/api/scene',{scene_id:scene.id}))return;
+  if(resource?.type==='controller'&&change.scope==='script-system-selector-only'){
+    if(resourceKey!==resourceStateKey())await refreshResources();
+    const controller=assetRecords(true).find(row=>row.type==='controller'&&row.id===resource.id&&row.sceneId===scene.id);
+    if(!controller){notify('The controller source is unavailable. Refresh or rebuild.',true);return;}
+    await inspectControllerAsset(controller,parseInt(change.asset_id.split('/').at(-1),16));return;
+  }
   if(['source-MAP-trigger-cell-only','source-MAP-region-bounds-only'].includes(change.scope)){
     if(resourceKey!==resourceStateKey())await refreshResources();
     const source=assetRecords().find(item=>item.id===change.asset_id);
@@ -909,6 +914,7 @@ function setBusy(value) {
   document.querySelectorAll('#draft-inspector-form input,#draft-inspector-form button,#draft-name-form input,#draft-name-form button,#draft-donor-form select,#draft-donor-form button,#duplicate-npc-draft,#repeat-npc-draft,#delete-npc-draft,#npc-presets-button').forEach(control=>control.disabled=value||!canEdit());
   for(const id of ['import-button','save-button','project-button','empty-import']) $(id).disabled=value;
   $('undo-button').disabled=value || worldmapDraftPending || !state.history?.can_undo;
+  if($('scene-controller-button'))$('scene-controller-button').disabled=value||!state.capabilities?.scene_controller_inspection;
   $('redo-button').disabled=value || worldmapDraftPending || !state.history?.can_redo;
   buildButton.disabled=value || worldmapDraftPending || !state.capabilities?.build || !canEdit();
   if($('build-review-button'))$('build-review-button').disabled=value||worldmapDraftPending||!state.capabilities?.build_review;
@@ -1227,7 +1233,7 @@ async function readSceneCatalog(offset=0){
 $('catalog-search').onclick=()=>readSceneCatalog();$('catalog-previous').onclick=()=>readSceneCatalog(Math.max(0,catalogOffset-16));$('catalog-next').onclick=()=>{if(catalogNext!==null)readSceneCatalog(catalogNext);};
 $('import-form').onsubmit=async event=>{event.preventDefault();$('status').textContent='Importing scene from local disc image…';await api('/api/import',{disc:$('disc-input').value,scene:$('scene-input').value},{dialog:$('import-dialog'),success:'Scene imported.'});};
 const modelResolutionButton=document.createElement('button');modelResolutionButton.type='button';modelResolutionButton.id='model-resolution-button';modelResolutionButton.textContent='Inspect unresolved model references';
-const sceneControllerButton=document.createElement('button');sceneControllerButton.type='button';sceneControllerButton.id='scene-controller-button';sceneControllerButton.textContent='Inspect Scene Entry Controller';sceneControllerButton.onclick=()=>openSceneController({getState:()=>state,busy:()=>busy,onError:error=>notify(error.message,true)});transformTools.append(sceneControllerButton);
+const sceneControllerButton=document.createElement('button');sceneControllerButton.type='button';sceneControllerButton.id='scene-controller-button';sceneControllerButton.textContent='Inspect Scene Entry Controller';sceneControllerButton.onclick=()=>openSceneController({getState:()=>state,busy:()=>busy,api,setBusy,onError:error=>notify(error.message,true)});transformTools.append(sceneControllerButton);
 modelResolutionButton.onclick=()=>openModelResolution({getState:()=>state,busy:()=>busy,onError:error=>notify(error.message,true),onSelectGroup:async(ids,scene,key)=>{const current=()=>state.scene?.id===scene&&state.asset_reference_source_key===key;if(!await selectCurrentPlacementGroup(ids,ids.at(-1),current))throw Error('Load the Current scene in Edit mode before selecting affected placements.');},onInspectSource:async source=>{const actor=entities().find(entity=>entity.id===source.source_actor_id);if(!actor)throw Error('Model source actor is unavailable in the active scene');await openActorScript(actor);},onSelect:async row=>{if(row.kind==='npc'){if(!state.actor_drafts?.[row.entity_id])throw Error('NPC source changed');selectNpcDraft(row.entity_id);frameNpcDraft();}else if(await api('/api/selection',{entity_id:row.entity_id}))frame(selected());}});transformTools.append(modelResolutionButton);
 $('changes-button').onclick=()=>{if(!busy)openProjectChanges({save:(key,dialog)=>api('/api/project/save-reviewed',{source_key:key},{dialog,success:'Reviewed project changes saved.'})});};
 $('save-button').onclick=()=>api('/api/project/save',{}, {success:'Project saved.'});
@@ -1968,7 +1974,7 @@ function assetRecords(activeOnly=false){
     ...resourceRecords.map(record=>({id:record.semantic_id,type:record.asset_kind,label:record.name ?? record.semantic_id,source:record.scope?.startsWith('global-')?record.scope:(record.source_record?.prot_entry_name ?? state.scene?.name),sceneId:state.scene?.id,data:record}))
   ]).map(record=>[record.id,record]));
   for(const authored of state.authored_assets ?? []){
-    if(typeof authored.id!=='string'||!['actor','model','texture','template','script','scene','worldmap'].includes(authored.kind))continue;
+    if(typeof authored.id!=='string'||!['actor','model','texture','template','script','controller','scene','worldmap'].includes(authored.kind))continue;
     const assetId=authored.kind==='script'?(authored.script_id ?? authored.id):authored.id,existing=records.get(assetId);
     if(activeOnly&&!existing&&authored.scene_id&&authored.scene_id!==state.scene?.id)continue;
     if(projectScope&&projectAssetControls.filter()!=='all'&&!existing&&authored.scene_id!==projectAssetControls.filter())continue;
@@ -1994,7 +2000,7 @@ function initialAssetUsage(record,modelReferences){
 function showAssetDetails(record,lookup=()=>assetRecords()){
   assetPlacementSelection?.dispose();assetPlacementSelection=null;animationContributions?.dispose();animationContributions=null;
   const isAuthored=!!record.authoredRecord,inspectorId=assetInspectorDefinition(state.inspector_schema,record);
-  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${inspectorId?'':property('Stable ID',record.id)+property('Record type',record.type)+property(record.data?.scope?.startsWith('global-')?'Source scope':'Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='model'?'Inspect authored model':record.type==='script'?'Open script workspace':record.type==='scene'?'Open scene':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
+  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${inspectorId?'':property('Stable ID',record.id)+property('Record type',record.type)+property(record.data?.scope?.startsWith('global-')?'Source scope':'Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='model'?'Inspect authored model':record.type==='script'?'Open script workspace':record.type==='controller'?'Inspect controller selectors':record.type==='scene'?'Open scene':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
   const exportContext=resourceStateKey(),exportSnapshot=JSON.stringify(record);
   const exportCurrent=()=>assetDetails.open&&exportContext===resourceStateKey()&&JSON.stringify(lookup().find(item=>item.id===record.id))===exportSnapshot;
   const evidence=document.createElement('div');evidence.className='dialog-actions';evidence.style.flexWrap='wrap';
@@ -2154,14 +2160,14 @@ async function resolveProjectAsset(record){
 }
 async function inspectControllerAsset(record,focusFlagPc=null){
   if(busy||record.type!=='controller'||!canEdit())return;
-  const scene=record.sceneId,path=state.project?.path,sourceHash=record.data?.source_record?.sha256;
+  const scene=record.sceneId,path=state.project?.path,sourceHash=record.data?.source_record?.sha256??record.authored?.ControllerSystemFlags?.source_record_sha256;
   if(typeof scene!=='string'||record.id!=='script://'+scene.slice(8)+'/controllers/man-p1/0000'||!sourceHash)throw Error('Controller asset has no qualified scene ownership.');
   if(scene!==state.scene?.id&&!await api('/api/scene',{scene_id:scene}))return;
   if(path!==state.project?.path||scene!==state.scene?.id)throw Error('Controller source scene changed during navigation.');
   if(resourceKey!==resourceStateKey())await refreshResources();
   const fresh=assetRecords(true).find(row=>row.id===record.id&&row.type==='controller'&&row.sceneId===scene);
   if(path!==state.project?.path||scene!==state.scene?.id||resourceKey!==resourceStateKey()||fresh?.data?.source_record?.sha256!==sourceHash)throw Error('Controller asset source changed. Refresh resources.');
-  selectSceneResource(fresh);await openSceneController({getState:()=>state,busy:()=>busy,expectedAsset:fresh,focusFlagPc,onError:error=>notify(error.message,true)});
+  selectSceneResource(fresh);await openSceneController({getState:()=>state,busy:()=>busy,api,setBusy,expectedAsset:fresh,focusFlagPc,onError:error=>notify(error.message,true)});
 }
 async function activateAsset(record,action=null){
   if(busy)return;

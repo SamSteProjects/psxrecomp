@@ -203,6 +203,8 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_animation_authoring"] = bool(self.project.disc_path)
         from .script_branches import state_key as script_state_key
         state['script_authoring_state_key'] = script_state_key(self.project)
+        from .controller_system_flags import state_key as controller_selector_key
+        state['controller_selector_source_key']=controller_selector_key(self.project)
         state['capabilities']['script_branch_authoring'] = bool(self.project.disc_path)
         state['capabilities']['system_selector_authoring'] = bool(self.project.disc_path)
         state['capabilities']['source_build_script_inspection'] = bool(self.project.disc_path)
@@ -256,6 +258,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_preset_batch"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["scene_controller_inspection"] = bool(self.project.disc_path and self.project.active_scene and self.project.mode == 'edit')
+        state['capabilities']['controller_selector_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['asset_references'] = bool(self.project.disc_path and self.project.active_scene and len(self.project.imports)<=64)
         state['capabilities']['worldmap_source_navigation'] = bool(self.project.disc_path)
         state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]

@@ -1,3 +1,4 @@
+import {mountControllerSystemSelectors} from './system-flag-selectors.js';
 import {mountScriptWalkthrough} from './script-walkthrough.js';
 import {mountScriptFlowOverview} from './script-flow-overview.js';
 import {decodeControllerFlags,renderControllerFlags} from './controller-flags.js';
@@ -14,7 +15,7 @@ export function qualifySceneControllerAsset(report,asset){
  return true;
 }
 
-export async function openSceneController({getState,busy,expectedAsset=null,focusFlagPc=null,onError=()=>{}}){
+export async function openSceneController({getState,busy,expectedAsset=null,focusFlagPc=null,api=null,setBusy=null,onError=()=>{}}){
  const initial=getState(),scene=initial.scene?.id,key=initial.asset_reference_source_key,projectPath=initial.project?.path;
  if(busy()||!scene||initial.project?.mode!=='edit'||!key)return;
  const dialog=document.createElement('dialog');dialog.id='scene-controller-dialog';dialog.style.cssText='width:min(850px,calc(100vw - 32px));max-height:90vh;overflow:auto';
@@ -22,10 +23,10 @@ export async function openSceneController({getState,busy,expectedAsset=null,focu
  const close=document.createElement('button');close.textContent='Close';close.onclick=()=>dialog.close();
  const status=document.createElement('p');status.setAttribute('role','status');status.textContent='Verifying the scene controller source…';
  const content=document.createElement('div');content.style.overflowWrap='anywhere';dialog.append(heading,close,status,content);document.body.append(dialog);dialog.showModal();
- let flow=null,walkthrough=null,selectedSource=null;const sourceRows=new Map();
+ let flow=null,walkthrough=null,selectors=null,selectedSource=null;const sourceRows=new Map();
  const controller=new AbortController(),fresh=()=>dialog.open&&getState().project?.path===projectPath&&getState().scene?.id===scene&&getState().asset_reference_source_key===key&&getState().project?.mode==='edit';
- const timer=setInterval(()=>{if(!fresh()){flow?.dispose();flow=null;walkthrough?.dispose();walkthrough=null;sourceRows.clear();selectedSource=null;content.replaceChildren();status.textContent='Scene sources changed. Reopen controller inspection.';}},250);
- dialog.addEventListener('close',()=>{clearInterval(timer);controller.abort();flow?.dispose();walkthrough?.dispose();sourceRows.clear();dialog.remove();},{once:true});
+ const timer=setInterval(()=>{if(!fresh()&&!busy()){selectors?.dispose();selectors=null;flow?.dispose();flow=null;walkthrough?.dispose();walkthrough=null;sourceRows.clear();selectedSource=null;content.replaceChildren();status.textContent='Scene sources changed. Reopen controller inspection.';}selectors?.updateState();},250);
+ dialog.addEventListener('close',()=>{clearInterval(timer);controller.abort();selectors?.dispose();flow?.dispose();walkthrough?.dispose();sourceRows.clear();dialog.remove();},{once:true});
  try{
   const response=await fetch('/api/scene-controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scene_id:scene,expected_source_key:key}),signal:controller.signal}),value=await response.json();if(!response.ok||value.error)throw Error(value.error||'Controller inspection failed');if(!fresh())return;
   const report=decodeSceneController(value,scene,key);if(expectedAsset)qualifySceneControllerAsset(report,expectedAsset);status.textContent=`${report.semantic_id} · Decoder status: ${report.status} · ${report.instructions.length} decoded instructions · ${report.dialogues.length} dialogue segments`;
@@ -45,6 +46,10 @@ export async function openSceneController({getState,busy,expectedAsset=null,focu
     const stateResponse=await fetch('/api/state',{signal}),state=await stateResponse.json();
     return stateResponse.ok&&fresh()&&state.project?.path===projectPath&&state.project?.mode==='edit'&&state.scene?.id===scene&&state.asset_reference_source_key===key;
    }});
+  if(typeof api==='function'&&typeof setBusy==='function'&&getState().capabilities?.controller_selector_authoring){
+   selectors=mountControllerSystemSelectors(content,{owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_selector_source_key}),busy,setBusy,api,onError,
+    reopen:async pc=>{dialog.close();await openSceneController({getState,busy,api,setBusy,focusFlagPc:pc,onError});}});
+  }
   const focusedFlag=renderControllerFlags(content,report,focusFlagPc);
   for(const [title,rows] of [['Encoded instructions',report.instructions],['Dialogue segments',report.dialogues],['Opaque regions',report.opaque_regions],['Inspection stops',report.stops]]){const heading=document.createElement('h3');heading.textContent=title;content.append(heading);if(!rows?.length){const p=document.createElement('p');p.textContent='None reported';content.append(p);}for(const row of rows??[]){const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');const pc=Number.isSafeInteger(row.pc)?'PC 0x'+row.pc.toString(16).padStart(4,'0'):'Source region';summary.textContent=pc+' · '+(row.mnemonic??row.reason??(title==='Dialogue segments'?'Dialogue segment':'Source evidence'));pre.style.whiteSpace='pre-wrap';pre.textContent=JSON.stringify(row,null,2);details.append(summary,pre);if(['Encoded instructions','Dialogue segments'].includes(title)){details.dataset.controllerSourcePc=row.pc;sourceRows.set(row.pc,details);}content.append(details);}}
   focusedFlag?.scrollIntoView({block:'nearest'});
