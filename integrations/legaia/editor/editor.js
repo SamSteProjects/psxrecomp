@@ -1567,7 +1567,8 @@ document.addEventListener('keydown',event=>{
   if((event.ctrlKey||event.metaKey) && event.key.toLowerCase()==='z'){event.preventDefault();const redo=event.shiftKey;if(redo?state.history?.can_redo:state.history?.can_undo)api(redo?'/api/redo':'/api/undo',{});}
   if(event.key.toLowerCase()==='f'&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&!event.target.matches('select,[contenteditable]')&&!event.target.isContentEditable){event.preventDefault();frameSceneSelection();}
 });
-window.addEventListener('beforeunload',event=>{if(state.project?.dirty){event.preventDefault();event.returnValue='';}});
+function hasUnsavedEditorWork(){return !!state.project?.dirty||worldmapDraftPending||scriptDrafts.size>0||!!shapeDraft||!!draft;}
+window.addEventListener('beforeunload',event=>{if(hasUnsavedEditorWork()){event.preventDefault();event.returnValue='';}});
 
 function render(){
   updateEnvironmentGroupSelection();
