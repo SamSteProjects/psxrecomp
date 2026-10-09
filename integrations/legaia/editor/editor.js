@@ -812,11 +812,15 @@ function modelAuditLabel(row){
   const field=row.kind==='primitive_group'?`group ${row.group_index} · transparency · ${row.primitive_indices.length} shared rows`:row.kind==='primitive'?`face ${row.primitive_index} · ${row.field}${row.corner_index===undefined?'':` · corner ${row.corner_index}`}${row.axis?' · '+row.axis:''}`:`${row.kind} ${row.vector_index} · ${row.axis}`;
   return `Object ${row.object_index} · ${field}: ${row.before_value} → ${row.after_value}`;
 }
+async function openWorldPlacementBuildSource(change){
+  if(busy||!canEdit()||worldmapDraftPending||state.capabilities?.worldmap_placements!==true)throw Error('Placement Build navigation requires the idle Edit project with no pending world draft.');
+  const target=worldPlacementBuildTarget(change,state.authored_assets);return worldPlacementControls.openAuthored({...target,sourceKey:state.worldmap_authoring_state_key,projectPath:state.project.path});
+}
 async function openBuildChange(change,vector=null){
   if(busy)return;
   if(change.scope==='worldmap-source-record-transform-only'){
     try{if(!canEdit()||state.build?.current!==true||!state.build.report.changes.includes(change)||!state.capabilities?.worldmap_placements||worldmapDraftPending)throw Error('Rebuild the current idle Edit project before opening this placement change.');
-      const target=worldPlacementBuildTarget(change,state.authored_assets);buildDialog.close();await worldPlacementControls.openAuthored({...target,sourceKey:state.worldmap_authoring_state_key,projectPath:state.project.path});
+      buildDialog.close();await openWorldPlacementBuildSource(change);
     }catch(error){notify(error.message,true);}return;
   }
   if(change.scope==='worldmap-menu-record-only'){buildDialog.close();await worldmapControls?.open(change.asset_id);return;}
@@ -2020,7 +2024,7 @@ function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false}={})
   try{mountAssetRecordDownload(evidence,{record,getState:()=>state,current:exportCurrent,busy:()=>busy,onError:error=>notify(error.message,true)});}catch(error){const note=document.createElement('p');note.className='field-note';note.textContent=error.message;evidence.append(note);}
   try{mountAssetMetadataComparison(evidence,{record,getState:()=>state,current:exportCurrent,busy:()=>busy,pin:assetMetadataPin,onError:error=>notify(error.message,true)});}catch(error){const note=document.createElement('p');note.className='field-note';note.textContent=error.message;evidence.append(note);}
   $('asset-source-data').parentElement.before(evidence);
-  if(record.type!=='template'&&state.build_review_source_key){const button=document.createElement('button');button.textContent='Inspect saved Build records...';button.dataset.assetBuildHistory='';button.onclick=()=>{if(busy||!exportCurrent())return;assetDetails.close();openAssetBuildHistory({record,getState:()=>state,current:()=>exportContext===resourceStateKey()&&JSON.stringify(lookup().find(item=>item.id===record.id))===exportSnapshot,busy:()=>busy,setBusy,onInspectController:change=>openBuildChange(change),onError:error=>notify(error.message,true)});};evidence.append(button);}
+  if(record.type!=='template'&&state.build_review_source_key){const button=document.createElement('button');button.textContent='Inspect saved Build records...';button.dataset.assetBuildHistory='';button.onclick=()=>{if(busy||!exportCurrent())return;assetDetails.close();openAssetBuildHistory({record,getState:()=>state,current:()=>exportContext===resourceStateKey()&&JSON.stringify(lookup().find(item=>item.id===record.id))===exportSnapshot,busy:()=>busy,setBusy,onInspectController:change=>openBuildChange(change),onInspectWorldPlacement:openWorldPlacementBuildSource,onError:error=>notify(error.message,true)});};evidence.append(button);}
   if(record.type==='model')assetPlacementSelection=mountModelPlacementUsers(evidence,{assetId:record.id,current:exportCurrent,busy:()=>busy,
     getContext:()=>canSelectHierarchyMatches()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!wallSelectMode?{projectPath:state.project.path,sceneId:state.scene.id,sourceKey:state.scene_preview_source_key,projectSourceKey:state.project_copy_source_key,rows:activeScenePreview().entities,eligible:scenePlacementEligible()}:null,
     onSelect:async(ids,current)=>{const active=visibilitySelection(),focus=ids.includes(active)?active:ids[0];if(await selectCurrentModelPlacementGroup(record.id,focus,current)&&current())assetDetails.close();},onError:error=>notify(error.message,true)});

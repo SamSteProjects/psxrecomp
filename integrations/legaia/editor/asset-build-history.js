@@ -1,3 +1,4 @@
+import {worldPlacementBuildOwner,worldPlacementBuildTarget} from './worldmap-placement-state.js';
 import {decodeBuildHistory,decodeBuildVerification,decodeBuildVerificationForEntry} from './build-history.js';
 import {CONTROLLER_BUILD_TARGETS,controllerBuildTarget} from './controller-build-navigation.js';
 const hash=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
@@ -10,9 +11,10 @@ export function assetBuildRecords(value,entry,assetId,key,includeOwned=true){
     const target=Object.hasOwn(CONTROLLER_BUILD_TARGETS,row.scope)?CONTROLLER_BUILD_TARGETS[row.scope]:null,prefix=target?assetId+'/'+target[1]+'/':null;
     return !!controller&&!!target&&row.owner_id===assetId.replace('script://','scene://')&&row.scene===controller[1]&&row.field===target[2]&&row.asset_id.startsWith(prefix)&&/^[a-f0-9]{4}$/.test(row.asset_id.slice(prefix.length));
   };
-  return verified.report.changes.filter(row=>row.asset_id===assetId||includeOwned&&(row.owner_id===assetId||controllerMatch(row))).map(row=>({relationship:row.asset_id===assetId?'Exact audit asset ID':row.owner_id===assetId?'Exact audit owner ID':'Qualified controller audit owner',record:row}));
+  const worldMatch=row=>{if(!/^worldmap:\/\/(map01|map02|map03)\/placements$/.test(assetId)||row.scope!=='worldmap-source-record-transform-only')return false;try{return worldPlacementBuildOwner(row)?.assetId===assetId;}catch{return false;}};
+  return verified.report.changes.filter(row=>row.asset_id===assetId||includeOwned&&(row.owner_id===assetId||controllerMatch(row)||worldMatch(row))).map(row=>({relationship:row.asset_id===assetId?'Exact audit asset ID':row.owner_id===assetId?'Exact audit owner ID':controllerMatch(row)?'Qualified controller audit owner':'Qualified world placement record owner',record:row}));
 }
-export function openAssetBuildHistory({record,getState,current,busy,setBusy,onError,onInspectController=null,request=fetch}){
+export function openAssetBuildHistory({record,getState,current,busy,setBusy,onError,onInspectController=null,onInspectWorldPlacement=null,request=fetch}){
   if(busy()||!current())return null;
   const project=getState().project?.path,key=getState().build_review_source_key;
   if(!stable(record?.id)||!hash(key)||typeof project!=='string')throw new Error('Asset Build records require current project input identity.');
@@ -20,10 +22,10 @@ export function openAssetBuildHistory({record,getState,current,busy,setBusy,onEr
   const controller=new AbortController(),title=document.createElement('h2'),identity=document.createElement('p'),status=document.createElement('p'),select=document.createElement('select'),selectLabel=document.createElement('label'),verify=document.createElement('button'),owned=document.createElement('input'),ownedLabel=document.createElement('label'),content=document.createElement('div'),close=document.createElement('button');
   title.textContent='Asset records in saved Builds';identity.textContent=record.id;identity.style.overflowWrap='anywhere';status.setAttribute('role','status');
   select.setAttribute('aria-label','Saved Build for asset audit');selectLabel.textContent='Saved Build ';selectLabel.append(select);verify.textContent='Verify saved package';verify.disabled=true;
-  const ownerLabel=record.type==='controller'?'Include qualified controller owner matches':'Include exact audit owner matches';
+  const isWorldPlacement=/^worldmap:\/\/(map01|map02|map03)\/placements$/.test(record.id),ownerLabel=isWorldPlacement?'Include qualified world placement records':record.type==='controller'?'Include qualified controller owner matches':'Include exact audit owner matches';
   owned.type='checkbox';owned.checked=true;owned.setAttribute('aria-label',ownerLabel);ownedLabel.append(owned,document.createTextNode(ownerLabel));
   Object.assign(ownedLabel.style,{display:'flex',alignItems:'center',gap:'.5rem'});Object.assign(owned.style,{width:'auto',flex:'none',margin:'0'});
-  const note=document.createElement('p');note.className='field-note';note.textContent='Matches exact stable IDs and qualified controller owner bindings in emitted audit records. Controller source navigation requires current authored inputs and matching operand values. Shared source membership and native asset presence are not inferred. A missing record does not prove unused content or deletion. Package verification does not check the source disc or gameplay.';
+  const note=document.createElement('p');note.className='field-note';note.textContent='Matches exact stable IDs and qualified controller/world placement record owners in emitted audits. Source navigation requires current authored inputs and matching values. Older world audits lacking bounded record ownership metadata do not qualify as parent-asset matches. Shared source membership and native asset presence are not inferred. A missing record does not prove unused content or deletion. Package verification does not check the source disc or gameplay.';
   close.textContent='Close';close.onclick=()=>dialog.close();const actions=document.createElement('div');actions.className='dialog-actions';actions.style.flexWrap='wrap';actions.append(verify,close);dialog.append(title,identity,status,selectLabel,ownedLabel,note,content,actions);document.body.append(dialog);dialog.showModal();
   let entries=[],verification=null,page=0;
   const fresh=()=>dialog.open&&!controller.signal.aborted&&current()&&getState().project?.path===project&&getState().build_review_source_key===key;
@@ -48,12 +50,12 @@ export function openAssetBuildHistory({record,getState,current,busy,setBusy,onEr
     for(const item of rows.slice(page*128,(page+1)*128)){
       const row=document.createElement('tr');for(const [index,value] of [item.relationship,`${item.record.scene} · ${item.record.field}`,item.record.before,item.record.after].entries()){const cell=document.createElement('td');cell.dataset.label=labels[index];cell.style.overflowWrap='anywhere';cell.textContent=typeof value==='string'?value:JSON.stringify(value);row.append(cell);}
       const details=document.createElement('details'),summary=document.createElement('summary'),data=document.createElement('pre');summary.textContent='Full emitted audit record';data.style.whiteSpace='pre-wrap';data.textContent=JSON.stringify(item.record,null,2);details.append(summary,data);row.children[1].append(details);table.append(row);
-      if(item.relationship==='Qualified controller audit owner'&&typeof onInspectController==='function'){
-        const inspect=document.createElement('button');inspect.textContent='Inspect controller operand';inspect.style.whiteSpace='normal';
-        const target=()=>controllerBuildTarget(item.record,getState().scenes??[],getState().authored_assets??[]);
+      const worldSource=item.relationship==='Qualified world placement record owner',inspectSource=worldSource?onInspectWorldPlacement:onInspectController;if((worldSource||item.relationship==='Qualified controller audit owner')&&typeof inspectSource==='function'){
+        const inspect=document.createElement('button');inspect.textContent=worldSource?'Inspect placement record':'Inspect controller operand';inspect.style.whiteSpace='normal';
+        const target=()=>worldSource?(getState().project?.mode==='edit'&&getState().capabilities?.worldmap_placements===true?worldPlacementBuildTarget(item.record,getState().authored_assets??[]):null):controllerBuildTarget(item.record,getState().scenes??[],getState().authored_assets??[]);
         let supported=false;try{supported=!!target();}catch{}
-        inspect.disabled=!verification.matches_current_inputs||!supported;inspect.title=inspect.disabled?'Rebuild current authored inputs before navigating this operand.':item.record.asset_id;
-        inspect.onclick=async()=>{if(busy()||!fresh()||!content.contains(inspect)||!verification?.matches_current_inputs)return;const proof=verification,selectedId=select.value;try{await checkServer();if(!fresh()||verification!==proof||select.value!==selectedId||!content.contains(inspect)||!proof.matches_current_inputs||!target())throw Error('Controller Build source or displayed records changed. Reopen the saved records.');dialog.close();await onInspectController(item.record);}catch(error){if(dialog.open)invalidate(error.message);onError(error);}};
+        inspect.disabled=!verification.matches_current_inputs||!supported;inspect.title=inspect.disabled?'Rebuild current authored inputs before navigating this source.':item.record.asset_id;
+        inspect.onclick=async()=>{if(busy()||!fresh()||!content.contains(inspect)||!verification?.matches_current_inputs)return;const proof=verification,selectedId=select.value;try{await checkServer();if(!fresh()||verification!==proof||select.value!==selectedId||!content.contains(inspect)||!proof.matches_current_inputs||!target())throw Error('Build source or displayed records changed. Reopen the saved records.');dialog.close();await inspectSource(item.record);}catch(error){if(dialog.open)invalidate(error.message);onError(error);}};
         row.children[1].append(inspect);
       }
     }

@@ -12,6 +12,28 @@ from integrations.legaia.tests.test_project_workflow import synthetic_scene
 
 
 class BuildReportTests(unittest.TestCase):
+    def test_historical_world_reports_preserve_available_ownership_without_inventing_metadata(self):
+        owner = 'worldmap://map02/placements/records/0461'
+        edit = dict(scene='map02', semantic_id=owner, worldmap_placement_id=owner,
+                    scope='worldmap-source-record-transform-only', field='offset_x',
+                    before_value=10, after_value=42, record_index=461,
+                    affected_source_entities=['scene://map02/worldmap/placements/0001'])
+        for metadata in ({}, {'source_record_sha256': 'a' * 64}):
+            audit = dict(edits=[{**edit, **metadata}], overlays=[], validation={})
+            original = deepcopy(audit)
+            row = build_report(audit)['changes'][0]
+            self.assertEqual((row['asset_id'], row['owner_id']), (owner, owner))
+            self.assertEqual((row['before'], row['after'], row['record_index']), (10, 42, 461))
+            self.assertEqual(row.get('source_record_sha256'), metadata.get('source_record_sha256'))
+            self.assertEqual('source_record_sha256' in row, bool(metadata))
+            row['affected_source_entities'].clear()
+            self.assertEqual(audit, original)
+        minimal = {key: value for key, value in edit.items()
+                   if key not in ('record_index', 'affected_source_entities')}
+        row = build_report(dict(edits=[minimal], overlays=[], validation={}))['changes'][0]
+        self.assertNotIn('record_index', row)
+        self.assertNotIn('affected_source_entities', row)
+
     def test_npc_floor_heights_summary_requires_emitted_height_evidence(self):
         row = dict(scope='source-man-draft-composed-overrides',
                    field='npc.composed.floor_height_changes',
