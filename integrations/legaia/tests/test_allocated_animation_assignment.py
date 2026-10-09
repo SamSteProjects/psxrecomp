@@ -34,9 +34,10 @@ class AllocatedAnimationAssignment(unittest.TestCase):
                 self.assertEqual(len(project.undo_stack),count+1);self.assertNotEqual(source_key(project),request['expected_source_key'])
                 project.undo();self.assertEqual(project.overrides,before);project.redo();self.assertEqual(project.overrides[owner]['ActorAllocatedAnimation'],binding)
                 from sdk.animation_glb import _snapshot
-                with self.assertRaisesRegex(ProjectError,'not implemented'):_snapshot(project,owner,30)
-                with self.assertRaisesRegex(ProjectError,'not implemented'):
-                    prepare_record_allocation(project,owner,[0],[],source_key(project))
+                with self.assertRaisesRegex(ProjectError,'retained-record GLB editor'):_snapshot(project,owner,30)
+                _,capture=prepare_record_allocation(project,owner,[0],[],source_key(project))
+                self.assertEqual(capture['source_allocated_entry']['record_id'],identity)
+                self.assertEqual(capture['requested_source_frame_indices'],[0])
                 status,_=post('/api/allocated-animation-assignment',dict(request,review_key=review['review_key']));self.assertEqual(status,400)
                 retained=deepcopy((project.overrides,project.undo_stack,project.redo_stack))
                 key=source_key(project)

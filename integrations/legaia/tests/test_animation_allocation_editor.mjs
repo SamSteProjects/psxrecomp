@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {parseAnimationFrameSequence,decodeAnimationAllocationOptions,decodeAnimationAllocationReview,decodeAnimationAllocationPose,openAnimationAllocationEditor} from '../editor/animation-allocation.js';
+import {parseAnimationFrameSequence,decodeAnimationAllocationOptions,decodeAnimationAllocationReview,decodeAnimationAllocationPose,openAnimationAllocationEditor,flattenRetainedSequence} from '../editor/animation-allocation.js';
 const entity='scene://town01/actors/man-p1/0011',asset='asset://town01/models/scene-tmd/0001',clip='animation://town01/scene-anm/0000',id='11111111-1111-4111-8111-111111111111';
 const initial={projectPath:'C:/private/project',sceneId:'scene://town01',mode:'edit',sourceKey:'f'.repeat(64)};
 const options=()=>({schema_version:'legaia.animation-record-allocation-options.v1',entity_id:entity,scene_id:initial.sceneId,project_source_key:initial.sourceKey,donor_animation_id:clip,channel_owner_entity_id:entity,model_source_entity_id:entity,donor_asset_id:asset,donor_frame_count:3,object_count:1,maximum_frame_count:512,remaining_channel_count:4096,remaining_record_count:64,build_available:false,gameplay_verified:false});
@@ -13,6 +13,20 @@ assert.deepEqual(parseAnimationFrameSequence('0-2, 2-0, 0',3),request.source_fra
 for(const text of ['',',','-1','0.5','0-3','0,','99999999999999999999999','0-2,0-2'])assert.throws(()=>parseAnimationFrameSequence(text,3,5));
 assert.throws(()=>parseAnimationFrameSequence('0',3,0));
 const opt=decodeAnimationAllocationOptions(options(),entity,initial),review=decodeAnimationAllocationReview(report(request),opt,request);
+const source={...report(request).proposed_ledger.records[0],donor_record_sha256:'1'.repeat(64),effective_donor_record_sha256:'2'.repeat(64),donor_edits:[{frame_index:0,object_index:0,translation:{x:123}}],source_frame_indices:[2,0,1,2],edits:[{frame_index:0,object_index:0,translation:{y:234},rotation_psx:{z:32}},{frame_index:3,object_index:0,translation:{z:345}}]};
+const retainedOptions={...options(),schema_version:'legaia.animation-record-allocation-options.v2',donor_frame_count:4,source_allocated_entry:source,source_animation_id:'animation://town01/authored-record/'+id};
+const retained=decodeAnimationAllocationOptions(retainedOptions,entity,initial);
+const captureRequest={...request,source_frame_indices:[3,0,1,0],edits:[{frame_index:1,object_index:0,translation:{y:-123},rotation_psx:{x:64}}]};
+const flat=flattenRetainedSequence(source,captureRequest.source_frame_indices,captureRequest.edits);
+assert.deepEqual(flat,{source_frame_indices:[2,2,0,2],edits:[{frame_index:0,object_index:0,translation:{z:345}},{frame_index:1,object_index:0,translation:{y:-123},rotation_psx:{z:32,x:64}},{frame_index:3,object_index:0,translation:{y:234},rotation_psx:{z:32}}]});
+const newId='22222222-2222-4222-8222-222222222222',capturedReport=report(captureRequest);
+Object.assign(capturedReport,{schema_version:'legaia.animation-record-allocation-review.v3',source_allocated_entry:source,source_animation_id:retained.source_animation_id,requested_source_frame_indices:captureRequest.source_frame_indices,requested_edits:captureRequest.edits,animation_id:'animation://town01/authored-record/'+newId});
+capturedReport.allocation.allocated_records[0].record_id=newId;
+capturedReport.proposed_ledger.records=[source,{...source,...flat,record_id:newId,record_sha256:'c'.repeat(64)}];
+capturedReport.proposed_ledger.revision=2;
+decodeAnimationAllocationReview(capturedReport,retained,captureRequest);
+for(const change of [v=>v.requested_source_frame_indices=[0],v=>v.source_allocated_entry.edits=[],v=>v.proposed_ledger.records.at(-1).donor_edits=[],v=>v.proposed_ledger.records.at(-1).source_frame_indices=[3,0,1,0],v=>v.source_animation_id=clip]){const value=structuredClone(capturedReport);change(value);assert.throws(()=>decodeAnimationAllocationReview(value,retained,captureRequest));}
+for(const change of [v=>v.source_allocated_entry.edits[0].translation.y=2048,v=>v.source_allocated_entry.source_frame_indices=[3],v=>v.donor_frame_count=3,v=>v.source_animation_id=clip]){const value=structuredClone(retainedOptions);change(value);assert.throws(()=>decodeAnimationAllocationOptions(value,entity,initial));}
 const deliveredOptions=decodeAnimationAllocationOptions({...options(),build_available:true},entity,initial),deliveredReport=report(request);deliveredReport.capabilities.build=true;decodeAnimationAllocationReview(deliveredReport,deliveredOptions,request);
 assert.equal(decodeAnimationAllocationPose(pose(review),review,opt).animation.clip_id,'allocation-preview');
 for(const edit of [v=>v.project_source_key='e'.repeat(64),v=>v.capabilities.build=true,v=>v.proposed_ledger.records[0].source_frame_indices=[2],v=>v.allocation.allocated_records[0].object_count=2,v=>v.proposed_ledger.removed_record_ids=[id]]){const value=report(request);edit(value);assert.throws(()=>decodeAnimationAllocationReview(value,opt,request));}

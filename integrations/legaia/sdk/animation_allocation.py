@@ -5,12 +5,30 @@ from uuid import UUID
 
 from importer.animation import animation_record_ranges, decode_animation_record
 from importer.animation_allocation import allocate_animation_record, append_animation_record_payloads
-from importer.animation_authoring import replace_animation_record
+from importer.animation_authoring import replace_animation_record, patch_animation_channels
 from importer.pipeline import _disc_context
 from importer.scene_animation import load_scene_actor_animation_catalog
 from .project import ProjectError, digest
 from .scene_preview import source_key
 from .animation_record_ledger import SCHEMA, validate, reconstruct, verify_witnesses, publish, compose
+
+
+def flatten_retained_sequence(entry,indices,edits):
+    from .animation_record_ledger import _edits
+    count=len(entry['source_frame_indices']);objects=entry['object_count']
+    if not isinstance(indices,list) or not 1<=len(indices)<=512 or any(type(frame) is not int or not 0<=frame<count for frame in indices):
+        raise ProjectError('Retained donor frame sequence exceeds its captured source bounds')
+    _edits(edits,len(indices),objects)
+    rows={}
+    for destination,source in enumerate(indices):
+        for old in entry['edits']:
+            if old['frame_index']!=source:continue
+            row=deepcopy(old);row['frame_index']=destination;rows[(destination,row['object_index'])]=row
+    for edit in edits:
+        row=rows.setdefault((edit['frame_index'],edit['object_index']),dict(frame_index=edit['frame_index'],object_index=edit['object_index']))
+        for field in ('translation','rotation_psx'):
+            if field in edit:row.setdefault(field,{}).update(deepcopy(edit[field]))
+    return [entry['source_frame_indices'][index] for index in indices],[rows[key] for key in sorted(rows)]
 
 
 def prepare_record_allocation(project, entity_id, source_frame_indices, edits,
@@ -27,14 +45,19 @@ def prepare_record_allocation(project, entity_id, source_frame_indices, edits,
                   if item['semantic_id'] == entity_id), None)
     if actor is None:
         raise ProjectError('Animation allocation requires an imported actor in the active scene')
-    if 'ActorAllocatedAnimation' in project.overrides.get(entity_id,{}):
-        raise ProjectError('Allocating from an assigned allocated clip is not implemented; clear its assignment before capturing an imported clip')
+    assigned = project.overrides.get(entity_id,{}).get('ActorAllocatedAnimation')
     key = source_key(project)
     if not key or expected_source_key != key:
         raise ProjectError('Animation allocation source is stale; review the current scene')
     with _disc_context(project.disc_path):
         model_source = actor
-        if any(name in project.overrides.get(entity_id, {}) for name in ('ActorAppearance', 'ActorAnimation')):
+        source_entry = None
+        if assigned is not None:
+            from .allocated_animation_assignment import validate_binding
+            source_entry = validate_binding(project,entity_id,assigned,verify_disc=True)
+            actor = next(row for row in document['actors'] if row['semantic_id']==source_entry['channel_owner_entity_id'])
+            model_source = next(row for row in document['actors'] if row['semantic_id']==source_entry['model_source_entity_id'])
+        elif any(name in project.overrides.get(entity_id, {}) for name in ('ActorAppearance', 'ActorAnimation')):
             from .actor_animation import source_actor
             model_source = project.appearance_source_actor(entity_id, verify_disc=True)
             actor = source_actor(project, entity_id, verify_disc=True)
@@ -46,8 +69,9 @@ def prepare_record_allocation(project, entity_id, source_frame_indices, edits,
                   for item in document['actors']
                   if 'AnimationChannels' in project.overrides.get(item['semantic_id'], {})}
         effective, _ = catalog.authored_bank(owners)
-        identity_hash = digest(dict(project_source_key=key, entity_id=entity_id,
-            donor_animation_id=binding['semantic_id'], source_frame_indices=source_frame_indices, edits=edits))
+        identity = dict(project_source_key=key, entity_id=entity_id,donor_animation_id=binding['semantic_id'], source_frame_indices=source_frame_indices, edits=edits)
+        if source_entry is not None:identity['source_allocated_record_id']=source_entry['record_id']
+        identity_hash = digest(identity)
         record_id = str(UUID(bytes=bytes.fromhex(identity_hash)[:16], version=4))
         start,end = animation_record_ranges(retail)[binding['source_record']['record_index']]
         donor, captured = retail[start:end], effective[start:end]
@@ -58,14 +82,25 @@ def prepare_record_allocation(project, entity_id, source_frame_indices, edits,
             edit = donor_edits.setdefault((row['frame_index'],row['object_index']),
                 dict(frame_index=row['frame_index'],object_index=row['object_index']))
             edit.setdefault(field,{})[axis] = row['after_value']
-        record, _ = allocate_animation_record(captured,sha256(captured).hexdigest(),source_frame_indices,edits)
+        if source_entry is None:record, _ = allocate_animation_record(captured,sha256(captured).hexdigest(),source_frame_indices,edits)
+        captured_indices, captured_edits = deepcopy(source_frame_indices),deepcopy(edits)
+        if source_entry is not None:
+            source_ledger = project.overrides[project.active_scene]['AnimationRecords']
+            validate(project,project.active_scene,source_ledger);verify_witnesses(source_ledger,catalog)
+            retained = next(row['record'] for row in reconstruct(retail,source_ledger) if row['record_id']==source_entry['record_id'])
+            record,_ = allocate_animation_record(retained,source_entry['record_sha256'],source_frame_indices,edits)
+            captured,_ = patch_animation_channels(donor,source_entry['donor_record_sha256'],source_entry['donor_edits'])
+            donor_edits = None
+            captured_indices,captured_edits = flatten_retained_sequence(source_entry,source_frame_indices,edits)
+            flattened,_ = allocate_animation_record(captured,sha256(captured).hexdigest(),captured_indices,captured_edits)
+            if flattened!=record:raise ProjectError('Flattened allocated donor capture differs from literal retained poses')
         decoded = decode_animation_record(donor)
         entry = dict(record_id=record_id,entity_id=entity_id,channel_owner_entity_id=actor['semantic_id'],
             model_source_entity_id=model_source['semantic_id'],donor_animation_id=binding['semantic_id'],
             donor_asset_id=binding['asset_semantic_id'],donor_record_sha256=sha256(donor).hexdigest(),
             effective_donor_record_sha256=sha256(captured).hexdigest(),donor_frame_count=decoded['frame_count'],
-            object_count=decoded['bone_count'],donor_edits=list(donor_edits.values()),
-            source_frame_indices=deepcopy(source_frame_indices),edits=deepcopy(edits),record_sha256=sha256(record).hexdigest())
+            object_count=decoded['bone_count'],donor_edits=deepcopy(source_entry['donor_edits']) if source_entry is not None else list(donor_edits.values()),
+            source_frame_indices=captured_indices,edits=captured_edits,record_sha256=sha256(record).hexdigest())
         ledger = deepcopy(project.overrides.get(project.active_scene,{}).get('AnimationRecords'))
         if ledger is not None:
             validate(project,project.active_scene,ledger)
@@ -99,6 +134,11 @@ def prepare_record_allocation(project, entity_id, source_frame_indices, edits,
         limitations=['Qualified compressed and raw streaming ANM carriers support normal Build relocation; final source, carrier and package readback are required.',
                      'The frame sequence has no verified retail rate or runtime clip-selection evidence.',
                      'Existing shared clip edits are copied into the new record; existing records remain unchanged.'])
+    if source_entry is not None:
+        report.update(schema_version='legaia.animation-record-allocation-review.v3',source_allocated_entry=deepcopy(source_entry),
+            requested_source_frame_indices=deepcopy(source_frame_indices),requested_edits=deepcopy(edits),
+            source_animation_id=f"animation://{document['scene']['name']}/authored-record/{source_entry['record_id']}")
+        report['limitations'].append('Allocated donor poses are flattened into an independent frozen Retail recipe; the existing assignment and retained clip stay unchanged.')
     report['review_key'] = digest(report)
     return candidate, report
 
@@ -117,7 +157,14 @@ def allocation_options(project, entity_id, expected_source_key):
         raise ProjectError('Animation allocation requires the current imported actor and scene source')
     model_source = actor
     with _disc_context(project.disc_path):
-        if any(name in project.overrides.get(entity_id,{}) for name in ('ActorAppearance','ActorAnimation')):
+        source_entry = None
+        assigned = project.overrides.get(entity_id,{}).get('ActorAllocatedAnimation')
+        if assigned is not None:
+            from .allocated_animation_assignment import validate_binding
+            source_entry = validate_binding(project,entity_id,assigned,verify_disc=True)
+            actor = next(row for row in document['actors'] if row['semantic_id']==source_entry['channel_owner_entity_id'])
+            model_source = next(row for row in document['actors'] if row['semantic_id']==source_entry['model_source_entity_id'])
+        elif any(name in project.overrides.get(entity_id,{}) for name in ('ActorAppearance','ActorAnimation')):
             from .actor_animation import source_actor
             model_source = project.appearance_source_actor(entity_id,verify_disc=True)
             actor = source_actor(project,entity_id,verify_disc=True)
@@ -136,13 +183,17 @@ def allocation_options(project, entity_id, expected_source_key):
         maximum = 0
     if source_key(project) != key:
         raise ProjectError('Project changed while loading animation allocation options')
-    return dict(schema_version='legaia.animation-record-allocation-options.v1',entity_id=entity_id,
+    result = dict(schema_version='legaia.animation-record-allocation-options.v1',entity_id=entity_id,
         scene_id=project.active_scene,project_source_key=key,donor_animation_id=binding['semantic_id'],
         channel_owner_entity_id=actor['semantic_id'],model_source_entity_id=model_source['semantic_id'],
         donor_asset_id=binding['asset_semantic_id'],donor_frame_count=binding['frame_count'],
         object_count=binding['bone_count'],maximum_frame_count=maximum,
         remaining_channel_count=remaining,remaining_record_count=64-len((ledger or {}).get('records',[])),
         build_available=delivery,gameplay_verified=False)
+    if source_entry is not None:
+        result.update(schema_version='legaia.animation-record-allocation-options.v2',source_allocated_entry=deepcopy(source_entry),
+            donor_frame_count=len(source_entry['source_frame_indices']),source_animation_id=f"animation://{document['scene']['name']}/authored-record/{source_entry['record_id']}")
+    return result
 
 
 def pose_record_allocation(project, entity_id, source_frame_indices, edits, expected_source_key, review_key):

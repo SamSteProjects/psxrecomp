@@ -1,5 +1,40 @@
 # Persistent native animation record allocation
 
+## Assigned Allocated Clip Capture — 2026-10-09
+
+**Allocate animation clip** now resolves an actor's assigned allocated clip as
+its donor. Source frame numbers refer to the retained clip, including repeated
+or reversed frames and its captured edits. Review and pose preview remain
+read-only; Apply adds one independent retained clip and one history command.
+It leaves the source record and initial-animation assignment unchanged.
+
+The source binding, native record hash and complete ledger are freshly verified.
+Each requested frame maps through the captured sequence to its original Retail
+frame. Captured per-frame axes are copied to every new destination, then requested
+axes are merged last. The frozen shared-channel snapshot and original donor/model
+witnesses remain attached. Reconstruction from this flattened v1 ledger must
+match allocation directly from the complete retained native payload byte for byte.
+No dependency on the authored source record is persisted in the new recipe.
+
+Assigned-source options use v2 and Review uses v3 to expose the complete captured
+entry, authored donor identity and requested sequence/axes. Ordinary donor DTOs
+remain unchanged. Editor validation compares the independent proposed recipe
+against that source before enabling Preview or Apply. Existing budgets, stale
+source refusal, library, Save/Open and Undo/Redo continue to apply.
+
+Validation: fourteen retail-enabled Python tests, two synthetic ledger tests,
+two Node suites and JS syntax passed; two separate ledger retail cases were
+skipped without their environment variable. Coverage includes altered shared
+donor channels after capture, repeated frame edits and last-axis precedence,
+full native-record equality, malformed source sequences, HTTP pose/Apply,
+unchanged assignment/source record, persistence and history. Actual Town01
+editor Review/Apply passed at desktop and 400-pixel widths with inspected
+screenshots and no page errors. Build `4c6879d9a9330a3a` package readback matched
+the entire expected relocated animation bank, SHA-256
+`64e48741cc05b72409c8b39588cff8f93c5e7436c6d55617e1988d3c5f8e659e`.
+Evidence: ignored `local-output/sdk-20260909/allocated-donor-capture-20261009/`.
+No game or runtime attachment; gameplay remains unverified.
+
 ## 2026-10-04: Allocated assignment component inspector
 
 The allocated initial-animation Inspector now uses the SDK component contract
