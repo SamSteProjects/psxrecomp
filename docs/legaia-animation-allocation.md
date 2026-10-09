@@ -836,3 +836,35 @@ In **Edit retained animation → Frame sequence tools**, set the output frame ra
 The operation remains local until the existing native **Review retained edit → Apply reviewed content** workflow. Changed drafts withdraw any prior Review. Invalid ranges, field/scope choices or empty axis selections reject without changing the draft or held Review. No-op restoration does not invalidate a matching Review. Busy, stale, closed and read-only editors refuse staging. Existing retained serializers continue to qualify the complete native record and update referencing actor hashes atomically; no new ledger schema is introduced.
 
 Offline evidence: three focused Node suites and JavaScript syntax passed, covering selected/all objects, both field families, sparse row cleanup, detached inputs, unrelated channel preservation and invalid/stale/read-only refusal. Actual Town01 range1–2/object0/Translation Z removed the frame2 override while preserving frame0 Z345 and frame1 Y234. Review/Apply generated one history command. Independent literal signed-twelve-bit Z replacement in the before-record matched the complete reconstructed native record after Apply, preserving opaque high nibble and every unrelated byte. Other retained records and imports remained exact; Save/Open and Undo/Redo passed. Desktop/400-pixel layouts inspected, zero page errors. Private evidence: `local-output/sdk-20260909/retained-donor-restoration-20261009/`. No Build or game ran; gameplay remains unverified and the full SDK goal stays active.
+## Retained Frame Range Move — 2026-10-09
+
+The retained animation editor can now move a selected output-frame range before
+an explicit boundary in the original output sequence. Boundary zero moves to the
+front; the current output frame count appends at the end. A boundary inside or
+beside the range changes nothing. Frames retain their order within the moved
+range, and all authored object/channel contributions follow their output frames,
+including distinct edits on repeated donor frames. The frozen donor capture and
+output frame count stay unchanged. Selection follows its moved frame; the range
+controls follow the relocated block.
+
+The operation stages a local draft through the existing frame-remapping adapter.
+Changed content withdraws the held Review and requires explicit fresh Review and
+Apply. Invalid boundaries retain the prior draft and Review. No-change sequence
+operations preserve an existing Review. Source/busy/pending/closed and exhausted
+revision guards remain; read-only timeline inspection is unchanged. This authors
+frame order, not playback rate, retail timing or animation scheduling.
+
+Five focused Node suites and editor syntax passed. Actual Town01 comparison-to-
+editor navigation, moving output frames 1–2 to boundary zero, carried authored
+channels, selected-frame/range updates, invalid/no-change Review preservation and
+explicit Apply passed. An independent literal permutation of complete native
+frame blocks matched every reconstructed record byte, including the unchanged
+header, opaque channel bits and trailing bytes. Other records and imports remain
+exact. One history command, Save/Open and complete document Undo/Redo passed.
+Desktop and 400px layouts were inspected with zero page errors. The initial oracle
+assumed no trailing bytes; its failed setup is retained alongside the corrected
+whole-record comparison under
+`local-output/sdk-20260909/retained-frame-move-20261009/`.
+No Build, game, runtime attachment, native recomp compilation, installation or
+disc export occurred. Gameplay verification remains deferred and the full SDK
+goal stays active.
