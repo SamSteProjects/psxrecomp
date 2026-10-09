@@ -536,6 +536,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     if not project.imports:
         raise BuildError("Build requires at least one verified imported scene")
     scene_edits: dict[str, dict] = {}
+    controller_edits = {}
     environment_edits = {}
     collision_edits = {}
     floor_edits = {}
@@ -551,7 +552,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                      for actor in document["actors"]}
     for identifier, components in sorted(project.overrides.items()):
         if isinstance(components,dict) and 'ControllerSystemFlags' in components:
-            raise BuildError('Controller selector overrides require pending native Build integration; no package was emitted')
+            from .controller_selector_build import collect
+            scene_id,value=collect(project,identifier,components)
+            controller_edits[scene_id]=value
+            scene_edits.setdefault(scene_id,{key:{} for key in ('positions','assignments','dialogues','transitions','movements','facings','flags','system_flags','waits','animation_operands','effect_colors','model_selectors','branches')})
+            continue
         if isinstance(components,dict) and 'AnimationRecords' in components:
             from .animation_record_ledger import validate as validate_animation_records
             ledger = validate_animation_records(project,identifier,components['AnimationRecords'],verify_disc=True)
@@ -985,7 +990,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             if allocated:
                 baseline=carrier.payload
                 changed,changes=baseline,[]
-            if scene_id in height_edits or raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["system_flags"] or edits["waits"] or edits["animation_operands"] or edits["effect_colors"] or edits["model_selectors"] or edits["branches"]:
+            if scene_id in height_edits or raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["system_flags"] or edits["waits"] or edits["animation_operands"] or edits["effect_colors"] or edits["model_selectors"] or edits["branches"] or scene_id in controller_edits:
                 baseline = carrier.payload
                 changed, changes = baseline, []
             if edits["assignments"]:
@@ -1016,7 +1021,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 from .allocated_animation_build import patch_assignments
                 changed,allocated_changes=patch_assignments(project,scene_id,allocated,baseline,changed)
                 changes.extend(allocated_changes)
-            if allocated or scene_id in height_edits or raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["system_flags"] or edits["waits"] or edits["animation_operands"] or edits["effect_colors"] or edits["model_selectors"] or edits["branches"]:
+            if allocated or scene_id in height_edits or raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["system_flags"] or edits["waits"] or edits["animation_operands"] or edits["effect_colors"] or edits["model_selectors"] or edits["branches"] or scene_id in controller_edits:
                 changed, position_changes = patch_man_positions(changed, scene, edits["positions"])
                 changes.extend(position_changes)
                 if edits["dialogues"]:
@@ -1208,6 +1213,10 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                     for change in branch_changes:
                         change.update(semantic_id=change["owner_id"], record_index=int(change["owner_id"].rsplit("/", 1)[1]))
                     changes.extend(branch_changes)
+                if scene_id in controller_edits:
+                    from .controller_selector_build import compose as compose_controller
+                    changed,controller_changes=compose_controller(project,scene_id,baseline,changed,changes)
+                    changes.extend(controller_changes)
                 if scene_id in height_edits:
                     from .floor_heights import compose
                     changed,height_changes=compose(project,scene_id,baseline,changed);changes.extend(height_changes)
