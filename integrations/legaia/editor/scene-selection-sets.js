@@ -5,6 +5,11 @@ export function decodeSavedSceneSelection(value,state){
   if(typeof state.actor_selection_source_key!=='string'||!state.actor_selection_source_key||value?.scene_id!==state.scene?.id||value.import_sha256!==state.actor_selection_source_key||!canonicalIds(ids)||ids.some(id=>!allowed.has(id)||id.startsWith('authored-actor://')&&!npcs.has(id))||ids.some(id=>!actors.has(id)&&!npcs.has(id))&&(typeof state.scene_selection_map_sha256!=='string'||!state.scene_selection_map_sha256||value.map_sha256!==state.scene_selection_map_sha256))throw new Error('Saved placements differ from the current imported scene or source files');
   return ids.slice();
 }
+export function savedSelectionMemberRows(value,state,query=''){
+  if(!canonicalIds(value?.entity_ids)||typeof query!=='string'||Array.from(query).length>200)throw Error('Member search requires bounded saved IDs and at most 200 search characters.');
+  const search=query.trim().toLowerCase(),entities=new Map((state.scene?.entities??[]).map(row=>[row.id,row]));
+  return value.entity_ids.map(id=>{const entity=entities.get(id),draft=state.actor_drafts?.[id];const name=entity?.name??(draft?.scene_id===value.scene_id?draft.name:null)??id.split('/').at(-1);return {id,name};}).filter(row=>!search||row.id.toLowerCase().includes(search)||String(row.name).toLowerCase().includes(search));
+}
 export function savedSelectionMemberIds(value,state,memberId){
   const ids=decodeSavedSceneSelection(value,state);
   if(typeof memberId!=='string'||!ids.includes(memberId))throw Error('Placement is not a member of the current saved scene selection.');
@@ -38,13 +43,13 @@ export function importSceneSelection(value,state,name){
 export function mountSceneSelectionSets({host,getState,getSelection,isBusy,canEdit,canRecall,api,recall,onError=()=>{}}){
   const button=document.createElement('button');button.id='scene-selection-sets-button';host.append(button);
   const dialog=document.createElement('dialog');dialog.id='scene-selection-sets-dialog';document.body.append(dialog);
-  let context=null,signature=null,pending=null,recalling=false,generation=0,transfer=null,reading=false,memberPage=0;
+  let context=null,signature=null,pending=null,recalling=false,generation=0,transfer=null,reading=false,memberPage=0,memberGroupId=null;
   const rows=()=>getState().scene_selection_sets??[];
   const chosen=()=>rows().find(row=>row.id===dialog.querySelector('[data-selections]')?.value);
   const members=()=>getSelection().slice().sort();
   const selectionKey=()=>JSON.stringify([getState().project?.path,getState().project_copy_source_key,getState().scene?.id,getState().actor_selection_source_key,getState().scene_selection_map_sha256,members()]);
   const validMembers=()=>{try{const s=getState();decodeSavedSceneSelection({scene_id:s.scene?.id,import_sha256:s.actor_selection_source_key,map_sha256:s.scene_selection_map_sha256,entity_ids:members()},s);return true;}catch{return false;}};
-  function cancel(){generation++;pending?.abort();pending=null;recalling=false;transfer=null;reading=false;}
+  function cancel(){memberGroupId=null;generation++;pending?.abort();pending=null;recalling=false;transfer=null;reading=false;}
   function close(){cancel();dialog.close();update();}
   function error(value){if(dialog.open)dialog.querySelector('[data-error]').textContent=value.message??String(value);onError(value);}
   function update(){
@@ -62,24 +67,24 @@ export function mountSceneSelectionSets({host,getState,getSelection,isBusy,canEd
     dialog.querySelector('[data-import-selection]').disabled=busy||!editable||!importOk;
     dialog.querySelectorAll('[data-inspect-member]').forEach(b=>b.disabled=busy||!canRecall()||!value);
     dialog.querySelector('[data-members-previous]').disabled=busy||!value||memberPage===0;
-    dialog.querySelector('[data-members-next]').disabled=busy||!value||(memberPage+1)*16>=value.entity_ids.length;
+    dialog.querySelector('[data-members-next]').disabled=busy||!value||(memberPage+1)*16>=matchingMembers().length;
     const missing=unavailableSelectionNpcs(value,s),repair=dialog.querySelector('[data-repair-note]');repair.hidden=!missing.length;repair.textContent=`${missing.length} saved NPC ${missing.length===1?'is':'drafts are'} unavailable. Select valid placements in the saved scene, then choose Replace with current placements to repair this set. Undo restores its previous membership.`;
     dialog.querySelector('[data-current]').textContent=`Current selection: ${members().length} placements. Save 1-128 imported actors, NPC drafts or static decorations.`;
   }
+  const matchingMembers=()=>{const value=chosen();return value?savedSelectionMemberRows(value,getState(),dialog.querySelector('[data-member-search]')?.value??''):[];};
   function renderMembers(){
     const value=chosen(),host=dialog.querySelector('[data-member-list]');if(!host)return;host.replaceChildren();
-    const ids=value?.entity_ids??[],pages=Math.max(1,Math.ceil(ids.length/16));memberPage=Math.min(memberPage,pages-1);
-    dialog.querySelector('[data-member-page]').textContent=`Page ${memberPage+1} / ${pages}`;
+    const matches=matchingMembers(),pages=Math.max(1,Math.ceil(matches.length/16));memberPage=Math.min(memberPage,pages-1);
+    dialog.querySelector('[data-member-page]').textContent=`${matches.length} / ${value?.entity_ids.length??0} matching placements · Page ${memberPage+1} / ${pages}`;
     dialog.querySelector('[data-members-previous]').disabled=memberPage===0||isBusy()||pending||recalling||reading;
     dialog.querySelector('[data-members-next]').disabled=memberPage===pages-1||isBusy()||pending||recalling||reading;
-    for(const id of ids.slice(memberPage*16,(memberPage+1)*16)){
+    for(const {id,name} of matches.slice(memberPage*16,(memberPage+1)*16)){
       const row=document.createElement('section'),label=document.createElement('p'),identity=document.createElement('code'),inspect=document.createElement('button');
-      const entity=getState().scene?.entities?.find(e=>e.id===id),draft=getState().actor_drafts?.[id];
-      label.textContent=entity?.name??draft?.name??id.split('/').at(-1);identity.textContent=id;identity.style.overflowWrap='anywhere';inspect.type='button';inspect.textContent='Inspect placement';inspect.setAttribute('data-inspect-member',id);inspect.disabled=isBusy()||!!pending||recalling||reading||!canRecall();
+      label.textContent=name;identity.textContent=id;identity.style.overflowWrap='anywhere';inspect.type='button';inspect.textContent='Inspect placement';inspect.setAttribute('data-inspect-member',id);inspect.disabled=isBusy()||!!pending||recalling||reading||!canRecall();
       inspect.onclick=()=>recallSelection(id);row.append(label,identity,inspect);host.append(row);
-    }
+    }    if(!matches.length){const empty=document.createElement('p');empty.textContent='No placements match this search. The saved group is unchanged.';host.append(empty);}
   }
-  function show(){const v=chosen();dialog.querySelector('[data-name]').value=v?.name??'';dialog.querySelector('[data-members]').textContent=v?v.entity_ids.join('\n'):'No saved scene selections.';memberPage=0;renderMembers();update();}
+  function show(){const v=chosen();dialog.querySelector('[data-name]').value=v?.name??'';dialog.querySelector('[data-members]').textContent=v?v.entity_ids.join('\n'):'No saved scene selections.';if(memberGroupId!==(v?.id??null)){memberGroupId=v?.id??null;memberPage=0;dialog.querySelector('[data-member-search]').value='';}renderMembers();update();}
   async function recallSelection(memberId=null){
     if(isBusy()||pending||recalling||reading||!canRecall()||context!==getState().project?.path)return;
     const v=chosen();if(!v||memberId!==null&&!v.entity_ids.includes(memberId))return;
@@ -117,7 +122,7 @@ export function mountSceneSelectionSets({host,getState,getSelection,isBusy,canEd
   button.onclick=async()=>{
     if(button.disabled)return;const path=getState().project?.path;
     if(!await api('/api/state',undefined)||path!==getState().project?.path||!canRecall())return;cancel();context=path;signature=null;
-    dialog.innerHTML='<h2>Saved scene selections</h2><p>Save imported actors, authored NPC drafts and static decorations for later placement edits. These selections retain IDs without moving objects or changing game data.</p><p data-current></p><label>New scene selection name<input data-new-name maxlength="80" aria-label="New scene selection name"></label><button type="button" data-create>Save current placements</button><hr><label>Scene selection<select data-selections aria-label="Scene selection"></select></label><label>Scene selection name<input data-name maxlength="80" aria-label="Scene selection name"></label><div class="dialog-actions"><button type="button" data-recall>Recall placements</button><button type="button" data-rename>Rename selection</button><button type="button" data-update>Replace with current placements</button><button type="button" data-delete>Delete selection</button></div><h3>Inspect one saved placement</h3><p class="field-note">Select one placement after verifying the complete saved group. This changes editor selection only.</p><div><button type="button" data-members-previous>Previous placements</button><span data-member-page></span><button type="button" data-members-next>Next placements</button></div><div data-member-list></div><details><summary>All saved placement IDs</summary><pre data-members class="diagnostic-detail"></pre></details><p data-repair-note class="field-note" hidden></p><hr><h3>Transfer a scene selection</h3><p>Export source-bound placement IDs as editor metadata. Import creates a new group for this exact scene source and requires every placement to be available.</p><button type="button" data-export-selection>Export selected scene selection JSON</button><label>Scene selection JSON<input type="file" accept=".json,application/json" data-import-file aria-label="Import scene selection JSON"></label><label>Imported selection name<input maxlength="160" data-import-name aria-label="Imported scene selection name"></label><button type="button" data-import-selection>Import as new scene selection</button><details><summary>Imported scene selection metadata</summary><pre data-import-preview class="diagnostic-detail"></pre></details><p data-error class="dialog-error" role="alert"></p><button type="button" data-close>Close saved scene selections</button>';
+    dialog.innerHTML='<h2>Saved scene selections</h2><p>Save imported actors, authored NPC drafts and static decorations for later placement edits. These selections retain IDs without moving objects or changing game data.</p><p data-current></p><label>New scene selection name<input data-new-name maxlength="80" aria-label="New scene selection name"></label><button type="button" data-create>Save current placements</button><hr><label>Scene selection<select data-selections aria-label="Scene selection"></select></label><label>Scene selection name<input data-name maxlength="80" aria-label="Scene selection name"></label><div class="dialog-actions"><button type="button" data-recall>Recall placements</button><button type="button" data-rename>Rename selection</button><button type="button" data-update>Replace with current placements</button><button type="button" data-delete>Delete selection</button></div><h3>Inspect one saved placement</h3><label>Search saved placements<input data-member-search maxlength="200" aria-label="Search saved placements" placeholder="Name or stable ID"></label><p class="field-note">Select one placement after verifying the complete saved group. This changes editor selection only.</p><div><button type="button" data-members-previous>Previous placements</button><span data-member-page></span><button type="button" data-members-next>Next placements</button></div><div data-member-list></div><details><summary>All saved placement IDs</summary><pre data-members class="diagnostic-detail"></pre></details><p data-repair-note class="field-note" hidden></p><hr><h3>Transfer a scene selection</h3><p>Export source-bound placement IDs as editor metadata. Import creates a new group for this exact scene source and requires every placement to be available.</p><button type="button" data-export-selection>Export selected scene selection JSON</button><label>Scene selection JSON<input type="file" accept=".json,application/json" data-import-file aria-label="Import scene selection JSON"></label><label>Imported selection name<input maxlength="160" data-import-name aria-label="Imported scene selection name"></label><button type="button" data-import-selection>Import as new scene selection</button><details><summary>Imported scene selection metadata</summary><pre data-import-preview class="diagnostic-detail"></pre></details><p data-error class="dialog-error" role="alert"></p><button type="button" data-close>Close saved scene selections</button>';
     dialog.querySelector('[data-export-selection]').onclick=()=>{try{if(isBusy()||pending||recalling||reading||context!==getState().project?.path)return;const value=exportSceneSelection(chosen(),getState()),url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='scene-selection-'+getState().scene.id.slice(8)+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){error(e);}};
     dialog.querySelector('[data-import-file]').onchange=async()=>{
       if(isBusy()||pending||recalling||reading||!canEdit()||context!==getState().project?.path)return;
@@ -140,6 +145,7 @@ export function mountSceneSelectionSets({host,getState,getSelection,isBusy,canEd
     dialog.querySelector('[data-rename]').onclick=()=>command('rename_scene_selection_set',{name:dialog.querySelector('[data-name]').value.trim()});
     dialog.querySelector('[data-update]').onclick=()=>command('update_scene_selection_set',{entity_ids:members()});
     dialog.querySelector('[data-delete]').onclick=()=>command('delete_scene_selection_set');
+    dialog.querySelector('[data-member-search]').oninput=()=>{if(isBusy()||pending||recalling||reading)return;memberPage=0;try{renderMembers();update();}catch(e){error(e);}};
     dialog.querySelector('[data-recall]').onclick=()=>recallSelection();
     dialog.querySelector('[data-members-previous]').onclick=()=>{if(isBusy()||pending||recalling||reading||memberPage===0)return;memberPage--;renderMembers();};
     dialog.querySelector('[data-members-next]').onclick=()=>{if(isBusy()||pending||recalling||reading)return;memberPage++;renderMembers();};

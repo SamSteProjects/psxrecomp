@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {decodeSavedSceneSelection,unavailableSelectionNpcs,savedSelectionMemberIds} from '../editor/scene-selection-sets.js';
+import {decodeSavedSceneSelection,unavailableSelectionNpcs,savedSelectionMemberIds,savedSelectionMemberRows} from '../editor/scene-selection-sets.js';
 const state={scene:{id:'scene',entities:[{id:'actor-1'},{id:'actor-2'}]},actor_selection_source_key:'import',scene_selection_map_sha256:'map',scene_selection_eligible_ids:['actor-1','actor-2','decor-1']};
 const value={scene_id:'scene',import_sha256:'import',map_sha256:'map',entity_ids:['actor-1','decor-1']},before=structuredClone(value);
 const ids=decodeSavedSceneSelection(value,state);ids.push('actor-2');assert.deepEqual(value,before);
@@ -20,3 +20,6 @@ console.log('Unavailable NPC selection diagnostics preserve identities and disti
 
 assert.deepEqual(savedSelectionMemberIds(value,state,'actor-1'),['actor-1']);assert.deepEqual(savedSelectionMemberIds(value,state,'decor-1'),['decor-1']);assert.throws(()=>savedSelectionMemberIds(value,state,'actor-2'));assert.throws(()=>savedSelectionMemberIds(value,{...state,scene_selection_eligible_ids:['actor-1']},'actor-1'));assert.throws(()=>savedSelectionMemberIds({...value,map_sha256:'stale'},state,'actor-1'));const member=savedSelectionMemberIds(value,state,'actor-1');member.push('other');assert.deepEqual(value,before);
 console.log('Individual saved placement inspection retains complete source qualification and rejects outsiders or unavailable group members.');
+
+const namedState={...state,scene:{...state.scene,entities:[{id:'actor-1',name:'Known Actor'},{id:'actor-2',name:'Other Actor'}]}};assert.deepEqual(savedSelectionMemberRows(value,namedState,'KNOWN'),[{id:'actor-1',name:'Known Actor'}]);assert.deepEqual(savedSelectionMemberRows(value,namedState,'decor-1'),[{id:'decor-1',name:'decor-1'}]);assert.deepEqual(savedSelectionMemberRows(value,namedState,'actor-2'),[]);assert.equal(savedSelectionMemberRows(value,namedState,'  ').length,2);const matched=savedSelectionMemberRows(value,namedState);matched[0].name='Changed';assert.equal(namedState.scene.entities[0].name,'Known Actor');assert.deepEqual(value,before);for(const query of [null,{},'a'.repeat(201)])assert.throws(()=>savedSelectionMemberRows(value,namedState,query));assert.throws(()=>savedSelectionMemberRows({...value,entity_ids:['actor-1','actor-1']},namedState,''));
+console.log('Saved member search matches SDK labels or stable IDs, retains full membership and returns detached bounded rows.');
