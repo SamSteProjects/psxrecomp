@@ -57,6 +57,9 @@ def validate_components(project,owner,components):
         elif family=='ControllerSceneBytes':
             from .controller_scene_bytes import validate as validate_scene_bytes
             checked=validate_scene_bytes(project,owner,value)
+        elif family=='ControllerFiveWords':
+            from .controller_five_words import validate as validate_five_words
+            checked=validate_five_words(project,owner,value)
         else:
             from .controller_three_words import validate as validate_three_words
             checked=validate_three_words(project,owner,value)
@@ -90,6 +93,9 @@ def compose(context,owner,components):
     if 'ControllerSceneBytes' in components:
         from .controller_scene_bytes import compose as compose_scene_bytes
         current=compose_scene_bytes(context._source,current,components['ControllerSceneBytes']['entries'])
+    if 'ControllerFiveWords' in components:
+        from .controller_five_words import compose as compose_five_words
+        current=compose_five_words(context._source,current,components['ControllerFiveWords']['entries'])
     return current
 
 

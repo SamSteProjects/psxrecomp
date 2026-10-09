@@ -2162,6 +2162,10 @@ class ProjectService:
             from .controller_scene_bytes import apply
             apply(self, command)
             return
+        if command.get('type') == 'set_controller_five_word':
+            from .controller_five_words import apply
+            apply(self,command)
+            return
         if command.get('type') == 'set_controller_three_word':
             from .controller_three_words import apply
             apply(self,command)
