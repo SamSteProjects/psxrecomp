@@ -7,9 +7,6 @@ from importer.controller_system_flags import load_controller_system_flag_context
 
 def collect(project,owner,components):
     value=validate_components(project,owner,components)
-    if 'ControllerSceneBytes' in value:
-        from .build import BuildError
-        raise BuildError('Controller scene-state byte native Build integration is pending')
     return scene_document(project,owner)['scene']['semantic_id'],value
 
 
@@ -17,8 +14,6 @@ def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
     from .build import BuildError
     owner=scene_id+'/controllers/man-p1/0000'
     components=validate_components(project,owner,project.overrides[owner])
-    if 'ControllerSceneBytes' in components:
-        raise BuildError('Controller scene-state byte native Build integration is pending')
     value=components.get(COMPONENT,dict(entries={}))
     scene=project.imports[scene_id]['scene']['name']
     context=load_controller_system_flag_context(project.disc_path,scene)
@@ -84,4 +79,8 @@ def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
         from .controller_three_word_build import compose_three_words
         result,three_word_changes=compose_three_words(context,owner,components,result,[*previous,*changes],appended=appended)
         changes.extend(three_word_changes)
+    if 'ControllerSceneBytes' in components:
+        from .controller_scene_byte_build import compose_scene_bytes
+        result,scene_byte_changes=compose_scene_bytes(context,owner,components,result,[*previous,*changes],appended=appended)
+        changes.extend(scene_byte_changes)
     return result,changes
