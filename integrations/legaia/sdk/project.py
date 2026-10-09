@@ -4061,6 +4061,30 @@ class ProjectService:
         from .inspector_schema import inspector_schema
         from .npc_script_binding import snapshots as npc_script_bindings
         document = self.imports.get(self.active_scene)
+        model_diagnostics = []
+        if document:
+            retail_missing = current_missing = draft_missing = 0
+            for actor in document['actors']:
+                retail_missing += actor['model_reference'].get('asset_semantic_id') is None
+                donor = self.appearance_source_actor(actor['semantic_id'])
+                current_missing += donor['model_reference'].get('asset_semantic_id') is None
+            actors_by_id = {actor['semantic_id']: actor for actor in document['actors']}
+            for draft in self.actor_drafts.values():
+                if draft['scene_id'] != self.active_scene:
+                    continue
+                donor = actors_by_id[draft.get('appearance', {}).get('donor_entity_id', draft['donor_entity_id'])]
+                draft_missing += donor['model_reference'].get('asset_semantic_id') is None
+            if retail_missing or current_missing or draft_missing:
+                model_diagnostics.append({
+                    'code': 'Unresolved Initial Model References', 'severity': 'warning',
+                    'scene_id': self.active_scene,
+                    'retail_actor_count': retail_missing, 'current_actor_count': current_missing,
+                    'current_npc_count': draft_missing,
+                    'message': f"Imported initial model references: {retail_missing} Retail actors, "
+                               f"{current_missing} Current actors and {draft_missing} Current NPCs have no resolved model asset. "
+                               "Inspect unresolved model references for fresh native source verification. "
+                               "Scripts may change runtime models; gameplay visibility is unverified.",
+                })
         correlation = self._current_correlation()
         entities = []
         for actor in document["actors"] if document else []:
@@ -4152,7 +4176,7 @@ class ProjectService:
                 "audio_sample_overrides": deepcopy(self.audio_sample_overrides),
                 "authored_assets": self.authored_assets(),
                 "history": {"can_undo": bool(self.undo_stack), "can_redo": bool(self.redo_stack)},
-                "diagnostics": ["Scene viewport uses verified model poses where supported and explicit markers otherwise; scripted visibility is not reconstructed.",
+                "diagnostics": [*model_diagnostics, "Scene viewport uses verified model poses where supported and explicit markers otherwise; scripted visibility is not reconstructed.",
                                 "Retail Y and initial facing are unresolved; an authored Y is a project value.",
                                 "Build supports representable X/Z placements and qualified script-facing operands; authored height and generic Transform rotation are unsupported."],
                 "capabilities": {"project_settings": True, "project_navigation": True, "edit_transform": True, "authored_transform_templates": True, "saved_scene_views": True, "saved_script_bookmarks": True, "saved_model_vertex_groups": True,
