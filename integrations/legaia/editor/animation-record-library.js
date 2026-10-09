@@ -1,6 +1,7 @@
 import {validateRetainedAxes} from './animation-record-edit.js';
 import {animationGlbContext} from './animation-glb.js';
 import {openAnimationAllocationEditor} from './animation-allocation.js';
+import {mountRetainedComparison} from './animation-record-comparison.js';
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
 const uuid=v=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(v);
@@ -103,6 +104,7 @@ export async function openAnimationRecordLibrary({entityId,getContext,assignment
   const current=()=>{try{return !closed&&!stale&&same(context,animationGlbContext(getContext()));}catch{return false;}};
   const allowed=row=>retainedRecord!==null?row.record_id===retainedRecord.record_id:modelAssetId?row.donor_asset_id===modelAssetId:row.entity_id===entityId;
   const selected=()=>library?.records.find(row=>row.record_id===select.value&&allowed(row));
+  const comparison=mountRetainedComparison({host:dialog,getRows:()=>library?.records??[],getSelected:selected,getContext,busy:()=>!current()||pending!==null||busy(),setBusy:value=>{setBusy(value);updateState();},onError});
   const release=token=>{if(owner===token){owner=null;setBusy(false);}};
   function invalidate(){generation++;controller?.abort();controller=null;pending=null;if(owner)release(owner);held=null;}
   function updateState(){
@@ -116,8 +118,9 @@ export async function openAnimationRecordLibrary({entityId,getContext,assignment
     duplicate.disabled=blocked||assetAssignment||!row||!library?.activation_available||library.records.length>=64||library.records.reduce((sum,r)=>sum+r.frame_count*r.object_count,0)+(row?.frame_count??0)*(row?.object_count??0)>4096;
     variant.disabled=blocked||assetAssignment||duplicateOnly||!row||!library?.activation_available||library.records.length>=64||library.records.reduce((sum,r)=>sum+r.frame_count*r.object_count,0)+(row?.object_count??0)>4096;
     if(row){details.textContent=`${row.animation_id} · ${row.frame_count} frames · ${row.object_count} objects · ${row.active?'Active':'Retired'} · ${assignment?.record_id===row.record_id?'assigned as this actor’s initial clip':'retained capture'}`;reviewButton.textContent=row.active?'Review retirement':'Review restoration';}
+    comparison.updateState();
   }
-  function dispose(){variantEditor?.dispose();if(closed)return;closed=true;invalidate();if(dialog.open)dialog.close();dialog.remove();}
+  function dispose(){variantEditor?.dispose();if(closed)return;closed=true;comparison.dispose();invalidate();if(dialog.open)dialog.close();dialog.remove();}
   async function post(path,body,signal){const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal});const value=await response.json();if(!response.ok||value?.error)fail(value?.error??'Saved clip request failed.');return value;}
   async function run(kind,work){
     if(!current()||pending!==null||busy()!==false)return false;

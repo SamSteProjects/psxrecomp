@@ -1144,6 +1144,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/actor-animation-glb-target.js": ("actor-animation-glb-target.js", "text/javascript"),
                  "/animation-allocation.js": ("animation-allocation.js", "text/javascript"),
                  "/animation-record-library.js": ("animation-record-library.js", "text/javascript"),
+                 "/animation-record-comparison.js": ("animation-record-comparison.js", "text/javascript"),
                  "/animation-copy-selection.js": ("animation-copy-selection.js", "text/javascript"),
                  "/asset-resource-discovery.js": ("asset-resource-discovery.js", "text/javascript"),
                  "/retained-animation-assets.js": ("retained-animation-assets.js", "text/javascript"),
@@ -3090,6 +3091,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     else:
                         apply_import(self.server.project, body['entity_id'], payload, body['binding'], body['review_key'], **selection)
                         self._json(200, self.server.state())
+                    return
+                if route == '/api/animation-record-comparison':
+                    if set(body)!={'scene_id','left_record_id','right_record_id','expected_source_key'}:
+                        raise ProjectError('Retained comparison requires two clip identities and the current scene source')
+                    from .animation_record_comparison import compare
+                    self._json(200,compare(self.server.project,**body))
                     return
                 if route == '/api/animation-record-allocation-options':
                     expected={'entity_id','expected_source_key'}

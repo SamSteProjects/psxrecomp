@@ -1,5 +1,40 @@
 # Persistent native animation record allocation
 
+## Retained Native Clip Comparison — 2026-10-09
+
+The clip library and retained lifecycle panel now offer **Compare native channels
+with** and **Compare retained clips**. Choose another retained clip using the same
+captured model and rigid-object count. Active and retired captures are eligible;
+comparison never restores, assigns or edits them. Results show changed translation
+and PSX rotation axes at paired output frame/object indices, with left/right
+values and encoded subtraction. The changed-axis table pages 100 rows at a time.
+
+The SDK freshly validates the ledger, disc/import source and donor witnesses,
+then reconstructs both frozen native payloads. Matching output indices provide
+only a comparison convention: rates, time alignment and gameplay cadence remain
+unknown. Extra frames are counted on their own side without invented poses.
+Header bytes and opaque channel nibbles have separate difference counts with no
+semantic claim. Literal native byte equality remains separate from axis equality.
+No model retargeting or shortest-path rotation inference is performed.
+
+The source-bound editor checks selected IDs, captured hashes/model/owners/counts,
+active states, paired/unpaired counts, unique native-grid axes and delta arithmetic.
+Changed selection/context withdraws results and aborts outstanding requests;
+close releases only its own busy owner. Library authoring proposals remain separate.
+
+Validation: the focused private-disc test matched reported channels against an
+independent literal eight-byte parser and checked native byte differences,
+self-equality, retirement, HTTP/stale/foreign/malformed/Live refusal and unchanged
+project/import/history. Five existing GLB workflow tests also passed. Three Node
+suites, two JS syntax and two AST checks passed, including 101-row paging,
+encoded rotation deltas, malformed grids, detached output and stale in-flight
+withdrawal. Actual Town01 normal asset-browser/lifecycle comparison found three
+changed axes and two extra left frames between a retired five-frame source and
+its active three-frame variant. Desktop/400-pixel screenshots were inspected;
+zero page errors and complete project/import/history/file preservation passed.
+Evidence: `local-output/sdk-20260909/retained-comparison-20261009/`.
+No game or runtime attachment; gameplay remains unverified.
+
 ## Created Clip Asset Handoff — 2026-10-09
 
 After variant Apply, the normal editor refreshes the authoritative Asset Database,

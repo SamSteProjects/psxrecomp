@@ -11,7 +11,7 @@ decodeAllocatedAssignmentReview(report(),request,row);decodeAllocatedAssignmentP
 decodeAllocatedAssignmentReview(report(true,binding),{...request,record_id:null},row,binding);
 for(const edit of [r=>r.entity_id+='x',r=>r.before=binding,r=>r.proposed_component.record_sha256='0'.repeat(64),r=>r.native_animation_id=71,r=>r.gameplay_verified=true,r=>r.capabilities.apply=false]){const r=structuredClone(report());edit(r);assert.throws(()=>decodeAllocatedAssignmentReview(r,request,row));}
 const wrong=pose(report());wrong.animation.assignment_proposal.review_key='0'.repeat(64);assert.throws(()=>decodeAllocatedAssignmentPose(wrong,report(),row));
-class Node{constructor(tag){this.children=[];this.style={};this.dataset={};this.value='';this.open=false;this.disabled=false;}append(...nodes){for(const n of nodes){this.children.push(n);n.parent=this;}}setAttribute(){}showModal(){this.open=true;}close(){this.open=false;this.onclose?.();}remove(){if(this.parent)this.parent.children=this.parent.children.filter(n=>n!==this);}}
+class Node{constructor(tag){this.children=[];this.style={};this.dataset={};this.value='';this.open=false;this.disabled=false;}append(...nodes){for(const n of nodes){this.children.push(n);n.parent=this;}}replaceChildren(...nodes){this.children=[];this.append(...nodes);}setAttribute(){}showModal(){this.open=true;}close(){this.open=false;this.onclose?.();}remove(){if(this.parent)this.parent.children=this.parent.children.filter(n=>n!==this);}}
 const tree=n=>[n,...n.children.flatMap(tree)],action=(c,k)=>tree(c.dialog).find(n=>n.dataset.action===k);
 const old={document:globalThis.document,fetch:globalThis.fetch};globalThis.document={body:new Node('body'),createElement:t=>new Node(t)};
 try{
