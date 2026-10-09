@@ -58,3 +58,16 @@ export function interpolateAnimationFrameRange({first,last,start,end,frameCount,
   next.sort((a,b)=>a.frame_index-b.frame_index||a.object_index-b.object_index);
   return {proposed,edits:next};
 }
+
+// Repeat an inspected complete pose without inferring timing or changing object ownership.
+export function holdAnimationFrameRange({first,start,end,frameCount,objectCount,edits}){
+  if(!Number.isSafeInteger(frameCount)||frameCount<1||frameCount>512||!Number.isSafeInteger(objectCount)||objectCount<1||objectCount>64||!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||start>end||end>=frameCount||!Array.isArray(first)||first.length!==objectCount||!Array.isArray(edits)||edits.length>4096||(end-start+1)*objectCount>4096)throw Error('Choose a complete copied pose and a target range within the 4096-channel budget.');
+  first.forEach((row,index)=>{if(!row||Object.keys(row).sort().join(',')!=='object_index,rotation_psx,translation'||row.object_index!==index)throw Error('Complete copied pose must retain ordered rigid-object identities.');values(row);});
+  const seen=new Set();for(const edit of edits){const key=JSON.stringify([edit.frame_index,edit.object_index]);if(!Number.isSafeInteger(edit.frame_index)||!Number.isSafeInteger(edit.object_index)||edit.frame_index<0||edit.frame_index>=frameCount||edit.object_index<0||edit.object_index>=objectCount||seen.has(key))throw Error('Existing contributions have invalid or duplicate identities.');seen.add(key);}
+  const proposed=[];
+  for(let frame=start;frame<=end;frame++)for(const row of first)proposed.push({frame_index:frame,object_index:row.object_index,translation:structuredClone(row.translation),rotation_psx:structuredClone(row.rotation_psx)});
+  const next=structuredClone(edits.filter(edit=>edit.frame_index<start||edit.frame_index>end));next.push(...structuredClone(proposed));
+  if(next.length>4096)throw Error('Copied pose and existing contributions exceed the 4096-channel limit.');
+  next.sort((a,b)=>a.frame_index-b.frame_index||a.object_index-b.object_index);
+  return {proposed,edits:next};
+}
