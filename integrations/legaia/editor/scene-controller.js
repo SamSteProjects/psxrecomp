@@ -41,6 +41,27 @@ export function renderControllerInstruction(row,report,selectSource){
  const evidence=create('details'),pre=create('pre',JSON.stringify(row,null,2));evidence.dataset.controllerInstructionEvidence='';pre.style.whiteSpace='pre-wrap';evidence.append(create('summary','Raw Instruction Evidence'),pre);details.append(navigation,evidence);return details;
 }
 
+export function controllerInstructionMatches(row,query){
+ const terms=query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+ const operands=JSON.stringify(row.operands, (key,value)=>key==='encoded_hex'?undefined:value);
+ const text=`${row.mnemonic} ${operands}`.toLowerCase().replaceAll('_',' ');
+ return terms.every(term=>{
+  if(term.startsWith('pc:')){const value=term.slice(3);return /^(?:0x[a-f0-9]+|\d+)$/.test(value)&&Number(value)===row.pc;}
+  return text.includes(term.replaceAll('_',' '));
+ });
+}
+
+export function mountControllerInstructionFilter(host,{rows,rowElements,current,busy,onHidden=()=>{}}){
+ const input=document.createElement('input'),label=document.createElement('label'),count=document.createElement('p'),clear=document.createElement('button'),note=document.createElement('p');
+ input.type='search';input.maxLength=256;input.id='controller-instruction-search';input.style.cssText='width:100%;box-sizing:border-box';input.placeholder='Mnemonic or operand; pc:0x0091 for an exact PC';label.htmlFor=input.id;label.textContent='Search Decoded Instructions';
+ clear.type='button';clear.textContent='Clear Instruction Filter';count.setAttribute('role','status');count.dataset.controllerInstructionCount='';note.textContent='Search covers decoded instructions only. Dialogue, opaque regions and inspection stops remain separate. Flow navigation clears the filter to reveal its target.';host.append(label,input,clear,count,note);
+ const render=()=>{let visible=0;for(const row of rows){const element=rowElements.get(row.pc);element.hidden=!controllerInstructionMatches(row,input.value);if(!element.hidden)visible++;else onHidden(row.pc);}count.textContent=`Showing ${visible} of ${rows.length} decoded instructions`;clear.disabled=!input.value||!current()||busy();};
+ const reset=()=>{if(!current()||busy())return false;input.value='';render();return true;};
+ input.oninput=()=>{if(current()&&!busy())render();};clear.onclick=reset;
+ const updateState=()=>{input.disabled=!current()||busy();clear.disabled=!input.value||input.disabled;};
+ render();updateState();return {reset,updateState};
+}
+
 export async function openSceneController({getState,busy,expectedAsset=null,focusFlagPc=null,api=null,setBusy=null,onError=()=>{}}){
  const initial=getState(),scene=initial.scene?.id,key=initial.asset_reference_source_key,projectPath=initial.project?.path;
  if(busy()||!scene||initial.project?.mode!=='edit'||!key)return;
@@ -49,9 +70,9 @@ export async function openSceneController({getState,busy,expectedAsset=null,focu
  const close=document.createElement('button');close.textContent='Close';close.onclick=()=>dialog.close();
  const status=document.createElement('p');status.setAttribute('role','status');status.textContent='Verifying the scene controller source…';
  const content=document.createElement('div');content.style.overflowWrap='anywhere';dialog.append(heading,close,status,content);document.body.append(dialog);dialog.showModal();
- let flow=null,walkthrough=null,selectors=null,branches=null,selectedSource=null;const sourceRows=new Map();
+ let flow=null,walkthrough=null,selectors=null,branches=null,instructionFilter=null,selectedSource=null;const sourceRows=new Map();
  const controller=new AbortController(),fresh=()=>dialog.open&&getState().project?.path===projectPath&&getState().scene?.id===scene&&getState().asset_reference_source_key===key&&getState().project?.mode==='edit';
- const timer=setInterval(()=>{if(!fresh()&&!busy()){selectors?.dispose();selectors=null;branches?.dispose();branches=null;flow?.dispose();flow=null;walkthrough?.dispose();walkthrough=null;sourceRows.clear();selectedSource=null;content.replaceChildren();status.textContent='Scene sources changed. Reopen controller inspection.';}selectors?.updateState();branches?.updateState();},250);
+ const timer=setInterval(()=>{if(!fresh()&&!busy()){selectors?.dispose();selectors=null;branches?.dispose();branches=null;flow?.dispose();flow=null;walkthrough?.dispose();walkthrough=null;sourceRows.clear();selectedSource=null;instructionFilter=null;content.replaceChildren();status.textContent='Scene sources changed. Reopen controller inspection.';}selectors?.updateState();branches?.updateState();instructionFilter?.updateState();},250);
  dialog.addEventListener('close',()=>{clearInterval(timer);controller.abort();selectors?.dispose();branches?.dispose();flow?.dispose();walkthrough?.dispose();sourceRows.clear();dialog.remove();},{once:true});
  try{
   const response=await fetch('/api/scene-controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scene_id:scene,expected_source_key:key}),signal:controller.signal}),value=await response.json();if(!response.ok||value.error)throw Error(value.error||'Controller inspection failed');if(!fresh())return;
@@ -59,7 +80,7 @@ export async function openSceneController({getState,busy,expectedAsset=null,focu
   for(const note of report.limitations){const p=document.createElement('p');p.textContent=note;content.append(p);}
   const source=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='Controller source and entry evidence';pre.style.whiteSpace='pre-wrap';pre.textContent=JSON.stringify({source_record:report.source_record,man_source:report.man_source,entry_pc:report.entry_pc,local_count:report.record.local_count,reference_commit:report.reference_commit},null,2);source.append(summary,pre);content.append(source);
   const sourceSelection=document.createElement('p');sourceSelection.setAttribute('role','status');sourceSelection.dataset.controllerSourceSelection='';sourceSelection.textContent='Select a decoded source boundary to inspect its evidence.';content.append(sourceSelection);
-  const selectSource=(pc,reveal=true)=>{if(!fresh()||busy())return false;const target=sourceRows.get(pc);if(!target)return false;if(selectedSource){selectedSource.open=false;selectedSource.removeAttribute('data-controller-source-selected');selectedSource.style.borderLeft='';}selectedSource=target;target.dataset.controllerSourceSelected='true';target.style.borderLeft='3px solid #62c0b4';target.open=true;sourceSelection.textContent='Selected source PC 0x'+pc.toString(16).padStart(4,'0')+' · encoded evidence only';if(reveal){target.querySelector('summary')?.scrollIntoView({block:'start'});target.querySelector('summary')?.focus({preventScroll:true});}return true;};
+  const selectSource=(pc,reveal=true)=>{if(!fresh()||busy())return false;const target=sourceRows.get(pc);if(!target)return false;instructionFilter?.reset();if(selectedSource){selectedSource.open=false;selectedSource.removeAttribute('data-controller-source-selected');selectedSource.style.borderLeft='';}selectedSource=target;target.dataset.controllerSourceSelected='true';target.style.borderLeft='3px solid #62c0b4';target.open=true;sourceSelection.textContent='Selected source PC 0x'+pc.toString(16).padStart(4,'0')+' · encoded evidence only';if(reveal){target.querySelector('summary')?.scrollIntoView({block:'start'});target.querySelector('summary')?.focus({preventScroll:true});}return true;};
   flow=mountScriptFlowOverview(content,{label:'Retail controller encoded flow · '+(report.status==='partial'?'partial source':'supported decoded paths'),selectInstruction:selectSource});if(!flow.update(report))throw Error('Controller decoded flow boundaries are not qualified.');
   const context=()=>({project_path:getState().project?.path,scene_id:getState().scene?.id,script_id:report.semantic_id,project_source_key:getState().asset_reference_source_key,record_sha256:report.source_record.sha256,representation:'retail_source'});
   walkthrough=mountScriptWalkthrough(content,{report,getContext:context,selection:()=>selectedSource?Number(selectedSource.dataset.controllerSourcePc):null,selectInstruction:selectSource,current:fresh,busy,includeFlagSandbox:false,label:'Walk through Retail controller source',onError,
@@ -85,7 +106,9 @@ export async function openSceneController({getState,busy,expectedAsset=null,focu
   if(branches)await branches.ready;
   if(!fresh())return;
   const focusedFlag=renderControllerFlags(content,report,focusFlagPc);
+  const searchHost=document.createElement('section');content.append(searchHost);
   for(const [title,rows] of [['Encoded Instructions',report.instructions],['Dialogue Segments',report.dialogues],['Opaque Regions',report.opaque_regions],['Inspection Stops',report.stops]]){const heading=document.createElement('h3');heading.textContent=title;content.append(heading);if(!rows?.length){const p=document.createElement('p');p.textContent='None reported';content.append(p);}for(const row of rows??[]){let details;if(title==='Encoded Instructions')details=renderControllerInstruction(row,report,selectSource);else{details=document.createElement('details');const summary=document.createElement('summary'),pre=document.createElement('pre');const pc=Number.isSafeInteger(row.pc)?'PC 0x'+row.pc.toString(16).padStart(4,'0'):'Source region';summary.textContent=pc+' · '+(row.reason??(title==='Dialogue Segments'?'Dialogue segment':'Source evidence'));pre.style.whiteSpace='pre-wrap';pre.textContent=JSON.stringify(row,null,2);details.append(summary,pre);}if(['Encoded Instructions','Dialogue Segments'].includes(title)){details.dataset.controllerSourcePc=row.pc;sourceRows.set(row.pc,details);}content.append(details);}}
+  instructionFilter=mountControllerInstructionFilter(searchHost,{rows:report.instructions,rowElements:sourceRows,current:fresh,busy,onHidden:pc=>{if(selectedSource&&Number(selectedSource.dataset.controllerSourcePc)===pc){selectedSource.open=false;selectedSource.removeAttribute('data-controller-source-selected');selectedSource.style.borderLeft='';selectedSource=null;sourceSelection.textContent='Selection hidden by the instruction filter. Select a visible source boundary.';}}});
   focusedFlag?.scrollIntoView({block:'nearest'});
  }catch(error){if(dialog.open&&error.name!=='AbortError'){status.textContent=error.message;onError(error);}}
 }
