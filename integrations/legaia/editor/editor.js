@@ -1200,7 +1200,8 @@ function authored(entity){return (entity.authored_components?.length??0)>0 || !!
 function showDialog(id){const d=$(id);d.querySelector('.dialog-error')?.replaceChildren();d.showModal();}
 document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog').close()));
 $('project-button').onclick=()=>{ $('project-name-input').value=state.project?.name ?? 'Legaia project'; $('project-path-input').value=state.project?.path ?? '';showDialog('project-dialog'); };
-mountProjectSettings({after:$('project-button'),getState:()=>state,busy:()=>busy,api,onError:error=>notify(error.message,true)});
+mountProjectSettings({after:$('project-button'),getState:()=>state,busy:()=>busy,api,onError:error=>notify(error.message,true),
+  references:{records:()=>assetRecords(true),discover:()=>refreshResources(),open:record=>showAssetDetails(record,()=>assetRecords(true))}});
 mountProjectCopy({after:$('project-settings-button'),getState:()=>state,busy:()=>busy,setBusy,api});
 for(const id of ['import-button','empty-import']) $(id).onclick=()=>{if(!$('disc-input').value)$('disc-input').value=state.project?.disc_path??'';showDialog('import-dialog');};
 $('project-form').onsubmit=async event=>{event.preventDefault();await api('/api/project/new',{name:$('project-name-input').value,path:$('project-path-input').value},{dialog:$('project-dialog'),success:'Project created.'});};

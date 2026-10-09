@@ -422,3 +422,26 @@ and one NPC startup attempt failed to fetch the main module before a successful
 retry returned HTTP 200. No game, runtime attachment, native recomp compilation,
 Build, installation or disc export occurred. Gameplay remains unverified and the
 full SDK goal remains active.
+## Project Settings Scene Navigation — 2026-10-09
+
+Project Settings now uses the shared SDK section renderer for its heading,
+properties, state badges, notes and registered Rename action. The active scene
+reference opens its exact Asset Database record through the existing central
+reference resolver. Project folders and retail paths remain plain text; no path,
+ID suffix or guest address is interpreted as a navigation target. The reference
+is rendered only when the complete local navigation adapter is available.
+
+Opening scene details closes Settings. Missing/ambiguous catalog references stay
+in Settings with the existing reference error; changed settings/schema/capability,
+busy state and closed dialogs refuse navigation. Rename retains its bounded
+command, snapshot identity, form and Edit requirement. Navigation does not rename,
+switch the scene, write game memory or grant authoring capability.
+
+Three focused Node suites, two JS syntax checks and the two project metadata
+Python tests passed. Actual private Town01 Settings-to-Scene Asset Details,
+unapplied rename draft, stale/busy reference refusal and Edit-only rename guard
+passed without authoring requests or page errors. Desktop and 400px layouts were
+inspected. Project document, imports, history and every project file stayed exact.
+Private evidence: `local-output/sdk-20260909/project-settings-scene-reference-20261009/`.
+No Build, game, runtime attachment, native recomp compilation, install or disc
+export occurred. Gameplay remains unverified; the full SDK goal remains active.

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {projectNameCommand} from '../editor/project-settings.js';
+import {projectNameCommand,renderProjectSettingsSection} from '../editor/project-settings.js';
 const schema={schema_version:'legaia.inspector-schema.v1',live_writes:false,components:{ProjectSettings:{properties:[{id:'name',type:'string',authoring:{minimum_length:1,maximum_length:120,set_command:'rename_project'}}]}}},settings={name:'Old',review_key:'a'.repeat(64)};
 assert.deepEqual(projectNameCommand(schema,settings,'  New "Name"  '),{type:'rename_project',name:'New "Name"',review_key:settings.review_key});
 for(const name of ['',true,'x'.repeat(121),'new\nname','\x7f','\ud800'])assert.throws(()=>projectNameCommand(schema,settings,name));
@@ -7,3 +7,7 @@ const bad=structuredClone(schema);bad.components.ProjectSettings.properties[0].a
 assert.deepEqual(settings,{name:'Old',review_key:'a'.repeat(64)});console.log('Project name bounded command, Unicode text, quotes, control characters and metadata whitelist passed.');
 
 assert.equal(projectNameCommand(schema,settings,'Unicode \u{1f680}').name,'Unicode \u{1f680}');
+const inspector=structuredClone(schema);inspector.components.ProjectSettings={...inspector.components.ProjectSettings,label:'Project settings',layout:'read-only-properties',units:'Project metadata',properties:[{id:'scene',label:'Active scene',path:['active_scene'],type:'asset-reference'},{id:'path',label:'Project folder',path:['path'],type:'string'}],actions:[{id:'rename-project',label:'Rename project',capability:'project_settings',requires_edit:true}],notes:['Save persists metadata.']};
+const snapshot={active_scene:'scene://town01',path:'C:/private/<project>'},options={referenceNavigation:true,capabilities:{project_settings:true},registry:{'rename-project':{run(){}}}};
+const rendered=renderProjectSettingsSection(inspector,snapshot,options);assert(rendered.includes('data-inspector-component-section="ProjectSettings"'));assert(rendered.includes('Project metadata'));assert(rendered.includes('data-component-reference="scene://town01"'));assert(!rendered.includes('data-component-reference="C:'));assert(rendered.includes('&lt;project&gt;'));assert(rendered.includes('Save persists metadata.'));assert(rendered.includes('disabled'));assert(!rendered.includes('<input'));assert(!renderProjectSettingsSection(inspector,snapshot).includes('data-component-reference'));assert(!renderProjectSettingsSection(inspector,{...snapshot,active_scene:null},options).includes('data-component-reference'));assert(!renderProjectSettingsSection(inspector,snapshot,{...options,editable:true}).includes('disabled'));
+console.log('Shared Project Settings section, catalog scene reference opt-in, private path escaping and Edit-only rename rendering passed.');
