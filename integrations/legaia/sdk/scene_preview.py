@@ -45,7 +45,7 @@ def actor_placement_proposal_view(project, report):
     view = copy(project)
     view.overrides = deepcopy(project.overrides)
     for row in verified['targets']:
-        for axis in (verified['layout']['axes'] if verified['layout']['kind']=='snap' else [verified['layout']['axis']]) if 'layout' in verified else verified['delta']:
+        for axis in (['x','z'] if verified['layout']['kind']=='rotate_angle' else verified['layout']['axes'] if verified['layout']['kind']=='snap' else [verified['layout']['axis']]) if 'layout' in verified else verified['delta']:
             if row['proposed'][axis] != row['effective'][axis]:
                 view.overrides.setdefault(row['entity_id'], {}).setdefault('Transform', {}).setdefault('position', {})[axis] = row['proposed'][axis]
     return view

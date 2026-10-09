@@ -2237,7 +2237,7 @@ class ProjectService:
             report = self.actor_placement_layout(command['actor_ids'], command['layout'])
             if command['scene_id'] != report['scene_id'] or command['review_key'] != report['review_key']:
                 raise ProjectError('Actor placement group changed since preview; preview it again')
-            axes = report['layout']['axes'] if report['layout']['kind']=='snap' else [report['layout']['axis']]
+            axes = ['x','z'] if report['layout']['kind']=='rotate_angle' else report['layout']['axes'] if report['layout']['kind']=='snap' else [report['layout']['axis']]
             before, after = {}, {}
             for row in report['targets']:
                 changed_axes=[axis for axis in axes if row['proposed'][axis]!=row['effective'][axis]]
@@ -3656,17 +3656,27 @@ class ProjectService:
 
     def actor_placement_layout(self, actor_ids: list[str], layout: dict) -> dict:
         """Arrange existing actor owners on the exact source grid."""
-        if not isinstance(layout, dict) or layout.get('kind') not in ('align', 'distribute','snap') or layout.get('kind')!='snap' and layout.get('axis') not in ('x', 'z'):
-            raise ProjectError('Choose Align, Distribute or grid Snap along X/Z')
-        fields = {'kind','axes','spacing'} if layout['kind']=='snap' else {'kind', 'axis', 'anchor_entity_id'} if layout['kind'] == 'align' else {'kind', 'axis'}
+        if not isinstance(layout, dict) or layout.get('kind') not in ('align', 'distribute','snap','rotate_angle') or layout.get('kind') not in ('snap','rotate_angle') and layout.get('axis') not in ('x', 'z'):
+            raise ProjectError('Choose Align, Distribute, grid Snap or position rotation along X/Z')
+        fields = {'kind','anchor_entity_id','angle_degrees'} if layout['kind']=='rotate_angle' else {'kind','axes','spacing'} if layout['kind']=='snap' else {'kind', 'axis', 'anchor_entity_id'} if layout['kind'] == 'align' else {'kind', 'axis'}
         if set(layout) != fields:
             raise ProjectError('Group layout accepts exact fields for alignment, distribution or snapping only')
         if layout['kind']=='snap' and (layout['axes'] not in (['x'],['z'],['x','z']) or type(layout['spacing']) is not int or not 64<=layout['spacing']<=4096 or layout['spacing']%64):
             raise ProjectError('Actor grid snap requires X, Z or X/Z and spacing in multiples of 64 from 64 through 4096')
+        if layout['kind']=='rotate_angle' and (type(layout['angle_degrees']) is not int or not -359<=layout['angle_degrees']<=359):
+            raise ProjectError('Actor position rotation requires whole degrees from -359 through 359')
         base = self.actor_placement_batch(actor_ids, {'x': 0, 'z': 0})
         axis = layout.get('axis')
         targets = base['targets']
-        if layout['kind']=='snap':
+        if layout['kind']=='rotate_angle':
+            from .placement_angle import rotate_position
+            anchor=next((row for row in targets if row['entity_id']==layout['anchor_entity_id']),None)
+            if anchor is None:raise ProjectError('Rotation anchor must be a selected imported actor')
+            for row in targets:
+                point=rotate_position({a:int(row['effective'][a]) for a in ('x','z')},{a:int(anchor['effective'][a]) for a in ('x','z')},64,layout['angle_degrees'])
+                if any(not 64<=point[a]<=16384 for a in ('x','z')):raise ProjectError('Rotated actor position exceeds the native coordinate range')
+                row['proposed'].update(point)
+        elif layout['kind']=='snap':
             spacing=layout['spacing']
             for row in targets:
                 for a in layout['axes']:
@@ -3690,14 +3700,14 @@ class ProjectService:
             for index, row in enumerate(ordered):
                 grid = low + (2 * span * index + intervals) // (2 * intervals)
                 row['proposed'][axis] = grid * 64
-        changed = sum(any(row['proposed'][a]!=row['effective'][a] for a in (layout['axes'] if layout['kind']=='snap' else [axis])) for row in targets)
+        changed = sum(any(row['proposed'][a]!=row['effective'][a] for a in (['x','z'] if layout['kind']=='rotate_angle' else layout['axes'] if layout['kind']=='snap' else [axis])) for row in targets)
         review = digest({'placement_review': base['review_key'], 'layout': layout,
                          'targets': targets, 'algorithm': 'source-grid-layout.v1'})
         return {'schema_version': 'legaia.actor-placement-layout.v1', 'scene_id': base['scene_id'],
                 'targets': targets, 'layout': deepcopy(layout), 'changed_count': changed,
                 'review_key': review, 'limitations': [
                     'Only source-grid X/Z positions change; height, facing, scripts and visibility are unchanged.',
-                    'Snapping uses the scene origin and rounds halfway coordinates upward; native coordinate overflow is refused.' if layout['kind']=='snap' else 'Distribution preserves coordinate endpoints and stable source-ID order for ties.',
+                    'Position rotation uses a selected actor pivot and deterministic native-grid rounding; facing stays unchanged.' if layout['kind']=='rotate_angle' else 'Snapping uses the scene origin and rounds halfway coordinates upward; native coordinate overflow is refused.' if layout['kind']=='snap' else 'Distribution preserves coordinate endpoints and stable source-ID order for ties.',
                     'Collision and gameplay are not validated.']}
 
     def actor_appearance_batch(self, actor_ids: list[str], donor_entity_id: str | None = None) -> dict:
