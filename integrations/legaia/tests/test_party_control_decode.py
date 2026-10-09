@@ -25,6 +25,6 @@ class PartyControlDecode(unittest.TestCase):
             self.assertTrue(inspect_record(record,0)['stops'])
         report=inspect_record(bytes(5)+b'\x4c\x2f\x26\xff\xff',5)
         self.assertEqual([n['pc'] for n in report['instructions']],[5,7]);self.assertFalse(report['stops'])
-        for sub in [0x9f,0xe1,0xb0]:
+        for sub in [0x93,0xe1,0xb0]:
             report=inspect_record(b'\x4c'+bytes([sub])+b'\x21',0)
             self.assertFalse(report['instructions']);self.assertTrue(report['stops'])

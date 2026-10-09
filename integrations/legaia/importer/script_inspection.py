@@ -508,6 +508,31 @@ def _instruction(data: bytes, pc: int) -> dict:
                 args["can_wait_for_external_state"] = True
                 branches = [{"pc": operand + size, "condition": "acquire_succeeded"},
                             {"pc": pc, "condition": "acquire_wait"}]
+        elif sub in (0x90, 0x91, 0x92):
+            # Retail801E24B4 reads words at operand+2/+4/+6,
+            # calls801DDE34, then advances adjusted PC9.
+            size, mnemonic = 8, 'FIELD_FADE_REQUEST'
+            need(size)
+            args = {'sub_op': sub, 'selector': data[operand + 1],
+                    'signed_words': list(struct.unpack_from('<hhh', data, operand + 2)),
+                    'parameter_semantics': 'runtime_field_effect_unresolved',
+                    'runtime_effect': 'not_evaluated'}
+        elif sub == 0x9E:
+            # Retail801E24F8 reads16 consecutive halfwords and advances34.
+            # Destination stores and negated scratch values are runtime effects.
+            size, mnemonic = 33, 'FIELD_TABLE_COPY'
+            need(size)
+            args = {'sub_op': sub, 'signed_words': list(struct.unpack_from('<16h', data, operand + 1)),
+                    'destination_semantics': 'runtime_table_binding_unresolved',
+                    'runtime_effect': 'not_evaluated'}
+        elif sub == 0x9F:
+            # Retail801E2548 ->801E2DC4 calls8003CF40 with801DA930;
+            # its delay slot advances adjusted PC2 and returns that PC.
+            # The pinned nibble_9_a.rs same-PC halt is not Retail continuation.
+            size, mnemonic = 1, 'FIELD_CALLBACK_REGISTER'
+            args = {'sub_op': sub, 'callback_address': '0x801DA930',
+                    'registration_function': '0x8003CF40',
+                    'callback_activation': 'not_observed', 'runtime_effect': 'not_evaluated'}
         elif sub in (0xA0, 0xA1, 0xA2):
             # Retail 801E255C..25DC adds 5 to adjusted PC and reads signed16
             # at operand+2 via 8003CE9C. Common3614/361C adds delta-2, yielding
