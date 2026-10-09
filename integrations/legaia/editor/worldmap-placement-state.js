@@ -1,3 +1,4 @@
+import {worldmapHierarchyRows} from './worldmap-scene.js';
 const scenes=['map01','map02','map03'];
 const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
 const fail=m=>{throw new Error(m);};
@@ -44,4 +45,13 @@ export function worldPlacementExportTarget(report,recordId,anchorEntityId,scope)
   const matches=report.records?.filter(r=>r.record_id===recordId),row=matches?.[0];
   if(matches?.length!==1||!row?.placements?.some(p=>p.entity_id===anchorEntityId)||typeof anchorEntityId!=='string'||!anchorEntityId.startsWith(`scene://${report.scene}/worldmap/placements/`)||!/^[0-3][0-9a-f]{3}$/.test(anchorEntityId.slice(`scene://${report.scene}/worldmap/placements/`.length)))fail('Selected export requires an exact affected source anchor.');
   return {scope,entityId:anchorEntityId};
+}
+
+export function worldPlacementRecordRows(report,sceneView,query='',scope='all',selectedRecordId=null){
+  if(!Array.isArray(report?.records)||report.records.length>512||!['all','authored','shared','writable','unavailable'].includes(scope))fail('World placement record filter is invalid.');
+  const ids=new Set(report.records.map(r=>r.record_id));if(ids.size!==report.records.length||selectedRecordId!==null&&!ids.has(selectedRecordId))fail('World record selection lacks unique source ownership.');
+  const matched=new Set(worldmapHierarchyRows(sceneView,query).rows.map(r=>r.entityId));
+  const matches=row=>(scope==='all'||scope==='authored'&&row.authored_values!==null||scope==='shared'&&row.source_cell_count>1||scope==='writable'&&row.writable||scope==='unavailable'&&!row.writable)&&row.placements.some(p=>matched.has(p.entity_id));
+  let matching=0;const rows=[];for(const row of report.records){const match=matches(row);if(match)matching++;if(match||row.record_id===selectedRecordId)rows.push({recordId:row.record_id,matches:match});}
+  return {rows,total:report.records.length,matching,selectedOutsideFilter:rows.some(r=>!r.matches)};
 }
