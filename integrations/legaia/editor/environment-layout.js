@@ -4,9 +4,9 @@ function layoutIds(ids){
 }
 export function environmentLayoutOperation(value,ids){
   layoutIds(ids);
-  const kind=value?.kind,fields=kind==='scale'?'anchor,kind,percent':kind==='distribute'?'axis,kind':'anchor,axis,kind';
-  if(!value||!['align','distribute','scale','mirror'].includes(kind)||Object.keys(value).sort().join()!==fields||kind!=='scale'&&!['x','z'].includes(value.axis)||kind!=='distribute'&&!ids.includes(value.anchor)||kind==='scale'&&(!Number.isSafeInteger(value.percent)||value.percent<1||value.percent>1000))throw new Error('Invalid scenery arrangement operation');
-  return kind==='scale'?{kind,anchor:value.anchor,percent:value.percent}:kind==='distribute'?{kind,axis:value.axis}:{kind,axis:value.axis,anchor:value.anchor};
+  const kind=value?.kind,fields=kind==='reset'?'kind':kind==='scale'?'anchor,kind,percent':kind==='distribute'?'axis,kind':'anchor,axis,kind';
+  if(!value||!['align','distribute','scale','mirror','reset'].includes(kind)||Object.keys(value).sort().join()!==fields||!['scale','reset'].includes(kind)&&!['x','z'].includes(value.axis)||!['distribute','reset'].includes(kind)&&!ids.includes(value.anchor)||kind==='scale'&&(!Number.isSafeInteger(value.percent)||value.percent<1||value.percent>1000))throw new Error('Invalid scenery arrangement operation');
+  return kind==='reset'?{kind}:kind==='scale'?{kind,anchor:value.anchor,percent:value.percent}:kind==='distribute'?{kind,axis:value.axis}:{kind,axis:value.axis,anchor:value.anchor};
 }
 export function decodeEnvironmentLayout(value,key,scene,ids,operation){
   operation=environmentLayoutOperation(operation,ids);const hash=x=>typeof x==='string'&&/^[0-9a-f]{64}$/.test(x);
@@ -15,7 +15,9 @@ export function decodeEnvironmentLayout(value,key,scene,ids,operation){
     if(!row||row.entity_id!==ids[index]||!row.entity_id.startsWith(`environment://${scene.replace(/^scene:\/\//,'')}/field-map/` )||!Number.isInteger(row.cell_index)||row.cell_index<0||row.cell_index>16383||!row.entity_id.endsWith(`/decorations/${String(row.cell_index).padStart(5,'0')}`)||['retail','current','proposed'].some(layer=>!row[layer]||['x','z'].some(axis=>!Number.isSafeInteger(row[layer][axis]))))throw new Error('Invalid reviewed scenery placement');
   }
   const axis=operation.axis,other=axis==='x'?'z':'x',expected=new Map();
-  if(operation.kind==='scale'){
+  if(operation.kind==='reset'){
+    for(const row of value.targets)expected.set(row.entity_id,{...row.retail});
+  }else if(operation.kind==='scale'){
     const pivot=value.targets.find(row=>row.entity_id===operation.anchor).current;
     for(const row of value.targets){const point={};for(const a of ['x','z']){const n=BigInt(pivot[a])*100n+(BigInt(row.current[a])-BigInt(pivot[a]))*BigInt(operation.percent),coordinate=(n<0n?-1n:1n)*((n<0n?-n:n)+50n)/100n;point[a]=Number(coordinate);if(!Number.isSafeInteger(point[a]))throw Error('Scenery spacing scale exceeds safe coordinates');}expected.set(row.entity_id,point);}
   }else if(operation.kind==='mirror'){
@@ -29,7 +31,7 @@ export function decodeEnvironmentLayout(value,key,scene,ids,operation){
     for(const [index,row] of ordered.entries())expected.set(row.entity_id,Number(low+(2n*span*BigInt(index)+denominator)/(2n*denominator)));
   }
   let changed=0;
-  for(const row of value.targets){if(operation.kind==='scale'?['x','z'].some(a=>row.proposed[a]!==expected.get(row.entity_id)[a]):row.proposed[axis]!==expected.get(row.entity_id)||row.proposed[other]!==row.current[other])throw new Error('Invalid scenery layout arithmetic');changed+=row.current.x!==row.proposed.x||row.current.z!==row.proposed.z;}
+  for(const row of value.targets){if(['scale','reset'].includes(operation.kind)?['x','z'].some(a=>row.proposed[a]!==expected.get(row.entity_id)[a]):row.proposed[axis]!==expected.get(row.entity_id)||row.proposed[other]!==row.current[other])throw new Error('Invalid scenery layout arithmetic');changed+=row.current.x!==row.proposed.x||row.current.z!==row.proposed.z;}
   if(changed!==value.affected_count)throw new Error('Invalid scenery layout change count');
   return structuredClone({...value,operation});
 }
@@ -45,7 +47,7 @@ export function mountEnvironmentLayout({host,getState,getSelection,busy,setBusy,
   const current=()=>{const s=getState();return !!context&&s.project?.mode==='edit'&&s.scene?.id===context.scene&&s.project_copy_source_key===context.key&&JSON.stringify(selection())===JSON.stringify(context.ids)&&canReview();};
   const operation=()=>{
     const kind=dialog.querySelector('[name="kind"]').value,axis=dialog.querySelector('[name="axis"]').value;
-    const anchor=dialog.querySelector('[name="anchor"]').value;return environmentLayoutOperation(kind==='scale'?{kind,anchor,percent:Number(dialog.querySelector('[name="percent"]').value)}:kind==='distribute'?{kind,axis}:{kind,axis,anchor},context.ids);
+    const anchor=dialog.querySelector('[name="anchor"]').value;return environmentLayoutOperation(kind==='reset'?{kind}:kind==='scale'?{kind,anchor,percent:Number(dialog.querySelector('[name="percent"]').value)}:kind==='distribute'?{kind,axis}:{kind,axis,anchor},context.ids);
   };
   const restoreInspection=()=>{if(inspecting){inspecting=false;onInspection(null);}strip.hidden=true;note.textContent='Scenery layout preview · not applied';};
   const withdraw=()=>{generation++;if(controller){controller.abort();controller=null;setBusy(false);}report=null;restoreInspection();dialog?.querySelector('[data-result]')?.replaceChildren();};
@@ -58,7 +60,7 @@ export function mountEnvironmentLayout({host,getState,getSelection,busy,setBusy,
     if(!dialog?.open)return;
     let valid=false;try{operation();valid=true;}catch{}
     for(const item of dialog.querySelectorAll('input,select,[data-review],[data-apply],[data-inspect]'))item.disabled=busy();
-    const kind=dialog.querySelector('[name="kind"]').value;dialog.querySelector('[name="anchor"]').disabled=busy()||kind==='distribute';dialog.querySelector('[name="axis"]').disabled=busy()||kind==='scale';dialog.querySelector('[name="axis"]').parentElement.hidden=kind==='scale';dialog.querySelector('[name="percent"]').disabled=busy()||kind!=='scale';dialog.querySelector('[name="percent"]').parentElement.hidden=kind!=='scale';
+    const kind=dialog.querySelector('[name="kind"]').value;dialog.querySelector('[name="anchor"]').disabled=busy()||['distribute','reset'].includes(kind);dialog.querySelector('[name="anchor"]').parentElement.hidden=kind==='reset';dialog.querySelector('[name="axis"]').disabled=busy()||['scale','reset'].includes(kind);dialog.querySelector('[name="axis"]').parentElement.hidden=['scale','reset'].includes(kind);dialog.querySelector('[name="percent"]').disabled=busy()||kind!=='scale';dialog.querySelector('[name="percent"]').parentElement.hidden=kind!=='scale';
     dialog.querySelector('[data-review]').disabled=busy()||!valid||!current();
     dialog.querySelector('[data-apply]').disabled=busy()||!valid||!current()||!report?.project_change;
     for(const item of dialog.querySelectorAll('[data-inspect]'))item.disabled=busy()||!report||!current();
@@ -67,7 +69,7 @@ export function mountEnvironmentLayout({host,getState,getSelection,busy,setBusy,
     if(button.disabled||busy())return;restore();
     const s=getState();context={key:s.project_copy_source_key,scene:s.scene.id,ids:selection()};layoutIds(context.ids);
     dialog=document.createElement('dialog');dialog.id='environment-layout-dialog';dialog.className='project-dialog';dialog.style.width='min(800px,90vw)';dialog.style.maxHeight='90vh';dialog.style.overflowY='auto';
-    dialog.innerHTML='<h2>Arrange scenery group</h2><p>Align, distribute, mirror or scale spacing between selected static decorations. Scaling changes X/Z placements around the anchor, not mesh size; integer half ties round away from world zero. Mirroring reflects placement positions, not model orientation. Apply records the group as one Undo step. In-game behavior remains unverified.</p><form><div class="dialog-actions"><label>Action<select name="kind" aria-label="Scenery arrangement action"><option value="align">Align</option><option value="distribute">Distribute</option><option value="scale">Scale spacing</option><option value="mirror">Mirror positions</option></select></label><label>Axis<select name="axis" aria-label="Scenery arrangement axis"><option value="x">X</option><option value="z">Z</option></select></label><label>Anchor<select name="anchor" aria-label="Scenery arrangement anchor"></select></label><label>Spacing percent<input name="percent" aria-label="Scenery spacing percentage" type="number" min="1" max="1000" step="1" value="100" required></label></div><button data-review type="submit">Review group</button></form><p data-status role="status"></p><div data-result style="max-height:40vh;overflow:auto"></div><div class="dialog-actions"><button data-inspect="proposed" type="button" disabled>Inspect proposed scenery</button><button data-inspect="current" type="button" disabled>Inspect current scenery</button><button data-apply type="button" disabled>Apply group</button><button data-close type="button">Cancel</button></div>';
+    dialog.innerHTML='<h2>Arrange scenery group</h2><p>Align, distribute, mirror or scale spacing between selected static decorations. Scaling changes X/Z placements around the anchor, not mesh size; integer half ties round away from world zero. Mirroring reflects placement positions, not model orientation. Reset restores only selected X/Z to Retail, preserving Y, rotation, shared edits and unselected instances. Apply records the group as one Undo step. In-game behavior remains unverified.</p><form><div class="dialog-actions"><label>Action<select name="kind" aria-label="Scenery arrangement action"><option value="align">Align</option><option value="distribute">Distribute</option><option value="scale">Scale spacing</option><option value="mirror">Mirror positions</option><option value="reset">Reset X/Z to Retail</option></select></label><label>Axis<select name="axis" aria-label="Scenery arrangement axis"><option value="x">X</option><option value="z">Z</option></select></label><label>Anchor<select name="anchor" aria-label="Scenery arrangement anchor"></select></label><label>Spacing percent<input name="percent" aria-label="Scenery spacing percentage" type="number" min="1" max="1000" step="1" value="100" required></label></div><button data-review type="submit">Review group</button></form><p data-status role="status"></p><div data-result style="max-height:40vh;overflow:auto"></div><div class="dialog-actions"><button data-inspect="proposed" type="button" disabled>Inspect proposed scenery</button><button data-inspect="current" type="button" disabled>Inspect current scenery</button><button data-apply type="button" disabled>Apply group</button><button data-close type="button">Cancel</button></div>';
     const activeDialog=dialog;
     const anchor=activeDialog.querySelector('[name="anchor"]');
     for(const id of context.ids){const option=document.createElement('option');option.value=id;option.textContent=id;anchor.append(option);}

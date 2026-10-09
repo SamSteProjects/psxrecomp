@@ -6,22 +6,24 @@ from .environment_group import _prepare, _merge
 
 
 def review(project, scene, entity_ids, operation):
-    if not isinstance(operation, dict) or operation.get('kind') not in ('align', 'distribute', 'scale', 'mirror'):
+    if not isinstance(operation, dict) or operation.get('kind') not in ('align', 'distribute', 'scale', 'mirror', 'reset'):
         raise ProjectError('Decoration layout requires a supported arrangement operation')
     kind = operation['kind']
-    expected = {'kind', 'anchor', 'percent'} if kind == 'scale' else {'kind', 'axis'} if kind == 'distribute' else {'kind', 'axis', 'anchor'}
+    expected = {'kind'} if kind == 'reset' else {'kind', 'anchor', 'percent'} if kind == 'scale' else {'kind', 'axis'} if kind == 'distribute' else {'kind', 'axis', 'anchor'}
     if set(operation) != expected:
         raise ProjectError('Decoration layout operation has unexpected or missing fields')
     if kind == 'scale':
         if type(operation['percent']) is not int or not 1 <= operation['percent'] <= 1000:
             raise ProjectError('Decoration spacing scale requires an integer percentage from 1 through 1000')
-    elif operation['axis'] not in ('x', 'z'):
+    elif kind != 'reset' and operation['axis'] not in ('x', 'z'):
         raise ProjectError('Decoration layout requires X/Z axes')
     context = _prepare(project, scene, entity_ids)
     axis = operation.get('axis')
     targets = context['targets']
     proposed = {t['entity_id']: deepcopy(t['current']) for t in targets}
-    if kind != 'distribute':
+    if kind == 'reset':
+        proposed = {t['entity_id']: deepcopy(t['retail']) for t in targets}
+    elif kind != 'distribute':
         anchor = operation['anchor']
         if not isinstance(anchor, str) or anchor not in proposed:
             raise ProjectError('Decoration arrangement anchor must be in the selected group')

@@ -29,3 +29,9 @@ assert.deepEqual(decodeEnvironmentLayout(mirrorReport,key,scene,ids,mirror),mirr
 for(const op of [{...scale,percent:true},{...scale,percent:0},{...scale,percent:1001},{...scale,percent:50.5},{...scale,axis:'x'},{...mirror,anchor:'foreign'}])assert.throws(()=>environmentLayoutOperation(op,ids));
 assert.throws(()=>decodeEnvironmentLayout({...scaleReport,targets:scaleReport.targets.map((r,i)=>i===0?{...r,proposed:{...r.proposed,x:-2}}:r)},key,scene,ids,scale));
 console.log('Scenery scale/mirror exact signed half ties, both axes, preserved layers, native operation fields and response arithmetic passed.');
+
+const reset={kind:'reset'},resetReport={...report,operation:reset,affected_count:4,targets:rows.map(r=>({...r,proposed:{...r.retail}}))};
+assert.deepEqual(environmentLayoutOperation(reset,ids),reset);assert.deepEqual(decodeEnvironmentLayout(resetReport,key,scene,ids,reset),resetReport);
+for(const op of [{...reset,axis:'x'},{...reset,anchor:ids[0]},{...reset,percent:100}])assert.throws(()=>environmentLayoutOperation(op,ids));
+assert.throws(()=>decodeEnvironmentLayout({...resetReport,targets:resetReport.targets.map((r,i)=>i===0?{...r,proposed:{x:1,z:0}}:r)},key,scene,ids,reset));
+console.log('Exact selected Retail X/Z reset, strict no-argument operation and proposed Retail arithmetic passed.');

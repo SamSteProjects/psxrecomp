@@ -187,4 +187,19 @@ class EnvironmentLayoutTests(unittest.TestCase):
                     with self.assertRaises(ProjectError):review(p,SCENE,ids,operation)
                 self.assertEqual(p._document(),before)
 
+    def test_retail_reset_compensates_shared_offsets_preserving_unselected_and_other_axes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            p=self.project(directory);source=source_map()
+            with patch.object(ProjectService,'_environment_source',return_value=source):
+                binding=dict(source_sha256=sha256(source).hexdigest(),edits=[dict(record_index=4,offset=dict(x=40,y=50,z=60))],instances=[dict(cell_index=129,offset=dict(x=70,y=80),rotation_psx=dict(y=777)),dict(cell_index=258,offset=dict(z=100)),dict(cell_index=387,offset=dict(x=900))])
+                p.command(dict(type='set_environment_transforms',entity_id=SCENE,value=binding));before=deepcopy(p._document());depth=len(p.undo_stack)
+                reset=review(p,SCENE,IDS,dict(kind='reset'));self.assertEqual([r['proposed'] for r in reset['targets']],[dict(x=202,z=162),dict(x=330,z=290)])
+                self.assertEqual(p._document(),before);self.apply_review(p,reset);self.assertEqual(len(p.undo_stack),depth+1)
+                value=p.overrides[SCENE]['Environment'];self.assertEqual(value['edits'],binding['edits']);self.assertEqual(value['instances'][2],binding['instances'][2])
+                self.assertEqual(value['instances'][0],dict(cell_index=129,offset=dict(x=10,y=80,z=30),rotation_psx=dict(y=777)));self.assertEqual(value['instances'][1],dict(cell_index=258,offset=dict(x=10,z=30)))
+                repeated=review(p,SCENE,IDS,dict(kind='reset'));self.assertFalse(repeated['project_change']);self.assertEqual(repeated['affected_count'],0)
+                p.save();self.assertEqual(ProjectService.open(p.root)._document(),p._document());p.undo();self.assertEqual(p._document(),before);p.redo();p.undo();self.assertEqual(p._document(),before)
+                for field in ['axis','anchor','percent']:
+                    with self.assertRaises(ProjectError):review(p,SCENE,IDS,dict(kind='reset',**{field:1}))
+
 if __name__ == '__main__':unittest.main()
