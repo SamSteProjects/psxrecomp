@@ -48,9 +48,12 @@ def validate_components(project,owner,components):
         elif family=='ControllerFades':
             from .controller_fades import validate as validate_fades
             checked=validate_fades(project,owner,value)
-        else:
+        elif family=='ControllerTableCopies':
             from .controller_tables import validate as validate_tables
             checked=validate_tables(project,owner,value)
+        else:
+            from .controller_word_triplets import validate as validate_triplets
+            checked=validate_triplets(project,owner,value)
         hashes.add(checked['source_record_sha256'])
     if len(hashes)!=1:raise ProjectError('Controller components require the same Retail source hash')
     return deepcopy(components)
@@ -72,6 +75,9 @@ def compose(context,owner,components):
     if 'ControllerTableCopies' in components:
         from .controller_tables import compose as compose_tables
         current=compose_tables(context._source,current,components['ControllerTableCopies']['entries'])
+    if 'ControllerWordTriplets' in components:
+        from .controller_word_triplets import compose as compose_triplets
+        current=compose_triplets(context._source,current,components['ControllerWordTriplets']['entries'])
     return current
 
 

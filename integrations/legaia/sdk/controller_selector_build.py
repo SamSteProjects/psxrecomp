@@ -7,6 +7,7 @@ from importer.controller_system_flags import load_controller_system_flag_context
 
 def collect(project,owner,components):
     value=validate_components(project,owner,components)
+    _refuse_pending(value)
     return scene_document(project,owner)['scene']['semantic_id'],value
 
 
@@ -14,6 +15,7 @@ def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
     from .build import BuildError
     owner=scene_id+'/controllers/man-p1/0000'
     components=validate_components(project,owner,project.overrides[owner])
+    _refuse_pending(components)
     value=components.get(COMPONENT,dict(entries={}))
     scene=project.imports[scene_id]['scene']['name']
     context=load_controller_system_flag_context(project.disc_path,scene)
@@ -72,3 +74,9 @@ def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
         result,table_changes=compose_tables(context,owner,components,result,[*previous,*changes],appended=appended)
         changes.extend(table_changes)
     return result,changes
+
+
+def _refuse_pending(components):
+    if 'ControllerWordTriplets' in components:
+        from .build import BuildError
+        raise BuildError('Controller word-triplet native Build integration is pending; remove the override before Build')

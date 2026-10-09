@@ -2407,3 +2407,5 @@ Retail D8 field word-triplet inspection preserves encoded selector/signed words 
 
 
 Fade and D8 source writers now share strict selector/three-word serialization geometry while retaining dedicated source-family adapters, opcode sets, stable IDs and receipt keys. Literal source values remain separate from unknown runtime offset/effects. Existing fade options/output/audits are qualified against the pre-refactor writer; D8 project/editor/Build integration remains pending.
+
+ControllerWordTriplets now participates in the shared controller component registry, source-hash validation, fixed seven-byte composition and reviewed project command path. Snapshot/Review HTTP routes retain encoded values independently from unknown runtime adjustment. Authored assets and history/persistence use the existing owner workflow. Build collection and composition explicitly refuse pending D8 overrides before output; editor controls/native Build receipts remain pending.

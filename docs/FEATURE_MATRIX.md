@@ -10190,3 +10190,5 @@ Retail Field Word-Triplet Controller Decoding: FUNCTIONAL read-only D8 layout/co
 
 
 Controller Word-Triplet Native Authoring: FOUNDATION ONLY for qualified D8 seven-byte selector/signed-word serialization. Nine targets in three compressed scenes matched complete independent literal MAN/no-op/LZS readback; two partial scenes refuse. Shared geometry preserves exact134-target fade behavior. Project/HTTP/editor/Build integration pending; runtime meanings/effects and gameplay unverified.
+
+Controller Word-Triplet Project Workflow: FUNCTIONAL for qualified encoded D8 selector/three-word HTTP Review/Apply/reset, authored assets and history/persistence. Six controller families compose independently with complete literal MAN checks. Actual Garmel two-target HTTP workflow passed; pending native Build refuses before output. Editor controls/native Build receipts remain pending; runtime offset, meanings/effects and gameplay unverified.
