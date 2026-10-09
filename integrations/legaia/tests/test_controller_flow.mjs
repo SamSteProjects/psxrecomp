@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {analyzeScriptFlow} from '../editor/script-flow-overview.js';
+const report=JSON.parse(fs.readFileSync(process.env.LEGAIA_CONTROLLER_EVIDENCE));
+const before=JSON.stringify(report),flow=analyzeScriptFlow(report);
+assert.equal(flow.entry_pc,17);
+assert.equal(flow.node_count,2);
+assert.equal(flow.edge_count,2);
+assert.deepEqual(flow.reachable_pcs,[17,18]);
+assert.equal(flow.boundaries.length,0);
+assert.deepEqual(flow.cycles,[{pcs:[17,18],internal_edge_count:2,outgoing_edge_count:0,closed_encoded_component:true,entry_reachable:true}]);
+flow.cycles[0].pcs[0]=0;assert.equal(JSON.stringify(report),before);
+const duplicate=structuredClone(report);duplicate.instructions.push(duplicate.instructions[0]);assert.throws(()=>analyzeScriptFlow(duplicate));
+console.log('Retail other1 controller: two bounded instructions, one closed encoded cycle, detached analysis and duplicate-boundary refusal passed. Runtime looping is not asserted.');
