@@ -459,6 +459,19 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "child_ownership": "runtime_allocator_unresolved", "runtime_effect": "not_evaluated"}
             branches = [{"pc": cursor, "condition": "halt_acquire_succeeded"},
                         {"pc": pc, "condition": "halt_acquire_pending"}]
+        elif sub == 0x83:
+            # Retail801E20A8 walks inclusive byte-coordinate bounds,
+            # requests tile pool2, writes +2=value/+3=0 on lookup hit,
+            # and returns adjusted PC+7 at212C/2130. It does not fall
+            # through to the separate84 global write at2134.
+            size, mnemonic = 6, "FIELD_TILE_RECT_REQUEST"
+            need(size)
+            args = {"sub_op": sub, "column_start": data[operand + 1],
+                    "row_start": data[operand + 2], "column_end": data[operand + 3],
+                    "row_end": data[operand + 4], "value": data[operand + 5],
+                    "bounds": "inclusive_encoded_bytes", "tile_pool_selector": 2,
+                    "tile_byte_writes": {"offset_2": data[operand + 5], "offset_3": 0},
+                    "tile_binding": "runtime_lookup_unresolved", "runtime_effect": "not_evaluated"}
         elif sub in (0x82, 0x84):
             # Retail801E206C/2134: byte selector/value + two fixed writes,
             # adjusted PC+3. Native page table identity remains unresolved.

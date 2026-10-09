@@ -91,7 +91,9 @@ class RetailMenu8Proof(unittest.TestCase):
         self.assertEqual(hashlib.sha256(exe).hexdigest(),'292256e2e66db42727f613406785e444254d3f699569e611f65fcf1c6d2f3482')
         word=lambda a:struct.unpack_from('<I',data,a-0x801ce818)[0]
         target=lambda a:a+4+struct.unpack('<h',struct.pack('<H',word(a)&65535))[0]*4
-        for a,v in ((0x801cef48,0x801e1ecc),(0x801cef50,0x801e206c),(0x801cef58,0x801e2134),
+        for a,v in ((0x801cef48,0x801e1ecc),(0x801cef50,0x801e206c),(0x801cef54,0x801e20a8),(0x801cef58,0x801e2134),
+                    (0x801e20dc,0x0c07558c),(0x801e20f4,0xa0600003),(0x801e20f8,0xa0620002),
+                    (0x801e212c,0x08078d89),(0x801e2130,0x27de0007),
                     (0x801e1f78,0x27de0003),(0x801e1f88,0x92d70000),
                     (0x801e1f98,0x0c00f28e),(0x801e1fa0,0x24420001),
                     (0x801e1fa4,0x03c2f021),(0x801e1fa8,0x02c2b021),
