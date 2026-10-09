@@ -66,7 +66,7 @@ def snapshot(project,owner):
         current_record_sha256=sha256(current[offset:offset+len(record)]).hexdigest(),source=options['source'],
         source_report=_report(owner,context._man,offset,record,entry),current_report=_report(owner,current,offset,record,entry),
         targets=targets,supported=bool(targets),reason=options['reason'],limitations=options['limitations']+[
-            'Project/HTTP Review and Apply persist authored operands; editor controls and native Build integration remain pending.'],gameplay_verified=False)
+            'Project/HTTP Review and Apply persist authored operands; native Build serializes qualified bytes; editor controls remain pending.'],gameplay_verified=False)
 
 
 def review(project,owner,operand,value):

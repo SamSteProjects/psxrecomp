@@ -1,4 +1,4 @@
-"""Compose source-qualified controller selector and branch Build receipts."""
+"""Compose source-qualified controller selector, branch and tile Build receipts."""
 from hashlib import sha256
 from .controller_system_flags import COMPONENT,validate_components,scene_document
 from .system_flags import merge_patch
@@ -59,4 +59,8 @@ def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
         from .controller_branch_build import compose_branches
         result,branch_changes=compose_branches(context,owner,components,result,[*previous,*changes],appended=appended)
         changes.extend(branch_changes)
+    if 'ControllerTileRects' in components:
+        from .controller_tile_build import compose_tiles
+        result,tile_changes=compose_tiles(context,owner,components,result,[*previous,*changes],appended=appended)
+        changes.extend(tile_changes)
     return result,changes

@@ -72,9 +72,8 @@ class ControllerTileWorkflow(unittest.TestCase):
         self.p.mode='edit';self.p.overrides[OWNER]['Transform']={'position':{'x':1}}
         with self.assertRaises(ProjectError):ProjectService.open(self.p.save())
 
-    def test_build_refuses_pending_tile_output_instead_of_ignoring_saved_edits(self):
-        from sdk.build import build_project,BuildError,_build_project
-        self.apply(VALUES);output=Path(self.temp.name)/'output'
-        for action in [lambda:build_project(self.p,output),lambda:_build_project(self.p,output,review_only=True)]:
-            with self.assertRaisesRegex(BuildError,'tile request native Build integration is pending'):action()
-        self.assertFalse(output.exists())
+    def test_build_collection_recognizes_saved_tile_components(self):
+        from sdk.controller_selector_build import collect
+        self.apply(VALUES)
+        scene,components=collect(self.p,OWNER,self.p.overrides[OWNER])
+        self.assertEqual(scene,'scene://fixture');self.assertEqual(set(components),{COMPONENT})

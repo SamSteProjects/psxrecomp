@@ -157,6 +157,7 @@ def package_change_kinds(edits) -> list[str]:
         'source-man-donor-append-candidate': 'source NPC candidates',
         'source-man-draft-composed-overrides': 'NPC scene operand composition',
         'worldmap-source-record-transform-only': 'world source placement transforms',
+        'controller-tile-rect-operands-only': 'controller tile request operands',
     }
     kinds = set()
     for edit in edits:
@@ -206,6 +207,8 @@ def build_report(audit) -> dict:
         elif change.get('scope') == 'script-facing-sector-only':
             field = 'script.facing_sector'
             before, after = change['before_sector'], change['after_sector']
+        elif change.get("scope") == "controller-tile-rect-operands-only":
+            before, after = change["before_values"], change["after_values"]
         elif field == "dialogue.text":
             before = bytes.fromhex(change["before_hex"]).decode("ascii")
             after = bytes.fromhex(change["after_hex"]).decode("ascii")
@@ -214,7 +217,7 @@ def build_report(audit) -> dict:
         else:
             before = change.get("before_value", change.get("before_byte"))
             after = change.get("after_value", change.get("after_byte"))
-        changes.append({"scene": change["scene"], "asset_id": change.get("animation_operand_id") or change.get("system_flag_id") or change.get("worldmap_placement_id") or change.get("effect_color_id") or change.get("branch_id") or change.get("model_selector_id", change.get("wait_id", change.get("flag_id", change.get("movement_id", change.get("transition_id", change.get("run_id", change["semantic_id"])))))),
+        changes.append({"scene": change["scene"], "asset_id": change.get("tile_rect_id") or change.get("animation_operand_id") or change.get("system_flag_id") or change.get("worldmap_placement_id") or change.get("effect_color_id") or change.get("branch_id") or change.get("model_selector_id", change.get("wait_id", change.get("flag_id", change.get("movement_id", change.get("transition_id", change.get("run_id", change["semantic_id"])))))),
                         "owner_id": change["semantic_id"],
                         "field": field, "before": before, "after": after,
                         **({"frame_index": change["frame_index"], "object_index": change["object_index"],
@@ -527,8 +530,6 @@ def build_project(project, output_dir: Path | str | None = None) -> dict:
 
 
 def _build_project(project, output_dir, *, review_only=False) -> dict:
-    if any(isinstance(components,dict) and 'ControllerTileRects' in components for components in project.overrides.values()):
-        raise BuildError('Controller tile request native Build integration is pending; clear tile overrides before Build')
     draft_scenes = set()
     for identifier, draft in getattr(project, 'actor_drafts', {}).items():
         project._validate_actor_draft(identifier, draft)
@@ -553,7 +554,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                      for scene_id, document in project.imports.items()
                      for actor in document["actors"]}
     for identifier, components in sorted(project.overrides.items()):
-        if isinstance(components,dict) and {'ControllerSystemFlags','ControllerBranches'} & set(components):
+        if isinstance(components,dict) and {'ControllerSystemFlags','ControllerBranches','ControllerTileRects'} & set(components):
             from .controller_selector_build import collect
             scene_id,value=collect(project,identifier,components)
             controller_edits[scene_id]=value

@@ -199,7 +199,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     facing={}
     branches={}
     for identifier,components in overrides.items():
-        if isinstance(components,dict) and {'ControllerSystemFlags','ControllerBranches'} & set(components):
+        if isinstance(components,dict) and {'ControllerSystemFlags','ControllerBranches','ControllerTileRects'} & set(components):
             from .controller_selector_build import collect
             if collect(project,identifier,components)[0]!=draft['scene_id']:raise ProjectError('Controller override belongs to another candidate scene')
             continue
@@ -499,7 +499,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         from .floor_heights import compose as compose_floor_heights
         candidate,floor_height_audit=compose_floor_heights(project,draft['scene_id'],source,candidate)
         controller_selector_audit=[]
-        if {'ControllerSystemFlags','ControllerBranches'} & set(project.overrides.get(draft['scene_id']+'/controllers/man-p1/0000',{})):
+        if {'ControllerSystemFlags','ControllerBranches','ControllerTileRects'} & set(project.overrides.get(draft['scene_id']+'/controllers/man-p1/0000',{})):
             from .controller_selector_build import compose as compose_controller
             candidate,controller_selector_audit=compose_controller(project,draft['scene_id'],source,candidate,appended=True)
         # Check the final MAN before reading/repacking the archive. Existing-only
@@ -543,7 +543,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         existing_actor_appearance_changes=appearance_audit,
         existing_actor_allocated_animation_changes=allocated_audit,
         existing_actor_dialogue_changes=dialogue_audit,
-        controller_system_flag_changes=[r for r in controller_selector_audit if r['field']=='system_flag_index'], controller_branch_changes=[r for r in controller_selector_audit if r['field']=='script.branch_target'], branch_changes=branch_audit, transition_changes=transition_audit, movement_changes=movement_audit, flag_changes=flag_audit, system_flag_changes=system_flag_audit, wait_changes=wait_audit,animation_operand_changes=animation_operand_audit,effect_color_changes=effect_color_audit, model_selector_changes=model_selector_audit, facing_changes=facing_audit,
+        controller_system_flag_changes=[r for r in controller_selector_audit if r['field']=='system_flag_index'], controller_branch_changes=[r for r in controller_selector_audit if r['field']=='script.branch_target'], controller_tile_rect_changes=[r for r in controller_selector_audit if r['field']=='script.tile_rect_operands'], branch_changes=branch_audit, transition_changes=transition_audit, movement_changes=movement_audit, flag_changes=flag_audit, system_flag_changes=system_flag_audit, wait_changes=wait_audit,animation_operand_changes=animation_operand_audit,effect_color_changes=effect_color_audit, model_selector_changes=model_selector_audit, facing_changes=facing_audit,
         final_man_sha256=sha256(candidate).hexdigest(),
         container=container_audit,gameplay_verified=False)
 
