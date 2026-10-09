@@ -111,6 +111,14 @@ def state_key(project):
 
 
 def prepare(project,owner):
+    from .controller_snapshots import _request_preparation
+    cached=_request_preparation.get()
+    if cached is not None:
+        cached_project,cached_owner,value=cached
+        if cached_project is not project or cached_owner!=owner or value[0]!=state_key(project):
+            raise ProjectError('Controller workspace source changed during shared preparation')
+        key,context,offset,record,entry,components,current,options=value
+        return key,context,offset,record,entry,deepcopy(components),current,deepcopy(options)
     from .resources import _verify
     from importer.pipeline import _disc_context
     document=scene_document(project,owner)
