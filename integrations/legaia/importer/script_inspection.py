@@ -331,6 +331,18 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "helper": "0x8003C6A4", "native_width": 4,
                     "parameter_semantics": "runtime_parameter_meanings_unresolved",
                     "runtime_effect": "not_evaluated"}
+        elif sub == 0x11:
+            # Retail PROT897 801DF928 advances adjusted PC12, reads
+            # five signed words via8003CE9C, calls801F8D4C, and returns
+            # that PC at801DF97C. Pinned actor_ctrl.rs reads unsigned.
+            size, mnemonic = 11, "FIVE_WORD_HELPER_REQUEST"
+            need(size)
+            args = {"sub_op": sub,
+                    "signed_words": list(struct.unpack_from("<5h", data, operand + 1)),
+                    "helper": "0x801F8D4C",
+                    "parameter_semantics": "runtime_word_meanings_unresolved",
+                    "runtime_binding": "helper_owned_state_unresolved",
+                    "runtime_effect": "not_evaluated"}
         elif sub == 7:
             size, mnemonic = 16, "FACE_ROTATION_SETUP"
             need(size)

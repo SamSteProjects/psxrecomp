@@ -16,4 +16,4 @@ class ActorGlobalByteRequests(unittest.TestCase):
  def test_continuation_reaches_loop_without_executing_or_changing_source(self):
   data=b'\x43\x03\x01\x02\x03\x04\xff\xff\x00\x00\x26\xf5\xff';before=bytes(data)
   r=inspect_record(data,0);self.assertEqual(r['status'],'decoded_supported_paths');self.assertEqual([n['pc'] for n in r['instructions']],[0,10]);self.assertEqual(r['instructions'][0]['operands']['parameters_i16'],[-1,0]);self.assertEqual(data,before)
-  with self.assertRaises(ImportError):_instruction(b'\x43\x11'+bytes(12),0)
+  with self.assertRaises(ImportError):_instruction(b'\x43\x12'+bytes(12),0)
