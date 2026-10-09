@@ -40,6 +40,16 @@ export function scriptNodeLayers(source,current,proposed,pc){
   return {pc,mnemonic:original.mnemonic,layers,rows:fields.map(field=>({field,...Object.fromEntries(Object.entries(layers).map(([key,layer])=>[key,layer.node?text(value(layer.node,field)):layer.status==='inspection_unavailable'?(key==='proposed'?'Not reviewed':'Inspection unavailable'):'Boundary not decoded']))})),retail_to_current:difference(original,layers.current.node),current_to_proposed:difference(layers.current.node,layers.proposed.node)};
 }
 
+export function formatScriptOperand(field,encoded){
+  let value;try{value=JSON.parse(encoded);}catch{return encoded;}
+  if(field==='Encoded successors'&&Array.isArray(value))return value.map(edge=>`PC ${pcText(edge.pc)}${edge.condition===null?'':' · '+edge.condition.replaceAll('_',' ')}`).join('\n')||'None reported';
+  if(Array.isArray(value)&&value.every(n=>typeof n==='number'))return value.map((n,i)=>`[${i}]: ${n}`).join('\n')||'None reported';
+  if(typeof value==='string')return field==='text'?value:value.replaceAll('_',' ');
+  if(object(value)||Array.isArray(value))return JSON.stringify(value,null,2);
+  return encoded;
+}
+const fieldLabel=field=>field.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase()).replace(/\bRgb\b/g,'RGB');
+
 export function mountScriptNodeLayers(host){
   const root=document.createElement('section');root.className='script-node-layers';root.dataset.scriptNodeLayers='';host.append(root);
   function clear(reason='Choose a decoded source boundary to inspect its operand layers.'){root.replaceChildren();const status=document.createElement('p');status.className='field-note';status.setAttribute('role','status');status.textContent=reason;root.append(status);}
@@ -50,10 +60,10 @@ export function mountScriptNodeLayers(host){
     const note=document.createElement('p');note.className='field-note';note.textContent='Retail is the imported boundary. Current composes applied project operands and branches. Proposed contains the selected reviewed change; other pending form drafts are not included. An undecoded boundary does not mean its retained bytes were removed or that the instruction cannot execute.';
     const wrap=document.createElement('div');wrap.className='script-table-wrap';const table=document.createElement('table'),head=document.createElement('thead'),header=document.createElement('tr');
     for(const label of ['Field','Retail','Current','Reviewed Proposed']){const th=document.createElement('th');th.textContent=label;header.append(th);}head.append(header);
-    const body=document.createElement('tbody');for(const row of report.rows){const tr=document.createElement('tr');tr.dataset.operandField=row.field;for(const key of ['field','retail','current','proposed']){const td=document.createElement('td');td.textContent=row[key];td.style.whiteSpace='pre-wrap';td.style.overflowWrap='anywhere';tr.append(td);}body.append(tr);}table.append(head,body);wrap.append(table);
+    const body=document.createElement('tbody');for(const row of report.rows.filter(row=>row.field!=='encoded_hex')){const tr=document.createElement('tr');tr.dataset.operandField=row.field;for(const key of ['field','retail','current','proposed']){const td=document.createElement('td');td.textContent=key==='field'?fieldLabel(row.field):formatScriptOperand(row.field,row[key]);td.dataset.operandLayerLabel=key==='retail'?'Retail':key==='current'?'Current':key==='proposed'?'Reviewed Proposed':'Field';td.style.whiteSpace='pre-wrap';td.style.overflowWrap='anywhere';tr.append(td);}body.append(tr);}table.append(head,body);wrap.append(table);
     const delta=document.createElement('p');delta.className='field-note';delta.dataset.nodeByteDifferences='';delta.textContent=`Retail → Current: ${report.retail_to_current===null?'not comparable on decoded paths':report.retail_to_current.length+' changed bytes'}. Current → reviewed Proposed: ${report.current_to_proposed===null?'not comparable or not reviewed':report.current_to_proposed.length+' changed bytes'}. These are static encoded differences, not runtime observations.`;
     const raw=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Selected encoded bytes and differences';raw.append(summary);
-    for(const [key,label] of [['retail','Retail'],['current','Current'],['proposed','Reviewed Proposed']]){const line=document.createElement('p');line.textContent=label;const pre=document.createElement('pre');pre.className='diagnostic-detail';pre.textContent=report.layers[key].node?.raw_hex??(key==='proposed'&&report.layers[key].status==='inspection_unavailable'?'Not reviewed':report.layers[key].status);pre.style.overflowWrap='anywhere';raw.append(line,pre);}
+    for(const [key,label] of [['retail','Retail'],['current','Current'],['proposed','Reviewed Proposed']]){const line=document.createElement('p');line.textContent=label;const pre=document.createElement('pre');pre.className='diagnostic-detail';pre.textContent=report.layers[key].node?.raw_hex??(key==='proposed'&&report.layers[key].status==='inspection_unavailable'?'Not reviewed':report.layers[key].status);pre.style.overflowWrap='anywhere';raw.append(line,pre);const decoded=document.createElement('pre');decoded.className='diagnostic-detail';decoded.textContent=JSON.stringify(report.layers[key].node,null,2);decoded.style.overflowWrap='anywhere';raw.append(decoded);}
     const differences=document.createElement('pre');differences.className='diagnostic-detail';differences.textContent=JSON.stringify({retail_to_current:report.retail_to_current,current_to_proposed:report.current_to_proposed},null,2);raw.append(differences);
     root.append(title,note,wrap,delta,raw);
   }

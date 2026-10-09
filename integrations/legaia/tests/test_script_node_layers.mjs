@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
-import {scriptNodeLayers,mountScriptNodeLayers} from '../editor/script-node-layers.js';
+import {scriptNodeLayers,mountScriptNodeLayers,formatScriptOperand} from '../editor/script-node-layers.js';
+assert.equal(formatScriptOperand('signed_words','[-32768,32767,0]'),'[0]: -32768\n[1]: 32767\n[2]: 0');
+assert.equal(formatScriptOperand('Encoded successors','[{"pc":22,"condition":"encoded_continuation"}]'),'PC 0x0016 · encoded continuation');
+assert.equal(formatScriptOperand('text','"Hi_There"'),'Hi_There');
+assert.equal(formatScriptOperand('value','Not reviewed'),'Not reviewed');
 const instruction=(raw,operands)=>({pc:15,length:7,mnemonic:'EFFECT_COLOR_INTENSITY',target_context:null,raw_hex:raw,operands,successors:[{pc:22,condition:'encoded_continuation'}]});
 const report=row=>({status:'decoded_supported_paths',instructions:row?[row]:[],dialogues:[],stops:[],opaque_regions:[]});
 const retail=report(instruction('3405ffffff4100',{rgb:[255,255,255],intensity:65}));
@@ -27,6 +31,7 @@ const documentBefore=globalThis.document;globalThis.document={createElement:()=>
 try{
  const host=new Element(),view=mountScriptNodeLayers(host),all=node=>[node,...node.children.flatMap(all)];
  view.update(retail,report(null),null,15);assert(all(host).some(n=>n.textContent==='Boundary not decoded'));assert(all(host).some(n=>n.textContent==='Not reviewed'));
+ const encoded=structuredClone(retail);encoded.instructions[0].operands.encoded_hex='05ffffff4100';view.update(encoded,current,proposed,15);assert(!all(host).some(n=>n.dataset.operandField==='encoded_hex'));assert(all(host).some(n=>n.textContent.includes('\"encoded_hex\": \"05ffffff4100\"')));
  view.update(retail,current,proposed,15);assert(all(host).some(n=>n.textContent==='67'));view.clear('Stale source');assert(!all(host).some(n=>n.textContent==='67'));assert(all(host).some(n=>n.textContent==='Stale source'));
  const malformed=structuredClone(current);malformed.instructions[0].raw_hex='ff';assert.equal(view.update(retail,malformed,null,15),false);assert(all(host).some(n=>n.textContent.includes('Selected operand layers unavailable')));view.dispose();assert.equal(host.children.length,0);
 }finally{globalThis.document=documentBefore;}
