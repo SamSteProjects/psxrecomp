@@ -527,8 +527,6 @@ def build_project(project, output_dir: Path | str | None = None) -> dict:
 
 
 def _build_project(project, output_dir, *, review_only=False) -> dict:
-    if any('ControllerBranches' in parts for parts in project.overrides.values()):
-        raise BuildError('Controller branch native Build integration is pending; saved edits cannot be omitted from output')
     draft_scenes = set()
     for identifier, draft in getattr(project, 'actor_drafts', {}).items():
         project._validate_actor_draft(identifier, draft)
@@ -553,7 +551,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                      for scene_id, document in project.imports.items()
                      for actor in document["actors"]}
     for identifier, components in sorted(project.overrides.items()):
-        if isinstance(components,dict) and 'ControllerSystemFlags' in components:
+        if isinstance(components,dict) and {'ControllerSystemFlags','ControllerBranches'} & set(components):
             from .controller_selector_build import collect
             scene_id,value=collect(project,identifier,components)
             controller_edits[scene_id]=value

@@ -1,27 +1,25 @@
-"""Compose controller selector receipts with normal native MAN Build edits."""
+"""Compose source-qualified controller selector and branch Build receipts."""
 from hashlib import sha256
-from .project import ProjectError
-from .controller_system_flags import COMPONENT,validate,scene_document
+from .controller_system_flags import COMPONENT,validate_components,scene_document
 from .system_flags import merge_patch
 from importer.controller_system_flags import load_controller_system_flag_context
 
 
 def collect(project,owner,components):
-    if not isinstance(components,dict) or set(components)!={COMPONENT}:
-        raise ProjectError('Controller Build overrides cannot contain actor components')
-    value=validate(project,owner,components[COMPONENT])
+    value=validate_components(project,owner,components)
     return scene_document(project,owner)['scene']['semantic_id'],value
 
 
 def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
     from .build import BuildError
     owner=scene_id+'/controllers/man-p1/0000'
-    value=validate(project,owner,project.overrides[owner][COMPONENT])
+    components=validate_components(project,owner,project.overrides[owner])
+    value=components.get(COMPONENT,dict(entries={}))
     scene=project.imports[scene_id]['scene']['name']
     context=load_controller_system_flag_context(project.disc_path,scene)
     if context._man!=baseline:raise BuildError('Controller Build MAN differs from verified Retail source')
     source_offset,record,entry=context._source.verified_record(owner)
-    if sha256(record).hexdigest()!=value['source_record_sha256']:raise BuildError('Controller Build record hash changed')
+    if any(sha256(record).hexdigest()!=v['source_record_sha256'] for v in components.values()):raise BuildError('Controller Build record hash changed')
     options={t['semantic_id']:t for t in context.options(owner)['targets']}
     expected={}
     for identity,fields in value['entries'].items():
@@ -52,8 +50,13 @@ def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
         result=merge_patch(working,working,patched,validation,expected,previous)
         for change in changes:change.update(pre_selector_controller_sha256=sha256(structural).hexdigest(),controller_spawn_reindex=structural_proof['changes'])
     else:
+        if working[source_offset:source_offset+len(record)]!=record:raise BuildError('Controller source record changed before Build composition')
         patched,changes=context.patch(value['entries'],original=baseline)
         result=merge_patch(baseline,working,patched,changes,expected,previous)
     for change in changes:
         change.update(semantic_id=owner,record_index=0,owner_kind='scene_controller',scope='script-system-selector-only')
+    if 'ControllerBranches' in components:
+        from .controller_branch_build import compose_branches
+        result,branch_changes=compose_branches(context,owner,components,result,[*previous,*changes],appended=appended)
+        changes.extend(branch_changes)
     return result,changes

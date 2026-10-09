@@ -36,7 +36,7 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
     facing_edits = {}
     branch_edits = {}
     for identifier, components in deepcopy(project.overrides).items():
-        if isinstance(components,dict) and 'ControllerSystemFlags' in components:
+        if isinstance(components,dict) and {'ControllerSystemFlags','ControllerBranches'} & set(components):
             from .controller_selector_build import collect
             if collect(project,identifier,components)[0]!=scene_id:raise ProjectError('Controller override belongs to another streaming scene')
             continue
@@ -285,7 +285,7 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
         from .actor_capacity import actor_pool_assessment
         pool_evidence = actor_pool_assessment(archive, candidate) if requests else None
         controller_selector_changes=[]
-        if 'ControllerSystemFlags' in project.overrides.get(scene_id+'/controllers/man-p1/0000',{}):
+        if {'ControllerSystemFlags','ControllerBranches'} & set(project.overrides.get(scene_id+'/controllers/man-p1/0000',{})):
             from .controller_selector_build import compose as compose_controller
             candidate,controller_selector_changes=compose_controller(project,scene_id,carrier.payload,candidate,appended=True)
         # The raw loader advances by words. Pad only after all MAN edits so
@@ -320,7 +320,7 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
         source_disc_sha256=disc_hash, source_prot_sha256=sha256(prot).hexdigest(),
         authored_state_key=key, imported_document_sha256=digest(document),
         floor_height_changes=floor_height_changes, existing_actor_placement_changes=placements, existing_actor_dialogue_changes=dialogue_changes, map_changes=map_audit,
-        controller_system_flag_changes=controller_selector_changes, model_changes=model_audit, texture_changes=texture_audit, animation_changes=animation_audit, branch_changes=branch_changes, transition_changes=transition_changes, movement_changes=movement_changes, flag_changes=flag_changes, system_flag_changes=system_flag_changes, wait_changes=wait_changes, animation_operand_changes=animation_operand_changes,effect_color_changes=effect_color_changes, model_selector_changes=model_selector_changes, facing_changes=facing_changes, existing_actor_appearance_changes=appearance_changes,
+        controller_system_flag_changes=[r for r in controller_selector_changes if r['field']=='system_flag_index'], controller_branch_changes=[r for r in controller_selector_changes if r['field']=='script.branch_target'], model_changes=model_audit, texture_changes=texture_audit, animation_changes=animation_audit, branch_changes=branch_changes, transition_changes=transition_changes, movement_changes=movement_changes, flag_changes=flag_changes, system_flag_changes=system_flag_changes, wait_changes=wait_changes, animation_operand_changes=animation_operand_changes,effect_color_changes=effect_color_changes, model_selector_changes=model_selector_changes, facing_changes=facing_changes, existing_actor_appearance_changes=appearance_changes,
         actor_changes=actor_audit, actor_pool_evidence=pool_evidence, man_padding_bytes=padding,
         existing_actor_allocated_animation_changes=allocated_changes,npc_dialogue_changes=npc_dialogue_audit,npc_appearance_changes=npc_appearance_audit,npc_wait_changes=npc_wait_audit,npc_movement_changes=npc_movement_audit,npc_facing_changes=npc_facing_audit,npc_flags_changes=npc_flags_audit,npc_system_flags_changes=npc_system_flags_audit,npc_branches_changes=npc_branches_audit,npc_model_selectors_changes=npc_model_selectors_audit,npc_effect_colors_changes=npc_effect_colors_audit,npc_animation_operands_changes=npc_animation_operands_audit,npc_transitions_changes=npc_transitions_audit,
         final_man_sha256=sha256(candidate).hexdigest(), gameplay_verified=False,

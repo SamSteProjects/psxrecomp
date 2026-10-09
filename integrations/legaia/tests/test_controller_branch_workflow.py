@@ -64,11 +64,11 @@ class ControllerBranchWorkflow(unittest.TestCase):
         self.p.overrides[OWNER][COMPONENT]['source_record_sha256']=self.p.overrides[OWNER]['ControllerSystemFlags']['source_record_sha256'];self.p.mode='live'
         with self.assertRaises(ProjectError):review(self.p,OWNER,ID,None)
 
-    def test_pending_build_refuses_before_any_output(self):
-        from sdk.build import _build_project,BuildError
-        self.apply({'target_pc':5})
-        with self.assertRaisesRegex(BuildError,'Controller branch native Build integration is pending'):_build_project(self.p,None,review_only=True)
-        self.assertFalse((self.p.root/'Builds').exists())
+    def test_build_collection_recognizes_both_controller_families(self):
+        from sdk.controller_selector_build import collect
+        self.apply({'target_pc':5});self.selector({'index':4095})
+        scene,components=collect(self.p,OWNER,self.p.overrides[OWNER])
+        self.assertEqual(scene,'scene://fixture');self.assertEqual(set(components),{COMPONENT,'ControllerSystemFlags'})
 
     def test_unknown_controller_paths_remain_explicitly_unsupported(self):
         src,_=source(b'\x2a')
