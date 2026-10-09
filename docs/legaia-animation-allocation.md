@@ -1,5 +1,34 @@
 # Persistent native animation record allocation
 
+## Created Clip Asset Handoff — 2026-10-09
+
+After variant Apply, the normal editor refreshes the authoritative Asset Database,
+filters Animations to the exact created identity and opens its retained inspector.
+The new clip is ready for preview, native-content or GLB editing, naming and a
+separate initial-assignment Review. Existing duplicate navigation uses the same
+handoff. If the scene/project changes or the new source cannot be uniquely
+qualified, creation remains committed and the editor reports why navigation
+refused; it does not open a different clip or repeat Apply.
+
+Variant qualification binds the captured source ID, reviewed actor/source key,
+new native receipt/hash, donor/model/channel witnesses, counts and active,
+unassigned state to the refreshed asset. Generic retained asset decoding and
+Edit capability checks remain shared. Both allocation and library Apply release
+their busy owner after a verified successful response and before handoff callbacks.
+Their pending controls stay locked until callback completion; callback cleanup
+cannot release a different operation's busy owner.
+
+Five focused Node suites and four JavaScript syntax checks passed, including
+mismatched/ambiguous native receipts, foreign donors, assigned/retired results,
+Live refusal, detached output and callback busy-state checks. Actual Town01
+navigation through the normal asset browser and retained lifecycle panel proved
+variant Review/Apply automatically opens the unique new three-frame inspector.
+Desktop/400-pixel screenshots were inspected with zero page errors. The source
+remained retired, the actor's separate assignment and imports stayed exact, one
+history command was created and Save/Open retained the independently allocated
+native record. Evidence: `local-output/sdk-20260909/variant-asset-handoff-20261009/`.
+No new Build, game or runtime attachment; gameplay remains unverified.
+
 ## Retained Clip Variants — 2026-10-09
 
 Choose **Create variant** in the saved clip library or retained lifecycle panel,

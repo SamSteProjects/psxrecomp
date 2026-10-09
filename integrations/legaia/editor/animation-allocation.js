@@ -93,7 +93,7 @@ export async function openAnimationAllocationEditor({entityId,getContext,sourceR
     if(!current()||pending!==null||busy()!==false)return false;
     const token={},version=++generation;owner=token;controller=new AbortController();const signal=controller.signal;pending=kind;error.textContent='';setBusy(true);updateState();
     const valid=()=>current()&&generation===version&&!signal.aborted;
-    try{return await work(signal,valid);}catch(value){if(valid()&&value?.name!=='AbortError'){error.textContent=value?.message??String(value);onError(value);}return false;}
+    try{return await work(signal,valid,token);}catch(value){if(valid()&&value?.name!=='AbortError'){error.textContent=value?.message??String(value);onError(value);}return false;}
     finally{if(generation===version){pending=null;controller=null;}release(token);updateState();}
   }
   frames.oninput=()=>{revision++;invalidate();error.textContent='';status.textContent='Sequence changed. Review before Preview or Apply.';updateState();};
@@ -110,11 +110,11 @@ export async function openAnimationAllocationEditor({entityId,getContext,sourceR
     try{const result=await onPosePreview(data,{returnToEditor});if(!valid()||!accepted(held)||result===false){returnToEditor();return false;}return true;}
     catch(value){returnToEditor();throw value;}
   });};
-  apply.onclick=()=>{if(!accepted(review))return false;const held=review;return run('apply',async(signal,valid)=>{
+  apply.onclick=()=>{if(!accepted(review))return false;const held=review;return run('apply',async(signal,valid,token)=>{
     let next;
     try{next=await post('/api/animation-record-allocation',{...held.request,review_key:held.report.review_key},signal);if(!object(next?.project)||next.project.mode!=='edit')fail('Allocation returned invalid project state.');}
     catch(value){if(valid()){review=null;summary.hidden=true;status.textContent='Apply failed. Review again.';}throw value;}
-    if(!valid()||!accepted(held))return false;review=null;await onApplied(next,structuredClone({kind:sourceRecordId===null?'allocation':'variant',request:held.request,review:held.report}));dispose();return true;
+    if(!valid()||!accepted(held))return false;review=null;release(token);await onApplied(next,structuredClone({kind:sourceRecordId===null?'allocation':'variant',request:held.request,review:held.report}));dispose();return true;
   });};
   close.onclick=()=>{if(pending==='apply')return false;dispose();return true;};dialog.oncancel=event=>{if(pending==='apply')event.preventDefault();};dialog.onclose=()=>{if(!dialog.open&&dialog.dataset.poseRetained!=='true')dispose();};
   dialog.showModal();updateState();

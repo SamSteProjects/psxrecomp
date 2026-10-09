@@ -123,7 +123,7 @@ export async function openAnimationRecordLibrary({entityId,getContext,assignment
     if(!current()||pending!==null||busy()!==false)return false;
     const token={},version=++generation;owner=token;controller=new AbortController();const signal=controller.signal;pending=kind;setBusy(true);error.textContent='';updateState();
     const valid=()=>current()&&version===generation&&!signal.aborted;
-    try{return await work(signal,valid);}catch(e){if(valid()&&e?.name!=='AbortError'){error.textContent=e.message??String(e);onError(e);}return false;}
+    try{return await work(signal,valid,token);}catch(e){if(valid()&&e?.name!=='AbortError'){error.textContent=e.message??String(e);onError(e);}return false;}
     finally{if(version===generation){controller=null;pending=null;}release(token);updateState();}
   }
   select.onchange=()=>{invalidate();status.textContent='Selection changed. Review before Apply.';updateState();};
@@ -138,8 +138,8 @@ export async function openAnimationRecordLibrary({entityId,getContext,assignment
     const report=decodeAnimationRecordDuplicateReview(value,request,row,library);held={kind:'duplicate',request,report,row};
     status.textContent=`Reviewed independent duplicate ${report.duplicate_entry.record_id} · identical native content · not applied. Source clip and actor assignments stay intact. The new clip is active and unassigned; edit or assign it after Apply.`;return true;
   });};
-  apply.onclick=()=>{const captured=held;if(!captured||captured.row!==selected())return false;return run('apply',async(signal,valid)=>{
-    try{const next=await post(captured.kind==='assignment'?'/api/allocated-animation-assignment':captured.kind==='duplicate'?'/api/animation-record-duplicate':'/api/animation-record-activation',{...captured.request,review_key:captured.report.review_key},signal);if(!valid()||captured!==held)return false;if(!object(next?.project)||next.project.mode!=='edit')fail('Change returned invalid project state.');held=null;await onApplied(next,structuredClone({kind:captured.kind,request:captured.request,review:captured.report}));dispose();return true;}
+  apply.onclick=()=>{const captured=held;if(!captured||captured.row!==selected())return false;return run('apply',async(signal,valid,token)=>{
+    try{const next=await post(captured.kind==='assignment'?'/api/allocated-animation-assignment':captured.kind==='duplicate'?'/api/animation-record-duplicate':'/api/animation-record-activation',{...captured.request,review_key:captured.report.review_key},signal);if(!valid()||captured!==held)return false;if(!object(next?.project)||next.project.mode!=='edit')fail('Change returned invalid project state.');held=null;release(token);await onApplied(next,structuredClone({kind:captured.kind,request:captured.request,review:captured.report}));dispose();return true;}
     catch(e){if(valid()){held=null;status.textContent='Change failed. Review again.';}throw e;}
   });};
   function reviewAssignment(clear){

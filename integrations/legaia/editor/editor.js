@@ -3,7 +3,7 @@ import {controllerNavigationTarget,qualifyControllerNavigation} from '/controlle
 import {controllerBuildTarget} from '/controller-build-navigation.js';
 import {mountControllerOwnerInspector} from '/controller-owner-inspector.js';
 import {createAssetResourceDiscovery,assetSearchNeedsResources} from '/asset-resource-discovery.js';
-import {copiedAnimationAsset} from '/animation-copy-selection.js';
+import {copiedAnimationAsset,variantAnimationAsset} from '/animation-copy-selection.js';
 import {decodeSceneCatalog} from '/scene-catalog.js';
 import {openCatalogScenePreview} from '/catalog-scene-preview.js';
 import {openModelResolution} from '/model-resolution.js';
@@ -3707,21 +3707,21 @@ async function inspectSavedAnimationRecords(entity,retainedRecord=null,assetId=n
     modelAssetId:entity.components?.ActorAppearance?.effective?.asset_id??null,
     getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key}),
     busy:()=>busy,setBusy,onError:error=>notify(error.message??String(error),true),
-    onApplied:async(next,change)=>{state=next;render();if(change.kind==='duplicate'){notify('Clip duplicated. Original record and assignments retained; the new clip is active and unassigned. Save project to persist.');await openCopiedAnimationAfterApply(change);}else{notify(change.kind==='variant'?'Clip variant created. Source and assignments retained; the new clip is active and unassigned. Save project to persist.':'Allocated clip settings updated. Save project to persist.');refreshRetainedAssetAfterApply(assetId);}},
+    onApplied:async(next,change)=>{state=next;render();if(['duplicate','variant'].includes(change.kind)){notify(change.kind==='variant'?'Clip variant created. Source and assignments retained; the new clip is active and unassigned. Save project to persist.':'Clip duplicated. Original record and assignments retained; the new clip is active and unassigned. Save project to persist.');await openCreatedAnimationAfterApply(change);}else{notify('Allocated clip settings updated. Save project to persist.');refreshRetainedAssetAfterApply(assetId);}},
     onPosePreview:async(data,{returnToEditor})=>{
       setBusy(false);await openModel(data.semantic_id,data.animation.clip_id,entity.id,'imported',null,data,returnToEditor);
       if(model!==data||!$('model-dialog').open)throw new Error($('model-error').textContent||'Could not open saved allocated clip.');
       $('model-dialog').addEventListener('close',()=>{if(model===data&&scenePose?.preview!==data)returnToEditor();},{once:true});
     }});
 }
-async function openCopiedAnimationAfterApply(change,getContext=()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key})){
+async function openCreatedAnimationAfterApply(change,getContext=()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key})){
   const context=getContext(),key=resourceStateKey();
   try{
-    if(change?.kind!=='duplicate')throw Error('Copy handoff returned an unrelated change.');
+    if(!['duplicate','variant'].includes(change?.kind))throw Error('Created clip handoff returned an unrelated change.');
     await refreshResources();
-    if(JSON.stringify(context)!==JSON.stringify(getContext())||key!==resourceStateKey()||resourceKey!==key||busy)throw Error('Copy created; source changed before opening it. Select the new clip in the asset database.');
-    const record=copiedAnimationAsset(assetRecords(true),change.review,state);
-    if(projectAssetControls?.scope()==='project'&&!projectAssetControls.revealSource(record.sceneId))throw Error('Copy created; project source changed before revealing it. Select the new clip in the asset database.');
+    if(JSON.stringify(context)!==JSON.stringify(getContext())||key!==resourceStateKey()||resourceKey!==key||busy)throw Error('Clip created; source changed before opening it. Select the new clip in the asset database.');
+    const record=change.kind==='variant'?variantAnimationAsset(assetRecords(true),change,state):copiedAnimationAsset(assetRecords(true),change.review,state);
+    if(projectAssetControls?.scope()==='project'&&!projectAssetControls.revealSource(record.sceneId))throw Error('Clip created; project source changed before revealing it. Select the new clip in the asset database.');
     $('asset-category').value='animation';$('asset-search').value='id:'+record.id;renderAssets();
     openAnimationResource(record);
   }catch(error){notify(error.message,true);}
@@ -3734,7 +3734,7 @@ async function inspectAssignedAnimationDuplicate(entity){
   catch(error){notify(error.message,true);return;}finally{setBusy(false);}
   animationRecordLibrary?.dispose();animationRecordEntityId=entity.id;animationRecordAssetId=null;
   try{animationRecordLibrary=await openAnimationRecordLibrary({entityId:entity.id,retainedRecord:row,duplicateOnly:true,getLabel:id=>state.animation_labels?.[id]?.name??null,assignment:entity.components.ActorAllocatedAnimation.authored,getContext,busy:()=>busy,setBusy,onError:error=>notify(error.message,true),
-    onApplied:async(next,change)=>{state=next;render();notify('Assigned clip duplicated. Original assignment retained; the new clip is active and unassigned. Save project to persist.');await openCopiedAnimationAfterApply(change,getContext);}});}catch(error){notify(error.message,true);}
+    onApplied:async(next,change)=>{state=next;render();notify('Assigned clip duplicated. Original assignment retained; the new clip is active and unassigned. Save project to persist.');await openCreatedAnimationAfterApply(change,getContext);}});}catch(error){notify(error.message,true);}
 }
 async function inspectAnimationAllocation(entity){
   if(busy||state.project.mode!=='edit')return;
