@@ -52,7 +52,7 @@ import {validateVertexRetarget} from '/vertex-retarget.js';
 import {qualifySourceNormals,rigidFrameNormals} from '/source-normal-view.js';
 import {mountAssetNavigation} from '/asset-navigation.js';
 import {wallCellAt,wallDragRectangle,wallSelectionGeometry} from '/wall-viewport.js';
-import {interpolateAnimationRange,interpolateAnimationFrameRange,holdAnimationFrameRange,decodeImportedFrame} from '/animation-range.js';
+import {interpolateAnimationRange,interpolateAnimationFrameRange,holdAnimationFrameRange,removeAnimationRange,decodeImportedFrame} from '/animation-range.js';
 import {decodeChannelPoseProposal} from '/animation-channel-proposal.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
 import {appendCaptureSummary} from '/script-capture.js';
@@ -3864,10 +3864,31 @@ async function openAnimationChannels(entity,initialChannel=null){
     const importedOperation=document.createElement('select'),operationLabel=document.createElement('label');operationLabel.textContent='Complete frame operation ';importedOperation.setAttribute('aria-label','Imported complete frame operation');for(const [value,label] of [['blend','Blend endpoint poses'],['hold','Hold copied complete pose']]){const option=document.createElement('option');option.value=value;option.textContent=label;importedOperation.append(option);}operationLabel.append(importedOperation);
     const holdNote=document.createElement('p');holdNote.className='field-note';holdNote.textContent='Hold uses All rigid objects and repeats the copied complete pose exactly. Use the same first and last target frame to paste a single frame. The interpolation curve and selected end pose do not alter a held pose.';
     const interpolationReview=document.createElement('div');interpolationReview.dataset.animationInterpolation='review';
-    const interpolationKey=()=>JSON.stringify([context,state.scene_preview_source_key,state.authored_assets,copiedChannel,copiedFrame,verifiedChannel,channelFrame,channelObject,rangeInputs.start.value,rangeInputs.end.value,importedCurve.value,importedScope.value,importedOperation.value,channelDirty]);
+    const removalAxes=document.createElement('select');removalAxes.setAttribute('aria-label','Animation range removal axes');for(const [value,label] of [['all','All channel axes'],['translation','Translation XYZ'],['rotation_psx','Rotation XYZ'],...['translation','rotation_psx'].flatMap(kind=>[...'xyz'].map(axis=>[kind+'.'+axis,(kind==='translation'?'Translation ':'Rotation ')+axis.toUpperCase()]))]){const option=document.createElement('option');option.value=value;option.textContent=label;removalAxes.append(option);}
+    const interpolationKey=()=>JSON.stringify([context,state.scene_preview_source_key,state.authored_assets,copiedChannel,copiedFrame,verifiedChannel,channelFrame,channelObject,rangeInputs.start.value,rangeInputs.end.value,importedCurve.value,importedScope.value,importedOperation.value,removalAxes.value,channelDirty]);
     importedCurve.onchange=()=>{interpolationReview.replaceChildren();};
     importedScope.onchange=()=>{interpolationReview.replaceChildren();};
     importedOperation.onchange=()=>{interpolationReview.replaceChildren();interpolate.textContent=importedOperation.value==='hold'?'Review held complete pose':'Review interpolated frame range';importedCurve.disabled=importedOperation.value==='hold';};
+    const showChannelReview=(result,key,summaryText,applyLabel)=>{
+      error.textContent='';const summary=document.createElement('p');summary.textContent=summaryText;
+        const preview=document.createElement('pre');preview.textContent=result.proposed.slice(0,256).map(row=>`Frame ${row.frame_index}, object ${row.object_index} · T ${Object.entries(row.translation??{}).map(([a,v])=>a.toUpperCase()+'='+v).join(' / ')} · R ${Object.entries(row.rotation_psx??{}).map(([a,v])=>a.toUpperCase()+'='+v).join(' / ')}`).join('\n');
+        const accept=document.createElement('button');accept.type='button';accept.textContent=applyLabel;accept.dataset.applyInterpolation='';
+        const posePreview=document.createElement('button');posePreview.type='button';posePreview.textContent='Preview reviewed channel poses';
+        posePreview.onclick=async()=>{
+          if(!current()||busy)return;if(key!==interpolationKey()){posePreview.disabled=true;error.textContent='Pose, range or project changed. Review interpolation again.';return;}
+          const value={animation_id:binding.semantic_id,source_record_sha256:binding.source_record.record_sha256,edits:result.edits};setBusy(true);
+          try{
+            const response=await fetch('/api/animation-channels-pose-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id,value,expected_source_key:state.scene_preview_source_key})}),data=await response.json();if(!current())return;
+            if(key!==interpolationKey())throw Error('Pose, range or project changed during preview. Review again.');if(!response.ok||data.error)throw Error(data.error||'Proposed channel pose preview failed.');
+            decodeChannelPoseProposal(data,{entityId:entity.id,binding,value,sourceKey:state.scene_preview_source_key});
+            const returnToChannels=()=>{if(userClosed||!form.isConnected||key!==interpolationKey()||JSON.stringify([state.project.path,state.scene?.id,state.selection?.entity_id])!==context||state.project.mode!=='edit')return false;if(!animationEditDialog.open){animationEditDialog.showModal();armAnimationClose();}return true;};
+            setBusy(false);await openModel(binding.asset_semantic_id,'channel-preview',entity.id,'imported',null,data,returnToChannels);
+            if(model!==data||!$('model-dialog').open)throw Error($('model-error').textContent||'Could not open proposed channel poses.');
+          }catch(exc){if(current())error.textContent=exc.message;}finally{setBusy(false);}
+        };
+        accept.onclick=async()=>{if(!current()||busy)return;if(key!==interpolationKey()){accept.disabled=true;error.textContent='Pose, range or project changed. Review interpolation again.';return;}await apply(result.edits.length?{type:'set_animation_channels',entity_id:entity.id,value:{animation_id:binding.semantic_id,source_record_sha256:binding.source_record.record_sha256,edits:result.edits}}:{type:'clear_animation_channels',entity_id:entity.id});};
+        interpolationReview.append(summary,preview,posePreview,accept);if(result.proposed.length>256){const limit=document.createElement('p');limit.textContent='Showing the first 256 channels; Apply uses the complete reviewed range.';interpolationReview.append(limit);}
+    };
     interpolate.onclick=async()=>{
       interpolationReview.replaceChildren();if(!current()||busy)return;
       try{
@@ -3882,28 +3903,20 @@ async function openAnimationChannels(entity,initialChannel=null){
         const key=interpolationKey(),args={start:Number(rangeInputs.start.value),end:Number(rangeInputs.end.value),frameCount:binding.frame_count,objectCount:binding.bone_count,edits,curve:importedCurve.value};let result;
         if(all){setBusy(true);const ending=await readFullFrame(channelFrame);if(key!==interpolationKey())throw Error('Selection, endpoints or range changed. Review again.');if(copiedFrame.report.effective_record_sha256!==ending.effective_record_sha256)throw Error('Shared clip changed after the frame was copied. Copy again.');result=hold?holdAnimationFrameRange({...args,first:copiedFrame.report[copiedFrame.layer]}):interpolateAnimationFrameRange({...args,first:copiedFrame.report[copiedFrame.layer],last:ending.effective});}
         else result=interpolateAnimationRange({...args,first:copiedChannel.values,last:verifiedChannel.effective,object:channelObject});
-        error.textContent='';
-        const copied=all?copiedFrame:copiedChannel,summary=document.createElement('p');summary.textContent=`${hold?'Hold copied complete pose':importedCurve.selectedOptions[0].textContent} · ${importedScope.selectedOptions[0].textContent} · ${result.proposed.length} proposed channels · copied ${copied.layer} frame ${copied.frame} ${hold?'held across target frames '+args.start+' through '+args.end:'to effective frame '+channelFrame} · project unchanged. Apply replaces this actor’s contributions in the target range; shared conflicts are checked on Apply.`;
-        const preview=document.createElement('pre');preview.textContent=result.proposed.slice(0,256).map(row=>`Frame ${row.frame_index}, object ${row.object_index} · T ${Object.values(row.translation).join(' / ')} · R ${Object.values(row.rotation_psx).join(' / ')}`).join('\n');
-        const accept=document.createElement('button');accept.type='button';accept.textContent=hold?'Apply reviewed held pose':'Apply reviewed interpolation';accept.dataset.applyInterpolation='';
-        const posePreview=document.createElement('button');posePreview.type='button';posePreview.textContent='Preview reviewed channel poses';
-        posePreview.onclick=async()=>{
-          if(!current()||busy)return;if(key!==interpolationKey()){posePreview.disabled=true;error.textContent='Pose, range or project changed. Review interpolation again.';return;}
-          const value={animation_id:binding.semantic_id,source_record_sha256:binding.source_record.record_sha256,edits:result.edits};setBusy(true);
-          try{
-            const response=await fetch('/api/animation-channels-pose-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id,value,expected_source_key:state.scene_preview_source_key})}),data=await response.json();if(!current())return;
-            if(key!==interpolationKey())throw Error('Pose, range or project changed during preview. Review again.');if(!response.ok||data.error)throw Error(data.error||'Proposed channel pose preview failed.');
-            decodeChannelPoseProposal(data,{entityId:entity.id,binding,value,sourceKey:state.scene_preview_source_key});
-            const returnToChannels=()=>{if(userClosed||!form.isConnected||key!==interpolationKey()||JSON.stringify([state.project.path,state.scene?.id,state.selection?.entity_id])!==context||state.project.mode!=='edit')return false;if(!animationEditDialog.open){animationEditDialog.showModal();armAnimationClose();}return true;};
-            setBusy(false);await openModel(binding.asset_semantic_id,'channel-preview',entity.id,'imported',null,data,returnToChannels);
-            if(model!==data||!$('model-dialog').open)throw Error($('model-error').textContent||'Could not open proposed channel poses.');
-          }catch(exc){if(current())error.textContent=exc.message;}finally{setBusy(false);}
-        };
-        accept.onclick=async()=>{if(!current()||busy)return;if(key!==interpolationKey()){accept.disabled=true;error.textContent='Pose, range or project changed. Review interpolation again.';return;}await apply({type:'set_animation_channels',entity_id:entity.id,value:{animation_id:binding.semantic_id,source_record_sha256:binding.source_record.record_sha256,edits:result.edits}});};
-        interpolationReview.append(summary,preview,posePreview,accept);if(result.proposed.length>256){const limit=document.createElement('p');limit.textContent='Showing the first 256 channels; Apply uses the complete reviewed range.';interpolationReview.append(limit);}
+        const copied=all?copiedFrame:copiedChannel;showChannelReview(result,key,`${hold?'Hold copied complete pose':importedCurve.selectedOptions[0].textContent} · ${importedScope.selectedOptions[0].textContent} · ${result.proposed.length} proposed channels · copied ${copied.layer} frame ${copied.frame} ${hold?'held across target frames '+args.start+' through '+args.end:'to effective frame '+channelFrame} · project unchanged. Apply replaces this actor’s contributions in the target range; shared conflicts are checked on Apply.`,hold?'Apply reviewed held pose':'Apply reviewed interpolation');
       }catch(exc){if(current())error.textContent=exc.message;}finally{setBusy(false);}
     };
-    rangeControls.append(interpolationNote,scopeLabel,operationLabel,holdNote,curveLabel,interpolate,interpolationReview);
+    const removalLabel=document.createElement('label');removalLabel.textContent='Remove this actor’s contributions ';removalLabel.append(removalAxes);const removeRange=document.createElement('button');removeRange.type='button';removeRange.textContent='Review channel range removal';
+    removalAxes.onchange=()=>interpolationReview.replaceChildren();
+    removeRange.onclick=()=>{interpolationReview.replaceChildren();if(!current()||busy)return;try{
+      if(channelDirty)throw Error('Apply or discard the current draft before removing contributions.');
+      if(loadedAuthoringState!==JSON.stringify([state.scene_preview_source_key,state.authored_assets]))throw Error('Project changed. Reopen the animation editor.');
+      if(!rangeInputs.start.reportValidity()||!rangeInputs.end.reportValidity())return;
+      const result=removeAnimationRange({start:Number(rangeInputs.start.value),end:Number(rangeInputs.end.value),frameCount:binding.frame_count,objectCount:binding.bone_count,object:importedScope.value==='all_objects'?null:channelObject,axes:removalAxes.value,edits});
+      if(!result.removedAxes)throw Error('This actor has no contributions matching that range, scope and axes.');
+      showChannelReview(result,interpolationKey(),`${result.removedAxes} ${result.removedAxes===1?'axis':'axes'} across ${result.proposed.length} ${result.proposed.length===1?'channel':'channels'} proposed for removal from this actor only. Other axes, frames, objects and shared owners remain. Preview shows the resulting clip; project unchanged until Apply.`,'Apply reviewed range removal');
+    }catch(exc){if(current())error.textContent=exc.message;}};
+    rangeControls.append(interpolationNote,scopeLabel,operationLabel,holdNote,curveLabel,interpolate,removalLabel,removeRange,interpolationReview);
     clearChannel.onclick=()=>{
       if(channelDirty){error.textContent='Apply or discard unapplied channel changes before clearing the selected contribution.';return;}
       const next=edits.filter(edit=>edit.frame_index!==channelFrame||edit.object_index!==channelObject);

@@ -71,3 +71,27 @@ export function holdAnimationFrameRange({first,start,end,frameCount,objectCount,
   next.sort((a,b)=>a.frame_index-b.frame_index||a.object_index-b.object_index);
   return {proposed,edits:next};
 }
+
+export function removeAnimationRange({start,end,frameCount,objectCount,object=null,axes='all',edits}){
+  const choices=['all','translation','rotation_psx',...['translation','rotation_psx'].flatMap(k=>[... 'xyz'].map(a=>k+'.'+a))];
+  if(!Number.isSafeInteger(frameCount)||frameCount<1||frameCount>512||!Number.isSafeInteger(objectCount)||objectCount<1||objectCount>64||!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||start>end||end>=frameCount||(object!==null&&(!Number.isSafeInteger(object)||object<0||object>=objectCount))||!choices.includes(axes)||!Array.isArray(edits)||edits.length>4096)throw Error('Choose a bounded frame range, object scope and supported channel axes.');
+  const next=[],removed=[],seen=new Set();
+  for(const edit of edits){
+    if(!edit||Object.keys(edit).some(k=>!['frame_index','object_index','translation','rotation_psx'].includes(k))||!Number.isSafeInteger(edit.frame_index)||edit.frame_index<0||edit.frame_index>=frameCount||!Number.isSafeInteger(edit.object_index)||edit.object_index<0||edit.object_index>=objectCount||seen.has(edit.frame_index+':'+edit.object_index))throw Error('Stored contributions have invalid or duplicate identities.');
+    seen.add(edit.frame_index+':'+edit.object_index);
+    const keep={frame_index:edit.frame_index,object_index:edit.object_index},drop={...keep};let count=0;
+    for(const kind of ['translation','rotation_psx'])if(Object.hasOwn(edit,kind)){
+      const v=edit[kind];if(!v||typeof v!=='object'||Array.isArray(v)||!Object.keys(v).length)throw Error('Stored channel group is invalid.');
+      for(const [axis,value] of Object.entries(v)){
+        if(!'xyz'.includes(axis)||axis.length!==1||!Number.isSafeInteger(value)||(kind==='translation'?(value< -2048||value>2047):(value<0||value>4080||value%16)))throw Error('Stored channel axis is outside the native grid.');
+        count++;const target=edit.frame_index>=start&&edit.frame_index<=end&&(object===null||edit.object_index===object)&&(axes==='all'||axes===kind||axes===kind+'.'+axis)?drop:keep;
+        (target[kind]??={})[axis]=value;
+      }
+    }
+    if(!count)throw Error('Stored contribution has no native axes.');
+    if(keep.translation||keep.rotation_psx)next.push(keep);
+    if(drop.translation||drop.rotation_psx)removed.push(drop);
+  }
+  const order=(a,b)=>a.frame_index-b.frame_index||a.object_index-b.object_index;next.sort(order);removed.sort(order);
+  return {proposed:removed,edits:next,removedAxes:removed.reduce((n,r)=>n+Object.keys(r.translation??{}).length+Object.keys(r.rotation_psx??{}).length,0)};
+}
