@@ -1,4 +1,5 @@
 import {mountControllerBranches} from './controller-branches.js';
+import {mountControllerFades} from './controller-fades.js';
 import {mountControllerTileRects} from './controller-tile-rects.js';
 import {mountControllerSystemSelectors} from './system-flag-selectors.js';
 import {mountScriptWalkthrough} from './script-walkthrough.js';
@@ -71,10 +72,10 @@ export async function openSceneController({getState,busy,expectedAsset=null,focu
  const close=document.createElement('button');close.textContent='Close';close.onclick=()=>dialog.close();
  const status=document.createElement('p');status.setAttribute('role','status');status.textContent='Verifying the scene controller source…';
  const content=document.createElement('div');content.style.overflowWrap='anywhere';dialog.append(heading,close,status,content);document.body.append(dialog);dialog.showModal();
- let flow=null,walkthrough=null,selectors=null,branches=null,tiles=null,instructionFilter=null,selectedSource=null;const sourceRows=new Map();
+ let flow=null,walkthrough=null,selectors=null,branches=null,tiles=null,fades=null,instructionFilter=null,selectedSource=null;const sourceRows=new Map();
  const controller=new AbortController(),fresh=()=>dialog.open&&getState().project?.path===projectPath&&getState().scene?.id===scene&&getState().asset_reference_source_key===key&&getState().project?.mode==='edit';
- const timer=setInterval(()=>{if(!fresh()&&!busy()){selectors?.dispose();selectors=null;branches?.dispose();branches=null;tiles?.dispose();tiles=null;flow?.dispose();flow=null;walkthrough?.dispose();walkthrough=null;sourceRows.clear();selectedSource=null;instructionFilter=null;content.replaceChildren();status.textContent='Scene sources changed. Reopen controller inspection.';}selectors?.updateState();branches?.updateState();tiles?.updateState();instructionFilter?.updateState();},250);
- dialog.addEventListener('close',()=>{clearInterval(timer);controller.abort();selectors?.dispose();branches?.dispose();tiles?.dispose();flow?.dispose();walkthrough?.dispose();sourceRows.clear();dialog.remove();},{once:true});
+ const timer=setInterval(()=>{if(!fresh()&&!busy()){selectors?.dispose();selectors=null;branches?.dispose();branches=null;tiles?.dispose();tiles=null;fades?.dispose();fades=null;flow?.dispose();flow=null;walkthrough?.dispose();walkthrough=null;sourceRows.clear();selectedSource=null;instructionFilter=null;content.replaceChildren();status.textContent='Scene sources changed. Reopen controller inspection.';}selectors?.updateState();branches?.updateState();tiles?.updateState();fades?.updateState();instructionFilter?.updateState();},250);
+ dialog.addEventListener('close',()=>{clearInterval(timer);controller.abort();selectors?.dispose();branches?.dispose();tiles?.dispose();fades?.dispose();flow?.dispose();walkthrough?.dispose();sourceRows.clear();dialog.remove();},{once:true});
  try{
   const response=await fetch('/api/scene-controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scene_id:scene,expected_source_key:key}),signal:controller.signal}),value=await response.json();if(!response.ok||value.error)throw Error(value.error||'Controller inspection failed');if(!fresh())return;
   const report=decodeSceneController(value,scene,key);if(expectedAsset)qualifySceneControllerAsset(report,expectedAsset);status.textContent=`${report.semantic_id} · Decoder status: ${report.status} · ${report.instructions.length} decoded instructions · ${report.dialogues.length} dialogue segments`;
@@ -110,6 +111,12 @@ export async function openSceneController({getState,busy,expectedAsset=null,focu
    tiles=mountControllerTileRects(content,{owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_tile_source_key}),busy,setBusy,api,onError,
     reopen:async pc=>{dialog.close();await openSceneController({getState,busy,api,setBusy,focusFlagPc:pc,onError});}});
    await tiles.ready;
+  }
+  if(!fresh())return;
+  if(typeof api==='function'&&typeof setBusy==='function'&&getState().capabilities?.controller_fade_authoring){
+   fades=mountControllerFades(content,{owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_fade_source_key}),busy,setBusy,api,onError,
+    reopen:async pc=>{dialog.close();await openSceneController({getState,busy,api,setBusy,focusFlagPc:pc,onError});}});
+   await fades.ready;
   }
   if(!fresh())return;
   const focusedFlag=renderControllerFlags(content,report,focusFlagPc);
