@@ -94,11 +94,9 @@ class ControllerWordTripletWorkflow(unittest.TestCase):
         self.p.mode='edit';self.p.overrides[OWNER]['Transform']={'position':{'x':1}}
         with self.assertRaises(ProjectError):ProjectService.open(self.p.save())
 
-    def test_pending_native_build_refuses_collection_and_composition(self):
-        from sdk.controller_selector_build import collect,compose
-        from sdk.build import BuildError
+    def test_build_collection_retains_validated_triplet_components(self):
+        from sdk.controller_selector_build import collect
         self.apply(VALUES)
-        with self.assertRaisesRegex(BuildError,'word-triplet native Build integration is pending'):
-            collect(self.p,OWNER,self.p.overrides[OWNER])
-        with self.assertRaisesRegex(BuildError,'word-triplet native Build integration is pending'):
-            compose(self.p,'scene://fixture',self.context._man,self.context._man)
+        scene,components=collect(self.p,OWNER,self.p.overrides[OWNER])
+        self.assertEqual(scene,'scene://fixture')
+        self.assertEqual(components[COMPONENT]['entries'][ID],VALUES)

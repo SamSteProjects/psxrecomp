@@ -331,3 +331,26 @@ The shared component registry, active-scene/Edit/source-hash validation, authore
 Twenty-nine focused Python checks passed across D8 native/project, existing selector/tile/fade/table project and fade/table Build suites. Seven changed/new SDK/test Python modules parsed. The six-family fixture matched the entire independently encoded literal MAN, including signed extremes and independent resets. Fresh Garmel HTTP inspection found both qualified targets. PC0x001E selector1/words8,204,34 retained its Retail values; encoded Word0 8→9 changed only decoded byte867, and the complete independent literal MAN matched. Read-only Review, typed Apply, stale Apply and malformed HTTP/domain refusal, Undo/Redo, Save/Open, reset, unchanged imports and pending Build refusal before creating output all passed.
 
 Evidence: `local-output/sdk-20260909/controller-word-triplet-workflow-20261009/garmel/http_checks.py` and `http-checks.json`. No native Build package, editor controls, game, runtime attachment, native recompilation, installation or disc export ran. Runtime offset, bindings/effects and gameplay remain unverified; full SDK goal active, solo work continues.
+
+## Controller Word-Triplet Native Build — 2026-10-09
+
+Dedicated `compose_word_triplets` consumes saved `ControllerWordTriplets` entries after other controller families. It independently reconstructs exact seven-byte selector/three-signed-word output, verifies qualified identity/PC/opcode/context/continuation, immutable source hashes/raw preimage and typed before/after values, and checks complete serializer audit coverage. Missing/duplicate/forged receipts, changed source bytes, overlap including no-op spans, unrelated MAN edits and layout/extent changes refuse. The first word stays encoded/unadjusted; the unknown runtime offset is never serialized.
+
+Normal and appended/NPC controller paths retain separate source/effective/candidate record hashes and translated byte coordinates. D8 has distinct `word_triplet_id`, `script.word_triplet_operands`, `controller-word-triplet-operands-only` and `controller_word_triplet_changes` audit/report values. Build reports show exact values and stable source identity; package summaries identify D8. The previous pending D8 Build refusal is removed. Project/HTTP workflow remains available; editor controls are next.
+
+Forty-one focused Python cases passed across D8 native/project/Build, all existing controller Build families and report/review services; one optional private-disc test skipped. Eight changed/new SDK/test Python modules parsed and diff checks passed. Focused D8 Build fixtures cover complete literal MAN bytes, signed extremes, all six controller families together, appended translation, no-op overlap, forged/missing/duplicate receipts and unrelated-byte refusal. Synthetic raw fixture coverage does not establish an actual raw-streaming Retail D8 carrier.
+
+Six fresh actual Builds passed read-only Build Review, Save/Open, Undo/Redo, unchanged document/import/history state and directory/source-file/ZIP receipt integrity:
+
+| Scene | Authored inputs | Build | Delivery |
+| --- | --- | --- | --- |
+| Garmel | D8 | `265c1c2a89d8b81e` | fixed-span PROT |
+| Garmel | D8 + selector + branch | `05dcb7553a33fd00` | fixed-span PROT |
+| Garmel | D8 + selector + branch + NPC candidate | `349b974837268b52` | fixed-span PROT |
+| Jagaroom | D8 | `f1175b2650eb5720` | fixed-span PROT |
+| Jagaroom | D8 + selector + branch | `e924bd63761e213c` | fixed-span PROT |
+| Jagaroom | D8 + selector + branch + NPC candidate | `4a790d69077ab5ee` | relocated PROT |
+
+Both source carriers are compressed. These scenes have no qualified tile/fade/table targets; mixed real Builds include only supported source families. Every non-NPC Build matched the entire independently encoded literal MAN with unchanged layout. NPC outputs matched every original record independently, including exact spawn-record reindex and controller edits. Appended Jagaroom relocated delivery is retained in the existing format disabled by default at runtime; no playable acceptance is claimed.
+
+Evidence: `local-output/sdk-20260909/controller-word-triplet-build-20261009/check.py` and `checks.json`, including package hashes. No editor controls, game, runtime attachment, native recompilation, installation or disc export ran. Runtime offset, bindings/effects and gameplay remain unverified; full SDK goal active, solo work continues.
