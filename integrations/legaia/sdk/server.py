@@ -210,6 +210,7 @@ class EditorServer(ThreadingHTTPServer):
         state['controller_fade_source_key']=state['controller_selector_source_key']
         state['controller_table_source_key']=state['controller_selector_source_key']
         state['controller_scene_byte_source_key']=state['controller_selector_source_key']
+        state['controller_party_selector_source_key']=state['controller_selector_source_key']
         state['controller_five_word_source_key']=state['controller_selector_source_key']
         state['controller_global_byte_source_key']=state['controller_selector_source_key']
         state['controller_three_word_source_key']=state['controller_selector_source_key']
@@ -273,6 +274,7 @@ class EditorServer(ThreadingHTTPServer):
         state['capabilities']['controller_fade_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_table_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_scene_byte_authoring']=state['capabilities']['scene_controller_inspection']
+        state['capabilities']['controller_party_selector_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_five_word_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_global_byte_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_workspace_snapshot']=state['capabilities']['scene_controller_inspection']
@@ -1084,6 +1086,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/controller-tables.js": ("controller-tables.js", "text/javascript"),
                  "/controller-authoring-availability.js": ("controller-authoring-availability.js", "text/javascript"),
                  "/controller-scene-bytes.js": ("controller-scene-bytes.js", "text/javascript"),
+                 "/controller-party-selectors.js": ("controller-party-selectors.js", "text/javascript"),
                  "/controller-five-words.js": ("controller-five-words.js", "text/javascript"),
                  "/controller-global-bytes.js": ("controller-global-bytes.js", "text/javascript"),
                  "/controller-workspace-snapshot.js": ("controller-workspace-snapshot.js", "text/javascript"),
