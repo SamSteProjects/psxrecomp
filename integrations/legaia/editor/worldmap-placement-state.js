@@ -37,3 +37,11 @@ export function worldPlacementBuildTarget(change,authoredAssets){
   if(owners.length!==1||asset.kind!=='worldmap'||asset.scene_id!==null||asset.source_scene!==scene||binding.scene!==scene||Object.keys(binding).sort().join(',')!=='entries,scene,source_disc_sha256,source_floor_lut_sha256,source_map_sha256'||!['source_disc_sha256','source_map_sha256','source_floor_lut_sha256'].every(k=>hash(binding[k]))||!entries||Array.isArray(entries)||Object.keys(entries).length<1||Object.keys(entries).length>512||asset.placement_record_count!==Object.keys(entries).length||!entry||Object.keys(entry).sort().join(',')!=='shared_record,source_record_sha256,values'||!validValues(entry.values)||typeof entry.shared_record!=='boolean'||entry.source_record_sha256!==change.source_record_sha256||(axis?entry.values.offset[axis]:entry.values.yaw_units)!==change.after||affected.length>1&&!entry.shared_record)fail('World placement values differ from this Build report. Rebuild to inspect current changes.');
   return {scene,ownerId,recordId,recordIndex:index,sourceRecordHash:change.source_record_sha256,entries:{[recordId]:structuredClone(entry)},affectedEntityIds:[...affected]};
 }
+
+export function worldPlacementExportTarget(report,recordId,anchorEntityId,scope){
+  if(!scenes.includes(report?.scene)||!hash(report.source_key)||!['source-scene','ground','selected'].includes(scope))fail('World placement export scope or source is invalid.');
+  if(scope!=='selected')return {scope,entityId:null};
+  const matches=report.records?.filter(r=>r.record_id===recordId),row=matches?.[0];
+  if(matches?.length!==1||!row?.placements?.some(p=>p.entity_id===anchorEntityId)||typeof anchorEntityId!=='string'||!anchorEntityId.startsWith(`scene://${report.scene}/worldmap/placements/`)||!/^[0-3][0-9a-f]{3}$/.test(anchorEntityId.slice(`scene://${report.scene}/worldmap/placements/`.length)))fail('Selected export requires an exact affected source anchor.');
+  return {scope,entityId:anchorEntityId};
+}
