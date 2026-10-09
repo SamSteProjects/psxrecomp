@@ -205,6 +205,7 @@ class EditorServer(ThreadingHTTPServer):
         state['script_authoring_state_key'] = script_state_key(self.project)
         from .controller_system_flags import state_key as controller_selector_key
         state['controller_selector_source_key']=controller_selector_key(self.project)
+        state['controller_branch_source_key']=state['controller_selector_source_key']
         state['capabilities']['script_branch_authoring'] = bool(self.project.disc_path)
         state['capabilities']['system_selector_authoring'] = bool(self.project.disc_path)
         state['capabilities']['source_build_script_inspection'] = bool(self.project.disc_path)
@@ -259,6 +260,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["scene_controller_inspection"] = bool(self.project.disc_path and self.project.active_scene and self.project.mode == 'edit')
         state['capabilities']['controller_selector_authoring']=state['capabilities']['scene_controller_inspection']
+        state['capabilities']['controller_branch_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['asset_references'] = bool(self.project.disc_path and self.project.active_scene and len(self.project.imports)<=64)
         state['capabilities']['worldmap_source_navigation'] = bool(self.project.disc_path)
         state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]
@@ -1287,6 +1289,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'scene_id','expected_source_key'} or any(not isinstance(value,str) or len(value)>512 for value in body.values()):raise ProjectError('Model resolution requires exact scene and current source key')
                     from .model_resolution import inspect as inspect_model_resolution
                     self._json(200,inspect_model_resolution(self.server.project,body['scene_id'],body['expected_source_key']));return
+                if route in ('/api/controller-branches','/api/controller-branch-review'):
+                    expected={'entity'} if route=='/api/controller-branches' else {'entity','operand_id','value'}
+                    if set(body)!=expected or not isinstance(body['entity'],str):raise ProjectError('Controller branch request requires exact inputs')
+                    from .controller_branches import snapshot,review
+                    self._json(200,snapshot(self.server.project,body['entity']) if route=='/api/controller-branches' else review(self.server.project,body['entity'],body['operand_id'],body['value']));return
                 if route in ('/api/controller-system-flag-selectors','/api/controller-system-flag-review'):
                     expected={'entity'} if route=='/api/controller-system-flag-selectors' else {'entity','operand_id','value'}
                     if set(body)!=expected or not isinstance(body['entity'],str):raise ProjectError('Controller selector request requires exact inputs')

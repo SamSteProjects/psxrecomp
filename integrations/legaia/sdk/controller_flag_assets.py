@@ -97,12 +97,15 @@ def qualified_controller_flag_assets(project,controller,document):
     owner=controller['semantic_id'].replace('script://','scene://',1)
     components=deepcopy(project.overrides.get(owner,{}))
     if not components:return build_controller_flag_assets(controller,document)
-    from .controller_system_flags import COMPONENT,validate
+    from .controller_system_flags import COMPONENT,validate,validate_components
     from .flag_qualification import from_target
     from importer.controller_system_flags import load_controller_system_flag_context
     from importer.core import ImportError as RetailImportError
     from hashlib import sha256
-    if set(components)!={COMPONENT}:raise ProjectError('Controller flag owner contains unsupported components')
+    validate_components(project,owner,components)
+    if any(value['source_record_sha256']!=controller['source_record']['sha256'] for value in components.values()):
+        raise ProjectError('Controller flag annotations require unchanged Retail source ownership')
+    if COMPONENT not in components:return build_controller_flag_assets(controller,document)
     value=validate(project,owner,components[COMPONENT]);entries=value['entries']
     try:
         context=load_controller_system_flag_context(project.disc_path,document['scene']['name'])

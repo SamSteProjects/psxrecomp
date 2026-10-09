@@ -385,12 +385,16 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
                 expected=[row for row in controller['flag_references'] if row['bank']==record['bank'] and row['index']==record['index'] and row['extended_target']==record['extended_target']]
                 if [{key:row[key] for key in REFERENCE_FIELDS} for row in record['references']]!=expected:
                     raise ProjectError('Controller flag group omits or changes decoded source operands')
-                from .controller_system_flags import COMPONENT,validate
+                from .controller_system_flags import COMPONENT,validate,validate_components
                 components=project.overrides.get(record['owner_id'],{})
+                if components:
+                    validate_components(project,record['owner_id'],components)
+                    if any(value['source_record_sha256']!=record['source_record']['sha256'] for value in components.values()):
+                        raise ProjectError('Controller flag graph differs from saved source ownership')
                 component=components.get(COMPONENT)
                 if component is not None:
                     validate(project,record['owner_id'],component)
-                    if set(components)!={COMPONENT} or component['source_record_sha256']!=record['source_record']['sha256']:
+                    if set(components)-{COMPONENT,'ControllerBranches'} or component['source_record_sha256']!=record['source_record']['sha256']:
                         raise ProjectError('Controller flag graph differs from saved source ownership')
                 entries=component['entries'] if component else {}
                 for reference in record['references']:

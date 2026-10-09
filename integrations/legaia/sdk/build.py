@@ -527,6 +527,8 @@ def build_project(project, output_dir: Path | str | None = None) -> dict:
 
 
 def _build_project(project, output_dir, *, review_only=False) -> dict:
+    if any('ControllerBranches' in parts for parts in project.overrides.values()):
+        raise BuildError('Controller branch native Build integration is pending; saved edits cannot be omitted from output')
     draft_scenes = set()
     for identifier, draft in getattr(project, 'actor_drafts', {}).items():
         project._validate_actor_draft(identifier, draft)

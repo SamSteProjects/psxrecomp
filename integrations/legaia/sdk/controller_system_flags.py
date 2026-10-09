@@ -32,6 +32,30 @@ def validate(project, owner, value):
     return deepcopy(value)
 
 
+def validate_components(project,owner,components):
+    if not isinstance(components,dict) or not components or set(components)-{COMPONENT,'ControllerBranches'}:
+        raise ProjectError('Controller overrides cannot contain actor components')
+    hashes=set()
+    for family,value in components.items():
+        if family==COMPONENT:checked=validate(project,owner,value)
+        else:
+            from .controller_branches import validate as validate_branches
+            checked=validate_branches(project,owner,value)
+        hashes.add(checked['source_record_sha256'])
+    if len(hashes)!=1:raise ProjectError('Controller components require the same Retail source hash')
+    return deepcopy(components)
+
+
+def compose(context,owner,components):
+    selectors=components.get(COMPONENT,{}).get('entries',{})
+    current,_=context.patch(selectors)
+    if 'ControllerBranches' in components:
+        from importer.controller_branches import ControllerBranchAuthoringContext
+        branches=ControllerBranchAuthoringContext(context._source,system_selectors=selectors)
+        current,_=branches.patch_composed(current,components['ControllerBranches']['entries'])
+    return current
+
+
 def state_key(project):
     from .script_branches import state_key as script_key
     return digest({'project_path':str(project.root),'source_state':script_key(project)})
@@ -50,13 +74,10 @@ def prepare(project,owner):
             context=load_controller_system_flag_context(project.disc_path,document['scene']['name'])
         offset,record,entry=context._source.verified_record(owner)
         components=deepcopy(project.overrides.get(owner,{}))
-        if set(components)-{COMPONENT}:raise ProjectError('Controller overrides cannot contain actor components')
-        entries={}
-        if COMPONENT in components:
-            value=validate(project,owner,components[COMPONENT])
-            if value['source_record_sha256']!=sha256(record).hexdigest():raise ProjectError('Controller source record changed')
-            entries=value['entries']
-        current,_=context.patch(entries)
+        if components:validate_components(project,owner,components)
+        for family in components.values():
+            if family['source_record_sha256']!=sha256(record).hexdigest():raise ProjectError('Controller source record changed')
+        current=compose(context,owner,components)
         options=context.options(owner)
     except RetailImportError as exc:raise ProjectError(str(exc)) from exc
     if key!=state_key(project):raise ProjectError('Controller selector source changed during inspection')
@@ -85,8 +106,10 @@ def review(project,owner,operand,value):
     entries=deepcopy(components.get(COMPONENT,{}).get('entries',{}))
     if value is None:entries.pop(operand,None)
     else:entries[operand]=deepcopy(value)
-    proposed={COMPONENT:validate(project,owner,{'source_record_sha256':sha256(record).hexdigest(),'entries':entries})} if entries else {}
-    try:candidate,audit=context.patch(entries)
+    proposed=deepcopy(components)
+    if entries:proposed[COMPONENT]=validate(project,owner,{'source_record_sha256':sha256(record).hexdigest(),'entries':entries})
+    else:proposed.pop(COMPONENT,None)
+    try:candidate=compose(context,owner,proposed)
     except RetailImportError as exc:raise ProjectError(str(exc)) from exc
     differences=[i for i,(a,b) in enumerate(zip(current,candidate)) if a!=b]
     if any(i not in (offset+target['pc'],offset+target['pc']+1) for i in differences):raise ProjectError('Controller selector Review changed an unrelated byte')
