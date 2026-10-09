@@ -4608,7 +4608,7 @@ function renderDialogueAuthoring(){
 function frame(entity){
   if(!entity&&busy)return;
   pendingEntityFrame=null;
-  if(entity&&modelsEnabled&&state.capabilities?.scene_preview&&state.scene_preview_source_key&&!scenePreviewCurrent()&&!sceneError){
+  if(modelsEnabled&&state.capabilities?.scene_preview&&state.scene_preview_source_key&&!scenePreviewCurrent()&&!sceneError){
     pendingEntityFrame={entity,key:sceneRequestKey(),scene:state.scene?.id,project:state.project?.path,projectSource:state.project_copy_source_key,selection:hierarchySelectedIdentity(),revision:cameraRevision};
     return;
   }
