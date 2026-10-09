@@ -9,6 +9,8 @@ class InspectorSchema(unittest.TestCase):
         props={prop['id']:prop for prop in component['properties']}
         self.assertTrue(all(props['position-'+axis]['state']=='derived' for axis in ('x','y','z')))
         self.assertTrue(all(props[key]['state']=='unresolved' for key in ('visibility','resting')))
+        self.assertEqual(props['preview-layer']['state'],'editor-state')
+        self.assertTrue(all(props['display-position-'+axis]['path']==['displayed_source_position',axis] and props['display-position-'+axis]['state']=='derived' for axis in ('x','y','z')))
         self.assertTrue(all(prop['state'] in schema['property_states'] for prop in component['properties']))
 
     def test_world_placement_record_layers_are_read_only_and_distinct(self):

@@ -1124,6 +1124,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-authoring.js": ("worldmap-authoring.js", "text/javascript"),
                  "/worldmap-geometry.js": ("worldmap-geometry.js", "text/javascript"),
                  "/worldmap-placement-editor.js": ("worldmap-placement-editor.js", "text/javascript"),
+                 "/worldmap-placement-state.js": ("worldmap-placement-state.js", "text/javascript"),
                  "/worldmap-placement-gizmo.js": ("worldmap-placement-gizmo.js", "text/javascript"),
                  "/worldmap-placement-yaw.js": ("worldmap-placement-yaw.js", "text/javascript"),
                  "/worldmap-scene.js": ("worldmap-scene.js", "text/javascript"),

@@ -464,6 +464,8 @@ def inspector_schema():
             {'id':'record-hash','label':'Source record hash','path':['source_record_sha256'],'type':'string','state':'derived','empty_label':'Not recorded for this entity'},
             {'id':'visibility','label':'Runtime visibility','path':['runtime_visibility'],'type':'string','state':'unresolved'},
             {'id':'resting','label':'Runtime resting position','path':['runtime_resting_position'],'type':'string','state':'unresolved'},
+            {'id':'preview-layer','label':'Displayed placement layer','path':['preview_layer'],'type':'string','state':'editor-state','empty_label':'Source metadata only'},
+            *[{'id':'display-position-'+axis,'label':'Displayed seed '+axis.upper(),'path':['displayed_source_position',axis],'type':'number','state':'derived','empty_label':'Not recorded'} for axis in ('x','y','z')],
         ],
         'notes':['Source coordinates are decoded spawn seeds in the retail Y-down coordinate system. Display Y reflection is separate.', 'Runtime visibility and resting transforms are unverified; no authoring or runtime-write capability is inferred.'],
     }

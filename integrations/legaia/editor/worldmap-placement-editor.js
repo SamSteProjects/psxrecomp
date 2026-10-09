@@ -1,3 +1,5 @@
+import {decodeWorldPlacements,placementSceneView,worldPlacementLayers} from './worldmap-placement-state.js';
+export {decodeWorldPlacements,placementSceneView,worldPlacementLayers} from './worldmap-placement-state.js';
 import {renderComponentSection} from './component-inspector.js';
 import {SceneRenderer} from './scene-renderer.js';
 import {decodeWorldmapGeometry,decodeWorldmapExport} from './worldmap-geometry.js';
@@ -13,27 +15,11 @@ export async function decodePlacementExport(value,report,proposal){
   for(const [key,entry] of Object.entries(metadata.authored_records))if(!/^\d{4}$/.test(key)||Number(key)>=512||!entry||!validValues(entry.values)||!hash(entry.source_record_sha256)||typeof entry.shared_record!=='boolean')fail('World placement artifact has invalid authored record provenance.');
   return decodeWorldmapExport({...value,schema_version:'legaia.worldmap-export.v1',project_source_key:key,scope:'source-scene',entity_id:null},report.scene,key,'source-scene');
 }
-export function decodeWorldPlacements(value,scene,key){
-  if(value?.schema_version!=='legaia.worldmap-placement-authoring.v1'||value.scene!==scene||!scenes.includes(scene)||!hash(key)||value.source_key!==key||value.gameplay_verified!==false||value.project_changed!==false||!hash(value.current_map_sha256)||!value.source_record||!['source_disc_sha256','source_map_sha256','source_floor_lut_sha256'].every(k=>hash(value.source_record[k]))||value.source_record.scene!==scene||!Array.isArray(value.records)||value.records.length>512||!Array.isArray(value.limitations)||value.limitations.some(s=>typeof s!=='string'||s.length>4096))fail('World placement source or coverage is invalid. Inspect again.');
-  const ids=new Set(),entities=new Set();
-  for(const row of value.records){if(!/^\d{4}$/.test(row.record_id)||Number(row.record_id)!==row.object_record_index||row.object_record_index>=512||ids.has(row.record_id)||!hash(row.source_record_sha256)||!validValues(row.retail_values)||!validValues(row.current_values)||row.authored_values!==null&&!validValues(row.authored_values)||typeof row.writable!=='boolean'||!Number.isSafeInteger(row.source_cell_count)||row.source_cell_count<1||row.source_cell_count>16384||!Array.isArray(row.placements)||!row.placements.length||row.placements.length>512||row.placements.length>row.source_cell_count||row.writable&&row.placements.length!==row.source_cell_count)fail('World placement record scope is invalid.');ids.add(row.record_id);for(const p of row.placements){if(p.object_record_index!==row.object_record_index||p.source_record_sha256!==row.source_record_sha256||p.entity_id!==`scene://${scene}/worldmap/placements/${p.source_cell.toString(16).padStart(4,'0')}`||!Number.isSafeInteger(p.source_cell)||p.source_cell<0||p.source_cell>=16384||entities.has(p.entity_id))fail('World placement record has invalid or duplicate source cells.');entities.add(p.entity_id);}}
-  if(entities.size>512)fail('World placement entities exceed the qualified budget.');
-  const review=value.review;if(review){const row=value.records.find(r=>r.record_id===review.record_id);if(!row||!row.writable||!hash(review.review_key)||!hash(review.candidate_map_sha256)||typeof review.shared_record!=='boolean'||typeof review.no_op!=='boolean'||!validValues(review.proposed_values)||review.values!==null&&!validValues(review.values)||!Array.isArray(review.changed_bytes)||review.changed_bytes.length>8||!Array.isArray(review.affected_source_entities)||JSON.stringify(review.affected_source_entities)!==JSON.stringify(row.placements.map(p=>p.entity_id))||row.source_cell_count>1&&!review.shared_record&&!review.no_op&&review.values!==null)fail('World placement review does not cover its shared source owner.');const at=row.object_record_index*32,seen=new Set();for(const b of review.changed_bytes){if(![0,1,2,3,4,5,10,11].includes(b.byte_offset-at)||seen.has(b.byte_offset)||![b.before_byte,b.after_byte].every(n=>Number.isSafeInteger(n)&&n>=0&&n<=255)||b.before_byte===b.after_byte)fail('World placement review writes outside its source transform fields.');seen.add(b.byte_offset);}}
-  return structuredClone(value);
-}
 export function worldPlacementTarget(report,target){
   if(!target||!scenes.includes(target.scene)||target.scene!==report?.scene||!hash(target.sourceKey)||target.sourceKey!==report.source_key||!hash(target.sourceRecordHash)||!Number.isSafeInteger(target.recordIndex)||target.recordIndex<0||target.recordIndex>=512||typeof target.entityId!=='string')fail('World placement navigation source changed.');
   const rows=report.records.filter(row=>row.object_record_index===target.recordIndex&&row.source_record_sha256===target.sourceRecordHash&&row.placements.some(p=>p.entity_id===target.entityId));
   if(rows.length!==1)fail('World entity does not have one qualified placement record owner.');
   return structuredClone(rows[0]);
-}
-export function worldPlacementLayers(row,{review=null,draft=null}={}){
-  if(!row||!validValues(row.retail_values)||!validValues(row.current_values)||row.authored_values!==null&&!validValues(row.authored_values)||draft!==null&&!validValues(draft)||review!==null&&(review.record_id!==row.record_id||!validValues(review.proposed_values)))fail('World placement comparison does not match its record.');
-  return structuredClone({retail:row.retail_values,current:row.current_values,authored:row.authored_values,reviewed:review?.proposed_values??null,draft});
-}
-export function placementSceneView(base,report,proposed=false){
-  const rows=new Map(report.records.map(r=>[r.object_record_index,r]));
-  return {...base,entities:base.entities.map(entity=>{if(entity.placement_scope==='source_ground')return entity;const row=rows.get(entity.object_record_index);if(!row||row.source_record_sha256!==entity.source_record_sha256||!row.placements.some(p=>p.entity_id===entity.entity_id))fail('World geometry and transform owner disagree.');const v=proposed&&report.review?.record_id===row.record_id?report.review.proposed_values:row.current_values,b=row.retail_values,p={x:entity.source_position.x+v.offset.x-b.offset.x,y:entity.source_position.y+v.offset.y-b.offset.y,z:entity.source_position.z-v.offset.z+b.offset.z};const angle=v.yaw_units*Math.PI*2/4096,c=Math.cos(angle),s=Math.sin(angle);return {...entity,model_to_scene:[c,0,s,p.x,0,-1,0,-p.y,-s,0,c,p.z,0,0,0,1],authored_source_position:p};})};
 }
 const node=(tag,text)=>{const e=document.createElement(tag);if(text)e.textContent=text;return e;};
 export function mountWorldPlacements({after,getState,busy,setBusy,api,onDraftChange,onError}){

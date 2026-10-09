@@ -1,3 +1,4 @@
+import {worldPlacementComparison} from '../editor/worldmap-placement-state.js';
 import assert from 'node:assert/strict';
 import {decodeWorldPlacements,placementSceneView,worldPlacementTarget,worldPlacementLayers} from '../editor/worldmap-placement-editor.js';
 const key='a'.repeat(64),sha='b'.repeat(64),id='scene://map01/worldmap/placements/0064';
@@ -23,3 +24,7 @@ for(const options of [{review:{...report.review,record_id:'0006'}},{draft:{...pr
 console.log('Retail/Current/Authored/Reviewed/Draft layers retain missing overrides, exact values and record ownership');
 
 const authoredRecord=structuredClone(report.records[0]);authoredRecord.authored_values=proposed;authoredRecord.current_values=proposed;const authoredLayers=worldPlacementLayers(authoredRecord);assert.deepEqual(authoredLayers.authored,proposed);assert.deepEqual(authoredLayers.current,proposed);assert.deepEqual(authoredLayers.retail,values);
+
+const geometry={scene:'map01',project_source_key:key,source_record:{map_sha256:sha,floor_lut_sha256:sha,disc_sha256:sha}},beforeBase=JSON.stringify(base);assert.deepEqual(worldPlacementComparison(base,geometry,report).entities[0].authored_source_position,{x:1000,y:200,z:3000});assert.equal(JSON.stringify(base),beforeBase);
+for(const change of [g=>g.scene='map02',g=>g.project_source_key='c'.repeat(64),g=>g.source_record.disc_sha256='c'.repeat(64),g=>g.source_record.map_sha256='c'.repeat(64),g=>g.source_record.floor_lut_sha256='c'.repeat(64)]){const changed=structuredClone(geometry);change(changed);assert.throws(()=>worldPlacementComparison(base,changed,report));}
+console.log('Retail/Current comparison requires matching kingdom, state key, disc, MAP and floor sources');
