@@ -32,7 +32,7 @@ import {mountAnimationSourceLibrary,navigateAnimationSource} from '/animation-so
 import {mountEnvironmentGroup} from '/environment-group.js';
 import {mountEnvironmentLayout} from '/environment-layout.js';
 import {mountEnvironmentRotationGroup} from '/environment-rotation-group.js';
-import {mountSceneSelectionSets,decodeSavedSceneSelection} from '/scene-selection-sets.js';
+import {mountSceneSelectionSets,decodeSavedSceneSelection,savedSelectionMemberIds} from '/scene-selection-sets.js';
 import {mountScenePlacementGroup} from '/scene-placement-group.js';
 import {mergeScenePlacementSelection,invertScenePlacementSelection,scenePlacementSelectionKind,matchingModelPlacementIds,modelPlacementIdsForAsset} from '/scene-placement-selection.js';
 import {mountWallRectangle,wallRectangleGeometry} from '/collision-rectangle.js';
@@ -1491,7 +1491,7 @@ function sceneSelectionState(){return {...state,scene_selection_eligible_ids:[..
 savedSceneSelections=mountSceneSelectionSets({host:scenePlacementHost,getState:sceneSelectionState,getSelection:currentPlacementSelection,isBusy:()=>busy,canEdit,api,
   canRecall:()=>canEdit()&&modelsEnabled&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!wallInspection&&!wallSelectMode,
   onError:error=>notify(typeof error==='string'?error:error.message,true),
-  recall:async(value,projectPath,current)=>{
+  recall:async(value,projectPath,current,memberId=null)=>{
     const check=()=>{if(!current()||state.project.path!==projectPath||!canEdit()||sceneRepresentation!=='authored'||scenePose||shapeDraft||actorGroupInspection||environmentGroupInspection||scenePlacementInspection||wallInspection||wallSelectMode||!state.scene_selection_sets?.some(row=>row.id===value.id&&row.review_key===value.review_key))throw new Error('Saved scene selection changed during recall. Review it again.');};
     check();if(!await api('/api/state',undefined))return false;check();
     if(value.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:value.scene_id}))return false;check();
@@ -1501,7 +1501,7 @@ savedSceneSelections=mountSceneSelectionSets({host:scenePlacementHost,getState:s
     const response=await fetch('/api/scene-selection-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({selection_set_id:value.id,review_key:value.review_key})});const report=await response.json();check();
     if(!response.ok||report.error)throw new Error(report.error||'Saved placement verification failed');
     if(report.schema_version!=='legaia.scene-selection-review.v1'||report.read_only!==true||report.project_source_key!==sourceKey||state.project_copy_source_key!==sourceKey||report.scene_id!==value.scene_id||report.id!==value.id||report.review_key!==value.review_key||report.import_sha256!==value.import_sha256||report.map_sha256!==value.map_sha256||JSON.stringify(report.entity_ids)!==JSON.stringify(value.entity_ids))throw new Error('Saved placement sources changed during recall');
-    const ids=decodeSavedSceneSelection(value,sceneSelectionState());
+    const ids=memberId===null?decodeSavedSceneSelection(value,sceneSelectionState()):savedSelectionMemberIds(value,sceneSelectionState(),memberId);
     clearScenePlacementSelection();clearActorGroupSelection();clearEnvironmentGroupSelection();
     const actorIds=ids.filter(id=>entities().some(entity=>entity.id===id)),npcIds=ids.filter(id=>state.actor_drafts?.[id]?.scene_id===state.scene.id),decorIds=ids.filter(id=>!actorIds.includes(id)&&!npcIds.includes(id));
     if(actorIds.length){if(!await api('/api/selection',{entity_id:actorIds[0]}))return false;check();decodeSavedSceneSelection(value,sceneSelectionState());}else if(npcIds.length){environmentSelection=null;npcDraftSelection=npcIds[0];}else{environmentSelection=decorIds[0];npcDraftSelection=null;}
