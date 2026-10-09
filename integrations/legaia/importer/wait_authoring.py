@@ -63,13 +63,17 @@ def patch_wait_target(record, entry, pc, values, *, base_offset=0):
 
 
 class WaitAuthoringContext:
+    OWNER_PATTERN = r'[A-Za-z0-9_-]+/(?:actors/man-p1|scripts/man-p2)/[0-9]{4}'
+    LIMITATIONS = LIMITATIONS
     def __init__(self, source):
         self._source, self._man = source, source._man
 
     def provenance(self):
-        return dict(self._source.provenance(), limitations=list(LIMITATIONS))
+        return dict(self._source.provenance(), limitations=list(self.LIMITATIONS))
 
     def options(self, owner):
+        if not isinstance(owner,str) or re.fullmatch('scene://'+self.OWNER_PATTERN,owner) is None:
+            raise ImportError('Wait owner differs from this authoring context')
         offset, record, entry = self._source.verified_record(owner)
         report = inspect_record(record, entry)
         targets, unavailable = [], []
@@ -88,7 +92,7 @@ class WaitAuthoringContext:
                                     source_record_sha256=hashlib.sha256(record).hexdigest()))
         return dict(supported=bool(targets), targets=targets, unavailable=unavailable,
                     reason='Wait authoring requires no decoder stops' if report['stops'] else None,
-                    source=self.provenance(), limitations=list(LIMITATIONS))
+                    source=self.provenance(), limitations=list(self.LIMITATIONS))
 
     def patch_appended(self, candidate, edits):
         from .man_layout import read_man_layout
@@ -125,7 +129,7 @@ class WaitAuthoringContext:
             raise ImportError('Wait edit set exceeds bounds')
         audit, occupied = [], set()
         for key, values in edits.items():
-            match = re.fullmatch(r'script://([A-Za-z0-9_-]+/(?:actors/man-p1|scripts/man-p2)/[0-9]{4})/wait/([0-9a-f]{4})', key) if isinstance(key,str) else None
+            match = re.fullmatch('script://('+self.OWNER_PATTERN+r')/wait/([0-9a-f]{4})', key) if isinstance(key,str) else None
             if match is None:
                 raise ImportError('Wait identity requires source owner and hexadecimal PC')
             owner = 'scene://' + match[1]
