@@ -467,4 +467,16 @@ def inspector_schema():
         ],
         'notes':['Source coordinates are decoded spawn seeds in the retail Y-down coordinate system. Display Y reflection is separate.', 'Runtime visibility and resting transforms are unverified; no authoring or runtime-write capability is inferred.'],
     }
+    schema['components']['WorldPlacementRecord']={
+        'label':'World placement record values','layout':'layered-properties',
+        'layers':[{'id':'retail','label':'Retail','state':'read-only-retail'},
+                  {'id':'current','label':'Current','state':'effective'},
+                  {'id':'authored','label':'Authored override','state':'authored-through-source-editor'},
+                  {'id':'reviewed','label':'Reviewed proposal','state':'editor-state'},
+                  {'id':'draft','label':'Unreviewed preview draft','state':'editor-state'}],
+        'properties':[
+            *[{'id':axis,'label':'Record offset '+axis.upper(),'path':['offset',axis],'type':'number','layers':['retail','current','authored','reviewed','draft'],'empty_label':'Not present'} for axis in ('x','y','z')],
+            {'id':'yaw','label':'Yaw units','path':['yaw_units'],'type':'number','layers':['retail','current','authored','reviewed','draft'],'empty_label':'Not present'}],
+        'notes':['Record offsets are not absolute seed coordinates. Current includes persistent authored overrides; absent overrides/proposals stay absent.', 'Reviewed proposals and unreviewed preview drafts are editor state until Apply. Shared source cells remain one record; selecting an anchor does not grant all-cell consent.', 'Source Y-down coordinates and display reflection stay separate. No live visibility or resting position is inferred.'],
+    }
     return schema

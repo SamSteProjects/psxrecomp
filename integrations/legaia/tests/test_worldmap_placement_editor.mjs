@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {decodeWorldPlacements,placementSceneView,worldPlacementTarget} from '../editor/worldmap-placement-editor.js';
+import {decodeWorldPlacements,placementSceneView,worldPlacementTarget,worldPlacementLayers} from '../editor/worldmap-placement-editor.js';
 const key='a'.repeat(64),sha='b'.repeat(64),id='scene://map01/worldmap/placements/0064';
 const values={offset:{x:4,y:8,z:12},yaw_units:64};
 const report={schema_version:'legaia.worldmap-placement-authoring.v1',scene:'map01',source_key:key,gameplay_verified:false,project_changed:false,current_map_sha256:sha,source_record:{scene:'map01',source_disc_sha256:sha,source_map_sha256:sha,source_floor_lut_sha256:sha},limitations:[],records:[{record_id:'0005',object_record_index:5,source_record_sha256:sha,retail_values:values,current_values:values,authored_values:null,writable:true,source_cell_count:1,placements:[{entity_id:id,object_record_index:5,source_cell:100,source_record_sha256:sha}]}]};
@@ -16,3 +16,10 @@ for(const patch of [{scene:'map02'},{sourceKey:'c'.repeat(64)},{sourceRecordHash
 const duplicated=structuredClone(report);duplicated.records.push(structuredClone(report.records[0]));assert.throws(()=>worldPlacementTarget(duplicated,target));
 const shared=structuredClone(report),second='scene://map01/worldmap/placements/0065';shared.records[0].source_cell_count=2;shared.records[0].placements.push({...shared.records[0].placements[0],entity_id:second,source_cell:101});assert.equal(worldPlacementTarget(shared,{...target,entityId:second}).placements[1].entity_id,second);
 console.log('Exact world placement navigation owner, shared member, detached return and changed-source refusal passed');
+
+const layers=worldPlacementLayers(report.records[0],{review:report.review,draft:proposed});assert.deepEqual(layers.retail,values);assert.deepEqual(layers.current,values);assert.equal(layers.authored,null);assert.deepEqual(layers.reviewed,proposed);assert.deepEqual(layers.draft,proposed);layers.retail.offset.x=123;assert.equal(report.records[0].retail_values.offset.x,4);
+assert.equal(worldPlacementLayers(report.records[0]).reviewed,null);assert.equal(worldPlacementLayers(report.records[0]).draft,null);
+for(const options of [{review:{...report.review,record_id:'0006'}},{draft:{...proposed,yaw_units:4096}}])assert.throws(()=>worldPlacementLayers(report.records[0],options));
+console.log('Retail/Current/Authored/Reviewed/Draft layers retain missing overrides, exact values and record ownership');
+
+const authoredRecord=structuredClone(report.records[0]);authoredRecord.authored_values=proposed;authoredRecord.current_values=proposed;const authoredLayers=worldPlacementLayers(authoredRecord);assert.deepEqual(authoredLayers.authored,proposed);assert.deepEqual(authoredLayers.current,proposed);assert.deepEqual(authoredLayers.retail,values);

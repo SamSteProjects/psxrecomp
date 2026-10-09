@@ -11,6 +11,15 @@ class InspectorSchema(unittest.TestCase):
         self.assertTrue(all(props[key]['state']=='unresolved' for key in ('visibility','resting')))
         self.assertTrue(all(prop['state'] in schema['property_states'] for prop in component['properties']))
 
+    def test_world_placement_record_layers_are_read_only_and_distinct(self):
+        schema=inspector_schema();component=schema['components']['WorldPlacementRecord']
+        self.assertEqual(component['layout'],'layered-properties')
+        self.assertEqual([layer['id'] for layer in component['layers']],['retail','current','authored','reviewed','draft'])
+        self.assertEqual([layer['state'] for layer in component['layers']],['read-only-retail','effective','authored-through-source-editor','editor-state','editor-state'])
+        self.assertFalse(component.get('actions'))
+        self.assertTrue(all('authoring' not in p for p in component['properties']))
+        self.assertTrue(all(p['empty_label']=='Not present' for p in component['properties']))
+
     def test_model_and_clip_actor_binding_navigation_is_read_only(self):
         for identifier in ('AssetModel','AssetAnimation'):
             component=inspector_schema()['components'][identifier]
