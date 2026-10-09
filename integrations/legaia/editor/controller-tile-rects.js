@@ -1,0 +1,62 @@
+import {scriptBranchContext,inspectBranchReport,qualifyBranchSourceBoundaries} from './script-branches.js';
+const fields=['column_start','row_start','column_end','row_end','value'],hash=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v),fail=m=>{throw Error(m);};
+const canonical=v=>Array.isArray(v)?v.map(canonical):v!==null&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v,same=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
+const values=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length===5&&fields.every(k=>Number.isSafeInteger(v[k])&&v[k]>=0&&v[k]<=255);
+const nodes=r=>inspectBranchReport({...r,instructions:[...r.instructions,...(r.unvisited_instructions??[])],dialogues:[...r.dialogues,...(r.unvisited_dialogues??[])]});
+const pc=v=>'0x'+v.toString(16).toUpperCase().padStart(4,'0');
+function tile(node){
+ const header=node?.target_context===null?1:2;
+ if(!node||node.mnemonic!=='FIELD_TILE_RECT_REQUEST'||node.length!==header+6||typeof node.raw_hex!=='string'||!/^[a-f0-9]+$/.test(node.raw_hex)||node.raw_hex.length!==node.length*2||!Number.isSafeInteger(node.byte_offset)||node.byte_offset<0||header===2&&(!Number.isSafeInteger(node.target_context)||node.target_context<0||node.target_context>255))fail('Controller tile instruction evidence is invalid.');
+ const bytes=node.raw_hex.match(/../g).map(v=>parseInt(v,16));
+ if(bytes[0]!== (header===1?0x4c:0xcc)||header===2&&bytes[1]!==node.target_context||bytes[header]!==0x83)fail('Controller tile opcode or dispatch context changed.');
+ const v=Object.fromEntries(fields.map((k,i)=>[k,bytes[header+1+i]]));
+ if(!fields.every(k=>node.operands?.[k]===v[k])||!same(node.successors,[{pc:node.pc+node.length,condition:'encoded_continuation'}]))fail('Controller tile operands differ from their bytes.');
+ return v;
+}
+export function decodeControllerTileSnapshot(raw,owner,context){
+ context=scriptBranchContext(context);
+ if(owner!==context.sceneId+'/controllers/man-p1/0000'||raw?.schema_version!=='legaia.controller-tile-rects.v1'||raw.owner_id!==owner||raw.state_key!==context.scriptKey||!hash(raw.source_record_sha256)||!hash(raw.current_record_sha256)||raw.gameplay_verified!==false||!Array.isArray(raw.targets)||raw.targets.length>1024||raw.supported!==(raw.targets.length>0)||!Array.isArray(raw.limitations)||raw.source?.owner_id!==owner||raw.source.record_kind!=='man_partition_1_scene_controller'||raw.source.runtime_execution!=='not_asserted')fail('Controller tile snapshot source changed.');
+ const source=nodes(raw.source_report),current=nodes(raw.current_report);qualifyBranchSourceBoundaries(current,source);
+ if(current.size!==source.size)fail('Controller tile snapshot lost retained source boundaries.');
+ const seen=new Set();
+ for(const t of raw.targets){
+  const original=source.get(t.pc),now=current.get(t.pc),v=tile(original),cv=tile(now),header=original.target_context===null?1:2;
+  if(seen.has(t.semantic_id)||t.semantic_id!==owner.replace('scene://','script://')+'/tile-rect/'+t.pc.toString(16).padStart(4,'0')||t.owner_id!==owner||t.mnemonic!==original.mnemonic||t.target_context!==original.target_context||t.source_record_sha256!==raw.source_record_sha256||t.decoded_byte_offset!==original.byte_offset+header+1||now.byte_offset!==original.byte_offset||!values(t.values)||!same(t.values,v)||!values(t.current_values)||!same(t.current_values,cv)||!(t.authored_values===null||values(t.authored_values))||!same(cv,t.authored_values??v))fail('Controller tile target differs from its source or Current bytes.');seen.add(t.semantic_id);
+ }
+ if(!raw.source_report.stops.length&&raw.targets.length!==[...source.values()].filter(n=>n.mnemonic==='FIELD_TILE_RECT_REQUEST').length)fail('Controller tile snapshot omitted a source target.');
+ if(raw.targets.length&&raw.source_report.stops.length)fail('Controller tile authoring contains unknown source paths.');
+ return structuredClone(raw);
+}
+export function decodeControllerTileReview(raw,snapshot,id,value){
+ const target=snapshot.targets.find(t=>t.semantic_id===id);
+ if(!target||!(value===null||values(value))||raw?.schema_version!==snapshot.schema_version||raw.owner_id!==snapshot.owner_id||raw.operand_id!==id||!same(raw.value,value)||raw.state_key!==snapshot.state_key||raw.source_record_sha256!==snapshot.source_record_sha256||raw.current_record_sha256!==snapshot.current_record_sha256||!hash(raw.proposed_record_sha256)||!hash(raw.review_key)||raw.project_changed!==false||raw.gameplay_verified!==false||typeof raw.no_op!=='boolean'||typeof raw.native_bytes_changed!=='boolean'||!same(raw.source_report,snapshot.source_report)||!same(raw.current_report,snapshot.current_report))fail('Controller tile Review differs from the source or draft.');
+ const current=nodes(snapshot.current_report),proposed=nodes(raw.proposed_report);qualifyBranchSourceBoundaries(proposed,nodes(snapshot.source_report));
+ if(current.size!==proposed.size||raw.proposed_report.stops.length)fail('Controller tile Review changed source boundaries.');
+ const changed=[];
+ for(const [at,before] of current){const after=proposed.get(at);if(!after||!same(before.successors,after.successors)||before.byte_offset!==after.byte_offset||at!==target.pc&&before.raw_hex!==after.raw_hex)fail('Controller tile Review changed unrelated instructions.');if(at===target.pc){const v=tile(after);if(!same(v,value??target.values))fail('Controller tile Proposed values differ from the draft.');const a=before.raw_hex.match(/../g),b=after.raw_hex.match(/../g);for(let i=0;i<a.length;i++)if(a[i]!==b[i])changed.push(before.byte_offset+i);}}
+ if(changed.some(at=>at<target.decoded_byte_offset||at>=target.decoded_byte_offset+5)||!same(raw.changed_decoded_byte_offsets,changed)||raw.native_bytes_changed!==(changed.length>0)||raw.native_bytes_changed!==(raw.current_record_sha256!==raw.proposed_record_sha256)||raw.no_op&&raw.native_bytes_changed)fail('Controller tile Review byte evidence differs from its proposal.');
+ return structuredClone(raw);
+}
+const el=(tag,text='')=>{const n=document.createElement(tag);n.textContent=text;return n;};
+export function mountControllerTileRects(host,{owner,getContext,busy,setBusy,api,reopen,focusPc=null,onError=()=>{}}){
+ const context=scriptBranchContext(getContext());if(owner!==context.sceneId+'/controllers/man-p1/0000')fail('Controller tile controls require their source owner.');
+ const section=el('section');section.dataset.controllerTileRects='';section.style.overflowWrap='anywhere';
+ const source=el('select'),status=el('p','Verifying tile requests…'),layers=el('p'),assessment=el('pre'),inputs={};source.setAttribute('aria-label','Controller tile request');source.style.maxWidth='100%';status.setAttribute('role','status');assessment.style.whiteSpace='pre-wrap';
+ section.append(el('h3','Controller Tile Requests'),el('p','Edit five encoded byte operands (0–255). Inclusive source bounds do not establish runtime tile capacity or gameplay effects.'),status,source,layers);
+ for(const key of fields){const label=el('label',key.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase())),input=el('input');input.type='text';input.inputMode='numeric';input.maxLength=3;input.setAttribute('aria-label','Proposed '+key.replaceAll('_',' '));input.style.cssText='width:100%;box-sizing:border-box';inputs[key]=input;label.append(input);section.append(label);}
+ const actions=el('div');actions.className='dialog-actions';actions.style.flexWrap='wrap';const buttons={};for(const [id,text] of [['review','Review tile request'],['reset','Review tile reset to Retail'],['discard','Discard tile draft'],['apply','Apply reviewed tile request']]){const b=el('button',text);b.type='button';b.dataset.controllerTileAction=id;buttons[id]=b;actions.append(b);}section.append(actions,assessment);host.append(section);
+ let snapshot=null,accepted=null,pending=false,disposed=false,generation=0,abort=null,resetDraft=false;
+ const fresh=()=>{try{return !disposed&&same(context,scriptBranchContext(getContext()));}catch{return false;}},row=()=>snapshot?.targets.find(t=>t.semantic_id===source.value);
+ const choice=()=>{if(resetDraft)return null;const v={};for(const key of fields){if(!/^\d{1,3}$/.test(inputs[key].value))return undefined;v[key]=Number(inputs[key].value);}return values(v)?v:undefined;};
+ const invalidate=()=>{generation++;abort?.abort();accepted=null;assessment.textContent='';};
+ function updateState(){const blocked=!fresh()||context.mode!=='edit'||pending||busy()||!row();source.disabled=blocked;for(const input of Object.values(inputs))input.disabled=blocked;buttons.review.disabled=blocked||choice()===undefined;buttons.reset.disabled=blocked||!row()?.authored_values;buttons.discard.disabled=blocked;buttons.apply.disabled=blocked||!accepted||accepted.no_op||!same(accepted.value,choice());if(!fresh()){invalidate();section.hidden=true;}}
+ function render(){const t=row();resetDraft=false;for(const key of fields)inputs[key].value=t?String(t.current_values[key]):'';layers.textContent=t?`Retail: ${fields.map(k=>t.values[k]).join(', ')} · Current: ${fields.map(k=>t.current_values[k]).join(', ')} · Authored: ${t.authored_values?'Present':'None'}`:'';updateState();}
+ async function request(route,body,decode){if(!fresh()||pending||busy())return false;const ticket=++generation;pending=true;abort=new AbortController();setBusy(true);updateState();try{const response=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:abort.signal}),raw=await response.json();if(!fresh()||ticket!==generation)return false;if(!response.ok||raw.error)fail(raw.error||'Controller tile request failed');decode(raw);return true;}catch(e){if(fresh()&&ticket===generation&&e.name!=='AbortError'){status.textContent=e.message;onError(e);}return false;}finally{pending=false;setBusy(false);updateState();}}
+ const ready=request('/api/controller-tile-rects',{entity:owner},raw=>{snapshot=decodeControllerTileSnapshot(raw,owner,context);for(const t of snapshot.targets){const option=el('option',pc(t.pc)+' · Tile Request');option.value=t.semantic_id;source.append(option);}source.value=(snapshot.targets.find(t=>t.pc===focusPc)??snapshot.targets[0])?.semantic_id??'';render();status.textContent=snapshot.reason??`${snapshot.targets.length} source-qualified tile requests. Review before Apply.`;});
+ source.onchange=()=>{if(source.disabled)return;invalidate();render();};
+ for(const input of Object.values(inputs))input.oninput=()=>{if(!fresh()||input.disabled)return;invalidate();resetDraft=false;status.textContent=choice()===undefined?'Enter five whole byte values from 0 to 255.':'Draft changed. Review before Apply.';updateState();};
+ async function review(value){const t=row();if(!t)return false;invalidate();return request('/api/controller-tile-rect-review',{entity:owner,operand_id:t.semantic_id,value},raw=>{accepted=decodeControllerTileReview(raw,snapshot,t.semantic_id,value);assessment.textContent=`${accepted.changed_decoded_byte_offsets.length} changed bytes · opcode, context and successors retained.\nProposed: ${fields.map(k=>(value??t.values)[k]).join(', ')}`;status.textContent=accepted.no_op?'No authored change.':'Review complete. Explicit Apply is required.';});}
+ buttons.review.onclick=()=>buttons.review.disabled?false:review(choice());buttons.reset.onclick=()=>{if(buttons.reset.disabled)return false;resetDraft=true;for(const key of fields)inputs[key].value=String(row().values[key]);return review(null);};buttons.discard.onclick=()=>{if(buttons.discard.disabled)return false;invalidate();render();return true;};
+ buttons.apply.onclick=async()=>{if(buttons.apply.disabled||!fresh()||pending||busy())return false;const proposal=structuredClone(accepted),focus=row().pc;pending=true;updateState();try{const success=await api('/api/command',{type:'set_controller_tile_rect',entity_id:owner,operand_id:proposal.operand_id,value:proposal.value,review_key:proposal.review_key});accepted=null;assessment.textContent='';if(success!==true)return false;const now=scriptBranchContext(getContext());if(disposed||['projectPath','sceneId','mode'].some(k=>now[k]!==context[k]))return false;pending=false;await reopen(focus);return true;}catch(e){if(fresh()){status.textContent=e.message;onError(e);}return false;}finally{pending=false;updateState();}};
+ return {ready,updateState,dispose(){if(disposed)return;disposed=true;invalidate();section.remove();}};
+}

@@ -47,8 +47,15 @@ def _prepare(project,owner):
     return key,selectors,context,offset,record,entry,components,current,context.options(owner)
 
 
-def _report(owner,man,offset,record,entry):
-    return inspect_record(man[offset:offset+len(record)],entry,semantic_id=owner.replace('scene://','script://',1),base_offset=offset)
+def _report(owner,man,offset,record,entry,source,selectors=None):
+    if inspect_record(record,entry)['stops']:
+        return inspect_record(man[offset:offset+len(record)],entry,semantic_id=owner.replace('scene://','script://',1),base_offset=offset)
+    from importer.controller_branches import ControllerBranchAuthoringContext
+    report=ControllerBranchAuthoringContext(source,system_selectors=selectors).inspect_owner(owner,man)
+    for row in report['instructions']+report['dialogues']+report['unvisited_instructions']+report['unvisited_dialogues']:
+        row['byte_offset']=offset+row['pc']
+    report['semantic_id']=owner.replace('scene://','script://',1)
+    return report
 
 
 def snapshot(project,owner):
@@ -64,9 +71,9 @@ def snapshot(project,owner):
     if key!=state_key(project):raise ProjectError('Controller tile source changed during inspection')
     return dict(schema_version=SCHEMA,owner_id=owner,state_key=key,source_record_sha256=sha256(record).hexdigest(),
         current_record_sha256=sha256(current[offset:offset+len(record)]).hexdigest(),source=options['source'],
-        source_report=_report(owner,context._man,offset,record,entry),current_report=_report(owner,current,offset,record,entry),
+        source_report=_report(owner,context._man,offset,record,entry,context._source),current_report=_report(owner,current,offset,record,entry,context._source,components.get('ControllerSystemFlags',{}).get('entries',{})),
         targets=targets,supported=bool(targets),reason=options['reason'],limitations=options['limitations']+[
-            'Project/HTTP Review and Apply persist authored operands; native Build serializes qualified bytes; editor controls remain pending.'],gameplay_verified=False)
+            'Editor Review and Apply persist authored operands; native Build serializes qualified bytes; runtime tile effects and gameplay remain unverified.'],gameplay_verified=False)
 
 
 def review(project,owner,operand,value):
@@ -92,8 +99,8 @@ def review(project,owner,operand,value):
     proof=dict(owner_id=owner,operand_id=operand,value=deepcopy(value),state_key=key,source_record_sha256=sha256(record).hexdigest(),
         current_record_sha256=sha256(current[offset:offset+len(record)]).hexdigest(),proposed_record_sha256=sha256(candidate[offset:offset+len(record)]).hexdigest(),proposed=proposed)
     if key!=state_key(project):raise ProjectError('Controller tile source changed during Review')
-    return dict(schema_version=SCHEMA,**proof,review_key=digest(proof),source_report=_report(owner,context._man,offset,record,entry),
-        current_report=_report(owner,current,offset,record,entry),proposed_report=_report(owner,candidate,offset,record,entry),
+    return dict(schema_version=SCHEMA,**proof,review_key=digest(proof),source_report=_report(owner,context._man,offset,record,entry,context._source),
+        current_report=_report(owner,current,offset,record,entry,context._source,components.get('ControllerSystemFlags',{}).get('entries',{})),proposed_report=_report(owner,candidate,offset,record,entry,context._source,components.get('ControllerSystemFlags',{}).get('entries',{})),
         changed_decoded_byte_offsets=differences,no_op=components==proposed,native_bytes_changed=current!=candidate,
         project_changed=False,gameplay_verified=False)
 

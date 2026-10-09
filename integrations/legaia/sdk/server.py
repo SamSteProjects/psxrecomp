@@ -206,6 +206,7 @@ class EditorServer(ThreadingHTTPServer):
         from .controller_system_flags import state_key as controller_selector_key
         state['controller_selector_source_key']=controller_selector_key(self.project)
         state['controller_branch_source_key']=state['controller_selector_source_key']
+        state['controller_tile_source_key']=state['controller_selector_source_key']
         state['capabilities']['script_branch_authoring'] = bool(self.project.disc_path)
         state['capabilities']['system_selector_authoring'] = bool(self.project.disc_path)
         state['capabilities']['source_build_script_inspection'] = bool(self.project.disc_path)
@@ -261,6 +262,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["scene_controller_inspection"] = bool(self.project.disc_path and self.project.active_scene and self.project.mode == 'edit')
         state['capabilities']['controller_selector_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_branch_authoring']=state['capabilities']['scene_controller_inspection']
+        state['capabilities']['controller_tile_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['asset_references'] = bool(self.project.disc_path and self.project.active_scene and len(self.project.imports)<=64)
         state['capabilities']['worldmap_source_navigation'] = bool(self.project.disc_path)
         state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]
@@ -1062,6 +1064,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-resolution.js": ("model-resolution.js", "text/javascript"),
                  "/scene-controller.js": ("scene-controller.js", "text/javascript"),
                  "/controller-branches.js": ("controller-branches.js", "text/javascript"),
+                 "/controller-tile-rects.js": ("controller-tile-rects.js", "text/javascript"),
                  "/controller-references.js": ("controller-references.js", "text/javascript"),
                  "/controller-flags.js": ("controller-flags.js", "text/javascript"),
                  "/script-branches.js": ("script-branches.js", "text/javascript"),
