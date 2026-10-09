@@ -401,6 +401,12 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
                     proof={key:deepcopy(record[key]) for key in ('bank','index','scope','extended_target','grouping_layer')}
                     proof.update(operation=reference['operation'],mnemonic=reference['mnemonic'])
                     edge(target,identity,'controller_flag_reference',scene,'decoded',reference['pc'],flag_evidence=proof,controller_evidence=record['controller_source_evidence'])
+                    if saved is not None:
+                        binding=dict(operand_id=operand,retail_index=reference['retail_index'],effective_index=reference['effective_index'],
+                            source_record_sha256=record['source_record']['sha256'],component_sha256=digest(component),
+                            native_operand_qualification=deepcopy(reference['authored_qualification']))
+                        edge(target,identity,'effective_controller_flag_reference',scene,'effective',reference['pc'],
+                            flag_evidence=proof,flag_binding_evidence=binding,controller_evidence=record['controller_source_evidence'])
                 continue
             if target not in nodes or nodes[target]['kind']!='script':
                 raise ProjectError('Flag reference has no verified source script')

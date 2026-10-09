@@ -63,7 +63,16 @@ class ControllerFlagAssets(unittest.TestCase):
         catalog=dict(source_key='c'*64,records=[self.controller,dict(current,kind='flag',layer='derived',scene_id='scene://fixture')],limitations=[])
         with self.assertRaises(ProjectError):assemble(self.p,catalog,current['id'])
         self.p.overrides[owner]={'ControllerSystemFlags':{'source_record_sha256':target['source_record_sha256'],'entries':{operand:{'index':2}}}}
-        self.assertEqual(len(assemble(self.p,catalog,current['id'])['incoming']),2)
+        report=assemble(self.p,catalog,current['id']);self.assertEqual(len(report['incoming']),3)
+        effective=next(e for e in report['incoming'] if e['kind']=='effective_controller_flag_reference')
+        self.assertEqual((effective['layer'],effective['runtime_binding'],effective['pc']),('effective','not_asserted',5))
+        self.assertEqual(effective['flag_binding_evidence']['native_operand_qualification'],proof)
+        self.assertEqual((effective['flag_binding_evidence']['retail_index'],effective['flag_binding_evidence']['effective_index']),(1,2))
+        from sdk.asset_references import assemble_project
+        project=assemble_project(self.p,{'scene://fixture':catalog},current['id'])
+        self.assertIn(effective,project['incoming'])
+        self.p.overrides[owner]['ControllerSystemFlags']['entries'][operand]['index']=3
+        with self.assertRaises(ProjectError):assemble(self.p,catalog,current['id'])
 
     def test_controller_edits_invalidate_scene_and_project_flag_keys(self):
         from sdk.resources import scene_flag_state_key,project_flag_state_key

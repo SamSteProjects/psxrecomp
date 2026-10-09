@@ -2038,12 +2038,13 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
       if(!['actor','model','scene'].includes(node.kind))await refreshResources();
       const target=assetRecords().find(item=>item.id===node.id);if(!target)throw new Error('Referenced asset is absent from the current catalog.');showAssetDetails(target);
     },onInspectInstruction:async site=>{
-      if(!state.capabilities?.actor_script_preview||!(state.scenes??[]).some(scene=>scene.id===site.scene_id))throw new Error('Reference script source is not available in this project.');
+      const controllerSite=['controller_flag_reference','effective_controller_flag_reference'].includes(site.relationship);
+      if(!(controllerSite?state.capabilities?.scene_controller_inspection:state.capabilities?.actor_script_preview)||!(state.scenes??[]).some(scene=>scene.id===site.scene_id))throw new Error('Reference script source is not available in this project.');
       if(site.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:site.scene_id}))return;
       await refreshResources();
       if(state.scene?.id!==site.scene_id||resourceKey!==resourceStateKey())throw new Error('Reference source catalog could not be refreshed.');
       const record=resourceRecords.find(row=>row.semantic_id===site.script_id);
-      if(site.relationship==='controller_flag_reference'){if(!record||record.asset_kind!=='controller'||record.source_record.sha256!==site.source_record_sha256)throw Error('Controller reference source changed.');const target=assetRecords(true).find(row=>row.id===site.script_id&&row.type==='controller');await inspectControllerAsset(target,site.pc);return;}
+      if(controllerSite){if(!record||record.asset_kind!=='controller'||record.source_record.sha256!==site.source_record_sha256)throw Error('Controller reference source changed.');const target=assetRecords(true).find(row=>row.id===site.script_id&&row.type==='controller');await inspectControllerAsset(target,site.pc);return;}
       qualifyAssetReferenceInstructionSite(site,record,state.scene_preview_source_key);
       const owner=site.partition===2?{id:site.owner_id,name:record.name,partitionTwo:true}:entities().find(entity=>entity.id===site.owner_id);
       if(!owner)throw new Error('Reference script owner is unavailable.');

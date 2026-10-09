@@ -1,3 +1,4 @@
+import {decodeControllerFlagQualification} from './flag-qualification.js';
 // Ownership describes the Retail record, never scheduling or live execution.
 const exact=(value,keys)=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
 const integer=(value,min,max)=>Number.isSafeInteger(value)&&value>=min&&value<=max;
@@ -16,5 +17,15 @@ export function validateControllerFlagReference(edge,nodes){
  const p=validateControllerSourceEvidence(edge.controller_source_evidence,edge.scene_id),f=edge.flag_reference_evidence,source=nodes.get(edge.source_id),target=nodes.get(edge.target_id);
  const scopes={local:'dispatch_context_local_flags',context:'dispatch_context_flags',global:'host_global_flags',system:'system_bank_encoded_selector',extra:'host_extra_flags'},prefix={local:'LFLAG',context:'CFLAG',global:'GFLAG',system:'SYSFLAG'}[f?.bank];
  if(!exact(edge,['id','source_id','target_id','kind','scene_id','layer','runtime_binding','source_import_sha256','source_catalog_key','pc','controller_source_evidence','flag_reference_evidence'])||!exact(f,['bank','index','scope','extended_target','grouping_layer','operation','mnemonic'])||edge.kind!=='controller_flag_reference'||edge.layer!=='decoded'||edge.runtime_binding!=='not_asserted'||!hash(edge.source_catalog_key)||edge.source_id!==`script://${edge.scene_id.slice(8)}/controllers/man-p1/0000`||source?.kind!=='controller'||target?.kind!=='flag'||source.scene_id!==edge.scene_id||target.scene_id!==edge.scene_id||source.available!==true||target.available!==true||!integer(edge.pc,p.entry_pc,p.source_record.byte_length-1)||!Object.hasOwn(scopes,f.bank)||f.scope!==scopes[f.bank]||!integer(f.index,0,f.bank==='system'?65535:31)||f.grouping_layer!=='retail'||!(f.extended_target===null||integer(f.extended_target,0,255))||edge.target_id!==edge.source_id.replace('script://','flag-reference://')+`/${f.extended_target===null?'current':'extended-'+f.extended_target}/${f.bank}/${f.index}`||!(prefix&&['set','clear','test'].includes(f.operation)&&f.mnemonic===prefix+'_'+f.operation.toUpperCase()||f.operation==='test'&&(f.mnemonic==='FLAG_WORD_BRANCH'&&['local','global','context'].includes(f.bank)||f.mnemonic==='COND_JMP'&&f.bank==='extra')))throw Error('Invalid read-only controller flag reference.');
+ return p;
+}
+
+export function validateEffectiveControllerFlagReference(edge,nodes){
+ const b=edge.flag_binding_evidence,f=edge.flag_reference_evidence;
+ if(!exact(edge,['id','source_id','target_id','kind','scene_id','layer','runtime_binding','source_import_sha256','source_catalog_key','pc','controller_source_evidence','flag_reference_evidence','flag_binding_evidence'])||edge.kind!=='effective_controller_flag_reference'||edge.layer!=='effective'||!exact(b,['operand_id','retail_index','effective_index','source_record_sha256','component_sha256','native_operand_qualification']))throw Error('Invalid Current controller flag relationship.');
+ const retail={...edge,kind:'controller_flag_reference',layer:'decoded'};delete retail.flag_binding_evidence;
+ const p=validateControllerFlagReference(retail,nodes);
+ if(f.bank!=='system'||f.extended_target!==null||!integer(f.index,0,4095)||b.retail_index!==f.index||b.source_record_sha256!==p.source_record.sha256||!hash(b.component_sha256))throw Error('Current controller flag differs from Retail source ownership.');
+ decodeControllerFlagQualification(b.native_operand_qualification,{owner_id:edge.source_id.replace('script://','scene://'),operand_id:b.operand_id,source_record_sha256:b.source_record_sha256,pc:edge.pc,mnemonic:f.mnemonic,extended_target:f.extended_target,retail_index:b.retail_index,authored_index:b.effective_index});
  return p;
 }
