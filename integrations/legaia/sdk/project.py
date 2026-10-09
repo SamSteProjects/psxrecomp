@@ -2158,6 +2158,10 @@ class ProjectService:
             from .script_branches import apply
             apply(self, command)
             return
+        if command.get('type') == 'set_controller_scene_byte':
+            from .controller_scene_bytes import apply
+            apply(self, command)
+            return
         if command.get('type') == 'set_controller_three_word':
             from .controller_three_words import apply
             apply(self,command)

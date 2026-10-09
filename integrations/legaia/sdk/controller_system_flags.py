@@ -54,6 +54,9 @@ def validate_components(project,owner,components):
         elif family=='ControllerWordTriplets':
             from .controller_word_triplets import validate as validate_triplets
             checked=validate_triplets(project,owner,value)
+        elif family=='ControllerSceneBytes':
+            from .controller_scene_bytes import validate as validate_scene_bytes
+            checked=validate_scene_bytes(project,owner,value)
         else:
             from .controller_three_words import validate as validate_three_words
             checked=validate_three_words(project,owner,value)
@@ -84,6 +87,9 @@ def compose(context,owner,components):
     if 'ControllerThreeWords' in components:
         from .controller_three_words import compose as compose_three_words
         current=compose_three_words(context._source,current,components['ControllerThreeWords']['entries'])
+    if 'ControllerSceneBytes' in components:
+        from .controller_scene_bytes import compose as compose_scene_bytes
+        current=compose_scene_bytes(context._source,current,components['ControllerSceneBytes']['entries'])
     return current
 
 
