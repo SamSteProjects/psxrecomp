@@ -3,7 +3,7 @@ import {decodeCurrentMidiBinding} from './midi-replacement-bindings.js';
 import {decodeFlagQualification} from './flag-qualification.js';
 import {decodeCurrentWavBinding} from './audio-input-assets.js';
 import {validateNpcFlagReference,npcFlagInstructionSite,npcFlagReferenceLabel} from './npc-flag-references.js';
-const kinds=new Set(['audio','scene','actor','model','texture','animation','script','dialogue','flag','transition','collision','trigger','region','worldmap']);
+const kinds=new Set(['audio','scene','actor','model','texture','animation','script','controller','dialogue','flag','transition','collision','trigger','region','worldmap']);
 const relations=new Set(['current_native_sequence_midi_binding','current_native_sample_wav_binding','retained_wav_sample_input','retained_midi_sequence_input','scene_actor','scene_model_catalog','draft_donor','initial_model','effective_initial_model','actor_script_record','encoded_scene_change','script_dialogue_segment','initial_animation_binding','recorded_model_clip_binding','field_map_table_source','landmark_destination_source','static_material_texture_source']);
 relations.add('effective_initial_animation_binding');relations.add('draft_initial_animation_binding');relations.add('appearance_donor');
 relations.add('allocated_initial_animation_binding');relations.add('allocated_model_clip_binding');relations.add('retained_model_capture');

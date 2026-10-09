@@ -255,6 +255,7 @@ class EditorServer(ThreadingHTTPServer):
         state['capabilities']['actor_animation_assignment'] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["actor_preset_batch"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
+        state["capabilities"]["scene_controller_inspection"] = bool(self.project.disc_path and self.project.active_scene and self.project.mode == 'edit')
         state['capabilities']['asset_references'] = bool(self.project.disc_path and self.project.active_scene and len(self.project.imports)<=64)
         state['capabilities']['worldmap_source_navigation'] = bool(self.project.disc_path)
         state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]

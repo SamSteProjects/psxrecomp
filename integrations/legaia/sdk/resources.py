@@ -69,6 +69,7 @@ def model_shape_source(project, asset_id: str, format: str = 'tmd', layer: str =
 
 
 def refresh_resource_catalog(project) -> dict:
+    from importer.scene_controller import load_controller_asset_catalog
     from importer.texture_catalog import load_texture_asset_catalog
     from importer.animation_catalog import load_animation_asset_catalog, load_global_animation_asset_catalog
     from importer.script_catalog import load_script_asset_catalog
@@ -91,6 +92,7 @@ def refresh_resource_catalog(project) -> dict:
                              ("Source audio", load_audio_asset_catalog),
                              ("World-map landmarks", load_worldmap_asset_catalog),
                              ("Scripts and dialogue", load_script_asset_catalog),
+                             ("Scene entry controller", load_controller_asset_catalog),
                              ("Field collision and triggers", load_field_map_catalog)):
             try:
                 catalog = loader(project.disc_path, document["scene"]["name"])

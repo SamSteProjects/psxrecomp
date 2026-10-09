@@ -4,7 +4,7 @@ export function decodeSceneController(value,scene,key){
  return structuredClone(value);
 }
 
-export async function openSceneController({getState,busy,onError=()=>{}}){
+export async function openSceneController({getState,busy,expectedAsset=null,onError=()=>{}}){
  const initial=getState(),scene=initial.scene?.id,key=initial.asset_reference_source_key;
  if(busy()||!scene||initial.project?.mode!=='edit'||!key)return;
  const dialog=document.createElement('dialog');dialog.id='scene-controller-dialog';dialog.style.cssText='width:min(850px,calc(100vw - 32px));max-height:90vh;overflow:auto';
@@ -17,7 +17,7 @@ export async function openSceneController({getState,busy,onError=()=>{}}){
  dialog.addEventListener('close',()=>{clearInterval(timer);controller.abort();dialog.remove();},{once:true});
  try{
   const response=await fetch('/api/scene-controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scene_id:scene,expected_source_key:key}),signal:controller.signal}),value=await response.json();if(!response.ok||value.error)throw Error(value.error||'Controller inspection failed');if(!fresh())return;
-  const report=decodeSceneController(value,scene,key);status.textContent=`${report.semantic_id} · Decoder status: ${report.status} · ${report.instructions.length} decoded instructions · ${report.dialogues.length} dialogue segments`;
+  const report=decodeSceneController(value,scene,key);if(expectedAsset&&(expectedAsset.id!==report.semantic_id||expectedAsset.sceneId!==scene||expectedAsset.data?.source_record?.sha256!==report.source_record.sha256||expectedAsset.data?.entry_pc!==report.entry_pc))throw Error('Controller asset source changed. Refresh resources.');status.textContent=`${report.semantic_id} · Decoder status: ${report.status} · ${report.instructions.length} decoded instructions · ${report.dialogues.length} dialogue segments`;
   for(const note of report.limitations){const p=document.createElement('p');p.textContent=note;content.append(p);}
   const source=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='Controller source and entry evidence';pre.style.whiteSpace='pre-wrap';pre.textContent=JSON.stringify({source_record:report.source_record,man_source:report.man_source,entry_pc:report.entry_pc,local_count:report.record.local_count,reference_commit:report.reference_commit},null,2);source.append(summary,pre);content.append(source);
   for(const [title,rows] of [['Encoded instructions',report.instructions],['Dialogue segments',report.dialogues],['Opaque regions',report.opaque_regions],['Inspection stops',report.stops]]){const heading=document.createElement('h3');heading.textContent=title;content.append(heading);if(!rows?.length){const p=document.createElement('p');p.textContent='None reported';content.append(p);}for(const row of rows??[]){const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');const pc=Number.isSafeInteger(row.pc)?'PC 0x'+row.pc.toString(16).padStart(4,'0'):'Source region';summary.textContent=pc+' · '+(row.mnemonic??row.reason??(title==='Dialogue segments'?'Dialogue segment':'Source evidence'));pre.style.whiteSpace='pre-wrap';pre.textContent=JSON.stringify(row,null,2);details.append(summary,pre);content.append(details);}}

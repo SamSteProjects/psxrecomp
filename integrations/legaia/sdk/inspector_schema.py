@@ -162,6 +162,7 @@ def inspector_schema():
         'texture': ('AssetTexture', 'Texture asset', 'texture_preview', 'inspect-asset-texture', 'Inspect texture'),
         'animation': ('AssetAnimation', 'Animation resource', 'animation_preview', 'inspect-asset-animation', 'Inspect animation bindings'),
         'script': ('AssetScript', 'Script resource', 'actor_script_preview', 'inspect-asset-script', 'Inspect script'),
+        'controller': ('AssetController', 'Scene Entry Controller', 'scene_controller_inspection', 'inspect-asset-controller', 'Inspect Retail Controller'),
         'dialogue': ('AssetDialogue', 'Dialogue resource', 'actor_script_preview', 'inspect-asset-script', 'Inspect dialogue'),
         'transition': ('AssetTransition', 'Transition source reference', 'scene_transitions', 'inspect-asset-transition', 'Inspect transition entry and source'),
         'flag': ('AssetFlag', 'Flag reference group', 'scene_flags', 'inspect-asset-flag', 'Inspect flag reference sites'),
@@ -183,6 +184,13 @@ def inspector_schema():
             'actions': [{'id': action, 'label': action_label, 'capability': capability}],
         }
     schema['asset_inspectors']['audio'] = 'AssetAudio'
+    controller = schema['components']['AssetController']
+    controller['properties'] += [
+        {'id':'owner','label':'Owning Scene','path':['data','owner_scene_id'],'type':'asset-reference','state':'read-only-retail'},
+        {'id':'entry','label':'Entry PC','path':['data','entry_pc'],'type':'integer','state':'read-only-retail'},
+        {'id':'status','label':'Decoder Status','path':['data','inspection_status'],'type':'string','state':'derived'},
+        {'id':'instruction_count','label':'Decoded Instructions','path':['data','decoded_instruction_count'],'type':'integer','state':'derived'}]
+    controller['notes'] = ['Retail partition-1 record zero is the scene controller, not a placed actor. Controller authoring and runtime execution remain unsupported.']
     schema['components']['AssetAudio'] = {
         'label': 'Source audio resource', 'layout': 'read-only-properties',
         'properties': [

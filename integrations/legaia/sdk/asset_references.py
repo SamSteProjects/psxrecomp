@@ -587,7 +587,7 @@ def assemble_project(project,catalogs,identifier,materials_by_scene=None,scene_c
             if catalog.get('scene_id',scene)!=scene or not isinstance(catalog.get('records'),list):
                 raise ProjectError('Invalid project reference resource catalog')
             for record in catalog['records']:
-                if not isinstance(record,dict) or record.get('kind') not in ('audio','texture','animation','script','dialogue','collision','trigger','region','worldmap','flag','transition'):
+                if not isinstance(record,dict) or record.get('kind') not in ('audio','texture','animation','script','controller','dialogue','collision','trigger','region','worldmap','flag','transition'):
                     raise ProjectError('Invalid project reference resource type')
                 if record.get('name') is not None and (not isinstance(record['name'],str) or len(record['name'])>8192):
                     raise ProjectError('Invalid project reference resource label')

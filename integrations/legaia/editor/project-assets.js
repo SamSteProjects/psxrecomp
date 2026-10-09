@@ -1,7 +1,7 @@
 // A read-only project index with distinct imported and authored records. Each selected record keeps one scene's source binding.
 import {createAssetResourceDiscovery} from './asset-resource-discovery.js';
 const MAX_METADATA_BYTES=32*1024*1024;
-const kinds=new Set(['audio','scene','actor','model','texture','animation','script','dialogue','flag','transition','collision','trigger','region','worldmap']);
+const kinds=new Set(['audio','scene','actor','model','texture','animation','script','controller','dialogue','flag','transition','collision','trigger','region','worldmap']);
 const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const exact=(value,keys)=>object(value)&&Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
 const integer=(value,min,max)=>Number.isSafeInteger(value)&&value>=min&&value<=max;

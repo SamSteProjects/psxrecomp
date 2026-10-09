@@ -47,3 +47,17 @@ def inspect_scene_controller(disc, scene):
                         'Controller header values have no inferred actor placement semantics.',
                         'Encoded instructions do not prove scheduling, branch activation or gameplay behavior.'],
                     **inspect_record(record, entry, semantic_id=identity, base_offset=offset))
+
+
+def load_controller_asset_catalog(disc, scene):
+    """Register metadata only; instruction bytes remain in private inspection."""
+    report = inspect_scene_controller(disc, scene)
+    source = dict(report['source_record'], prot_entry_name=scene)
+    asset = dict(semantic_id=report['semantic_id'], asset_kind='controller', kind='controller',
+                 scope='scene', name='Scene Entry Controller', source_record=source,
+                 owner_scene_id=report['scene_id'], read_only=True, runtime_binding='not_asserted',
+                 entry_pc=report['entry_pc'], local_count=report['record']['local_count'],
+                 inspection_status=report['status'], decoded_instruction_count=len(report['instructions']),
+                 dialogue_segment_count=len(report['dialogues']), reference_commit=report['reference_commit'],
+                 dependencies=[report['scene_id']], references=[])
+    return dict(assets=[asset], limitations=report['limitations'])

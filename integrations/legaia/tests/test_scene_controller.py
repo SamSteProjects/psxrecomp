@@ -1,7 +1,10 @@
 import struct
 import unittest
+from unittest.mock import patch
 from importer.core import ImportError
-from importer.scene_controller import controller_record
+from importer.scene_controller import controller_record, load_controller_asset_catalog
+from sdk.project import AssetDatabase
+from sdk.inspector_schema import inspector_schema
 
 
 def source():
@@ -14,6 +17,28 @@ def source():
 
 
 class SceneController(unittest.TestCase):
+    def test_catalog_keeps_source_identity_without_instruction_payload(self):
+        report = dict(semantic_id='script://fixture/controllers/man-p1/0000',
+            scene_id='scene://fixture', source_record={'sha256':'a'*64},
+            entry_pc=5, record={'local_count':0,'raw_hex':'00'}, status='partial',
+            instructions=[{'raw_hex':'ff'}], dialogues=[], reference_commit='b'*40,
+            limitations=['Runtime execution remains unverified.'])
+        with patch('importer.scene_controller.inspect_scene_controller', return_value=report):
+            catalog=load_controller_asset_catalog(None,'fixture')
+        asset=catalog['assets'][0]
+        self.assertEqual(asset['dependencies'],['scene://fixture'])
+        self.assertEqual(asset['entry_pc'],5)
+        self.assertTrue(asset['read_only'])
+        self.assertNotIn('raw_hex',str(asset))
+        database=AssetDatabase()
+        registered=database.register_resources('scene://fixture','key',catalog['assets'],catalog['limitations'])
+        self.assertEqual(registered['records'][0]['kind'],'controller')
+        registered['records'][0]['source_record']['sha256']='changed'
+        self.assertEqual(database.resource_catalogs['scene://fixture']['records'][0]['source_record']['sha256'],'a'*64)
+        schema=inspector_schema()['components']['AssetController']
+        self.assertEqual(schema['actions'][0]['id'],'inspect-asset-controller')
+        self.assertFalse(schema['actions'][0].get('requires_edit',False))
+
     def test_controller_span_excludes_other_records_and_sections(self):
         man=source();offset,record,entry=controller_record(man,'fixture')
         self.assertEqual((offset,len(record),entry),(57,16,5))
