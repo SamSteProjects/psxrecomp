@@ -99,8 +99,8 @@ def refresh_resource_catalog(project) -> dict:
                 records.extend(catalog["assets"])
                 limitations.extend(catalog.get("limitations", []))
                 if kind == 'Scene entry controller':
-                    from .controller_flag_assets import build_controller_flag_assets
-                    records.extend(build_controller_flag_assets(catalog['assets'][0],document))
+                    from .controller_flag_assets import qualified_controller_flag_assets
+                    records.extend(qualified_controller_flag_assets(project,catalog['assets'][0],document))
                 if kind == 'Scripts and dialogue':
                     from .flag_assets import build_flag_assets
                     qualifications={};edits=_flag_edits(project, project.active_scene,qualifications)
@@ -172,9 +172,9 @@ def scene_flag_state_key(project) -> str:
     """Operand annotations have their own freshness key, separate from geometry."""
     from .project import digest
     scene = project.active_scene
-    return digest(dict(scene_id=scene, flags={owner: {family:deepcopy(parts[family]) for family in ('ScriptFlags','ScriptSystemFlags') if family in parts}
+    return digest(dict(scene_id=scene, flags={owner: {family:deepcopy(parts[family]) for family in ('ScriptFlags','ScriptSystemFlags','ControllerSystemFlags') if family in parts}
                   for owner, parts in project.overrides.items()
-                  if scene and owner.startswith(scene + '/') and any(family in parts for family in ('ScriptFlags','ScriptSystemFlags'))}))
+                  if scene and owner.startswith(scene + '/') and any(family in parts for family in ('ScriptFlags','ScriptSystemFlags','ControllerSystemFlags'))}))
 
 
 def project_flag_state_key(project) -> str:
@@ -182,9 +182,9 @@ def project_flag_state_key(project) -> str:
     from .project import digest
     return digest(dict(project_path=str(project.root), disc_path=project.disc_path,
                        imports=project.imports,
-                       flags={owner: {family:deepcopy(parts[family]) for family in ('ScriptFlags','ScriptSystemFlags') if family in parts}
+                       flags={owner: {family:deepcopy(parts[family]) for family in ('ScriptFlags','ScriptSystemFlags','ControllerSystemFlags') if family in parts}
                               for owner, parts in getattr(project, 'overrides', {}).items()
-                              if any(family in parts for family in ('ScriptFlags','ScriptSystemFlags'))}))
+                              if any(family in parts for family in ('ScriptFlags','ScriptSystemFlags','ControllerSystemFlags'))}))
 
 
 def _flag_edits(project, scene_id,qualifications=None):
@@ -342,20 +342,21 @@ def project_text_index(project) -> dict:
 
 def _append_controller_flags(project,document,index):
     from importer.scene_controller import load_controller_asset_catalog
-    from .controller_flag_assets import build_controller_flag_assets
+    from .controller_flag_assets import qualified_controller_flag_assets
     try:
         controller=load_controller_asset_catalog(project.disc_path,document['scene']['name'])['assets'][0]
-        groups=build_controller_flag_assets(controller,document)
+        groups=qualified_controller_flag_assets(project,controller,document)
     except RetailImportError as exc:
         index['limitations'].append('Scene controller flags unavailable: '+str(exc))
         return index
     index['groups'].extend(groups)
     index['reference_count']+=sum(group['reference_count'] for group in groups)
+    index['authored_reference_count']+=sum(group['authored_reference_count'] for group in groups)
     index['coverage']['script_count']+=1
     index['coverage']['partial_script_count']+=int(controller['inspection_status']=='partial')
     if len(index['groups'])>16384 or index['reference_count']>65536:
         raise ProjectError('Scene flag references exceed the controller discovery budget')
-    index['limitations'].append('Controller operands retain separate read-only source ownership; actor authoring does not apply.')
+    index['limitations'].append('Controller operands retain Retail grouping with independently qualified authored system selectors; runtime values remain unresolved.')
     return index
 
 

@@ -385,7 +385,19 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False,_audi
                 expected=[row for row in controller['flag_references'] if row['bank']==record['bank'] and row['index']==record['index'] and row['extended_target']==record['extended_target']]
                 if [{key:row[key] for key in REFERENCE_FIELDS} for row in record['references']]!=expected:
                     raise ProjectError('Controller flag group omits or changes decoded source operands')
+                from .controller_system_flags import COMPONENT,validate
+                components=project.overrides.get(record['owner_id'],{})
+                component=components.get(COMPONENT)
+                if component is not None:
+                    validate(project,record['owner_id'],component)
+                    if set(components)!={COMPONENT} or component['source_record_sha256']!=record['source_record']['sha256']:
+                        raise ProjectError('Controller flag graph differs from saved source ownership')
+                entries=component['entries'] if component else {}
                 for reference in record['references']:
+                    operand=target+f"/system-flag/{reference['pc']:04x}"
+                    saved=entries.get(operand)
+                    if reference['authored_index']!=(saved['index'] if saved else None):
+                        raise ProjectError('Controller flag graph differs from authored project selector')
                     proof={key:deepcopy(record[key]) for key in ('bank','index','scope','extended_target','grouping_layer')}
                     proof.update(operation=reference['operation'],mnemonic=reference['mnemonic'])
                     edge(target,identity,'controller_flag_reference',scene,'decoded',reference['pc'],flag_evidence=proof,controller_evidence=record['controller_source_evidence'])

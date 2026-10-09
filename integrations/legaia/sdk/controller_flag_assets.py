@@ -1,4 +1,4 @@
-"""Read-only controller flag groups; actor authoring contracts remain separate."""
+"""Retail controller flag groups with independently qualified Current selectors."""
 from copy import deepcopy
 from .project import ProjectError
 from .controller_references import controller_source_evidence
@@ -34,27 +34,36 @@ def validate_controller_flag_asset(record):
     if not isinstance(refs,list) or not 1<=len(refs)<=4096:reject()
     sites=set()
     for row in refs:
-        if not isinstance(row,dict) or set(row)!=REFERENCE_FIELDS|{'retail_index','authored_index','effective_index','flag_operand_id'}:reject()
+        if not isinstance(row,dict) or set(row)-{'authored_qualification'}!=REFERENCE_FIELDS|{'retail_index','authored_index','effective_index','flag_operand_id'}:reject()
         pc=row['pc'];prefix={'local':'LFLAG','context':'CFLAG','global':'GFLAG','system':'SYSFLAG'}.get(bank)
         if (not integer(pc,proof['entry_pc'],source['byte_length']-1) or pc in sites or type(row['byte_offset']) is not int
             or row['byte_offset']!=source['byte_offset']+pc or row['bank']!=bank or type(row['index']) is not int or row['index']!=index
             or row['scope']!=record['scope'] or row['extended_target']!=target or type(row['extended_target']) is not type(target)
-            or row['authored_index'] is not None or row['flag_operand_id'] is not None or row['runtime_value'] is not None
-            or type(row['retail_index']) is not int or row['retail_index']!=index or type(row['effective_index']) is not int or row['effective_index']!=index
+            or row['runtime_value'] is not None
+            or type(row['retail_index']) is not int or row['retail_index']!=index or type(row['effective_index']) is not int or row['effective_index']!=(row['authored_index'] if row['authored_index'] is not None else index)
             or row['context_resolution']!=('current_script_context' if target is None else 'extended_target_unresolved')
             or row['index_semantics']!=('encoded_selector_not_resolved_runtime_bit' if bank=='system' else 'operand_masked_to_five_bits')
             or row['status']!=('bank_width_unresolved' if bank=='local' and index>=16 else 'encoded_reference')
             or not (prefix and row['operation'] in ('set','clear','test') and row['mnemonic']==prefix+'_'+row['operation'].upper()
                     or row['operation']=='test' and (row['mnemonic']=='FLAG_WORD_BRANCH' and bank in ('local','global','context') or row['mnemonic']=='COND_JMP' and bank=='extra'))):reject()
+        authored=row['authored_index']
+        if authored is None:
+            if row['flag_operand_id'] is not None or 'authored_qualification' in row:reject()
+        else:
+            from .flag_qualification import validate
+            operand=script+f'/system-flag/{pc:04x}'
+            if bank!='system' or target is not None or row['flag_operand_id']!=operand:reject()
+            validate(row.get('authored_qualification'),record['owner_id'],operand,source['sha256'],pc,row['mnemonic'],target,index,authored,controller=True)
         sites.add(pc)
-    if type(record['reference_count']) is not int or record['reference_count']!=len(refs) or type(record['authored_reference_count']) is not int or record['authored_reference_count']!=0:reject()
+    if type(record['reference_count']) is not int or record['reference_count']!=len(refs) or type(record['authored_reference_count']) is not int or record['authored_reference_count']!=sum(row['authored_index'] is not None for row in refs):reject()
     _coverage(record['coverage'])
     if not isinstance(record['limitations'],list) or len(record['limitations'])>256 or any(not isinstance(row,str) or not 0<len(row)<=8192 for row in record['limitations']):reject()
     _metadata(record)
     return record
 
 
-def build_controller_flag_assets(controller,document):
+def build_controller_flag_assets(controller,document,edits=None,qualifications=None):
+    edits=edits or {};qualifications=qualifications or {};used=set()
     scene=document['scene']['semantic_id'];script=controller['semantic_id']
     proof=controller_source_evidence(dict(controller,id=script,scene_id=scene),scene,document)
     rows=controller['flag_references']
@@ -70,8 +79,39 @@ def build_controller_flag_assets(controller,document):
             runtime_binding='unresolved',runtime_value=None,references=[],read_only=True,grouping_layer='retail',
             name=f"{reference['bank'].title()} {reference['index']} · {context} · Scene Entry Controller",
             authored_reference_count=0,coverage=dict(script_count=1,partial_script_count=int(controller['inspection_status']=='partial'),unavailable_script_count=0),
-            limitations=['Retail controller source only; runtime values and dispatch target bindings remain unresolved.','Controller flag authoring is not qualified.'],controller_source_evidence=deepcopy(proof)))
-        group['references'].append(dict(deepcopy(reference),retail_index=reference['index'],authored_index=None,effective_index=reference['index'],flag_operand_id=None))
+            limitations=['Retail controller source only; runtime values and dispatch target bindings remain unresolved.','Only independently source-qualified normal controller system selectors expose authored values.'],controller_source_evidence=deepcopy(proof)))
+        row=dict(deepcopy(reference),retail_index=reference['index'],authored_index=None,effective_index=reference['index'],flag_operand_id=None)
+        operand=script+f"/system-flag/{reference['pc']:04x}"
+        if operand in edits:
+            row.update(authored_index=edits[operand]['index'],effective_index=edits[operand]['index'],flag_operand_id=operand,authored_qualification=deepcopy(qualifications.get(operand)))
+            group['authored_reference_count']+=1;used.add(operand)
+        group['references'].append(row)
+    if used!=set(edits):raise ProjectError('Controller authored selector is absent from Retail flag discovery')
     for group in groups.values():
         group['reference_count']=len(group['references']);group['references'].sort(key=lambda row:row['pc']);validate_controller_flag_asset(group)
     return [groups[key] for key in sorted(groups)]
+
+
+def qualified_controller_flag_assets(project,controller,document):
+    """Recompose native selectors before exposing annotations; works for any imported scene."""
+    owner=controller['semantic_id'].replace('script://','scene://',1)
+    components=deepcopy(project.overrides.get(owner,{}))
+    if not components:return build_controller_flag_assets(controller,document)
+    from .controller_system_flags import COMPONENT,validate
+    from .flag_qualification import from_target
+    from importer.controller_system_flags import load_controller_system_flag_context
+    from importer.core import ImportError as RetailImportError
+    from hashlib import sha256
+    if set(components)!={COMPONENT}:raise ProjectError('Controller flag owner contains unsupported components')
+    value=validate(project,owner,components[COMPONENT]);entries=value['entries']
+    try:
+        context=load_controller_system_flag_context(project.disc_path,document['scene']['name'])
+        _,record,_=context._source.verified_record(owner)
+        if sha256(record).hexdigest()!=value['source_record_sha256'] or value['source_record_sha256']!=controller['source_record']['sha256']:
+            raise ProjectError('Controller flag annotations require unchanged Retail source')
+        context.patch(entries)
+        targets={row['semantic_id']:row for row in context.options(owner)['targets']}
+        if set(entries)-set(targets):raise ProjectError('Controller selector lacks native operand qualification')
+        proofs={key:from_target(targets[key],fields,controller=True) for key,fields in entries.items()}
+    except RetailImportError as exc:raise ProjectError('Controller flag source verification failed: '+str(exc)) from exc
+    return build_controller_flag_assets(controller,document,entries,proofs)
