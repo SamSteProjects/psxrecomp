@@ -62,16 +62,12 @@ class ControllerGlobalByteWorkflow(unittest.TestCase):
         self.p.mode='edit';self.p.overrides[OWNER]['Transform']={'position':{'x':1}}
         with self.assertRaises(ProjectError):ProjectService.open(self.p.save())
 
-    def test_pending_native_build_is_refused_before_output(self):
+    def test_build_collection_retains_global_byte_components(self):
         from sdk.controller_selector_build import collect
-        from sdk.build import build_project, BuildError
         self.apply(VALUES)
-        with self.assertRaisesRegex(BuildError,'global-byte native Build integration is pending'):
-            collect(self.p,OWNER,self.p.overrides[OWNER])
-        output=Path(self.temp.name)/'blocked-build'
-        with self.assertRaisesRegex(BuildError,'verified user-owned retail disc'):
-            build_project(self.p,output)
-        self.assertFalse(output.exists())
+        scene,components=collect(self.p,OWNER,self.p.overrides[OWNER])
+        self.assertEqual(scene,'scene://fixture')
+        self.assertEqual(components[COMPONENT]['entries'][ID],VALUES)
 
     def test_ten_families_compose_complete_MAN_and_reset_independently(self):
         families=[

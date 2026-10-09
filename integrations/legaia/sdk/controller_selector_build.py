@@ -7,9 +7,6 @@ from importer.controller_system_flags import load_controller_system_flag_context
 
 def collect(project,owner,components):
     value=validate_components(project,owner,components)
-    if 'ControllerGlobalBytes' in value:
-        from .build import BuildError
-        raise BuildError('Controller global-byte native Build integration is pending')
     return scene_document(project,owner)['scene']['semantic_id'],value
 
 
@@ -17,8 +14,6 @@ def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
     from .build import BuildError
     owner=scene_id+'/controllers/man-p1/0000'
     components=validate_components(project,owner,project.overrides[owner])
-    if 'ControllerGlobalBytes' in components:
-        raise BuildError('Controller global-byte native Build integration is pending')
     value=components.get(COMPONENT,dict(entries={}))
     scene=project.imports[scene_id]['scene']['name']
     context=load_controller_system_flag_context(project.disc_path,scene)
@@ -92,4 +87,8 @@ def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
         from .controller_five_word_build import compose_five_words
         result,five_word_changes=compose_five_words(context,owner,components,result,[*previous,*changes],appended=appended)
         changes.extend(five_word_changes)
+    if 'ControllerGlobalBytes' in components:
+        from .controller_global_byte_build import compose_global_bytes
+        result,global_changes=compose_global_bytes(context,owner,components,result,[*previous,*changes],appended=appended)
+        changes.extend(global_changes)
     return result,changes
