@@ -56,6 +56,15 @@ def _review(project, scene, entity_ids, delta, operation=None):
         axis=operation.get('axis')
         if operation['kind']=='reset':
             for target in targets:target['proposed']=deepcopy(target['retail'])
+        elif operation['kind']=='snap':
+            spacing=operation['spacing']
+            for target in targets:
+                if any(type(target['current'][a]) is not int for a in ('x','z')):
+                    raise ProjectError('Grid snapping requires integer Current X/Z coordinates')
+                target['proposed']=deepcopy(target['current'])
+                for a in operation['axes']:
+                    n=target['current'][a];units=(abs(n)+spacing//2)//spacing
+                    target['proposed'][a]=(-units if n<0 else units)*spacing
         elif operation['kind']=='scale':
             anchor=next((t for t in targets if t['entity_id']==operation['anchor_entity_id']),None)
             if anchor is None:raise ProjectError('Mixed scale anchor must be selected')
@@ -168,12 +177,14 @@ def review(project,scene,entity_ids,delta):
 
 
 def layout_review(project,scene,entity_ids,operation):
-    if not isinstance(operation,dict) or operation.get('kind') not in ('align','distribute','reset','rotate','rotate_angle','scale','mirror'):
-        raise ProjectError('Mixed layout requires align/distribute, reset, position rotation/mirroring or native spacing scale')
+    if not isinstance(operation,dict) or operation.get('kind') not in ('align','distribute','reset','rotate','rotate_angle','scale','mirror','snap'):
+        raise ProjectError('Mixed layout requires align/distribute, reset, grid snap, position rotation/mirroring or native spacing scale')
     kind=operation['kind']
-    fields=({'kind','anchor_entity_id','angle_degrees'} if kind=='rotate_angle' else {'kind','anchor_entity_id','percent'} if kind=='scale' else {'kind'} if kind=='reset' else {'kind','anchor_entity_id','quarter_turns'} if kind=='rotate'
+    fields=({'kind','axes','spacing'} if kind=='snap' else {'kind','anchor_entity_id','angle_degrees'} if kind=='rotate_angle' else {'kind','anchor_entity_id','percent'} if kind=='scale' else {'kind'} if kind=='reset' else {'kind','anchor_entity_id','quarter_turns'} if kind=='rotate'
             else {'kind','axis','anchor_entity_id'} if kind in ('align','mirror') else {'kind','axis'})
     if set(operation)!=fields:raise ProjectError('Mixed layout accepts exact operation fields only')
+    if kind=='snap' and (operation['axes'] not in (['x'],['z'],['x','z']) or type(operation['spacing']) is not int or not 64<=operation['spacing']<=4096 or operation['spacing']%64):
+        raise ProjectError('Grid snap requires X, Z or X/Z and spacing in multiples of 64 from 64 through 4096')
     if kind in ('align','distribute','mirror') and operation['axis'] not in ('x','z'):
         raise ProjectError('Mixed layout axis must be X/Z')
     if kind=='rotate' and (type(operation['quarter_turns']) is not int or operation['quarter_turns'] not in (-1,1,2)):
