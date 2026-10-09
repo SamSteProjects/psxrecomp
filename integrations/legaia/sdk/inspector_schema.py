@@ -122,7 +122,7 @@ def inspector_schema():
 
     flag_bits=schema['components']['ControllerFlagBits']
     flag_bits['actions'][0]['label']='Inspect Component Source'
-    flag_bits['notes']=['Project Review/Apply, reset, history and persistence support qualified encoded bit indices. Source comparison is available; dedicated editing controls and native Build delivery remain pending. Build refuses authored flag-bit entries until integration is complete. Runtime values and gameplay remain unverified.']
+    flag_bits['notes']=['Project Review/Apply, reset, history and persistence support qualified encoded bit indices. Source comparison is available; native Build delivers qualified bit indices; dedicated editing controls remain pending. Runtime values and gameplay remain unverified.']
 
     schema['components']['ScriptSystemFlags'] = {
         'label': 'Authored system selectors', 'units': 'Encoded selector indices', 'layout': 'read-only-properties',

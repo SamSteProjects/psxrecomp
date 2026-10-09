@@ -1,5 +1,16 @@
 # Controller Source Coverage Survey
 
+## Controller Flag-Bit Native Build — 2026-10-09
+
+ControllerFlagBits now delivers through normal and appended-NPC Build. The temporary refusal is removed. Independent receipts verify exact Retail opcode/context/mask, source and current preimages, typed bit values, byte positions, complete serializer audit coverage and unchanged MAN layout. Only one low-five-bit operand byte changes per request; upper bits, continuation and excluded local/context cases remain protected. No-op entries produce no changed receipt; occupied spans still refuse. All twelve controller families compose in one record.
+
+Build reports retain `script.flag_bit`, `controller-flag-bit-only`, exact operand identity and Retail/Authored bit dictionaries. Compressed and raw-streaming NPC compositions retain dedicated controller_flag_bit_changes metadata; relocated receipts include original and delivered byte offsets, current record and candidate hashes. Source navigation binds the matching authored bit dictionary.
+
+Ninety-four unique focused Python tests and three Node suites passed, including malformed/missing/duplicate/extra receipts, unaudited writes, changed preimages, overlap, no-op, relocation, twelve-family literal composition and all9 bit opcodes ×2 header forms ×8 preserved masks. Five private packages cover flag-only Cave01/Rikuroa2, mixed Cave01, and mixed appended-NPC Cave01/Rikuroa2. Complete delivered MANs or all original relocated records matched independent literal expectations, including structural spawn reindexing. Directory/ZIP package integrity and project/import/history preservation passed. Evidence: `local-output/sdk-20260909/controller-flag-bit-build-20261009/checks.json`.
+
+Dedicated editing controls remain pending. This proves source-qualified serialization and package delivery, not runtime flag values, story effects or gameplay. No game or native recomp compile occurred; the full goal remains active.
+
+
 ## Controller Flag-Bit Project Workflow — 2026-10-09
 
 Source-qualified encoded bit indices now support project Review/Apply/Clear, one-step history and persistence. The controller registry and shared snapshots contain twelve families. Low five bits alone change; local16–31 and context SET8/CLEAR10 retain the serializer's refusals. Source comparison and component reset/file readers recognize authored entries; dedicated bit editing controls remain pending.

@@ -163,6 +163,7 @@ def package_change_kinds(edits) -> list[str]:
         'controller-table-copy-operands-only': 'controller table-copy operands',
         'controller-scene-byte-operand-only': 'controller scene-state byte',
         'controller-party-selector-only': 'controller party selector',
+        'controller-flag-bit-only': 'controller flag-bit operands',
         'controller-five-word-operands-only': 'controller five-word operands',
         'controller-global-byte-operands-only': 'controller global-byte operands',
         'controller-three-word-operands-only': 'controller three-word operands',
@@ -216,7 +217,7 @@ def build_report(audit) -> dict:
         elif change.get('scope') == 'script-facing-sector-only':
             field = 'script.facing_sector'
             before, after = change['before_sector'], change['after_sector']
-        elif change.get("scope") in ("controller-tile-rect-operands-only", "controller-fade-operands-only", "controller-table-copy-operands-only", "controller-word-triplet-operands-only", "controller-three-word-operands-only", "controller-scene-byte-operand-only", "controller-five-word-operands-only", "controller-global-byte-operands-only", "controller-party-selector-only"):
+        elif change.get("scope") in ("controller-tile-rect-operands-only", "controller-fade-operands-only", "controller-table-copy-operands-only", "controller-word-triplet-operands-only", "controller-three-word-operands-only", "controller-scene-byte-operand-only", "controller-five-word-operands-only", "controller-global-byte-operands-only", "controller-party-selector-only", "controller-flag-bit-only"):
             before, after = change["before_values"], change["after_values"]
         elif field == "dialogue.text":
             before = bytes.fromhex(change["before_hex"]).decode("ascii")

@@ -37,8 +37,9 @@ class ControllerFlagBitWorkflow(unittest.TestCase):
         self.apply({'bit':31});batch=workspace(self.p,OWNER,state_key(self.p));self.assertEqual(len(batch['families']),12)
         path=Path(self.temp.name)/'flag.json';path.write_text(json.dumps(dict(raw=batch['families'][COMPONENT],owner=OWNER,context=dict(projectPath=str(self.p.root),sceneId=self.p.active_scene,mode='edit',scriptKey=state_key(self.p)))),encoding='utf-8')
         subprocess.run(['C:/Program Files/nodejs/node.exe',str(Path(__file__).with_suffix('.mjs')),str(path)],check=True)
-    def test_build_refuses_pending_family_instead_of_omitting_bytes(self):
+    def test_build_delivers_reviewed_bit_without_changing_project(self):
         from sdk.controller_selector_build import compose
-        from sdk.build import BuildError
-        self.apply({'bit':31})
-        with self.assertRaisesRegex(BuildError,'no package can omit'):compose(self.p,self.p.active_scene,self.man,self.man)
+        self.apply({'bit':31});before=deepcopy((self.p._document(),self.p.undo_stack))
+        with patch('sdk.controller_selector_build.load_controller_system_flag_context',return_value=self.context):
+            result,audit=compose(self.p,self.p.active_scene,self.man,self.man)
+        expected=bytearray(self.man);expected[63]=255;self.assertEqual(result,bytes(expected));self.assertEqual(audit[0]['after_values'],{'bit':31});self.assertEqual(before,(self.p._document(),self.p.undo_stack))

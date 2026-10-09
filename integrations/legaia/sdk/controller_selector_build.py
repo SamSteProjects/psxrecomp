@@ -14,7 +14,6 @@ def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
     from .build import BuildError
     owner=scene_id+'/controllers/man-p1/0000'
     components=validate_components(project,owner,project.overrides[owner])
-    if 'ControllerFlagBits' in components:raise BuildError('Controller flag-bit native Build integration is pending; no package can omit its authored operands')
     value=components.get(COMPONENT,dict(entries={}))
     scene=project.imports[scene_id]['scene']['name']
     context=load_controller_system_flag_context(project.disc_path,scene)
@@ -96,4 +95,8 @@ def compose(project,scene_id,baseline,working,previous=(),*,appended=False):
         from .controller_party_selector_build import compose_party_selectors
         result,party_changes=compose_party_selectors(context,owner,components,result,[*previous,*changes],appended=appended)
         changes.extend(party_changes)
+    if 'ControllerFlagBits' in components:
+        from .controller_flag_bit_build import compose_flag_bits
+        result,bit_changes=compose_flag_bits(context,owner,components,result,[*previous,*changes],appended=appended)
+        changes.extend(bit_changes)
     return result,changes
