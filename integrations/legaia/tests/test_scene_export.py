@@ -1,7 +1,7 @@
 from copy import deepcopy
 import unittest
 from unittest.mock import patch
-from importer.scene_export import encode_scene_glb, select_scene_export_instance
+from importer.scene_export import encode_scene_glb, select_scene_export_instance, select_scene_export_group
 from importer.core import ImportError
 from test_importer_export import preview, parse_glb
 from test_animation_clip_export import values
@@ -60,3 +60,19 @@ class SceneExportTests(unittest.TestCase):
         with self.assertRaises(ImportError):encode_scene_glb(empty)
         scene['entities'][1]['geometry_key']='missing'
         with self.assertRaises(ImportError):encode_scene_glb(scene)
+
+    def test_complete_selected_group_shares_meshes_retains_source_matrices_and_refuses_partial_export(self):
+        scene=dict(schema='legaia.scene-preview.v1',coordinate_system='editor_field_y_up_source_units',assets=[dict(geometry_key='one',preview=preview()),dict(geometry_key='unused',preview=preview())],entities=[])
+        for i in range(3):scene['entities'].append(dict(entity_id='actor-'+str(i),geometry_key='one',renderable=True,model_to_scene=[1,0,0,100*i,0,-1,0,20,0,0,1,30,0,0,0,1]))
+        before=deepcopy(scene);selected=select_scene_export_group(scene,['actor-2','actor-0']);self.assertEqual([r['entity_id'] for r in selected['entities']],['actor-0','actor-2']);self.assertEqual(len(selected['assets']),1)
+        raw,audit=encode_scene_glb(selected);doc,_=parse_glb(raw);self.assertEqual(audit['export_scope'],'selected-group');self.assertEqual(audit['selected_entity_ids'],['actor-0','actor-2']);self.assertEqual(len(doc['meshes']),1);self.assertEqual(len(doc['scenes'][0]['nodes']),2)
+        self.assertEqual([doc['nodes'][i]['matrix'][12] for i in doc['scenes'][0]['nodes']],[0,200]);self.assertEqual(scene,before);selected['entities'][0]['model_to_scene'][3]=999;self.assertEqual(scene,before)
+        for ids in [None,[],['actor-0'],['actor-0','actor-0'],['actor-0','missing'],['actor-0',None],['actor-0']*129]:
+            with self.assertRaises(ImportError):select_scene_export_group(scene,ids)
+        for alteration in ['missing_geometry','unrenderable','duplicate_entity','duplicate_geometry']:
+            bad=deepcopy(scene)
+            if alteration=='missing_geometry':bad['entities'][1]['geometry_key']='missing'
+            elif alteration=='unrenderable':bad['entities'][1]['renderable']=False
+            elif alteration=='duplicate_entity':bad['entities'].append(deepcopy(bad['entities'][1]))
+            else:bad['assets'].append(deepcopy(bad['assets'][0]))
+            with self.assertRaises(ImportError):select_scene_export_group(bad,['actor-0','actor-1'])

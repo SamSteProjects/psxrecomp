@@ -8,17 +8,30 @@ from .export import encode_model_glb, MAX_GLB_BYTES, _vector
 
 MAX_SCENE_NODES = 32768
 
+def _select_scene_export_instances(scene, entity_ids, minimum):
+    if not isinstance(entity_ids,list) or not minimum <= len(entity_ids) <= 128 or any(not isinstance(i,str) or not i or len(i)>512 for i in entity_ids) or len(set(entity_ids))!=len(entity_ids):
+        raise ImportError('Choose a bounded group of unique scene instance identities')
+    selected=[];keys=set()
+    for identifier in sorted(entity_ids):
+        matches=[entity for entity in scene['entities'] if entity.get('entity_id')==identifier]
+        if len(matches)!=1 or not matches[0].get('renderable'):
+            raise ImportError('Selected instance is absent, ambiguous or has no exportable geometry: '+identifier)
+        key=matches[0].get('geometry_key');assets=[asset for asset in scene['assets'] if asset.get('geometry_key')==key]
+        if len(assets)!=1:raise ImportError('Selected instance geometry is unavailable or ambiguous: '+identifier)
+        selected.append(deepcopy(matches[0]));keys.add(key)
+    return {**scene,'entities':selected,'assets':deepcopy([asset for asset in scene['assets'] if asset.get('geometry_key') in keys])}
+
+
 def select_scene_export_instance(scene, entity_id):
     """Keep one verified instance and its shared geometry, without rebasing it."""
-    if not isinstance(entity_id,str) or not entity_id or len(entity_id)>512:
-        raise ImportError('Choose a valid scene instance identity')
-    matches=[entity for entity in scene['entities'] if entity.get('entity_id')==entity_id]
-    if len(matches)!=1 or not matches[0].get('renderable'):
-        raise ImportError('Selected instance is absent or has no exportable geometry')
-    assets=[asset for asset in scene['assets'] if asset.get('geometry_key')==matches[0].get('geometry_key')]
-    if len(assets)!=1:raise ImportError('Selected instance geometry is unavailable or ambiguous')
-    return {**scene,'entities':deepcopy(matches),'assets':deepcopy(assets),
-            'export_scope':'selected-instance','selected_entity_id':entity_id}
+    selected=_select_scene_export_instances(scene,[entity_id],1)
+    return {**selected,'export_scope':'selected-instance','selected_entity_id':entity_id}
+
+
+def select_scene_export_group(scene, entity_ids):
+    """Keep every selected instance at its source placement, sharing geometry once."""
+    selected=_select_scene_export_instances(scene,entity_ids,2)
+    return {**selected,'export_scope':'selected-group','selected_entity_ids':sorted(entity_ids)}
 
 
 def encode_scene_glb(scene):
@@ -95,6 +108,7 @@ def encode_scene_glb(scene):
            'entity_count':len(entities),'geometry_count':len(assets),'unavailable_entities':unavailable,
            'geometry_exports':audits,'limitations':scene.get('limits',[])+['Static source preview, not runtime state. Unavailable entities retain metadata nodes only.',
             'Source units retained; physical meter scale unknown. Meshes are shared across instances.']}
+    if scene.get('export_scope')=='selected-group':audit['selected_entity_ids']=deepcopy(scene['selected_entity_ids'])
     for name in ('images','textures','samplers'):
         if not doc[name]:del doc[name]
     doc['extras']=audit;doc['buffers']=[{'byteLength':len(binary)}]

@@ -3505,8 +3505,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200,result);return
                 if route in ("/api/scene-preview", "/api/export/scene"):
                     exporting = route == "/api/export/scene"
-                    if set(body) - ({'representation', 'source_key', 'entity_id'} if exporting else {'representation'}):
+                    if set(body) - ({'representation', 'source_key', 'entity_id', 'entity_ids'} if exporting else {'representation'}):
                         raise ProjectError("Scene preview uses the active imported scene; client geometry and paths are not accepted")
+                    if exporting and 'entity_id' in body and 'entity_ids' in body:
+                        raise ProjectError('Choose one instance or a selected group, not both')
                     from .scene_preview import preview_project, source_key
                     from importer.scene_animation import load_scene_actor_animation_catalog
                     from importer.environment import load_environment_preview_catalog
@@ -3524,9 +3526,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     preview['representation'] = representation
                     preview['project_source_key'] = original_key
                     if exporting:
-                        from importer.scene_export import encode_scene_glb, select_scene_export_instance
+                        from importer.scene_export import encode_scene_glb, select_scene_export_instance, select_scene_export_group
                         if "entity_id" in body:
                             preview = select_scene_export_instance(preview, body["entity_id"])
+                        elif "entity_ids" in body:
+                            preview = select_scene_export_group(preview, body["entity_ids"])
                         from importer.export import write_encoded_glb
                         data, audit = encode_scene_glb(preview)
                         if source_key(self.server.project) != original_key:
