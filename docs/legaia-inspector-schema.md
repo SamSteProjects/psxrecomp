@@ -566,3 +566,35 @@ occurred; project/imports/history/file bytes were unchanged. Private evidence:
 failures used a nonexistent narrow-layout tab and omitted the Project catalog
 readiness wait; corrected checks passed, with both diagnostic logs retained.
 Gameplay association and playback remain unverified. The full SDK goal is active.
+
+## Layered Hierarchy Asset Bindings — 2026-10-09
+
+Hierarchy search now supports `model:` and `animation:` to find imported actors
+by either recorded Retail or Current initial bindings. Layer-specific fields
+`retail_model:`, `current_model:`, `retail_animation:` and `current_animation:`
+keep those associations separate. Values come only from SDK ActorAppearance and
+ActorAnimation components; numeric unresolved animation IDs are not converted to
+invented clip identities. Current includes persistent authored assignments, not
+live playback or later script-driven changes. NPC draft and resource bindings
+are not inferred. Ordinary unqualified name search remains unchanged.
+
+The same filtered actor records feed visible hierarchy rows and the existing
+bounded Select matching actors workflow, preserving fresh-source/Edit/busy gates
+and viewport group highlighting. Search help describes the layers and limits.
+Saved Scene View validation supports the new fields and fixes an existing
+mismatch that rejected the editor's `attached:` field on the SDK side. Saved
+filters remain editor metadata and do not alter native authored input keys.
+
+Three Node suites, two JS syntax checks, one SDK AST check and three focused
+Python tests passed, including server/client grammar parity, metadata history,
+Save/Open, Undo/Redo and unchanged native inputs. Actual Town01 checks compared
+all matching IDs against SDK component values for Retail/Current models and
+clips; distinct retained Current clip, combined filters, exclusions, empty and
+invalid results, exact group selection and viewport highlighting passed. Desktop
+and 400px layouts were inspected; narrow hierarchy rows remain accessible by
+panel scrolling, and narrow group selection passed. No page errors or
+command/Build/Run/Save/scene requests occurred; project/imports/history/file bytes
+were unchanged. Private evidence:
+`local-output/sdk-20260909/hierarchy-asset-bindings-20261009/`.
+No game or runtime attachment was used. Runtime residency, initial assignment
+behavior and playback remain unverified; the full SDK goal is active.

@@ -1,5 +1,11 @@
 import {parseAssetQuery} from './asset-search.js';
-export const HIERARCHY_FIELDS=['name','id','type','component','attached','authored','visibility'];
+export const HIERARCHY_FIELDS=['name','id','type','component','attached','authored','visibility','model','retail_model','current_model','animation','retail_animation','current_animation'];
+export function hierarchyActorBindings(components){
+ const identity=(value,prefix)=>typeof value==='string'&&value.startsWith(prefix)?[value]:[];
+ const retail_model=identity(components?.ActorAppearance?.imported?.asset_id,'asset://'),current_model=identity(components?.ActorAppearance?.effective?.asset_id,'asset://');
+ const retail_animation=identity(components?.ActorAnimation?.imported?.animation_asset_id,'animation://'),current_animation=identity(components?.ActorAnimation?.effective?.animation_asset_id,'animation://');
+ return {retail_model,current_model,model:[...new Set([...retail_model,...current_model])],retail_animation,current_animation,animation:[...new Set([...retail_animation,...current_animation])]};
+}
 export function hierarchyAttachedComponents(components,schema){
  if(!components||typeof components!=='object'||Array.isArray(components))return [];
  return Object.keys(components).flatMap(id=>[id,...(typeof schema?.components?.[id]?.label==='string'?[schema.components[id].label]:[])]);
@@ -7,6 +13,7 @@ export function hierarchyAttachedComponents(components,schema){
 export function parseHierarchyQuery(query){try{return parseAssetQuery(query,HIERARCHY_FIELDS);}catch(error){throw Error(error.message.replaceAll('Asset search','Hierarchy search').replaceAll('asset search','hierarchy search'));}}
 export function hierarchyMatches(record,tokens){
  const fields={name:String(record.name??'').toLowerCase(),id:String(record.id??'').toLowerCase(),type:String(record.type??'').toLowerCase(),component:(record.components??[]).join(' ').toLowerCase(),attached:(record.attached??[]).join(' ').toLowerCase(),authored:String(record.authored??'unknown').toLowerCase(),visibility:String(record.visibility??'unknown').toLowerCase()};
+ for(const field of ['model','retail_model','current_model','animation','retail_animation','current_animation'])fields[field]=(record[field]??[]).join(' ').toLowerCase();
  const all=[fields.name,fields.id,fields.component].join(' ');
  return tokens.every(token=>{const matches=(token.field?fields[token.field]:all).includes(token.text);return token.exclude?!matches:matches;});
 }

@@ -4,7 +4,7 @@ from copy import deepcopy
 from .project import ProjectError
 
 GROUPS={'actors','npc-drafts','environment','transition','trigger','region','collision','script'}
-FIELDS={'name','id','type','component','authored','visibility'}
+FIELDS={'name','id','type','component','attached','authored','visibility','model','retail_model','current_model','animation','retail_animation','current_animation'}
 SPACE=re.compile(r'[\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]')
 
 
