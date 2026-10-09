@@ -1058,6 +1058,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/npc-creation-build-review.js": ("npc-creation-build-review.js", "text/javascript"),
                  "/model-placement-users.js": ("model-placement-users.js", "text/javascript"),
                  "/animation-placement-users.js": ("animation-placement-users.js", "text/javascript"),
+                 "/animation-resource-choices.js": ("animation-resource-choices.js", "text/javascript"),
                  "/animation-contributions.js": ("animation-contributions.js", "text/javascript"),
                  "/sdk-stability-sources.js": ("sdk-stability-sources.js", "text/javascript"),
                  "/sdk-stability-checks.js": ("sdk-stability-checks.js", "text/javascript"),

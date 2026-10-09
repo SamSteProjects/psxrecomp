@@ -633,3 +633,38 @@ history/file bytes. Private evidence:
 No game, runtime attachment or native Build was used. Initial bindings do not
 prove runtime residency, script-selected use or playback; gameplay remains
 unverified and the full SDK goal active.
+
+## Retail and Current Animation Preview Choices — 2026-10-09
+
+Scene animation resource choices now join explicit SDK ActorAnimation/ActorAppearance
+layers to the selected clip's catalog actor/model witnesses. Retail choices keep
+the original model and scene-header preview. Current authored animation choices
+use the assigned initial-animation preview; appearance-only Current choices use
+the existing appearance preview. Only identical unmodified choices are combined
+as Retail + Current initial. Changed actors no longer appear as Current users of
+their old clip merely because their model is unchanged. Retained records continue
+to use their dedicated inspector and preview workflow. Missing pairings remain
+unavailable; no model retargeting or runtime playback inference is introduced.
+
+The bounded choice service returns detached actor identities and refuses ambiguous
+or foreign actors. Dialog selection/preview callbacks require their original
+mounted view, current resource identity and unchanged choice projection, and
+refuse busy, stale or closed/replaced panels. Shared-field reference preview
+callbacks now also require current source and original mounted dialog ownership.
+Source decoder, native serializer and project authoring behavior are unchanged.
+
+Two focused Node suites, two JS syntax checks and server AST passed. Actual muted
+Town0b workflow used an existing authored assignment with distinct Retail/Current
+clips. The original clip offered that actor as Retail-only; the assigned clip
+exposed Current initial and requested the assigned preview endpoint. Complete
+Retail frames matched the Retail source preview and complete Current frames
+matched the verified donor-witness preview, with exact source clip/witness IDs.
+Busy, stale and detached preview/selection refusal passed, including a detached
+available shared-field reference button. Desktop/400px layouts were inspected;
+zero page errors or authoring/Build/Run/Save/scene/selection requests occurred.
+Project/imports/history/file bytes were unchanged. Private evidence:
+`local-output/sdk-20260909/animation-resource-preview-bindings-20261009/`.
+The initial harness used a nonexistent model close selector; its failure log is
+retained, and the corrected full workflow passed. These are editor sampling and
+routing checks, not gameplay timing/playback acceptance. No game, runtime attach
+or native Build was used; the full SDK goal remains active.

@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {animationResourceChoices} from '../editor/animation-resource-choices.js';
+const scene='scene://fixture',model='asset://fixture/models/0001',otherModel='asset://fixture/models/0002',clip='animation://fixture/scene-anm/0000',otherClip='animation://fixture/scene-anm/0001';
+function actor(n){const id=scene+'/actors/man-p1/'+n;return {id,name:'Actor '+n,components:{ActorAppearance:{imported:{asset_id:model},authored:{},effective:{asset_id:model}},ActorAnimation:{imported:{animation_asset_id:clip},authored:{},effective:{animation_asset_id:clip,donor_entity_id:id}}}};}
+const unchanged=actor('a'),assigned=actor('b'),appearance=actor('c'),witness=actor('w');witness.components.ActorAnimation.imported.animation_asset_id=otherClip;witness.components.ActorAnimation.effective.animation_asset_id=otherClip;
+assigned.components.ActorAnimation.authored={animation_asset_id:otherClip,donor_entity_id:witness.id};assigned.components.ActorAnimation.effective={animation_asset_id:otherClip,donor_entity_id:witness.id};
+appearance.components.ActorAppearance.authored={donor_entity_id:witness.id};appearance.components.ActorAppearance.effective={asset_id:otherModel};appearance.components.ActorAnimation.effective={animation_asset_id:otherClip,donor_entity_id:witness.id};
+const actors=[unchanged,assigned,appearance,witness],before=structuredClone(actors);
+const first={id:clip,type:'animation',sceneId:scene,data:{bindings:actors.slice(0,3).map(a=>({actor_semantic_id:a.id,model_asset_semantic_id:model}))}},second={id:otherClip,type:'animation',sceneId:scene,data:{bindings:[{actor_semantic_id:witness.id,model_asset_semantic_id:model},{actor_semantic_id:witness.id,model_asset_semantic_id:otherModel}]}};
+const original=animationResourceChoices(first,actors);assert.deepEqual(original.map(c=>[c.entity.id,c.layer,c.clipId]),[[unchanged.id,'Retail + Current initial','scene-header'],[assigned.id,'Retail initial','scene-header'],[appearance.id,'Retail initial','scene-header']]);
+const current=animationResourceChoices(second,actors);assert.equal(current.find(c=>c.entity.id===assigned.id).clipId,'authored-initial-animation');assert.equal(current.find(c=>c.entity.id===appearance.id).clipId,'authored-appearance');assert.equal(current.find(c=>c.entity.id===appearance.id).assetId,otherModel);
+assert.equal(current.find(c=>c.entity.id===witness.id).layer,'Retail + Current initial');assert.equal(current.find(c=>c.entity.id===assigned.id).layer,'Current initial');
+assert.deepEqual(animationResourceChoices({...second,data:{bindings:[]}},actors),[]);
+const allocated=structuredClone(assigned);allocated.components.ActorAnimation.effective={animation_asset_id:otherClip,source_kind:'allocated_record'};assert.equal(animationResourceChoices(second,[allocated]).length,0);
+const unresolved=structuredClone(unchanged);unresolved.components.ActorAnimation.imported.animation_asset_id=null;unresolved.components.ActorAnimation.effective.animation_asset_id=null;assert.deepEqual(animationResourceChoices(first,[unresolved]),[]);
+for(const bad of [()=>animationResourceChoices({...first,type:'model'},actors),()=>animationResourceChoices(first,[actors[0],actors[0]]),()=>animationResourceChoices(first,[{...actors[0],id:'scene://other/actors/a'}]),()=>animationResourceChoices({...first,data:{}},actors),()=>animationResourceChoices(first,Array(513).fill(actors[0]))])assert.throws(bad);
+current[0].entity.name='changed';assert.deepEqual(actors,before);
+console.log('Animation resource choices use exact Retail/Current SDK clips, witnessed models, assigned/appearance routes, unchanged coalescing, allocated isolation and detached bounded identities.');

@@ -100,6 +100,7 @@ import {parseHierarchyQuery,hierarchyMatches,matchingActorIds,hierarchyAttachedC
 import {mountHierarchyNavigation} from '/hierarchy-navigation.js';
 import {mountModelPlacementUsers} from '/model-placement-users.js';
 import {mountAnimationPlacementUsers,currentAnimationPlacementIds,initialAnimationActorUsage} from '/animation-placement-users.js';
+import {animationResourceChoices} from '/animation-resource-choices.js';
 import {mountAnimationContributions} from '/animation-contributions.js';
 import {openStabilitySourceAudit} from '/sdk-stability-sources.js';
 import {openStabilityChecks} from '/sdk-stability-checks.js';
@@ -3260,19 +3261,6 @@ async function downloadOriginalTexture(){
   finally{setBusy(false);}
 }
 const animationResourceDialog=document.createElement('dialog');animationResourceDialog.id='animation-resource-dialog';document.body.append(animationResourceDialog);
-function animationPreviewChoices(record,actorEntities,modelReferences){
-  const choices=[];
-  for(const ref of initialAssetUsage(record,modelReferences)){
-    const entity=actorEntities.find(actor=>actor.id===ref.source_id);
-    if(!entity)continue;
-    if(ref.imported)choices.push({key:entity.id+'|imported',entity,
-      assetId:entity.components.ModelRenderer.asset_id,clipId:'scene-header',
-      layer:ref.effective&&!entity.components.ActorAppearance?.authored?.donor_entity_id?'Imported + Effective':'Imported'});
-    if(ref.effective&&entity.components.ActorAppearance?.authored?.donor_entity_id)choices.push({key:entity.id+'|authored',entity,
-      assetId:entity.components.ActorAppearance.effective.asset_id,clipId:'authored-appearance',layer:'Authored effective'});
-  }
-  return choices;
-}
 function openAnimationResource(record){
   if(busy||resourceKey!==resourceStateKey())return;
   if(record.data?.scope==='authored-retained'){
@@ -3293,19 +3281,23 @@ function openAnimationResource(record){
     const preview=data.preview,available=preview&&state.assets.some(asset=>asset.id===preview.asset_id);
     animationResourceDialog.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-animation-resource" aria-label="Close animation resource">×</button></div>${property('Stable ID',record.id)}${property('Frames',data.frame_count)}${property('Rigid channels',data.bone_count)}<p>Shared field clip with a verified reference model association. This does not establish which scene actors are playing it or its current runtime timing.</p><button id="preview-global-animation" ${available?'':'disabled'}>Preview reference clip</button><details class="resource-provenance"><summary>Model association, source and limits</summary><pre></pre></details>`;
     animationResourceDialog.querySelector('pre').textContent=JSON.stringify(data,null,2);
+    const context=resourceStateKey(),mounted=animationResourceDialog.firstElementChild;
     $('close-animation-resource').onclick=()=>animationResourceDialog.close();
-    $('preview-global-animation').onclick=()=>{if(busy||!available)return;animationResourceDialog.close();openModel(preview.asset_id,preview.clip_id);};
+    $('preview-global-animation').onclick=()=>{if(busy||!available||!animationResourceDialog.open||!animationResourceDialog.contains(mounted)||context!==resourceStateKey()||resourceKey!==context)return;animationResourceDialog.close();openModel(preview.asset_id,preview.clip_id);};
     animationResourceDialog.showModal();return;
   }
-  const candidates=animationPreviewChoices(record,entities(),state.model_references??[]);
-  animationResourceDialog.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-animation-resource" aria-label="Close animation resource">×</button></div>${property('Stable ID',record.id)}${property('Frames',data.frame_count)}${property('Rigid channels',data.bone_count)}<p>Retail playback timing is unresolved. Choose an imported binding or an authored effective assignment; previews preserve that distinction.</p>${candidates.length?'<label>Actor assignment<select id="resource-animation-actor" aria-label="Animation actor"><option value="">Choose an actor assignment…</option></select></label><div class="dialog-actions"><button id="select-resource-actor" disabled>Select actor</button><button id="preview-resource-animation" class="accent" disabled>Preview animation</button></div>':'<p class="field-note">No verified actor assignment is available in the active scene. The record remains available for source inspection.</p>'}<details class="resource-provenance"><summary>Animation bindings, source and limits</summary><pre class="diagnostic-detail"></pre></details>`;
+  const candidates=animationResourceChoices(record,entities());
+  const context=resourceStateKey(),snapshot=JSON.stringify(candidates);
+  animationResourceDialog.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-animation-resource" aria-label="Close animation resource">×</button></div>${property('Stable ID',record.id)}${property('Frames',data.frame_count)}${property('Rigid channels',data.bone_count)}<p>Retail playback timing is unresolved. Choose a Retail or Current initial assignment qualified by SDK components and catalog witnesses. Current uses supported authored initial-animation or appearance previews; retained clips use their dedicated inspector. Shared channel edits and runtime playback remain separate.</p>${candidates.length?'<label>Actor assignment<select id="resource-animation-actor" aria-label="Animation actor"><option value="">Choose an actor assignment…</option></select></label><div class="dialog-actions"><button id="select-resource-actor" disabled>Select actor</button><button id="preview-resource-animation" class="accent" disabled>Preview animation</button></div>':'<p class="field-note">No verified actor assignment is available in the active scene. The record remains available for source inspection.</p>'}<details class="resource-provenance"><summary>Animation bindings, source and limits</summary><pre class="diagnostic-detail"></pre></details>`;
   $('close-animation-resource').onclick=()=>animationResourceDialog.close();animationResourceDialog.querySelector('pre').textContent=JSON.stringify(data,null,2);
+  const mounted=animationResourceDialog.firstElementChild;
+  const current=()=>animationResourceDialog.open&&animationResourceDialog.contains(mounted)&&context===resourceStateKey()&&resourceKey===context&&snapshot===JSON.stringify(animationResourceChoices(record,entities()));
   if(candidates.length){
     for(const candidate of candidates){const option=document.createElement('option');option.value=candidate.key;option.textContent=`${candidate.entity.name} · ${candidate.layer} · ${candidate.assetId.split('/').at(-1)}`;$('resource-animation-actor').append(option);}
     const choice=()=>candidates.find(candidate=>candidate.key===$('resource-animation-actor').value);
     $('resource-animation-actor').onchange=()=>{const missing=!choice();$('select-resource-actor').disabled=missing;$('preview-resource-animation').disabled=missing;};
-    $('select-resource-actor').onclick=async()=>{const candidate=choice();if(candidate&&await api('/api/selection',{entity_id:candidate.entity.id})){animationResourceDialog.close();frame(selected());document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}};
-    $('preview-resource-animation').onclick=()=>{const candidate=choice();if(candidate){animationResourceDialog.close();openModel(candidate.assetId,candidate.clipId,candidate.entity.id);}};
+    $('select-resource-actor').onclick=async()=>{if(busy||!current())return;const candidate=choice();if(candidate&&await api('/api/selection',{entity_id:candidate.entity.id})){animationResourceDialog.close();frame(selected());document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}};
+    $('preview-resource-animation').onclick=()=>{if(busy||!current())return;const candidate=choice();if(candidate){animationResourceDialog.close();openModel(candidate.assetId,candidate.clipId,candidate.entity.id);}};
   }
   animationResourceDialog.showModal();
 }
