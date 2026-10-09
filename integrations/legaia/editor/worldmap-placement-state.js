@@ -52,6 +52,16 @@ export function worldPlacementExportTarget(report,recordId,anchorEntityId,scope)
   return {scope,entityId:anchorEntityId};
 }
 
+// Visibility changes only the renderer; record ownership and export scope stay complete.
+export function worldPlacementVisibility(base,report,recordId,anchorEntityId,scope='scene',ground=true){
+  if(!['scene','record','anchor'].includes(scope)||typeof ground!=='boolean'||!Array.isArray(base?.entities)||base.entities.length>513)fail('World placement visibility scope is invalid.');
+  const rows=report?.records?.filter(r=>r.record_id===recordId),row=rows?.[0];
+  if(rows?.length!==1||!Array.isArray(row.placements)||!row.placements.length||row.placements.length>512)fail('Visibility requires one qualified placement record.');
+  const members=new Set(row.placements.map(p=>p.entity_id)),entities=new Map(base.entities.map(e=>[e.entity_id,e]));
+  if(members.size!==row.placements.length||entities.size!==base.entities.length||!members.has(anchorEntityId)||[...members].some(id=>{const e=entities.get(id);return !e||e.placement_scope==='source_ground'||e.object_record_index!==row.object_record_index||e.source_record_sha256!==row.source_record_sha256;}))fail('Visibility anchor or record membership changed.');
+  return new Set(base.entities.filter(e=>e.placement_scope==='source_ground'?!ground:scope==='record'?!members.has(e.entity_id):scope==='anchor'?e.entity_id!==anchorEntityId:false).map(e=>e.entity_id));
+}
+
 export function worldPlacementRecordRows(report,sceneView,query='',scope='all',selectedRecordId=null){
   if(!Array.isArray(report?.records)||report.records.length>512||!['all','authored','shared','writable','unavailable'].includes(scope))fail('World placement record filter is invalid.');
   const ids=new Set(report.records.map(r=>r.record_id));if(ids.size!==report.records.length||selectedRecordId!==null&&!ids.has(selectedRecordId))fail('World record selection lacks unique source ownership.');

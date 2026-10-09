@@ -1,4 +1,4 @@
-import {worldPlacementComparison} from '../editor/worldmap-placement-state.js';
+import {worldPlacementComparison,worldPlacementVisibility} from '../editor/worldmap-placement-state.js';
 import assert from 'node:assert/strict';
 import {decodeWorldPlacements,placementSceneView,worldPlacementTarget,worldPlacementLayers} from '../editor/worldmap-placement-editor.js';
 const key='a'.repeat(64),sha='b'.repeat(64),id='scene://map01/worldmap/placements/0064';
@@ -28,3 +28,15 @@ const authoredRecord=structuredClone(report.records[0]);authoredRecord.authored_
 const geometry={scene:'map01',project_source_key:key,source_record:{map_sha256:sha,floor_lut_sha256:sha,disc_sha256:sha}},beforeBase=JSON.stringify(base);assert.deepEqual(worldPlacementComparison(base,geometry,report).entities[0].authored_source_position,{x:1000,y:200,z:3000});assert.equal(JSON.stringify(base),beforeBase);
 for(const change of [g=>g.scene='map02',g=>g.project_source_key='c'.repeat(64),g=>g.source_record.disc_sha256='c'.repeat(64),g=>g.source_record.map_sha256='c'.repeat(64),g=>g.source_record.floor_lut_sha256='c'.repeat(64)]){const changed=structuredClone(geometry);change(changed);assert.throws(()=>worldPlacementComparison(base,changed,report));}
 console.log('Retail/Current comparison requires matching kingdom, state key, disc, MAP and floor sources');
+
+const visibilityRow={record_id:'0005',object_record_index:5,source_record_sha256:sha,placements:[{entity_id:id},{entity_id:second}]};
+const visibilityBase={entities:[{entity_id:'ground',placement_scope:'source_ground'},...[id,second].map(entity_id=>({entity_id,object_record_index:5,source_record_sha256:sha,placement_scope:'source_spawn_seed'})),{entity_id:'other',object_record_index:6,source_record_sha256:sha,placement_scope:'source_spawn_seed'}]},visibilityReport={records:[visibilityRow]};
+const heldVisibility=structuredClone({visibilityBase,visibilityReport});
+assert.deepEqual([...worldPlacementVisibility(visibilityBase,visibilityReport,'0005',id)],[]);
+assert.deepEqual([...worldPlacementVisibility(visibilityBase,visibilityReport,'0005',id,'scene',false)],['ground']);
+assert.deepEqual([...worldPlacementVisibility(visibilityBase,visibilityReport,'0005',id,'record',true)],['other']);
+assert.deepEqual([...worldPlacementVisibility(visibilityBase,visibilityReport,'0005',second,'anchor',false)],['ground',id,'other']);
+for(const args of [['0006',id,'scene',true],['0005','missing','anchor',true],['0005',id,'unknown',true],['0005',id,'scene',1]])assert.throws(()=>worldPlacementVisibility(visibilityBase,visibilityReport,...args));
+for(const mutate of [v=>v.entities.push(v.entities[0]),v=>v.entities[1].source_record_sha256='f'.repeat(64),v=>v.entities.splice(1,1)]){const v=structuredClone(visibilityBase);mutate(v);assert.throws(()=>worldPlacementVisibility(v,visibilityReport,'0005',id,'record'));}
+assert.deepEqual({visibilityBase,visibilityReport},heldVisibility);
+console.log('Placement visibility retains complete ownership, ground and exact anchors; unknown, duplicate and changed sources refuse isolation without mutating inputs.');
