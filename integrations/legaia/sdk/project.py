@@ -2218,6 +2218,10 @@ class ProjectService:
             from .worldmap_placements import apply
             apply(self, command)
             return
+        if command.get('type') == 'import_controller_operand_file':
+            from .controller_operand_files import apply
+            apply(self,command)
+            return
         if command.get('type') == 'import_script_operand_bundle':
             from .script_operand_bundle import apply
             apply(self,command)

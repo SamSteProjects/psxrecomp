@@ -274,6 +274,7 @@ class EditorServer(ThreadingHTTPServer):
         state['capabilities']['controller_fade_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_table_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_scene_byte_authoring']=state['capabilities']['scene_controller_inspection']
+        state['capabilities']['controller_operand_files']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_component_reset']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_party_selector_authoring']=state['capabilities']['scene_controller_inspection']
         state['capabilities']['controller_five_word_authoring']=state['capabilities']['scene_controller_inspection']
@@ -1327,6 +1328,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'scene_id','expected_source_key'} or any(not isinstance(value,str) or len(value)>512 for value in body.values()):raise ProjectError('Model resolution requires exact scene and current source key')
                     from .model_resolution import inspect as inspect_model_resolution
                     self._json(200,inspect_model_resolution(self.server.project,body['scene_id'],body['expected_source_key']));return
+                if route in ('/api/controller-operand-export','/api/controller-operand-review'):
+                    expected={'entity'} if route=='/api/controller-operand-export' else {'entity','content'}
+                    if set(body)!=expected or not isinstance(body['entity'],str):raise ProjectError('Controller operand transfer requires exact inputs')
+                    from .controller_operand_files import export_file, review
+                    self._json(200,export_file(self.server.project,body['entity']) if route=='/api/controller-operand-export' else review(self.server.project,body['entity'],body['content']));return
                 if route=='/api/controller-component-reset-review':
                     if set(body)!={'entity','component'} or not isinstance(body['entity'],str):raise ProjectError('Controller component reset requires exact inputs')
                     from .controller_component_reset import review
