@@ -16,6 +16,31 @@ export function qualifySceneControllerAsset(report,asset){
  return true;
 }
 
+export function renderControllerInstruction(row,report,selectSource){
+ const pc=value=>'0x'+value.toString(16).toUpperCase().padStart(4,'0');
+ const create=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
+ if(!Number.isSafeInteger(row.pc)||row.pc<report.entry_pc||!Number.isSafeInteger(row.length)||row.length<1||row.pc+row.length>report.source_record.byte_length||row.byte_offset!==report.source_record.byte_offset+row.pc||row.raw_hex!==report.record.raw_hex.slice(row.pc*2,(row.pc+row.length)*2))throw Error('Controller instruction bytes differ from their source record.');
+ const details=create('details'),summary=create('summary',`PC ${pc(row.pc)} · ${row.mnemonic}`),fields=create('dl');details.dataset.controllerInstructionPc=row.pc;fields.dataset.controllerInstructionFields='';
+ const field=(name,value)=>{const label=create('dt',name),text=create('dd',String(value));label.style.fontWeight='600';text.style.cssText='margin:0 0 8px;overflow-wrap:anywhere';fields.append(label,text);};
+ field('Record PC',`${pc(row.pc)} (${row.pc})`);field('Decoded MAN Offset',`${pc(row.byte_offset)} (${row.byte_offset})`);field('Encoded Length',`${row.length} bytes`);field('Dispatch Context',row.target_context===null?'Current controller context':`Extended target ${row.target_context} · runtime binding unresolved`);
+ const human=value=>value.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase()).replace(/\bPc\b/g,'PC');
+ const flatten=(value,path,depth=0)=>{
+  if(depth>8)throw Error('Controller operand nesting exceeds inspector bounds.');
+  if(Array.isArray(value)){field(path,value.map(item=>typeof item==='object'?JSON.stringify(item):String(item)).join(', ')||'None');return;}
+  if(value!==null&&typeof value==='object'){for(const [name,child] of Object.entries(value)){if(name==='encoded_hex')continue;flatten(child,path?path+' / '+human(name):human(name),depth+1);}return;}
+  field(path,value===null?'Unresolved':typeof value==='boolean'?(value?'Yes':'No'):typeof value==='string'?value.replaceAll('_',' '):value);
+ };
+ flatten(row.operands,'');details.append(summary,create('p','Retail encoded source. Runtime execution and effects have not been verified.'),fields);
+ const navigation=create('div');navigation.dataset.controllerInstructionSuccessors='';navigation.style.cssText='display:flex;flex-wrap:wrap;gap:8px';
+ const boundaries=new Set([...report.instructions,...report.dialogues].map(node=>node.pc));
+ for(const edge of row.successors){
+  const button=create('button',`Inspect ${pc(edge.pc)} · ${(edge.condition??'Encoded successor').replaceAll('_',' ')}`);button.type='button';button.dataset.controllerInstructionNextPc=edge.pc;button.disabled=!boundaries.has(edge.pc);button.onclick=()=>{if(!button.disabled)selectSource(edge.pc);};navigation.append(button);
+  if(button.disabled)navigation.append(create('p',`Boundary ${pc(edge.pc)} is not decoded. No instruction is inferred.`));
+ }
+ if(!row.successors.length)navigation.append(create('p','No encoded successors reported. Runtime resumption remains unresolved.'));
+ const evidence=create('details'),pre=create('pre',JSON.stringify(row,null,2));evidence.dataset.controllerInstructionEvidence='';pre.style.whiteSpace='pre-wrap';evidence.append(create('summary','Raw Instruction Evidence'),pre);details.append(navigation,evidence);return details;
+}
+
 export async function openSceneController({getState,busy,expectedAsset=null,focusFlagPc=null,api=null,setBusy=null,onError=()=>{}}){
  const initial=getState(),scene=initial.scene?.id,key=initial.asset_reference_source_key,projectPath=initial.project?.path;
  if(busy()||!scene||initial.project?.mode!=='edit'||!key)return;
@@ -57,8 +82,10 @@ export async function openSceneController({getState,busy,expectedAsset=null,focu
    branches=mountControllerBranches(content,{owner:scene+'/controllers/man-p1/0000',focusPc:focusFlagPc,getProjectSourceKey:()=>getState().asset_reference_source_key,getContext:()=>({projectPath:getState().project?.path,sceneId:getState().scene?.id,mode:getState().project?.mode,scriptKey:getState().controller_branch_source_key}),busy,setBusy,api,onError,
     reopen:async pc=>{dialog.close();await openSceneController({getState,busy,api,setBusy,focusFlagPc:pc,onError});}});
   }
+  if(branches)await branches.ready;
+  if(!fresh())return;
   const focusedFlag=renderControllerFlags(content,report,focusFlagPc);
-  for(const [title,rows] of [['Encoded instructions',report.instructions],['Dialogue segments',report.dialogues],['Opaque regions',report.opaque_regions],['Inspection stops',report.stops]]){const heading=document.createElement('h3');heading.textContent=title;content.append(heading);if(!rows?.length){const p=document.createElement('p');p.textContent='None reported';content.append(p);}for(const row of rows??[]){const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');const pc=Number.isSafeInteger(row.pc)?'PC 0x'+row.pc.toString(16).padStart(4,'0'):'Source region';summary.textContent=pc+' · '+(row.mnemonic??row.reason??(title==='Dialogue segments'?'Dialogue segment':'Source evidence'));pre.style.whiteSpace='pre-wrap';pre.textContent=JSON.stringify(row,null,2);details.append(summary,pre);if(['Encoded instructions','Dialogue segments'].includes(title)){details.dataset.controllerSourcePc=row.pc;sourceRows.set(row.pc,details);}content.append(details);}}
+  for(const [title,rows] of [['Encoded Instructions',report.instructions],['Dialogue Segments',report.dialogues],['Opaque Regions',report.opaque_regions],['Inspection Stops',report.stops]]){const heading=document.createElement('h3');heading.textContent=title;content.append(heading);if(!rows?.length){const p=document.createElement('p');p.textContent='None reported';content.append(p);}for(const row of rows??[]){let details;if(title==='Encoded Instructions')details=renderControllerInstruction(row,report,selectSource);else{details=document.createElement('details');const summary=document.createElement('summary'),pre=document.createElement('pre');const pc=Number.isSafeInteger(row.pc)?'PC 0x'+row.pc.toString(16).padStart(4,'0'):'Source region';summary.textContent=pc+' · '+(row.reason??(title==='Dialogue Segments'?'Dialogue segment':'Source evidence'));pre.style.whiteSpace='pre-wrap';pre.textContent=JSON.stringify(row,null,2);details.append(summary,pre);}if(['Encoded Instructions','Dialogue Segments'].includes(title)){details.dataset.controllerSourcePc=row.pc;sourceRows.set(row.pc,details);}content.append(details);}}
   focusedFlag?.scrollIntoView({block:'nearest'});
  }catch(error){if(dialog.open&&error.name!=='AbortError'){status.textContent=error.message;onError(error);}}
 }
