@@ -1091,6 +1091,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/controller-hierarchy.js": ("controller-hierarchy.js", "text/javascript"),
                  "/controller-navigation.js": ("controller-navigation.js", "text/javascript"),
                  "/controller-operand-files.js": ("controller-operand-files.js", "text/javascript"),
+                 "/controller-operand-comparison.js": ("controller-operand-comparison.js", "text/javascript"),
                  "/controller-build-navigation.js": ("controller-build-navigation.js", "text/javascript"),
                  "/controller-owner-inspector.js": ("controller-owner-inspector.js", "text/javascript"),
                  "/controller-component-reset.js": ("controller-component-reset.js", "text/javascript"),
