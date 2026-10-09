@@ -540,6 +540,8 @@ def build_project(project, output_dir: Path | str | None = None) -> dict:
 
 
 def _build_project(project, output_dir, *, review_only=False) -> dict:
+    from .build_stability_sources import capture as capture_stability_sources
+    stability_sources = capture_stability_sources()
     draft_scenes = set()
     for identifier, draft in getattr(project, 'actor_drafts', {}).items():
         project._validate_actor_draft(identifier, draft)
@@ -1373,7 +1375,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         "validation": {"retail_provenance": "fresh_import_match", "unchanged_opaque_bytes": True,
                        "lz_decode_round_trip": (True if any(o.get('source_kind')!='raw_streaming_man' and (o["file"].endswith(('-man.lzs', '-animation.lzs')) or 'decoded_after_sha256' in o) for o in overlays)
                                                 else "not_required_no_compressed_scene_overlay" if overlays else "not_required_unmodified_disc"),
-                       "live_runtime": "not_run"},
+                       "live_runtime": "not_run", "runtime_source_inclusion": stability_sources},
     }
     if any(o.get('source_kind')=='raw_streaming_man' for o in overlays):
         audit['validation']['raw_MAN_structural_round_trip'] = True
@@ -1398,6 +1400,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             audit['validation']['allocated_animation_bank_readback'] = True
         audit['validation']['relocation_package_readback'] = True
         audit['validation']['lz_decode_round_trip'] = True
+    if capture_stability_sources() != stability_sources:
+        raise BuildError('Build-host stability sources changed during serialization; review again')
     audit_bytes = (canonical_json(audit, pretty=True) + "\n").encode("utf-8")
     # Package identity follows emitted content, including no-op/cleared builds.
     # Separate immutable receipts retain each authored metadata context.
@@ -1556,6 +1560,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 raise BuildError("Packaged overlay payload hash mismatch")
     if authored_state_key(project) != input_key:
         raise BuildError('Project inputs changed during Build; no completion receipt saved')
+    if capture_stability_sources() != stability_sources:
+        raise BuildError('Build-host stability sources changed during packing; no completion receipt saved')
     receipt = {'schema_version':'legaia.build-receipt.v1', 'authored_state_key':input_key,
                'audit_sha256':_hash(audit_bytes), 'manifest_sha256':_hash(manifest),
                'archive_file':archive_path.name, 'archive_sha256':_hash(archive_bytes),

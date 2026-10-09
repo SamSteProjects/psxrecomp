@@ -1,5 +1,9 @@
 # Legaia stability and release parity
 
+## Build Stability Source Evidence — 2026-10-09
+
+Normal Build audits now retain the recorded source inclusion comparison for their Build-host checkout. Review and saved verification expose the same deterministic evidence with explicit source-only scope; target binary and gameplay verification stay false. Mid-build source changes refuse completion. This identifies no missing patch and changes no runtime implementation. See [Build Stability Source Evidence](legaia-build-stability-source-evidence.md); all existing release/gameplay boundaries below remain open.
+
 Fresh fixture workflow — 2026-10-08: [Fresh SDK Stability Checks](legaia-stability-checks.md) reruns the existing production synthetic restore, host-audio reporting and precompile groups from an isolated source snapshot through editor Diagnostics. All three groups passed with current source equality; recorded eight-file inclusion also passed separately. Receipts bind 140 source/fixture/header files and tool executable hashes. This adds no new runtime patch or release/gameplay acceptance; source parity and manual limitations below remain separate.
 
 ## SDK Source Inclusion Diagnostic — 2026-10-07

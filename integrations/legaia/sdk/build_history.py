@@ -63,6 +63,9 @@ def _load(project, identifier, *, use_current=True):
             or not isinstance(audit.get('edits'),list) or len(audit['edits'])>65536
             or not isinstance(audit.get('overlays'),list) or len(audit['overlays'])>4096):
         raise ProjectError('Saved audit does not match its completion receipt')
+    if 'runtime_source_inclusion' in audit.get('validation',{}):
+        from .build_stability_sources import validate
+        validate(audit['validation']['runtime_source_inclusion'])
     # O(1) lookup of a retained current-input receipt; never scan nested folders.
     current = authored_state_key(project)
     candidate = _path(project,identifier,'input-receipts/'+current+'.json')

@@ -1,3 +1,4 @@
+import {decodeBuildRuntimeSources,renderBuildRuntimeSources} from './sdk-stability-sources.js';
 import {openBuildWavs} from './build-wav-inputs.js';
 const hash=value=>typeof value==='string'&&/^[0-9a-f]{64}$/.test(value);
 export function decodeBuildHistory(value){
@@ -34,6 +35,7 @@ export function appendBuildDelivery(host,value){
 export function decodeBuildVerification(value,id){
   const r=value?.report;
   if(value?.id!==id||value.integrity!=='verified'||value.gameplay_verified!==false||typeof value.matches_current_inputs!=='boolean'||value.source_disc_integrity!=='not_checked'||value.runtime_status!=='package_built_not_launched'||value.scope!=='receipt_audit_manifest_package_source_files_and_ZIP_members'||r?.schema_version!=='legaia.build-report.v1'||!Array.isArray(r.changes)||r.changes.length>65536||r.change_count!==r.changes.length||!Number.isSafeInteger(r.overlay_bytes)||r.overlay_bytes<0||r.validation?.live_runtime!=='not_run')throw new Error('Invalid saved Build verification');
+  if(r.validation.runtime_source_inclusion!==undefined)decodeBuildRuntimeSources(r.validation.runtime_source_inclusion);
   for(const row of r.changes)if(!row||!['asset_id','scene','field','scope'].every(key=>typeof row[key]==='string')||!('before' in row)||!('after' in row))throw new Error('Invalid saved Build change');
   if(value.delivery!==undefined)decodeBuildDelivery(value.delivery);
   return structuredClone(value);
@@ -100,7 +102,7 @@ export function mountBuildHistory({after,getState,busy,setBusy}){
         check.onclick=async()=>{
           if(busy())return;check.disabled=true;setBusy(true);outcome.textContent='Checking receipt, audit, manifest, payload files and package ZIP…';report.replaceChildren();
           try{const verified=decodeBuildVerificationForEntry(await request('/api/builds/verify',{id:item.id}),item,key);outcome.textContent=`Saved package integrity verified · ${verified.matches_current_inputs?'matches current authored inputs':'different authored inputs'}. Source disc integrity and gameplay remain unverified.`;
-            const counts=document.createElement('p');counts.textContent=`${verified.report.change_count} changes · ${verified.report.overlay_bytes.toLocaleString()} audited fixed-span bytes`;report.append(counts);appendBuildDelivery(report,verified.delivery);
+            const counts=document.createElement('p');counts.textContent=`${verified.report.change_count} changes · ${verified.report.overlay_bytes.toLocaleString()} audited fixed-span bytes`;report.append(counts);appendBuildDelivery(report,verified.delivery);renderBuildRuntimeSources(report,verified.report.validation.runtime_source_inclusion);
             const table=document.createElement('table');table.className='build-change-table';const head=document.createElement('tr');for(const name of ['Asset','Field','Before','After']){const cell=document.createElement('th');cell.textContent=name;head.append(cell);}table.append(head);
             for(const change of verified.report.changes.slice(0,256)){const row=document.createElement('tr');for(const value of [change.asset_id,change.field,change.before,change.after]){const cell=document.createElement('td');cell.style.overflowWrap='anywhere';cell.textContent=typeof value==='string'?value:JSON.stringify(value);row.append(cell);}table.append(row);}const wrap=document.createElement('div');wrap.style.overflowX='auto';wrap.append(table);report.append(wrap);
             if(verified.report.changes.length>256){const note=document.createElement('p');note.textContent='First 256 changes shown; the saved audit retains the full report.';report.append(note);}
