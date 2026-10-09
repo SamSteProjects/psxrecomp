@@ -1035,6 +1035,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/uv-texture-region.js': ('uv-texture-region.js', 'text/javascript'),
                  '/model-material-donor.js': ('model-material-donor.js', 'text/javascript'),
                  '/model-texture-binding.js': ('model-texture-binding.js', 'text/javascript'),
+                 '/scene-animation-recipe.js': ('scene-animation-recipe.js', 'text/javascript'),
                  '/scene-animation.js': ('scene-animation.js', 'text/javascript'),
                  '/scene-limits.js': ('scene-limits.js', 'text/javascript'),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
