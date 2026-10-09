@@ -31,6 +31,13 @@ def _target(record,entry,pc,bit=None,*,report=None):
     if node is None or node['mnemonic'] not in tuple(f'{bank}_{op}' for bank in ('LFLAG','GFLAG','CFLAG') for op in ('SET','CLEAR','TEST')):
         raise ImportError('Flag PC must identify a supported decoded bit instruction')
     original=node['operands']['bit'];value=original if bit is None else bit
+    header=2 if record[pc]&0x80 else 1
+    opcode=record[pc]&0x7f;relative=pc+header
+    if (not 0x2b<=opcode<=0x33 or relative>=len(record) or
+        node['mnemonic']!=('LFLAG','GFLAG','CFLAG')[(opcode-0x2b)//3]+'_'+('SET','CLEAR','TEST')[(opcode-0x2b)%3] or
+        node['length']!=header+1 or node['target_context']!=(record[pc+1] if header==2 else None) or
+        original!=(record[relative]&31) or node['successors']!=[{'pc':pc+header+1,'condition':'encoded_continuation'}]):
+        raise ImportError('Flag opcode, dispatch context, bit mask or continuation differs from source bytes')
     if (node['mnemonic'].startswith('LFLAG_') and (original>=16 or value>=16) or
         node['mnemonic']=='CFLAG_SET' and (original==8 or value==8) or
         node['mnemonic']=='CFLAG_CLEAR' and (original==10 or value==10)):
@@ -54,6 +61,7 @@ def patch_flag_bit(record,entry,pc,values,*,base_offset=0):
       source_record_sha256=hashlib.sha256(record).hexdigest())]
 
 class FlagAuthoringContext:
+    OWNER_PATTERN=r'[A-Za-z0-9_-]+/(?:actors/man-p1|scripts/man-p2)/[0-9]{4}'
     def __init__(self,source):self._source,self._man=source,source._man
     def provenance(self):return dict(self._source.provenance(),limitations=list(LIMITATIONS))
     def options(self,owner):
@@ -95,7 +103,7 @@ class FlagAuthoringContext:
         if not isinstance(edits,dict) or len(edits)>MAX_FLAG_EDITS:raise ImportError('Flag edit set exceeds bounds')
         audit=[];occupied=set()
         for key,values in edits.items():
-            match=re.fullmatch(r'script://([A-Za-z0-9_-]+/(?:actors/man-p1|scripts/man-p2)/[0-9]{4})/flag-bit/([0-9a-f]{4})',key) if isinstance(key,str) else None
+            match=re.fullmatch(r'script://('+self.OWNER_PATTERN+r')/flag-bit/([0-9a-f]{4})',key) if isinstance(key,str) else None
             if match is None:raise ImportError('Flag identity requires source owner and hexadecimal PC')
             owner='scene://'+match[1];offset,record,entry=self._source.verified_record(owner)
             _,changes=patch_flag_bit(record,entry,int(match[2],16),values,base_offset=offset)
