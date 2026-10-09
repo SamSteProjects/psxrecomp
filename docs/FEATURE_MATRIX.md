@@ -10184,3 +10184,6 @@ Controller Instruction-to-Editor Navigation: FUNCTIONAL across all five qualifie
 
 
 Retail VRAM STP Controller Decoding: FUNCTIONAL read-only D4/D5 source operands and continuation;85 literal boundaries matched across99 bounded controllers. Four scenes now decode fully, bringing the bounded inventory to60 decoded/39 partial (prior25 refused retained). Texture ownership, live VRAM effects and authoring remain unsupported/unverified.
+
+
+Retail Field Word-Triplet Controller Decoding: FUNCTIONAL read-only D8 layout/continuation with native runtime-offset uncertainty explicit. Seventeen requests matched across99 bounded controllers; Garmel/Jagaroom/Juui2 now inspect fully. Bounded coverage63 decoded/36 partial, prior25 refused retained. Authoring, live request meanings and gameplay unverified.

@@ -1014,3 +1014,6 @@ Controller Instruction-to-Editor Navigation — 2026-10-09: links rely exclusive
 
 
 Retail VRAM STP Controller Decoding — 2026-10-09: pinned nibble_d blob80d71c4a03b43b000dd0ff82acacf9bcc6d719c2 and fresh hash-bound Retail PROT[897] D4/D5 loads, rectangle constants, masks, StoreImage/LoadImage and PC+6 corroborate the read-only decoder. All99 bounded source records retain their prior hashes;85 literal requests matched. Runtime source asset binding and visible effects remain unverified. Evidence: `local-output/sdk-20260909/controller-vram-stp-20261009/`.
+
+
+Retail Field Word-Triplet Controller Decoding — 2026-10-09: pinned nibble_d layout and fresh Retail D8 handler word loads, selector, runtime-global addition/sign wrap, helper call and PC+9 qualify source inspection. All99 source record hashes remain exact;17 literal requests matched. Source values remain unadjusted and runtime offset/effects unknown. Evidence: `local-output/sdk-20260909/controller-word-triplet-20261009/`.

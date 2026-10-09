@@ -599,6 +599,19 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "signed_words": list(struct.unpack_from("<hhh", data, operand + 1)),
                     "packed_u24": int.from_bytes(data[operand + 7:operand + 10], "little"),
                     "destination_semantics": "host_defined"}
+        elif sub == 0xD8:
+            # Retail PROT[897] 801E2DD4 reads selector+three signed
+            # words. First word adds a runtime global then wraps i16;
+            # 801E2E18 calls801D77F4 and 801E2E24 advances adjusted PC9.
+            # Pinned nibble_d agrees on layout, not the runtime offset.
+            size, mnemonic = 8, "FIELD_WORD_TRIPLET_REQUEST"
+            need(size)
+            args = {"sub_op": sub, "selector": data[operand+1],
+                    "signed_words": list(struct.unpack_from("<hhh", data, operand+2)),
+                    "first_word_adjustment": "runtime_offset_then_signed_16_wrap",
+                    "runtime_offset": "unknown",
+                    "parameter_semantics": "runtime_selector_and_word_meanings_unresolved",
+                    "runtime_effect": "not_evaluated"}
         elif sub in (0xD4, 0xD5):
             # Retail PROT[897] 801E2C3C/2CC8: two word loads into a
             # fixed16x1 VRAM rectangle; StoreImage/pixel mask/LoadImage,

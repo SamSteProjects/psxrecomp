@@ -2401,3 +2401,6 @@ Controller editing modules expose a shared source-qualified PC navigation contra
 
 
 Retail VRAM STP source inspection now decodes fixed-width D4/D5 requests with proven rectangle dimensions/pixel rules and exact continuation. Source asset binding/effects remain unknown; no simulation or authoring path is inferred. Existing source instruction/search/flow services consume these SDK nodes.
+
+
+Retail D8 field word-triplet inspection preserves encoded selector/signed words and separately exposes the native first-word runtime offset/wrap contract with offset unknown. The SDK does not convert those words into coordinates or preview/live state. Existing source/search/flow inspectors consume the qualified read-only nodes.
