@@ -699,3 +699,24 @@ All eleven controller project families compose in a focused literal-MAN test. In
 Twenty-seven focused Python checks, one Node suite, one JS syntax check and nine AST checks passed. Actual Cave01 (one qualified leader target) and raw-streaming Rikuroa2 (ten targets) HTTP Review/Apply workflows changed only decoded MAN bytes231 and560 respectively, matching independently encoded complete MANs with operation/bit3 retained. Review remained read-only; stale Apply, boolean value, extra fields and foreign owner refused. Undo/Redo, Save/Open and reset preserved complete documents/imports. Combined output included eleven families and exactly matched the individual party snapshot. A separate actual 400-pixel Retockin editor check opened all four previously supported families using one combined request, with zero commands, page errors or document/dialog overflow and unchanged project data.
 
 Build collection and direct composition refuse ControllerPartySelectors before output until dedicated delivery integration exists. Both actual HTTP fixtures verified that no pending Build directory was created. Evidence: `local-output/sdk-20260909/controller-party-selector-workflow-20261009/`, including compressed/raw HTTP checks and the existing-editor regression under `editor/`. Party editor controls and native Build delivery remain unfinished; party identity/effects and gameplay remain unresolved. No game, runtime attachment, install or disc export occurred. The full SDK goal remains active.
+
+
+## Party Selector Native Build — 2026-10-09
+
+Build now delivers source-qualified `ControllerPartySelectors` through dedicated one-byte composition, removing the former pending-family refusal. Independent qualification reconstructs the requested byte from the Retail sub-op's high five bits and validated selector, checks source/current dispatch and preimage, and verifies complete unique receipt identity, native hashes, operation, context, selector mask/preserved bits and exact before/after values. Missing/duplicate/forged receipts, unaudited bytes, altered extents/layout and overlaps (including no-op targets) refuse. Appended-NPC composition translates the qualified source span into its effective controller record while retaining source/effective/candidate hashes.
+
+The new receipt uses `party_selector_id`, field `script.party_selector`, scope `controller-party-selector-only` and dedicated `controller_party_selector_changes` metadata for compressed and streaming NPC paths. Build reports retain exact selector values and stable asset IDs; package summaries identify controller party selectors. Editor controls remain unfinished; runtime party identity, request activation and gameplay effects remain unresolved.
+
+Forty-nine focused Python checks and eight AST checks passed. New tests independently match complete normal/mixed/relocated MAN bytes, verify operation and bit3 retention, no-op overlap refusal, mask/bit/preimage/hash/value/type tampering, missing/duplicate receipts and unaudited bytes. All eleven families build from one synthetic record with independent literal expected output. The initial report check caught an omitted scope-to-value mapping, which was corrected before final verification.
+
+Five actual Retail packages passed Save/Open, Undo/Redo, Build assessment, integrity receipts and project/import/history preservation. Cave01 uses descriptor-compressed MAN; Rikuroa2 uses raw-streaming MAN. Normal outputs matched complete independent MAN expectations; appended outputs matched every original record after independently reproducing qualified spawn-record reindexing and authored changes. An initial fixture attempted Retockin, which has no qualified party targets; it produced no package and was replaced with supported Cave01 fixtures rather than admitting an unknown site.
+
+| Scene and scope | Build | Package SHA256 |
+| --- | --- | --- |
+| Cave01 party only | `5f92e9dfaae97089` | `f6fccae73d316a1422c28908dfc6a59f966847514b15ed9e587359e450258371` |
+| Rikuroa2 party only | `4e7a8b15e5098393` | `0287437022210c765f9da3c4c44d21cf0428255b949e5261389afd34f0a68ff5` |
+| Cave01 party/selector/branch | `3e5f9cbc1ba92557` | `865341a402c5615ae2b20527a4f1401e7d8788f133ef6e1abe3078a5bbfa6758` |
+| Cave01 mixed + NPC | `0f7965ef9126a5ca` | `4b2ae414bdf9c02383b4018cd038a7fef75404f3d20bc15db43aed76b29757d7` |
+| Rikuroa2 party/selector/branch/table + NPC | `e684cae12f39eb60` | `d67fc427ed7b11df041458ec2a831540bea913d34d1f8e52ce5113d8e81e6134` |
+
+Evidence: `local-output/sdk-20260909/controller-party-selector-build-20261009/`. Directory/source-file/ZIP receipts verified. Relocated runtime activation remains disabled by default. No game, runtime attachment, install or disc export occurred. Manual gameplay remains deferred and the full SDK goal stays active.
