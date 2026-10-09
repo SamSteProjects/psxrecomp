@@ -1,4 +1,5 @@
 """Reviewed persistent controller selector overrides, separate from actors."""
+from .controller_components import CONTROLLER_COMPONENTS
 from copy import deepcopy
 import re
 from hashlib import sha256
@@ -33,7 +34,7 @@ def validate(project, owner, value):
 
 
 def validate_components(project,owner,components):
-    if not isinstance(components,dict) or not components or set(components)-{COMPONENT,'ControllerBranches','ControllerTileRects','ControllerFades'}:
+    if not isinstance(components,dict) or not components or set(components)-CONTROLLER_COMPONENTS:
         raise ProjectError('Controller overrides cannot contain actor components')
     hashes=set()
     for family,value in components.items():
@@ -44,9 +45,12 @@ def validate_components(project,owner,components):
         elif family=='ControllerTileRects':
             from .controller_tile_rects import validate as validate_tiles
             checked=validate_tiles(project,owner,value)
-        else:
+        elif family=='ControllerFades':
             from .controller_fades import validate as validate_fades
             checked=validate_fades(project,owner,value)
+        else:
+            from .controller_tables import validate as validate_tables
+            checked=validate_tables(project,owner,value)
         hashes.add(checked['source_record_sha256'])
     if len(hashes)!=1:raise ProjectError('Controller components require the same Retail source hash')
     return deepcopy(components)
@@ -65,6 +69,9 @@ def compose(context,owner,components):
     if 'ControllerFades' in components:
         from .controller_fades import compose as compose_fades
         current=compose_fades(context._source,current,components['ControllerFades']['entries'])
+    if 'ControllerTableCopies' in components:
+        from .controller_tables import compose as compose_tables
+        current=compose_tables(context._source,current,components['ControllerTableCopies']['entries'])
     return current
 
 

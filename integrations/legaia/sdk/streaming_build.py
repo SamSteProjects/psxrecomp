@@ -1,4 +1,5 @@
 """Source-bound streaming scene preparation for the shared experimental exporter."""
+from .controller_components import CONTROLLER_COMPONENTS
 from copy import deepcopy
 from hashlib import sha256
 import re
@@ -36,7 +37,7 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
     facing_edits = {}
     branch_edits = {}
     for identifier, components in deepcopy(project.overrides).items():
-        if isinstance(components,dict) and {'ControllerSystemFlags','ControllerBranches','ControllerTileRects','ControllerFades'} & set(components):
+        if isinstance(components,dict) and CONTROLLER_COMPONENTS & set(components):
             from .controller_selector_build import collect
             if collect(project,identifier,components)[0]!=scene_id:raise ProjectError('Controller override belongs to another streaming scene')
             continue
@@ -285,7 +286,7 @@ def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False)
         from .actor_capacity import actor_pool_assessment
         pool_evidence = actor_pool_assessment(archive, candidate) if requests else None
         controller_selector_changes=[]
-        if {'ControllerSystemFlags','ControllerBranches','ControllerTileRects','ControllerFades'} & set(project.overrides.get(scene_id+'/controllers/man-p1/0000',{})):
+        if CONTROLLER_COMPONENTS & set(project.overrides.get(scene_id+'/controllers/man-p1/0000',{})):
             from .controller_selector_build import compose as compose_controller
             candidate,controller_selector_changes=compose_controller(project,scene_id,carrier.payload,candidate,appended=True)
         # The raw loader advances by words. Pad only after all MAN edits so
