@@ -1,5 +1,16 @@
 # Controller Source Coverage Survey
 
+## Controller Operand Scenario Format — 2026-10-09
+
+The editor now validates a dedicated controller flow receipt rather than treating arbitrary operands as branch proposals. Exact proof fields preserve imported/source/current/effective and report hashes, scene/controller ownership, family-specific operand identity, bounded typed values, Review key and read-only/unverified status. `decodeControllerFlowSource` checks the fresh backend receipt against the already-qualified snapshot or review and the selected representation. Null reset proposals remain explicit.
+
+Controller recipes use `legaia.script-sandbox-scenario.v4` and `controller_flow_proof`; existing Retail and branch v1–v3 recipes keep their original source shapes. Version4 retains bounded instruction/tick/assumption replay, including explicit system-selector assumptions. Downgraded controller recipes, upgraded unrelated recipes, foreign identities, extra fields and changed report/result data refuse. The scenario contains hypothetical steps and provenance, not embedded native source payloads or assertions of runtime behavior.
+
+Five focused Python checks, eight Node suites and four JS syntax checks passed. Thirty-six twelve-family fixture Current/Proposed/reset reports passed source decoding, canonical hash equality, independent scenario roundtrips and tampering refusal. Twenty-six actual Cave01/Rikuroa2 Current and reviewed flag-bit reports passed the same client path. Private HTTP checks refused stale/foreign/changed reviews and preserved complete project/history/imports and exact Save/Open. Evidence: `local-output/sdk-20260909/controller-flow-scenarios-20261009/`.
+
+The format and decoder are implemented; Current/Proposed scenario buttons remain disabled until the shared flow UI is wired to fresh qualification. No browser UI change, native Build, recomp compilation, runtime attachment, game, installation or disc export occurred. Native scheduling, story outcomes and gameplay remain unverified; the full SDK goal remains active and solo work continues.
+
+
 ## Controller Operand Flow Source Contract — 2026-10-09
 
 The read-only `/api/controller-flow-source` endpoint qualifies Current or reviewed Proposed controller reports through the existing twelve-family registry. The dedicated `legaia.controller-flow-source.v1` receipt binds the exact controller owner, active Edit scene, component, imported document, Retail/current/effective record hashes, source state key, report hash and optional reviewed operand/value/Review key. Current requests refuse proposal fields. Proposed requests rerun Review rather than trusting a supplied report; changed values, foreign owners and stale or mid-read source changes refuse. Returned reports and values are detached from project state.
