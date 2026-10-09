@@ -803,3 +803,25 @@ The browser harness initially needed a guarded startup probe and a unique Inspec
 selector; both were corrected before the final pass. No game, runtime attachment
 or native Build occurred. Runtime residency, animated palette behavior and gameplay
 remain unverified; the full SDK goal stays active.
+
+
+## Asset Source Context Classification — 2026-10-09
+
+The generic asset inspector previously declared its catalog display label `source`
+as read-only Retail, including authored TIM slots and retained clip records. The
+SDK descriptor now labels that field Source context and classifies it as Derived.
+A shared note distinguishes the catalog label from actual Retail origin and authored
+inputs in the recorded provenance. This corrects a misleading badge without
+inferring a resource origin from its name or identity. Concrete source metadata,
+Retail/authored binding fields, persistence and action capabilities are unchanged.
+
+Sixteen Python inspector schema checks and two Node inspector suites passed. The
+actual saved Vell editor workflow verified the authored texture source context has
+one Derived badge and no Retail badge, with unchanged exact model/texture material
+rows, filters and counterpart/Back navigation. The corrected 400px screenshot was
+inspected. Existing desktop/400px and synthetic pagination/callback checks passed,
+with zero page errors or authoring/scene/selection requests; project/imports/history
+and saved fixture files remained exact. Private evidence reuses
+`local-output/sdk-20260909/asset-material-bindings-20261009/` with an explicit
+`source_context_derived_not_retail` browser assertion. No game, runtime attachment
+or native Build occurred. Gameplay remains unverified; full SDK goal active.

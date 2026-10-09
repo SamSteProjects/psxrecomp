@@ -210,9 +210,9 @@ def inspector_schema():
             'properties': [
                 {'id': 'id', 'label': 'Stable ID', 'path': ['id'], 'type': 'asset-reference', 'state': 'derived'},
                 {'id': 'type', 'label': 'Record type', 'path': ['type'], 'type': 'string', 'state': 'derived'},
-                {'id': 'source', 'label': 'Source', 'path': ['source'], 'type': 'string', 'state': 'read-only-retail'},
+                {'id': 'source', 'label': 'Source context', 'path': ['source'], 'type': 'string', 'state': 'derived'},
             ],
-            'notes': ['Catalog identity and provenance do not establish runtime use. Supported edits remain in the source-verified tool.'],
+            'notes': ['Source context is a catalog label. Retail origin and authored inputs remain separate in the recorded provenance.', 'Catalog identity and provenance do not establish runtime use. Supported edits remain in the source-verified tool.'],
             'actions': [{'id': action, 'label': action_label, 'capability': capability}],
         }
     schema['asset_inspectors']['audio'] = 'AssetAudio'
