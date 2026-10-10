@@ -1,21 +1,25 @@
 const axes=['x','y','z'],fields=['projection','x','y','z','distance','yaw','pitch'];
 export const MIN_CAMERA_PITCH_DEGREES=.12*180/Math.PI;
+export const MIN_WORLD_CAMERA_PITCH_DEGREES=.05*180/Math.PI;
+const profiles={scene:{pitch:.12,distance:[20,1e8],target:1e12},world:{pitch:.05,distance:[10,1e6],target:1e8}},bounds=profile=>{if(!Object.hasOwn(profiles,profile))throw Error('Choose a supported camera display profile.');return profiles[profile];};
 const number=(value,lo,hi)=>typeof value==='number'&&Number.isFinite(value)&&value>=lo&&value<=hi;
-export function sceneCameraDraft(camera){
- if(!camera||!['perspective','orthographic'].includes(camera.projection)||!number(camera.yaw,-1e12,1e12)||!number(camera.pitch,camera.projection==='perspective'?.12:0,Math.PI/2)||!number(camera.distance,20,1e8)||!camera.target||axes.some(a=>!number(camera.target[a],-1e12,1e12)))throw Error('Current camera is outside the supported display bounds.');
+export function sceneCameraDraft(camera,profile='scene'){
+ const limit=bounds(profile);
+ if(!camera||!['perspective','orthographic'].includes(camera.projection)||!number(camera.yaw,-1e12,1e12)||!number(camera.pitch,camera.projection==='perspective'?limit.pitch:0,Math.PI/2)||!number(camera.distance,...limit.distance)||!camera.target||axes.some(a=>!number(camera.target[a],-limit.target,limit.target)))throw Error('Current camera is outside the supported display bounds.');
  let yaw=(camera.yaw*180/Math.PI)%360;if(yaw>180)yaw-=360;if(yaw< -180)yaw+=360;
  return {projection:camera.projection,...camera.target,distance:camera.distance,yaw,pitch:camera.pitch*180/Math.PI};
 }
-export function cameraFromSceneDraft(value){
- if(!value||Array.isArray(value)||Object.keys(value).sort().join('|')!==fields.slice().sort().join('|')||!['perspective','orthographic'].includes(value.projection)||axes.some(a=>!number(value[a],-1e12,1e12))||!number(value.distance,20,1e8)||!number(value.yaw,-360,360)||!number(value.pitch,value.projection==='perspective'?MIN_CAMERA_PITCH_DEGREES:0,90))throw Error('Use finite display coordinates, distance 20–100000000, yaw −360–360°, and a supported pitch (perspective at least '+MIN_CAMERA_PITCH_DEGREES+'°; orthographic 0–90°).');
- return {projection:value.projection,target:Object.fromEntries(axes.map(a=>[a,value[a]])),distance:value.distance,yaw:value.yaw*Math.PI/180,pitch:value.pitch===MIN_CAMERA_PITCH_DEGREES?.12:value.pitch*Math.PI/180};
+export function cameraFromSceneDraft(value,profile='scene'){
+ const limit=bounds(profile),minPitch=limit.pitch*180/Math.PI;
+ if(!value||Array.isArray(value)||Object.keys(value).sort().join('|')!==fields.slice().sort().join('|')||!['perspective','orthographic'].includes(value.projection)||axes.some(a=>!number(value[a],-limit.target,limit.target))||!number(value.distance,...limit.distance)||!number(value.yaw,-360,360)||!number(value.pitch,value.projection==='perspective'?minPitch:0,90))throw Error('Use finite display coordinates within ±'+limit.target+', distance '+limit.distance.join('–')+', yaw −360–360°, and a supported pitch (perspective at least '+minPitch+'°; orthographic 0–90°).' );
+ return {projection:value.projection,target:Object.fromEntries(axes.map(a=>[a,value[a]])),distance:value.distance,yaw:value.yaw*Math.PI/180,pitch:value.pitch===minPitch?limit.pitch:value.pitch*Math.PI/180};
 }
-export function parseSceneCameraDraft(value){
+export function parseSceneCameraDraft(value,profile='scene'){
  const result={projection:value?.projection};
  for(const key of fields.filter(k=>k!=='projection')){const raw=value?.[key];if(typeof raw!=='string'||!/^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[-+]?\d+)?$/i.test(raw.trim()))throw Error('Enter a decimal number for every camera field.');result[key]=Number(raw);}
- cameraFromSceneDraft(result);return result;
+ cameraFromSceneDraft(result,profile);return result;
 }
-export function mountSceneCameraInspector({after,getCamera,getContext,isBusy,available,apply,idPrefix='scene-camera',title='Scene camera coordinates',description=null}){
+export function mountSceneCameraInspector({after,getCamera,getContext,isBusy,available,apply,idPrefix='scene-camera',title='Scene camera coordinates',description=null,profile='scene'}){
  const button=document.createElement('button');button.id=idPrefix+'-inspector';button.textContent='Camera coordinates';after.after(button);
  const dialog=document.createElement('dialog');dialog.id=idPrefix+'-dialog';document.body.append(dialog);let context=null;
  dialog.innerHTML='<h2>Scene camera coordinates</h2><p>Target coordinates use the editor display space. They are not actor, guest RAM or confirmed live coordinates. Changing this camera changes the viewport only. Save it through Saved scene views to keep it in the project.</p><label>Projection<select data-camera="projection" aria-label="Camera projection"><option value="perspective">Perspective</option><option value="orthographic">Orthographic</option></select></label><div data-camera-fields></div><p data-camera-status role="status"></p><div class="dialog-actions"><button type="button" data-camera-refresh>Read current camera</button><button type="button" data-camera-apply>Set viewport camera</button><button type="button" data-camera-close>Close camera coordinates</button></div>';
@@ -25,10 +29,10 @@ export function mountSceneCameraInspector({after,getCamera,getContext,isBusy,ava
  for(const [key,label] of [['x','Target X'],['y','Target Y'],['z','Target Z'],['distance','Camera distance'],['yaw','Camera yaw degrees'],['pitch','Camera pitch degrees']]){const row=document.createElement('label');row.textContent=label;const input=document.createElement('input');input.type='text';input.inputMode='decimal';input.dataset.camera=key;input.setAttribute('aria-label',label);row.append(input);holder.append(row);}
  const status=dialog.querySelector('[data-camera-status]'),set=dialog.querySelector('[data-camera-apply]'),refresh=dialog.querySelector('[data-camera-refresh]');
  const read=()=>Object.fromEntries(fields.map(key=>[key,dialog.querySelector(`[data-camera="${key}"]`).value]));
- function update(){button.disabled=isBusy()||!available();if(!dialog.open)return;refresh.disabled=button.disabled;let error=null;try{parseSceneCameraDraft(read());}catch(e){error=e.message;}const stale=context!==getContext();set.disabled=button.disabled||stale||!!error;dialog.querySelectorAll('input,select').forEach(input=>input.disabled=button.disabled);status.textContent=stale?'Camera or scene changed. Read the current camera before setting a new view.':error??'Camera draft only; project and actor transforms are unchanged.';}
- function capture(){try{const value=sceneCameraDraft(getCamera());context=getContext();for(const key of fields)dialog.querySelector(`[data-camera="${key}"]`).value=String(value[key]);update();}catch(error){context=null;status.textContent=error.message;set.disabled=true;}}
+ function update(){button.disabled=isBusy()||!available();if(!dialog.open)return;refresh.disabled=button.disabled;let error=null;try{parseSceneCameraDraft(read(),profile);}catch(e){error=e.message;}const stale=context!==getContext();set.disabled=button.disabled||stale||!!error;dialog.querySelectorAll('input,select').forEach(input=>input.disabled=button.disabled);status.textContent=stale?'Camera or scene changed. Read the current camera before setting a new view.':error??'Camera draft only; project and actor transforms are unchanged.';}
+ function capture(){try{const value=sceneCameraDraft(getCamera(),profile);context=getContext();for(const key of fields)dialog.querySelector(`[data-camera="${key}"]`).value=String(value[key]);update();}catch(error){context=null;status.textContent=error.message;set.disabled=true;}}
  button.onclick=()=>{if(button.disabled)return;dialog.showModal();capture();};refresh.onclick=()=>{if(!refresh.disabled)capture();};dialog.querySelector('[data-camera-close]').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{context=null;});
  for(const input of dialog.querySelectorAll('input,select'))input.addEventListener('input',update);
- set.onclick=()=>{if(isBusy()||!available()||context!==getContext()){update();return;}try{const next=cameraFromSceneDraft(parseSceneCameraDraft(read()));apply(next);capture();status.textContent='Viewport camera set. Project and actor transforms are unchanged.';}catch(error){status.textContent=error.message;set.disabled=true;}};
+ set.onclick=()=>{if(isBusy()||!available()||context!==getContext()){update();return;}try{const next=cameraFromSceneDraft(parseSceneCameraDraft(read(),profile),profile);apply(next);capture();status.textContent='Viewport camera set. Project and actor transforms are unchanged.';}catch(error){status.textContent=error.message;set.disabled=true;}};
  update();return {update,close:()=>{if(dialog.open)dialog.close();},dispose:()=>{if(dialog.open)dialog.close();dialog.remove();button.remove();context=null;}};
 }
