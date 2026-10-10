@@ -1,3 +1,4 @@
+import {decodeWorldmapAssets} from './worldmap-assets.js';
 // Metadata evidence only: exporting never opens a source tool or authors bytes.
 const KINDS=new Set(['audio','actor','scene','template','worldmap','model','texture','animation','script','dialogue','flag','transition','collision','trigger','region']);
 const hash=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
@@ -18,21 +19,26 @@ export function assetEvidenceContext(state){
     build_input_key:state.build_review_source_key??null,project_path:state.project.path,project_name:state.project.name??null,
     active_scene_id:state.scene?.id??null,authored_assets:state.authored_assets??[]};
 }
-export function assetRecordDownload(record,context){
+export function assetRecordDownload(record,context,globalWorldmap=null){
   if(!KINDS.has(record?.type)||typeof record.id!=='string'||record.id.length>1024||!/^[a-z][a-z0-9-]*:\/\/[^\s\x00-\x20\x7f<>"']+$/.test(record.id)||!hash(context?.source_key))throw new Error('Asset evidence requires a supported stable record identity and current source key.');
   const report={schema_version:'legaia.asset-record-evidence.v1',read_only:true,source_context:context,record,
     limitations:['This is the selected editor catalog metadata snapshot, not a native payload, editable interchange file or Build package.',
       'Imported data, authored settings and separate project source memberships retain their original fields. Memberships and bindings do not prove runtime use.',
       'Source keys identify recorded inputs and observed source freshness; exporting does not reread or verify every native payload. Gameplay remains unverified.']};
+  if(record.projectGlobal){
+    if(!hash(context.project_assets_source_key)||record.projectGlobal.sourceKey!==context.project_assets_source_key)throw Error('Global asset evidence differs from its current project source.');
+    if(globalWorldmap!==null){const index=decodeWorldmapAssets(globalWorldmap,{sourceKey:context.project_assets_source_key,projectPath:context.project_path}),node=index.assets.find(r=>r.id===record.id);if(!node||record.type!=='worldmap'||record.sceneId!==null||JSON.stringify(node)!==JSON.stringify(record.data))throw Error('Selected global asset differs from its qualified ownership graph.');report.global_worldmap_index=index;report.limitations.push('The attached global index retains all three kingdom roots and complete recorded ownership links. The selected asset remains record.id; graph membership does not prove runtime residency.');}
+  }else if(globalWorldmap!==null)throw Error('A global ownership graph requires a selected global asset.');
   metadata(report);
   const text=JSON.stringify(report,null,2)+'\n';
   if(new TextEncoder().encode(text).byteLength>32*1024*1024)throw new Error('Asset evidence download exceeds 32 MiB.');
   return {text,filename:`legaia-asset-${record.type}-${context.source_key.slice(0,16)}.json`};
 }
-export function mountAssetRecordDownload(host,{record,getState,current,busy,onError,request=fetch}){
+export function mountAssetRecordDownload(host,{record,getState,current,busy,onError,getGlobalWorldmap=()=>null,request=fetch}){
   const context=assetEvidenceContext(getState()),snapshot=JSON.stringify(context);
   // Qualify the immutable export now, so unsupported metadata never enables it.
-  const file=assetRecordDownload(record,context),button=document.createElement('button'),status=document.createElement('p');
+  const ownership=record.projectGlobal?getGlobalWorldmap():null;if(record.projectGlobal&&!ownership)throw Error('Global ownership index changed. Refresh project resources before saving evidence.');
+  const file=assetRecordDownload(record,context,ownership),button=document.createElement('button'),status=document.createElement('p');
   button.textContent='Save asset evidence…';button.dataset.assetRecordDownload='';status.setAttribute('role','status');status.className='field-note';
   host.append(button,status);let pending=false;
   const fresh=()=>current()&&snapshot===JSON.stringify(assetEvidenceContext(getState()));
