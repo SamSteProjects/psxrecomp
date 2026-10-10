@@ -112,3 +112,40 @@ def apply_pixel(project,request,review_key):
     if not isinstance(review_key,str) or receipt['review_key']!=review_key:raise ProjectError('World pixel Apply requires the exact fresh Review receipt')
     project.set_texture_pixel_index(request['texture_id'],request['x'],request['y'],request['palette_entry'],request['effective_sha256'])
     return receipt
+
+
+def review_rectangle(project, request):
+    """Qualify a fill against inspected Current bytes without changing the project."""
+    from .worldmap_authoring import state_key
+    from .project import digest
+    from importer.texture_authoring import patch_tim_index_rectangle, texture_payload_changes
+    fields = {'texture_id','source_key','member_sha256','palette_index','x','y','width','height','palette_entry','effective_sha256'}
+    if not isinstance(request,dict) or set(request)!=fields or project.mode!='edit' or request['source_key']!=state_key(project) or not scene_for(request['texture_id']):
+        raise ProjectError('World rectangle Review requires the exact current Edit source and native texture')
+    if any(not isinstance(request[k],str) or not re.fullmatch('[0-9a-f]{64}',request[k]) for k in ('member_sha256','effective_sha256')):
+        raise ProjectError('World rectangle Review requires inspected TIM hashes')
+    if any(type(request[k]) is not int or not 0<=request[k]<=65535 for k in ('x','y')) or any(type(request[k]) is not int or not 1<=request[k]<=65535 for k in ('width','height')) or type(request['palette_index']) is not int or not 0<=request['palette_index']<=32767 or type(request['palette_entry']) is not int or not 0<=request['palette_entry']<256:
+        raise ProjectError('World rectangle Review requires bounded integer coordinates, dimensions and index')
+    source = project.texture_pixel_source(request['texture_id'],request['palette_index'],request['x'],request['y'])
+    if source['source_sha256']!=request['member_sha256'] or source['effective_sha256']!=request['effective_sha256']:
+        raise ProjectError('World rectangle source or effective TIM changed; preview Current again')
+    ctx = project._texture_context(request['texture_id'])
+    original = ctx.original_tim(request['texture_id'])
+    binding = project.texture_overrides.get(request['texture_id'])
+    effective = project.read_texture_replacement(binding) if binding else original
+    candidate = patch_tim_index_rectangle(effective,request['effective_sha256'],request['x'],request['y'],request['width'],request['height'],request['palette_entry'])
+    ctx.validate_replacement(request['texture_id'],candidate)
+    changes = texture_payload_changes(effective,candidate)
+    result = dict(schema_version='legaia.worldmap-rectangle-review.v1',project_path=str(project.root),request=dict(request),bpp=source['pixel']['bpp'],changed_pixel_count=changes['pixel_indices_changed'],candidate_tim_sha256=sha256(candidate).hexdigest(),changed=candidate!=effective,scope='existing-TIM-indexed-rectangle-only',project_changed=False,gameplay_verified=False)
+    result['review_key'] = digest(result)
+    if project.mode!='edit' or request['source_key']!=state_key(project):
+        raise ProjectError('World rectangle source changed during Review')
+    return result
+
+
+def apply_rectangle(project,request,review_key):
+    receipt = review_rectangle(project,request)
+    if not isinstance(review_key,str) or receipt['review_key']!=review_key:
+        raise ProjectError('World rectangle Apply requires the exact fresh Review receipt')
+    project.set_texture_index_rectangle(request['texture_id'],request['x'],request['y'],request['width'],request['height'],request['palette_entry'],request['effective_sha256'])
+    return receipt
