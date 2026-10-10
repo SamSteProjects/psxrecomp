@@ -1128,6 +1128,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-geometry.js": ("worldmap-geometry.js", "text/javascript"),
                  "/worldmap-resources.js": ("worldmap-resources.js", "text/javascript"),
                  "/worldmap-project-resources.js": ("worldmap-project-resources.js", "text/javascript"),
+                 "/worldmap-tim-palette.js": ("worldmap-tim-palette.js", "text/javascript"),
                  "/worldmap-texture.js": ("worldmap-texture.js", "text/javascript"),
                  "/worldmap-view-scope.js": ("worldmap-view-scope.js", "text/javascript"),
                  "/worldmap-views.js": ("worldmap-views.js", "text/javascript"),
@@ -1321,6 +1322,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'view_id','review_key','source_key'}:raise ProjectError('World view recall requires exact view and source keys')
                     from .worldmap_views import review
                     self._json(200,review(self.server.project,body['view_id'],body['review_key'],body['source_key']))
+                    return
+                if route in ('/api/worldmap-palette-review','/api/worldmap-palette-apply'):
+                    from .worldmap_texture_authoring import review_palette,apply_palette
+                    if route.endswith('-review'):
+                        self._json(200,review_palette(self.server.project,body))
+                    else:
+                        if set(body)!={'request','review_key'}:raise ProjectError('World palette Apply requires request and Review key')
+                        apply_palette(self.server.project,body['request'],body['review_key'])
+                        self._json(200,self.server.state())
                     return
                 if route == '/api/worldmap-texture':
                     if set(body) not in ({'texture_id','source_key','member_sha256','palette_index'},{'texture_id','source_key','member_sha256','palette_index','layer'}):raise ProjectError('World TIM preview requires exact texture, source, palette and optional layer fields')

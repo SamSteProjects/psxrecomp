@@ -1,6 +1,6 @@
 # World TIM Project Authoring and Build
 
-Offline checks passed on 2026-10-10. This slice connects existing native kingdom TIM payloads to project authoring, history, persistence and the normal SDK package Build. Dedicated World texture editing controls and a Current geometry texture preview still require editor integration. Current TIM-local pixels are now available as described below. Gameplay appearance is unverified; this is not full feature acceptance.
+Offline checks passed on 2026-10-10. This slice connects existing native kingdom TIM payloads to project authoring, history, persistence and the normal SDK package Build. World palette-word editing and Current TIM-local pixels are now connected as described below. Full replacement/index authoring controls and a Current geometry texture preview still require editor integration. Gameplay appearance is unverified; this is not full feature acceptance.
 
 ## Native source and project ownership
 
@@ -16,7 +16,7 @@ Thirteen focused Python checks passed with the retail disc enabled and no failur
 
 Private native evidence: `local-output/sdk-20260909/worldmap-texture-authoring-20261010/proof.json` and `project-proof.json`. All three first native TIMs matched the independent read-only decoder; a one-word palette edit produced exact complete decoded-pack reconstruction. The project probe passed palette authoring, Undo/Redo, Save/Open and one normal SDK package Build containing all three kingdom changes. Every packaged stream exactly matched the independently requested overlay and decoded to the complete expected pack. Imported documents stayed unchanged. Private outputs and retail payloads are not committed.
 
-The [Native World TIM Inspector](legaia-worldmap-texture.md) now offers separate Retail and Current TIM-local pixel layers. Dedicated World Review/Apply controls and viewport texture refresh remain next. No native recomp compile, game, runtime attachment, install or disc export ran. Runtime palette selection, animation and appearance remain unknown until gameplay verification. The full SDK goal remains active.
+The [Native World TIM Inspector](legaia-worldmap-texture.md) now offers separate Retail and Current TIM-local pixel layers. Full replacement/index authoring controls and viewport texture refresh remain next. No native recomp compile, game, runtime attachment, install or disc export ran. Runtime palette selection, animation and appearance remain unknown until gameplay verification. The full SDK goal remains active.
 
 ## Current Pixel Inspector — 2026-10-10
 
@@ -27,3 +27,13 @@ Layer and palette changes withdraw the old canvas and cancel pending qualificati
 Five focused pixel service tests cover literal edited pixels, retained Retail output, no-override behavior, immutable reads, stale source refusal before/after reading, unsupported palettes and old request compatibility. The two project-history checks remain green. Two Node suites qualify six native Retail/Current reports with eight forged-response refusals per report, and three native legacy reports with twelve refusal cases each. One JavaScript syntax and two Python AST checks passed.
 
 Private browser evidence: `local-output/sdk-20260909/worldmap-current-texture-20261010/`. The actual World resource dialog traversed all three kingdom TIM 0000 resources and verified both loaded canvas bytes against independent Retail/authored TIM decoding. Layer and palette changes withdrew the displayed canvas. Desktop and 400 px captures were inspected; no page errors or horizontal overflow occurred. The project document and authored state key stayed unchanged. No Build, game or runtime attachment ran in this preview slice.
+
+## World Palette Review and Apply — 2026-10-10
+
+The shared World TIM component now offers palette-word editing in both resource inspection entry points. Preview Current pixels first, choose an existing entry and unsigned16 word, then select Review palette word. The receipt displays Retail, Current and draft words plus RGB5/STP interpretation. Review does not write project data. Apply reviewed palette word requalifies the complete request and receipt against the current source key, disc/TIM provenance and effective payload before calling the existing texture palette command.
+
+Changing inputs or the selected pixel layer withdraws Review. Source withdrawal and Live mode refuse authoring. Apply closes the stale resource details after the command returns; it does not silently carry old resource provenance into the changed project. Existing project Undo/Redo and Save/Open persist the private TIM binding. A matching palette word is a no-op. One entry may affect many pixels/materials; runtime palette selection, animation and appearance remain unverified.
+
+Eight focused Python checks passed across the new Review/Apply gate, existing World project history and Retail/Current pixel services. Coverage includes immutable Review, independently fresh Apply, wrong/stale receipts, input bounds, no-op history, Undo/Redo, Save/Open and Live refusal. A Node receipt suite qualifies three independent native reviews and six actual browser receipts with ten forged-response refusals per receipt. Six JavaScript syntax checks and two Python AST checks passed.
+
+Private evidence: `local-output/sdk-20260909/worldmap-palette-editor-20261010/`. All three native kingdom TIM 0000 palette edits were compared against whole TIM hashes constructed by independently replacing only the selected two bytes. Actual editor workflows passed immutable Review, draft withdrawal, Apply, Undo/Redo/Undo and Save/Open; the entire project document was restored. New private content-addressed TIM files remain retained as usual. The readonly native probe independently matches each Review candidate to the literal bytes without changing its project. Desktop/400 px controls were inspected; no horizontal overflow or page errors occurred. No Build, native compile, game, runtime attachment, install or disc export ran in this editing slice.

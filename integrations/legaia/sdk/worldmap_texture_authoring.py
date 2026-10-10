@@ -41,3 +41,44 @@ def context(project,identifier):
         if binding['source_disc_sha256'] != disc_hash or binding['source_sha256'] != sha256(original).hexdigest():
             raise ProjectError('World TIM immutable source changed; refresh the project')
     return result
+
+
+def review_palette(project,request):
+    from .worldmap_authoring import state_key
+    from .project import digest
+    from importer.texture_authoring import patch_tim_palette_word
+    fields={'texture_id','source_key','member_sha256','palette_index','entry_index','word','effective_sha256'}
+    if not isinstance(request,dict) or set(request)!=fields or project.mode!='edit' or request['source_key']!=state_key(project) or not scene_for(request['texture_id']):
+        raise ProjectError('World palette Review requires the exact current Edit source and native texture')
+    for key in ('member_sha256','effective_sha256'):
+        if not isinstance(request[key],str) or not re.fullmatch('[0-9a-f]{64}',request[key]):
+            raise ProjectError('World palette Review requires inspected TIM hashes')
+    if type(request['palette_index']) is not int or not 0<=request['palette_index']<=32767:
+        raise ProjectError('World palette Review requires an explicit bounded palette index')
+    if type(request['entry_index']) is not int or not 0<=request['entry_index']<256 or type(request['word']) is not int or not 0<=request['word']<=65535:
+        raise ProjectError('World palette Review requires bounded integer entry and unsigned16 word')
+    source=project.texture_palette_source(request['texture_id'],request['palette_index'])
+    if source['source_sha256']!=request['member_sha256'] or source['effective_sha256']!=request['effective_sha256'] or request['entry_index']>=source['entry_count']:
+        raise ProjectError('World palette source or effective TIM changed; preview Current again')
+    ctx=project._texture_context(request['texture_id']);original=ctx.original_tim(request['texture_id'])
+    binding=project.texture_overrides.get(request['texture_id'])
+    effective=project.read_texture_replacement(binding) if binding else original
+    candidate=patch_tim_palette_word(effective,request['effective_sha256'],request['palette_index'],request['entry_index'],request['word'])
+    ctx.validate_replacement(request['texture_id'],candidate)
+    index=request['entry_index']
+    result=dict(schema_version='legaia.worldmap-palette-review.v1',project_path=str(project.root),
+        request=dict(request),retail_word=source['retail_words'][index],current_word=source['words'][index],
+        candidate_tim_sha256=sha256(candidate).hexdigest(),changed=candidate!=effective,
+        scope='existing-TIM-palette-word-only',project_changed=False,gameplay_verified=False)
+    result['review_key']=digest(result)
+    if project.mode!='edit' or request['source_key']!=state_key(project):
+        raise ProjectError('World palette source changed during Review')
+    return result
+
+
+def apply_palette(project,request,review_key):
+    receipt=review_palette(project,request)
+    if not isinstance(review_key,str) or receipt['review_key']!=review_key:
+        raise ProjectError('World palette Apply requires the exact fresh Review receipt')
+    project.set_texture_palette_word(request['texture_id'],request['palette_index'],request['entry_index'],request['word'],request['effective_sha256'])
+    return receipt
