@@ -41,6 +41,11 @@ def inspect(project, request):
         result.update(schema_version='legaia.worldmap-model-source.v2',layer=request['layer'],
                       source_tmd_sha256=sha256(original).hexdigest(),effective_tmd_sha256=sha256(effective).hexdigest(),
                       authored=effective!=original,retail_tmd_base64=base64.b64encode(original).decode('ascii'))
+    binding=project.model_overrides.get(request['asset_id'])
+    if layered and binding and binding['format']!='tmd-shape':
+        from importer.model_authoring import replace_model_content
+        _,changes=replace_model_content(original,source['decoded_member_sha256'],content,allow_normal_references=True)
+        result.update(schema_version='legaia.worldmap-model-source.v3',model_format=binding['format'],content_changes=sorted(changes,key=lambda r:r['byte_offset']))
     if project.mode!='edit' or request['source_key']!=state_key(project):
         raise ProjectError('World TMD source changed during inspection')
     return result

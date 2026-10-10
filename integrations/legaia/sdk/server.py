@@ -1211,7 +1211,7 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/worldmap-replacement-review", "/api/worldmap-replacement-apply", "/api/text-json-preview", "/api/text-json-import") else 32768
-            if urlsplit(self.path).path in ('/api/worldmap-model-replacement-review','/api/worldmap-model-replacement-apply','/api/worldmap-model-replacement-preview'):
+            if urlsplit(self.path).path in ('/api/worldmap-model-replacement-review','/api/worldmap-model-replacement-apply','/api/worldmap-model-replacement-preview','/api/worldmap-model-replacement-material-preview'):
                 request_limit = 24 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/audio-sample-source-review','/api/audio-sample-source-retain','/api/audio-sample-allocation-source-review','/api/audio-sample-allocation-source-retain'):
                 request_limit = 2 * 1024 * 1024
@@ -1355,6 +1355,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         if set(body)!={'request','review_key'}:raise ProjectError('World model Apply requires request and Review key')
                         apply(self.server.project,body['request'],body['review_key'])
                         self._json(200,self.server.state())
+                    return
+                if route == '/api/worldmap-model-replacement-material-preview':
+                    if set(body)!={'request','review_key'}:raise ProjectError('World material preview requires an exact request and Review key')
+                    from .worldmap_model_replacement import material_preview
+                    self._json(200,material_preview(self.server.project,body['request'],body['review_key']))
                     return
                 if route == '/api/worldmap-model-glb-export':
                     from .worldmap_model_glb import export

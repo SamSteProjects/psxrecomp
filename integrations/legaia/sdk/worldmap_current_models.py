@@ -29,7 +29,8 @@ def compose(project,geometry):
                 effective_tmd_sha256=sha256(replacement).hexdigest(),byte_length=len(replacement)))
     # Qualify every binding before changing any geometry, including failure paths.
     for asset,preview in prepared:asset['preview']=preview
+    extended=any(binding['format']!='tmd-shape' for identifier,binding in project.model_overrides.items() if (model_identity(identifier) or [None])[0]==scene)
     geometry['model_layer']='current'
-    geometry['model_authoring']=dict(schema_version='legaia.worldmap-current-models.v1',scene=scene,
-        disc_sha256=disc,edits=edits,scope='existing-TMD-vertex-normal-XYZ-only',gameplay_verified=False)
+    geometry['model_authoring']=dict(schema_version='legaia.worldmap-current-models.v2' if extended else 'legaia.worldmap-current-models.v1',scene=scene,
+        disc_sha256=disc,edits=edits,scope='existing-TMD-layout-content' if extended else 'existing-TMD-vertex-normal-XYZ-only',gameplay_verified=False)
     return geometry

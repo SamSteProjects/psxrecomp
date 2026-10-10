@@ -6,12 +6,15 @@ from .project import ProjectError
 from .worldmap_texture_authoring import scene_for,context,validate
 
 
-def compose(project,geometry):
+def compose(project,geometry,*,force=False):
     scene=geometry['scene'];source=geometry['source_record']
     bindings={identifier:binding for identifier,binding in project.texture_overrides.items() if scene_for(identifier)==scene}
     edits=[]
-    if bindings:
-        ctx=context(project,next(iter(bindings)))
+    if bindings or force or geometry.get('model_authoring',{}).get('schema_version')=='legaia.worldmap-current-models.v2':
+        identifiers=geometry['preview'].get('texture_catalog',{}).get('textures',[])
+        identifier=next(iter(bindings)) if bindings else next((t['semantic_id'] for t in identifiers if scene_for(t.get('semantic_id'))==scene),None)
+        if identifier is None:raise ProjectError('Current World material association requires a native kingdom texture catalog')
+        ctx=context(project,identifier)
         if ctx._digest!=source['disc_sha256']:
             raise ProjectError('World texture and geometry disc identities differ')
         catalog=TextureCatalog(scene,ctx._digest)
@@ -37,7 +40,8 @@ def compose(project,geometry):
             textures=[]
             for index,material in enumerate(preview['materials']):
                 if not material.get('textured') or material.get('source_selector_supported') is False or index not in bounds:
-                    textures.append(deepcopy(preview['textures'][index]));continue
+                    old=preview.get('textures',[])
+                    textures.append(deepcopy(old[index]) if index<len(old) else dict(associate_material(catalog,material),material_index=index));continue
                 textures.append(dict(associate_material(catalog,material,tuple(bounds[index])),material_index=index))
             preview['textures']=textures
         metrics=geometry['metrics'];metrics['texture_output_bytes']=sum(len(t.get('rgba',b''))+len(t.get('stp',b'')) for t in geometry['preview']['textures'])

@@ -40,3 +40,28 @@ class WorldModelReplacementTests(TestCase):
     latest=p.read_model_replacement(identifier,p.model_overrides[identifier]);restore={**request,'effective_sha256':sha256(latest).hexdigest(),'content_base64':base64.b64encode(original).decode()};receipt=review(p,restore);apply(p,restore,receipt['review_key']);self.assertNotIn(identifier,p.model_overrides);self.assertNotIn(identifier,ProjectService.open(p.save()).model_overrides);p.undo();self.assertEqual(p.read_model_replacement(identifier,p.model_overrides[identifier]),latest)
     p.mode='live'
     with self.assertRaises(ProjectError):review(p,current)
+
+ def test_content_versions_keep_legacy_mask_and_restore_history(self):
+  original=model(0x22);identifier='asset://map01/worldmap/models/0000';native=dict(disc_sha256='a'*64)
+  with TemporaryDirectory() as root:
+   p=ProjectService(Path(root));p.disc_path='fixture'
+   with patch('sdk.worldmap_model_binding.source',return_value=(original,native)),patch('sdk.worldmap_model_replacement.source',return_value=(original,native)),patch('sdk.worldmap_model_replacement.state_key',return_value='b'*64):
+    candidate=bytearray(original);candidate[48]^=1;candidate=bytes(candidate)
+    request=dict(asset_id=identifier,source_key='b'*64,member_sha256=sha256(original).hexdigest(),effective_sha256=sha256(original).hexdigest(),format='tmd',content_base64=base64.b64encode(candidate).decode())
+    with self.assertRaises(Exception):review(p,request)
+    request['format']='content-tmd';held=deepcopy(p._document());receipt=review(p,request)
+    self.assertEqual(receipt['schema_version'],'legaia.worldmap-model-replacement.v2');self.assertEqual(p._document(),held)
+    apply(p,request,receipt['review_key']);self.assertEqual(p.model_overrides[identifier]['format'],'tmd-content-v1')
+    material=bytearray(candidate);material[47]^=2;material=bytes(material)
+    request.update(effective_sha256=sha256(candidate).hexdigest(),content_base64=base64.b64encode(material).decode())
+    receipt=review(p,request);apply(p,request,receipt['review_key']);binding=deepcopy(p.model_overrides[identifier]);self.assertEqual(binding['format'],'tmd-content-v2')
+    self.assertEqual(p.read_model_replacement(identifier,binding),material)
+    p.undo();self.assertEqual(p.read_model_replacement(identifier,p.model_overrides[identifier]),candidate);p.redo()
+    self.assertEqual(ProjectService.open(p.save()).model_overrides,p.model_overrides)
+    xyz=bytearray(material);at=12+struct.unpack_from('<I',material,12)[0];struct.pack_into('<h',xyz,at,1)
+    request.update(format='tmd',effective_sha256=sha256(material).hexdigest(),content_base64=base64.b64encode(xyz).decode())
+    receipt=review(p,request);self.assertEqual(receipt['schema_version'],'legaia.worldmap-model-replacement.v2');apply(p,request,receipt['review_key'])
+    self.assertEqual(p.read_model_replacement(identifier,p.model_overrides[identifier]),bytes(xyz))
+    request.update(format='content-tmd',effective_sha256=sha256(xyz).hexdigest(),content_base64=base64.b64encode(original).decode())
+    receipt=review(p,request);self.assertTrue(receipt['clears_override']);apply(p,request,receipt['review_key']);self.assertEqual(p.model_overrides,{})
+    p.undo();self.assertEqual(p.read_model_replacement(identifier,p.model_overrides[identifier]),bytes(xyz))

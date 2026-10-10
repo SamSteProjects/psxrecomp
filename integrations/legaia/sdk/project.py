@@ -1485,8 +1485,8 @@ class ProjectService:
         """Audit against actual Retail ownership, retaining an existing topology binding."""
         from .worldmap_model_binding import owner
         if owner(asset_id):
-            from importer.model_authoring import replace_model_shape
-            return replace_model_shape(original,hashlib.sha256(original).hexdigest(),content)[1]
+            from importer.model_authoring import replace_model_content
+            return replace_model_content(original,hashlib.sha256(original).hexdigest(),content,allow_normal_references=True)[1]
         from importer.model_authoring import replace_model_content
         from importer.model_face_removal import qualify_face_removal, FORMAT
         binding = self.model_overrides.get(asset_id)

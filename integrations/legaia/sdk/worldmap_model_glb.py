@@ -21,7 +21,7 @@ def export(project, request):
         raise ProjectError('World Current model changed; inspect again before GLB export')
     content=base64.b64decode(source['tmd_base64'],validate=True)
     scene=request['asset_id'].split('/')[2]
-    view=geometry(project,scene,request['source_key'],texture_layer='current')
+    view=geometry(project,scene,request['source_key'],texture_layer='current',model_layer='current')
     asset=next((a for a in view['scene_graph']['assets'] if a['asset_id']==request['asset_id']),None)
     if asset is None or asset['source_record']!=source['source_record']:
         raise ProjectError('World GLB texture view lost native model ownership')

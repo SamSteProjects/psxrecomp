@@ -18,8 +18,8 @@ def source(project,identifier):
 
 
 def validate(identifier,binding):
-    if not isinstance(binding,dict) or binding.get('source_scene_id')!=owner(identifier) or binding.get('format')!='tmd-shape':
-        raise ProjectError('World model binding requires canonical native ownership and same-layout XYZ content')
+    if not isinstance(binding,dict) or binding.get('source_scene_id')!=owner(identifier) or binding.get('format') not in ('tmd-shape','tmd-content-v1','tmd-content-v2','tmd-content-v3'):
+        raise ProjectError('World model binding requires canonical native ownership and existing-layout qualified native content')
 
 
 def asset(project,identifier,binding):
