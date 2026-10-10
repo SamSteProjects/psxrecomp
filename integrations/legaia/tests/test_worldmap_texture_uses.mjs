@@ -1,0 +1,7 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+import {qualifyWorldTextureUses} from '../editor/worldmap-texture-uses.js';
+const out=process.argv[2],index=JSON.parse(fs.readFileSync(out+'/index.json')),receipts=JSON.parse(fs.readFileSync(out+'/receipts.json'));assert(receipts.length>=3);
+for(const value of receipts){const request=value.request,record=index.assets.find(r=>r.id===request.texture_id),root=index.assets.find(r=>r.id==='worldmap://'+record.source_scene+'/resources'),options={record,root,path:value.project_path,request,resources:index.assets},held=structuredClone(value),qualified=qualifyWorldTextureUses(value,options);qualified.assets.length=0;assert.deepEqual(value,held);
+ for(const mutate of [v=>v.extra=true,v=>v.request={...v.request,source_key:'0'.repeat(64)},v=>v.project_path='foreign',v=>v.source_record.disc_sha256='0'.repeat(64),v=>v.gameplay_verified=true,v=>v.project_changed=true,v=>v.assets[0].asset_id='foreign',v=>v.assets[0].source_instance_ids=[],v=>v.assets.push(structuredClone(v.assets[0])),v=>v.assets[0].materials[0].material_index=-1,v=>v.assets[0].materials[0].retail.source_ids=[],v=>v.assets[0].materials[0].current.source_ids=['foreign'],v=>v.assets[0].materials[0].current.reason=3,v=>v.assets.shift()]){const bad=structuredClone(value);mutate(bad);assert.throws(()=>qualifyWorldTextureUses(bad,options));}
+}
+console.log(`${receipts.length} native comparison receipts: detached metadata and fourteen forged source/membership/coverage refusals each passed.`);

@@ -1128,6 +1128,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-geometry.js": ("worldmap-geometry.js", "text/javascript"),
                  "/worldmap-resources.js": ("worldmap-resources.js", "text/javascript"),
                  "/worldmap-project-resources.js": ("worldmap-project-resources.js", "text/javascript"),
+                 "/worldmap-texture-uses.js": ("worldmap-texture-uses.js", "text/javascript"),
                  "/worldmap-tim-replacement.js": ("worldmap-tim-replacement.js", "text/javascript"),
                  "/worldmap-tim-palette.js": ("worldmap-tim-palette.js", "text/javascript"),
                  "/worldmap-texture.js": ("worldmap-texture.js", "text/javascript"),
@@ -1331,6 +1332,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                         if set(body)!={'request','review_key'}:raise ProjectError('World Retail restoration Apply requires request and Review key')
                         apply_restore(self.server.project,body['request'],body['review_key'])
                         self._json(200,self.server.state())
+                    return
+                if route == '/api/worldmap-texture-uses':
+                    from .worldmap_texture_uses import inspect
+                    self._json(200,inspect(self.server.project,body))
                     return
                 if route == '/api/worldmap-tim-source':
                     from .worldmap_texture_authoring import tim_source

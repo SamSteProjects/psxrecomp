@@ -1,6 +1,6 @@
 # World TIM Project Authoring and Build
 
-Offline checks passed on 2026-10-10. This slice connects existing native kingdom TIM payloads to project authoring, history, persistence and the normal SDK package Build. World palette-word editing and Current TIM-local pixels are now connected as described below. Full replacement and rectangle authoring controls still require editor integration. Current viewport textures and exports are now composed as described below. Gameplay appearance is unverified; this is not full feature acceptance.
+Offline checks passed on 2026-10-10. This slice connects existing native kingdom TIM payloads to project authoring, history, persistence and the normal SDK package Build. World palette-word editing and Current TIM-local pixels are now connected as described below. Full replacement, rectangle fill/copy, PNG editing and selected Retail restoration are connected through the shared inspectors as described below. Current viewport textures and exports are now composed as described below. Gameplay appearance is unverified; this is not full feature acceptance.
 
 ## Native source and project ownership
 
@@ -107,3 +107,13 @@ The World adapter has no field-scene material proposal action: Current World tex
 Preview Current, then choose **Review Retail restoration** in either World texture inspector. The receipt reports palette words, image bytes and indexed pixels returning to Retail, the exact Retail TIM hash, and whether an override binding exists. Review changes nothing. **Apply reviewed Retail restoration** requalifies the receipt and removes only this texture binding through one ordinary Undo command; neighboring authored textures and private input files stay intact.
 
 Discarding the restoration review, choosing a file, reviewing a replacement, or changing source/preview withdraws its Apply eligibility. A binding containing exact Retail bytes can still be removed even when pixel changes are zero. With no binding, Review reports Already Retail and Apply is disabled; the service no-op adds no history. Undo restores the complete previous binding, Redo removes it again, and Save/Open preserves either result. Runtime palette selection and gameplay appearance remain unverified.
+
+## World Texture Material Comparison — 2026-10-10
+
+Preview Current in either World texture inspector, then choose **Inspect Retail/Current material candidates**. Each result compares Retail and Current static sampled address candidates for a material, retains the geometry asset and complete source instance identities, and opens the existing geometry inspector. Its representative/all-instance actions provide the existing route to the World viewport. Project resource details also retain their navigation history.
+
+The report uses the same native decoder and authored texture composition as the viewport. It qualifies the current project source key, original/effective TIM hashes and geometry disc identity, and returns metadata only. It does not change authoring state or history. Changing preview layer/palette, withdrawing the source or closing the inspector cancels pending work and clears results.
+
+These are static address candidates, including potentially shared image/CLUT uploads. They do not establish runtime residency, actual material palette ownership or visibility. Missing/ambiguous sampling can stop early; an absent link does not prove no dependency. No runtime resource identities are invented.
+
+Five focused Python checks and three Node suites passed. Six native comparison receipts reject fourteen forged source/membership/coverage variants each. Actual source-resource editor workflows cover all three kingdoms, exact Retail membership/material coverage, Current relationship results, preview withdrawal and navigation to model inspectors. Wide/400px captures were inspected; no page errors or horizontal overflow occurred. Fixture documents remained unchanged. Evidence: `local-output/sdk-20260909/worldmap-texture-uses-20261010/`. No SDK Build, native compilation, game launch or runtime attachment was performed for this slice; gameplay remains unverified.
