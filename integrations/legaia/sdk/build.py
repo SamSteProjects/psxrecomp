@@ -859,11 +859,15 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             growth_requests.extend(animation_requests)
             audit_edits.extend(animation_changes)
         from importer.model_authoring import model_shape_overlays
+        from .worldmap_model_binding import owner as world_model_owner,asset as world_model_asset
         model_assets, model_payloads = {}, {}
         for identifier, binding in sorted(getattr(project, 'model_overrides', {}).items()):
             if identifier in deferred_models:
                 continue
             model_payloads[identifier] = project.read_model_replacement(identifier, binding)
+            if world_model_owner(identifier):
+                model_assets[identifier],_=world_model_asset(project,identifier,binding)
+                continue
             document = project.imports[binding['source_scene_id']]
             model_assets[identifier] = next(a for a in document['assets']['models'] if a['semantic_id'] == identifier)
         shape_overlays, shape_changes = model_shape_overlays(archive, model_assets, model_payloads,
@@ -872,7 +876,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             if _hash(_image.read_user(0, overlay['offset'], overlay['size'], (_image.size // 2352)*2048)) != overlay['expected_sha256']:
                 raise BuildError('Model shape overlay differs from its original disc span')
             overlays.append({**overlay, 'scene':'shared-model-source', 'file':f"assets/model-shape-{overlay['offset']:08x}.bin"})
-        audit_edits.extend({**change, 'scene':project.imports[project.model_overrides[change['semantic_id']]['source_scene_id']]['scene']['name']} for change in shape_changes)
+        audit_edits.extend({**change, 'scene':(change['semantic_id'].split('/')[2] if world_model_owner(change['semantic_id']) else project.imports[project.model_overrides[change['semantic_id']]['source_scene_id']]['scene']['name'])} for change in shape_changes)
         for scene_id, bindings in sorted(animation_edits.items()):
             if scene_id in animation_ledgers:
                 continue  # The expanded bank already composes all shared channel edits.

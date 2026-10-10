@@ -35,6 +35,10 @@ def prepare_model_growth(project, archive):
     key = authored_state_key(project)
     groups, documents = {}, set()
     for identifier, binding in sorted(project.model_overrides.items()):
+        from .worldmap_model_binding import owner,validate
+        if owner(identifier):
+            validate(identifier,binding)
+            continue  # Existing-layout World carriers use the shared source-span serializer below.
         scene = binding['source_scene_id']
         document = project.imports.get(scene)
         if document is None:

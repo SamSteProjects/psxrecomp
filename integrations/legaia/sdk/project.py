@@ -1473,6 +1473,8 @@ class ProjectService:
         self.redo_stack.clear()
 
     def _model_source(self, asset_id: str, scene_id: str):
+        from .worldmap_model_binding import owner,source
+        if owner(asset_id):return source(self,asset_id)[0]
         from .model_sources import ModelSourceService
         service=getattr(self,'_model_source_service',None)
         if service is None:
@@ -1481,6 +1483,10 @@ class ProjectService:
 
     def _model_candidate_changes(self, asset_id, original, content):
         """Audit against actual Retail ownership, retaining an existing topology binding."""
+        from .worldmap_model_binding import owner
+        if owner(asset_id):
+            from importer.model_authoring import replace_model_shape
+            return replace_model_shape(original,hashlib.sha256(original).hexdigest(),content)[1]
         from importer.model_authoring import replace_model_content
         from importer.model_face_removal import qualify_face_removal, FORMAT
         binding = self.model_overrides.get(asset_id)
@@ -1511,6 +1517,8 @@ class ProjectService:
                 or any(not isinstance(binding[k],str) or len(binding[k]) != 64 or any(c not in '0123456789abcdef' for c in binding[k]) for k in ('asset_sha256','source_sha256'))
                 or not isinstance(binding['source_scene_id'], str)):
             raise ProjectError('Invalid model shape binding')
+        from .worldmap_model_binding import owner,validate
+        if owner(asset_id):validate(asset_id,binding)
         path = self.root / 'Authored' / 'Models' / (binding['asset_sha256'] + '.tmd')
         if not path.resolve().is_relative_to(self.root) or path.stat().st_size != binding['byte_length']:
             raise ProjectError('Model shape path or size differs from binding')
@@ -2029,6 +2037,7 @@ class ProjectService:
             self.set_model_replacement(asset_id, replacement)
 
     def set_model_replacement(self, asset_id: str, content: bytes) -> None:
+        from .worldmap_model_binding import owner as world_model_owner
         if self.mode != 'edit':
             raise ProjectError('Model shape authoring requires Edit mode')
         if not isinstance(asset_id, str) or len(asset_id) > 512 or not isinstance(content, bytes) or not 1 <= len(content) <= 4*1024*1024:
@@ -2045,7 +2054,7 @@ class ProjectService:
         binding = {'format': ('tmd-content-v3' if has_normal_references else
                               'tmd-content-v2' if has_materials else
                               'tmd-content-v1' if any(row['kind'] == 'primitive' for row in audit) else 'tmd-shape'),
-                   'source_scene_id':self.active_scene,'source_sha256':source_hash,
+                   'source_scene_id':(world_model_owner(asset_id) or self.active_scene),'source_sha256':source_hash,
                    'asset_sha256':hashlib.sha256(content).hexdigest(),'byte_length':len(content)} if audit else None
         if before and before['format'] == 'tmd-face-addition-v1':
             from .model_face_addition import base_content
@@ -4072,6 +4081,11 @@ class ProjectService:
                                 "script_id": "script://" + identifier.removeprefix("scene://")})
         for identifier, binding in sorted(self.model_overrides.items()):
             scene_id = binding['source_scene_id']
+            from .worldmap_model_binding import owner as world_model_owner,asset as world_model_asset
+            if world_model_owner(identifier):
+                _,native=world_model_asset(self,identifier,binding)
+                records.append(dict(id=identifier,kind='model',name='World model '+identifier.rsplit('/',1)[-1],scene_id=None,source_scene=identifier.split('/')[2],changes=['TMD shape replacement'],authored=deepcopy(binding),source_record=native))
+                continue
             asset = next(a for a in self.imports[scene_id]['assets']['models'] if a['semantic_id'] == identifier)
             records.append({'id':identifier, 'kind':'model', 'name':'Model shape ' + identifier.rsplit('/',1)[-1],
                             'scene_id':scene_id, 'source_scene':self.imports[scene_id]['scene']['name'],
