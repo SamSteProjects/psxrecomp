@@ -1132,6 +1132,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-model-vector.js": ("worldmap-model-vector.js", "text/javascript"),
                  "/worldmap-model-restoration.js": ("worldmap-model-restoration.js", "text/javascript"),
                  "/worldmap-model-allocation.js": ("worldmap-model-allocation.js", "text/javascript"),
+                 "/worldmap-model-faces.js": ("worldmap-model-faces.js", "text/javascript"),
                  "/worldmap-model-face-replay.js": ("worldmap-model-face-replay.js", "text/javascript"),
                  "/worldmap-model-vector-replay.js": ("worldmap-model-vector-replay.js", "text/javascript"),
                  "/worldmap-model-object.js": ("worldmap-model-object.js", "text/javascript"),

@@ -27,7 +27,7 @@ export function allocateWorldVectors(source,requests){
  }
  worldModelContentAudit(candidate,candidate);return candidate;
 }
-export async function replayWorldVectors(retail,base,binding){
+export async function replayWorldVectors(retail,base,binding,{withFaces=false}={}){
  const fields=['format','source_scene_id','source_sha256','asset_sha256','byte_length','base_binding','ledger'];
  if(!exact(binding,fields)||!['world-tmd-vector-allocation-v1','world-tmd-vector-content-v1','world-tmd-face-addition-v1'].includes(binding.format)||!/^worldmap:\/\/map0[123]\/models$/.test(binding.source_scene_id)||binding.source_sha256!==await vectorDigest(retail)||base.length!==retail.length)fail('World vector retained base ownership differs.');
  const retained=binding.base_binding;
@@ -40,7 +40,7 @@ export async function replayWorldVectors(retail,base,binding){
  const ledger=binding.ledger,topology=binding.format==='world-tmd-face-addition-v1',batches=topology&&ledger?.schema_version==='legaia.model-face-addition-ledger.v1',member=batches?'batches':'operations';
  if(!exact(ledger,['schema_version','source_sha256','source_byte_length',member])||!(topology?['legaia.model-face-addition-ledger.v1','legaia.model-face-addition-ledger.v2','legaia.model-face-addition-ledger.v5']:['legaia.model-face-addition-ledger.v5']).includes(ledger.schema_version)||ledger.source_sha256!==await vectorDigest(base)||ledger.source_byte_length!==base.length||!Array.isArray(ledger[member])||!ledger[member].length||ledger[member].length>(batches?8:64)||new TextEncoder().encode(JSON.stringify(ledger)).length>2*1024*1024)fail('World native ledger ownership differs.');
  const operations=batches?ledger.batches.map(op=>{if(!exact(op,['input_sha256','proposed_sha256','additions']))fail('World face batch schema differs.');return {...op,kind:'add_faces'};}):ledger.operations;
- let faces=topology?worldFaceIdentities(base,ledger.source_sha256):null,faceCount=0,faceBatches=0;
+ let faces=worldFaceIdentities(base,ledger.source_sha256),faceCount=0,faceBatches=0;
  let current=base,total=0;
  let allocations=0,edits=0;
  for(const operation of operations){
@@ -63,7 +63,7 @@ export async function replayWorldVectors(retail,base,binding){
   if(total>4096||operation.proposed_sha256!==await vectorDigest(current))fail('World vector operation output differs.');
  }
  if(topology?!faceCount:!allocations||binding.format==='world-tmd-vector-content-v1'&&!edits)fail('World content binding lacks its native allocation/edit lineage.');
- if(current.length!==binding.byte_length||await vectorDigest(current)!==binding.asset_sha256)fail('World vector binding output differs.');return current;
+ if(current.length!==binding.byte_length||await vectorDigest(current)!==binding.asset_sha256)fail('World vector binding output differs.');return withFaces?{bytes:current,faces}:current;
 }
 
 export function worldContentRuns(before,after){
