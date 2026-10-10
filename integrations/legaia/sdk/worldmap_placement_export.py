@@ -11,7 +11,7 @@ from .worldmap_authoring import state_key
 from .worldmap_placements import context,review,patch
 from .worldmap_export import MAX_RESPONSE_BYTES
 
-def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entity_id=None):
+def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entity_id=None,batch_proposal=None):
     if scene not in ('map01','map02','map03') or project.mode!='edit' or not project.disc_path:
         raise ProjectError('World placement export requires a supported kingdom in Edit mode')
     if scope not in ('source-scene','ground','selected') or (scope=='selected')!=(entity_id is not None):
@@ -24,6 +24,16 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
             raise ProjectError('World placement export source inputs changed; inspect again')
     current()
     representation='current-source';review_key=None;binding_override=None
+    if batch_proposal is not None:
+        if proposal is not None or not isinstance(batch_proposal,dict) or set(batch_proposal)!={'record_ids','delta','shared_record','review_key'}:
+            raise ProjectError('Batch world export requires only the reviewed batch identity and deltas')
+        from .worldmap_placement_batch import review as review_batch
+        batch_proposal=deepcopy(batch_proposal)
+        assessed=review_batch(project,scene,key,batch_proposal['record_ids'],batch_proposal['delta'],batch_proposal['shared_record'])
+        if batch_proposal['review_key']!=assessed['review_key']:
+            raise ProjectError('Batch world export review is stale; review again')
+        binding_override=(assessed['after'] or {}).get('WorldMapPlacements')
+        representation='proposed-source';review_key=batch_proposal['review_key']
     if proposal is not None:
         if not isinstance(proposal,dict) or set(proposal)!={'record_id','values','shared_record','review_key'}:
             raise ProjectError('Proposed world export requires only the reviewed transform and identity')
@@ -39,7 +49,7 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
     if (source['disc_sha256']!=provenance['source_disc_sha256'] or source['map_sha256']!=provenance['source_map_sha256'] or
             source['floor_lut_sha256']!=provenance['source_floor_lut_sha256']):
         raise ProjectError('World placement geometry and authored transform sources differ')
-    active=binding_override if proposal is not None else binding
+    active=binding_override if proposal is not None or batch_proposal is not None else binding
     exported_map,_,exported_seeds=patch(raw,records,(active or {}).get('entries',{}),scene=scene,floor=floor)
     indexed={p['entity_id']:p for p in exported_seeds}
     changed=0
@@ -62,6 +72,7 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
         source_map_sha256=sha256(raw).hexdigest(),review_key=review_key,proposal=deepcopy(proposal),
         authored_records=deepcopy((active or {}).get('entries',{})),changed_source_entity_count=changed,
         override_scope='WorldMapPlacements',gameplay_verified=False,project_changed=False)
+    if batch_proposal is not None:metadata['batch_proposal']=deepcopy(batch_proposal)
     geometry['limitations'].append('Only WorldMapPlacements record transforms are composed; geometry, textures and ground remain retail source assets.')
     glb,audit=encode_worldmap_glb(geometry,key,scope,entity_id,placement_authoring=metadata)
     current()
@@ -69,6 +80,7 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
     response=dict(schema_version='legaia.worldmap-placement-export-response.v1',scene=scene,source_key=key,
         representation=representation,review_key=review_key,scope=scope,entity_id=entity_id,glb_base64=base64.b64encode(glb).decode('ascii'),
         gameplay_verified=False,project_changed=False)
+    if batch_proposal is not None:response['batch_proposal']=deepcopy(batch_proposal)
     if len(json.dumps(dict(response,audit=audit),allow_nan=False).encode())+65536>MAX_RESPONSE_BYTES:
         raise ProjectError('World placement export response exceeds64 MiB')
     current()

@@ -1287,6 +1287,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                               if route.endswith('-review') else export_file(self.server.project, body['scene'], body['source_key']))
                     self._json(200, result)
                     return
+                if route == '/api/export/worldmap-placement-batch':
+                    if set(body) != {'scene','source_key','scope','batch_proposal'} or body['scope'] not in ('source-scene','ground'):
+                        raise ProjectError('Batch placement export requires exact source, scene/ground scope and optional reviewed batch')
+                    from .worldmap_placement_export import export
+                    self._json(200,export(self.server.project,body['scene'],body['source_key'],scope=body['scope'],batch_proposal=body['batch_proposal']))
+                    return
                 if route == '/api/worldmap-placement-batch-review':
                     if set(body) != {'scene', 'source_key', 'record_ids', 'delta', 'shared_record'}:
                         raise ProjectError('Batch placement review requires exact records, deltas and shared scope')
