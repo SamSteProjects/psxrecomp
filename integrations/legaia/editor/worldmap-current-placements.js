@@ -10,11 +10,11 @@ const canonical = value => Array.isArray(value) ? value.map(canonical) :
 const same = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
 const matrixMatches = (a, b) => Array.isArray(a) && Array.isArray(b) && a.length === 16 && b.length === 16 &&
   a.every((n, i) => Number.isFinite(n) && Math.abs(n - b[i]) <= 1e-12);
-function nativeMatches(a, b, key = '') {
+export function nativeWorldPlacementMatches(a, b, key = '') {
   if (key === 'source_to_world' || key === 'retail_source_to_world') return b === null ? a === null : matrixMatches(a, b);
-  if (Array.isArray(b)) return Array.isArray(a) && a.length === b.length && b.every((v, i) => nativeMatches(a[i], v));
+  if (Array.isArray(b)) return Array.isArray(a) && a.length === b.length && b.every((v, i) => nativeWorldPlacementMatches(a[i], v));
   if (b && typeof b === 'object') return a && typeof a === 'object' && !Array.isArray(a) &&
-    same(Object.keys(a).sort(), Object.keys(b).sort()) && Object.keys(b).every(k => nativeMatches(a[k], b[k], k));
+    same(Object.keys(a).sort(), Object.keys(b).sort()) && Object.keys(b).every(k => nativeWorldPlacementMatches(a[k], b[k], k));
   return a === b;
 }
 function mapBytes(value) {
@@ -27,8 +27,7 @@ function seedMatches(entity, seed) {
   return Object.entries(seed).every(([key, value]) => key === 'source_to_world' ? matrixMatches(entity[key], value) : same(entity[key], value));
 }
 
-// Current-only adapter: Proposed receipts require their own Current lineage and
-// reviewed proposal qualification before they can use this rendering path.
+// Proposed receipts enter only through the separate Current/Review-bound adapter.
 export async function qualifyCurrentWorldPlacements(retail, current, options) {
   const scene = retail?.scene, meta = current?.placement_authoring, graph = current?.scene_graph;
   if (current?.representation !== 'current-source' || current.placement_layer !== 'current' || current.allocation_proposal !== null ||
@@ -55,7 +54,7 @@ export async function qualifyCurrentWorldPlacements(retail, current, options) {
       !equalWorldPlacementBytes(currentBytes, exportedBytes)) fail('Current World native byte layer hashes differ.');
   const replay = await replayWorldPlacementAllocations(raw, meta.floor_lut, scene, meta.allocation_binding, meta.source_record);
   const composed = await composeWorldPlacementTransforms(raw, replay.bytes, meta.floor_lut, scene, meta.authored_records);
-  if (!equalWorldPlacementBytes(composed, currentBytes) || !nativeMatches(replay.allocations, meta.authored_allocations) ||
+  if (!equalWorldPlacementBytes(composed, currentBytes) || !nativeWorldPlacementMatches(replay.allocations, meta.authored_allocations) ||
       meta.authored_entity_count !== replay.allocations.length) fail('Current World allocation receipt differs from independent complete MAP replay.');
   const original = await decodeWorldPlacementSeeds(raw, meta.floor_lut, scene);
   const decoded = await decodeWorldPlacementSeeds(composed, meta.floor_lut, scene);
@@ -94,7 +93,7 @@ export async function qualifyCurrentWorldPlacements(retail, current, options) {
       }
     }
     // Audit matrices are checked above against canonical replay, with exact integer fields.
-    if (!nativeMatches(a, b)) fail('Current World scene entity lost its original or authored native identity.');
+    if (!nativeWorldPlacementMatches(a, b)) fail('Current World scene entity lost its original or authored native identity.');
   }
   const assets = new Map(graph.assets.map(a => [a.asset_id, a])), drawn = expected.reduce((count, e) => {
     const triangles = assets.get(e.asset_id)?.preview?.triangles;
@@ -128,4 +127,29 @@ export async function qualifyCurrentWorldPlacements(retail, current, options) {
     return {...entity, geometry_key: entity.asset_id, model_to_scene: matrix,
       authored_source_position: entity.source_position, preview_layer: 'Current authored seeds'};
   })};
+}
+
+export async function qualifyProposedWorldPlacements(retail, current, proposed, review, options) {
+  await qualifyCurrentWorldPlacements(retail, current, options);
+  const before = current.placement_authoring, after = proposed?.placement_authoring;
+  if (!review || proposed?.representation !== 'proposed-source' ||
+      !same(proposed.allocation_proposal, {requests: review.requests, review_key: review.review_key}) ||
+      review.source_key !== current.project_source_key || review.current_map_sha256 !== before.current_map_sha256 ||
+      !after || after.current_map_sha256 !== before.current_map_sha256 ||
+      after.current_map_base64 !== before.current_map_base64 || after.retail_map_base64 !== before.retail_map_base64 ||
+      after.exported_map_sha256 !== review.proposed_map_sha256 || after.exported_map_base64 !== review.proposed_map_base64 ||
+      !same(after.authored_records, before.authored_records) || !same(after.allocation_binding, review.binding) ||
+      !same(review.before_binding, before.allocation_binding) ||
+      !Array.isArray(review.binding?.operations) || review.binding.operations.length !== (before.allocation_binding?.operations.length ?? 0) + 1 ||
+      !same(review.binding.operations.slice(0,-1), before.allocation_binding?.operations ?? []) ||
+      !same(review.binding.operations.at(-1).requests, review.requests) ||
+      !same(proposed.scene_graph?.assets, current.scene_graph.assets) ||
+      !same(proposed.model_authoring, current.model_authoring) || !same(proposed.texture_authoring, current.texture_authoring))
+    fail('Proposed World placements differ from the qualified Current scene and reviewed allocation.');
+  const currentView = structuredClone(proposed);
+  currentView.representation = 'current-source'; currentView.allocation_proposal = null;
+  currentView.placement_authoring.current_map_sha256 = after.exported_map_sha256;
+  currentView.placement_authoring.current_map_base64 = after.exported_map_base64;
+  const view = await qualifyCurrentWorldPlacements(retail, currentView, options);
+  return {...view, entities: view.entities.map(entity => ({...entity, preview_layer: 'Proposed authored seeds'}))};
 }

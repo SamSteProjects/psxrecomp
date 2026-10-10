@@ -37,7 +37,7 @@ def source(project, scene, key):
             'Clones are walk-decoration source seeds, not scripted NPCs or placed landmark actors.',
             'Complete donor placement metadata is copied; target terrain selectors and cell upper flags are preserved.',
             'Collision, script side effects, native visibility and resting positions require gameplay verification.',
-            'Current scene graph composition and editor controls remain unfinished.'])
+            'Authored placement identity remains separate from Retail instances and live observations.'])
     if len(json.dumps(result, allow_nan=False).encode('utf-8')) > 2*1024*1024:
         raise ProjectError('World placement allocation source exceeds its response budget')
     _fresh(project, key)
