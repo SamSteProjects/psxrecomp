@@ -23,3 +23,5 @@ Actual browser workflows instrument the real SceneRenderer draw list and transfo
 Desktop/400px layouts and group/single-instance viewport output were inspected; no page errors occurred. Private evidence is retained under `local-output/sdk-20260909/worldmap-view-scope-20261009/`. All fixture files, imports, authored inputs, field scene, selection and history remain unchanged. No Apply, Build, game or runtime attachment occurred. This is source-scene inspection; manual gameplay verification remains deferred and the full SDK goal remains active.
 
 Camera, display layer, scope, selected source instance and wireframe can now be retained in [Saved World Inspection Views](legaia-worldmap-views.md) through project metadata and Undo/Save/Open. Recall freshly checks native ownership; it does not author visibility or transforms.
+
+The source Inspector can now open [all native owners of the selected asset](legaia-worldmap-asset-owners.md) in the existing batch authoring editor. Viewport isolation remains display-only; native owner scope and shared-record consent govern edits.
