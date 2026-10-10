@@ -1,3 +1,4 @@
+import {currentWorldModelView} from './worldmap-current-models.js';
 import {worldPlacementAssetOwners} from './worldmap-asset-owners.js';
 import {mountSceneCameraInspector} from './scene-camera-inspector.js';
 import {mountWorldmapViews} from './worldmap-views.js';
@@ -6,7 +7,7 @@ import {mountWorldmapResources} from './worldmap-resources.js';
 import {decodeWorldPlacements,worldPlacementComparison,validValues} from './worldmap-placement-state.js';
 import {renderComponentSection,bindComponentActions} from './component-inspector.js';
 import {SceneRenderer} from './scene-renderer.js';
-import {worldmapSceneView,worldmapHierarchyRows,worldmapCurrentTextureView} from './worldmap-scene.js';
+import {worldmapSceneView,worldmapHierarchyRows} from './worldmap-scene.js';
 const scenes=['map01','map02','map03'],hash=value=>typeof value==='string'&&/^[0-9a-f]{64}$/.test(value);
 const finite=value=>typeof value==='number'&&Number.isFinite(value),fail=message=>{throw new Error(message);};
 const MAX_GLB=32*1024*1024,MAX_EXPORT_BASE64=Math.ceil(MAX_GLB/3)*4,MAX_EXPORT_RESPONSE=MAX_EXPORT_BASE64+1024*1024;
@@ -116,9 +117,9 @@ export function mountWorldmapGeometry({after,getState,busy,setBusy,api=null,onPr
       if(requested==='current'&&!qualified){const response=await fetch('/api/worldmap-placements',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scene,source_key:key}),signal:controller.signal}),text=await response.text();if(!valid())return;if(new TextEncoder().encode(text).length>32*1024*1024)fail('World placement comparison exceeds its response budget.');const value=JSON.parse(text);if(!response.ok)fail(value.error||'Current source placement inspection failed.');qualified=decodeWorldPlacements(value,scene,key);}
       if(!valid())return;
       let textureView=retailView;
-      if(requested==='current'){const response=await fetch('/api/worldmap-geometry',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scene,source_key:key,texture_layer:'current'}),signal:controller.signal}),text=await response.text();if(!valid())return;if(new TextEncoder().encode(text).length>32*1024*1024)fail('Current world textures exceed the response budget.');const value=JSON.parse(text);if(!response.ok)fail(value.error||'Current world texture inspection failed.');textureView=worldmapCurrentTextureView(capturedReport,value);}
+      if(requested==='current'){const response=await fetch('/api/worldmap-geometry',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scene,source_key:key,texture_layer:'current',model_layer:'current'}),signal:controller.signal}),text=await response.text();if(!valid())return;if(new TextEncoder().encode(text).length>32*1024*1024)fail('Current world textures exceed the response budget.');const value=JSON.parse(text);if(!response.ok)fail(value.error||'Current world texture inspection failed.');textureView=await currentWorldModelView(capturedReport,value,{path:binding.path,bindings:structuredClone(getState().model_overrides??{}),signal:controller.signal});}
       if(!valid())return;
-      const next=requested==='retail'?retailView:worldPlacementComparison(textureView,capturedReport,qualified);const failures=renderer.load(next);if(failures.length)fail(failures.join('; '));sceneView=next;placementReport=qualified;renderedLayer=requested;renderHierarchy(selectedId);inspectSelection();exportResult.textContent='';status.textContent=`${scene} · ${requested==='current'?'Current authored':'Retail source'} spawn seeds · ${requested==='current'?'Current textures':'Retail textures'} · native geometry unchanged; runtime resting positions and visibility unverified.`;draw();
+      const next=requested==='retail'?retailView:worldPlacementComparison(textureView,capturedReport,qualified);const failures=renderer.load(next);if(failures.length)fail(failures.join('; '));sceneView=next;placementReport=qualified;renderedLayer=requested;renderHierarchy(selectedId);inspectSelection();exportResult.textContent='';status.textContent=`${scene} · ${requested==='current'?'Current authored':'Retail source'} spawn seeds · ${requested==='current'?'Current textures':'Retail textures'} · ${requested==='current'?'Current model geometry':'Retail model geometry'}; runtime resting positions and visibility unverified.`;draw();
     }catch(error){if(error.name!=='AbortError'&&valid()){placementLayer.value=renderedLayer;renderer.load(sceneView);status.textContent=error.message;onError(error);}}
     finally{if(pending===controller){pending=null;pendingKind=null;placementLayer.value=renderedLayer;setBusy(false);updateState();}}
   };

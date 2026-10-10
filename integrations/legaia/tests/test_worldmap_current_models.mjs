@@ -1,0 +1,11 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+import {qualifyCurrentWorldModels,worldModelNormalGeometry} from '../editor/worldmap-current-models.js';
+for(const scene of ['map01','map02','map03']){
+ const fixture=JSON.parse(fs.readFileSync(process.argv[2]+'/'+scene+'-view.json')),options={path:fixture.path,bindings:fixture.bindings,sources:fixture.sources},view=await qualifyCurrentWorldModels(fixture.retail,fixture.current,options),id=fixture.current.model_authoring.edits[0].asset_id;
+ assert.deepEqual(view.assets.find(a=>a.asset_id===id).preview.vertices,fixture.sources[0]&&JSON.parse(Buffer.from(fixture.sources[0].shape_base64,'base64')).objects.flatMap(o=>o.vertices));
+ for(const change of [v=>v.model_authoring.edits=[],v=>v.authored_geometry=false,v=>v.scene_graph.assets.find(a=>a.asset_id===id).preview.vertices[0][0]++,v=>v.scene_graph.assets.find(a=>a.asset_id===id).preview.bounds.min[0]++,v=>v.scene_graph.assets.find(a=>a.asset_id===id).preview.triangle_normals[0]=[[1,2,3],[1,2,3],[1,2,3]],v=>v.scene_graph.assets.find(a=>a.asset_id===id).preview.triangles[0][0]++,v=>v.scene_graph.entities[1].source_position.x++,v=>v.scene_graph.assets.find(a=>a.asset_id===id).source_record.decoded_member_sha256='0'.repeat(64),v=>v.model_authoring.edits[0].effective_tmd_sha256='0'.repeat(64),v=>v.scene_graph.assets.find(a=>a.asset_id===id).preview.authored_shape.format='other']){const bad=structuredClone(fixture.current);change(bad);await assert.rejects(()=>qualifyCurrentWorldModels(fixture.retail,bad,options));}
+}
+console.log('Three native Current model views: independent TMD vertices/normals/bounds, immutable topology/seed/material ownership and ten forged geometry/binding refusals each passed.');
+
+for(const item of JSON.parse(fs.readFileSync(process.argv[2]+'/normal-cases.json'))){const result=worldModelNormalGeometry({tmd:new Uint8Array(Buffer.from(item.tmd_base64,'base64')),shape:{objects:Array(item.object_count).fill({})}});assert.deepEqual(result.triangles,item.triangle_normals);assert.deepEqual(result.coverage,item.normal_preview);}
+console.log('Synthetic native lit flat/Gouraud triangles/quads and unlit packets: independent signed normal operands, corner order and coverage passed.');

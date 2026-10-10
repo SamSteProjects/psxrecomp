@@ -1,0 +1,31 @@
+import {qualifyWorldModelSource} from './worldmap-model-source.js';
+import {worldmapCurrentTextureView,worldmapSceneView} from './worldmap-scene.js';
+const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b),fail=m=>{throw Error(m);};
+export function worldModelNormalGeometry(source){
+ const v=new DataView(source.tmd.buffer,source.tmd.byteOffset,source.tmd.byteLength),triangles=[],coverage={coordinate_system:'retail_tmd_object_local',status:'source_unposed',lit_triangles:0,unlit_triangles:0,invalid_triangles:0,zero_corners:0};
+ for(let i=0;i<source.shape.objects.length;i++){
+  const at=12+i*28,vert=12+v.getUint32(at,true),vc=v.getUint32(at+4,true),normal=12+v.getUint32(at+8,true),nc=v.getUint32(at+12,true),end=Math.min(...[vc?vert:source.tmd.length,nc?normal:source.tmd.length]);let pos=12+v.getUint32(at+16,true),total=0;
+  while(pos+4<=end){const count=v.getUint16(pos,true),flags=v.getUint16(pos+2,true);if(count===0&&flags===0)break;if(pos+8>end||flags<16||flags>39)fail('Native normal group exceeds its source layout.');const stride=v.getUint8(pos+5)*4,row=Math.floor((flags-16)/4),corners=flags&2?4:3,gouraud=[1,3,5].includes(row),baked=row>=2,next=pos+8+(count+1)*stride;if(!count||!stride||next>end||(total+=count)>100000)fail('Native normal group exceeds its budget.');
+   for(let n=0;n<count;n++){let normals=null;const offset=gouraud?(corners===3?18:20):(corners===3?12:20),operands=gouraud?corners:1;if(!baked){if(offset+operands*2>stride)fail('Native normal operands exceed their packet.');normals=[];for(let k=0;k<operands;k++){const raw=v.getUint16(pos+8+n*stride+offset+k*2,true);if(raw%8||raw/8>=nc)fail('Native normal ownership is invalid.');normals.push([0,2,4].map(a=>v.getInt16(normal+raw+a,true)));}if(!gouraud)normals=Array.from({length:corners},()=>normals[0]);}for(const used of corners===4?[[0,1,2],[1,3,2]]:[[0,1,2]]){const values=normals?used.map(k=>normals[k]):null;triangles.push(values);coverage[baked?'unlit_triangles':'lit_triangles']++;if(values)coverage.zero_corners+=values.filter(r=>r.every(n=>n===0)).length;}}
+   pos=next;
+  }
+ }
+ return {triangles,coverage};
+}
+export async function qualifyCurrentWorldModels(retail,current,{path,bindings,sources}){
+ const receipt=current?.model_authoring,expected=Object.entries(bindings??{}).filter(([id,b])=>id.startsWith(`asset://${retail.scene}/worldmap/models/`)&&b.asset_sha256!==b.source_sha256);
+ if(current?.model_layer!=='current'||current.representation!=='current-source'||current.authored_geometry!==(expected.length>0)||!receipt||Object.keys(receipt).sort().join(',')!=='disc_sha256,edits,gameplay_verified,scene,schema_version,scope'||receipt.schema_version!=='legaia.worldmap-current-models.v1'||receipt.scene!==retail.scene||receipt.disc_sha256!==retail.source_record.disc_sha256||receipt.scope!=='existing-TMD-vertex-normal-XYZ-only'||receipt.gameplay_verified!==false||!Array.isArray(receipt.edits)||receipt.edits.length!==expected.length||sources.length!==expected.length)fail('Current World model receipt differs from project bindings.');
+ const normalized=structuredClone(current);delete normalized.model_layer;delete normalized.model_authoring;normalized.representation=retail.representation;normalized.authored_geometry=false;const seen=new Set();
+ for(const edit of receipt.edits){const pair=expected.find(([id])=>id===edit.asset_id),binding=pair?.[1],original=retail.scene_graph.assets.find(a=>a.asset_id===edit.asset_id),asset=normalized.scene_graph.assets.find(a=>a.asset_id===edit.asset_id),raw=sources.find(s=>s.request.asset_id===edit.asset_id);
+  if(!binding||seen.has(edit.asset_id)||!original||!asset||!raw||!same(asset.source_record,original.source_record)||Object.keys(edit).sort().join(',')!=='asset_id,byte_length,effective_tmd_sha256,source_tmd_sha256'||binding.format!=='tmd-shape'||binding.source_scene_id!==`worldmap://${retail.scene}/models`||edit.source_tmd_sha256!==original.source_record.decoded_member_sha256||edit.source_tmd_sha256!==binding.source_sha256||edit.effective_tmd_sha256!==binding.asset_sha256||edit.byte_length!==binding.byte_length)fail('Current World model ownership differs from inspected Retail.');seen.add(edit.asset_id);
+  const source=await qualifyWorldModelSource(raw,{record:{id:edit.asset_id,source_record:original.source_record,object_count:original.preview.objects.length,vertex_count:original.preview.vertices.length},root:retail,path,key:retail.project_source_key,layer:'current',effectiveHash:binding.asset_sha256}),vertices=source.shape.objects.flatMap(o=>o.vertices),bounds={min:[0,1,2].map(i=>vertices.reduce((n,v)=>Math.min(n,v[i]),Infinity)),max:[0,1,2].map(i=>vertices.reduce((n,v)=>Math.max(n,v[i]),-Infinity))},normals=worldModelNormalGeometry(source),p=asset.preview;
+  if(!same(p.vertices,vertices)||!same(p.bounds,bounds)||!same(p.triangle_normals,normals.triangles)||!same(p.normal_preview,normals.coverage)||p.representation!=='authored-shape'||!same(p.authored_shape,binding))fail('Current World geometry differs from literal native model bytes.');
+  for(const key of ['vertices','bounds','triangle_normals','normal_preview','representation','authored_shape']){if(Object.hasOwn(original.preview,key))p[key]=structuredClone(original.preview[key]);else delete p[key];}
+ }
+ worldmapCurrentTextureView(retail,normalized);return worldmapSceneView(current);
+}
+export async function currentWorldModelView(retail,current,{path,bindings,signal}){
+ const sources=[];
+ for(const edit of current?.model_authoring?.edits??[]){if(sources.length>=128)fail('Current World model source budget exceeded.');const response=await fetch('/api/worldmap-model-source',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:edit.asset_id,source_key:retail.project_source_key,member_sha256:edit.source_tmd_sha256,layer:'current'}),signal}),text=await response.text();if(new TextEncoder().encode(text).length>48*1024*1024)fail('Current World model source exceeds its byte budget.');const value=JSON.parse(text);if(!response.ok)fail(value.error||'Current model source failed.');sources.push(value);}
+ return qualifyCurrentWorldModels(retail,current,{path,bindings,sources});
+}
