@@ -128,11 +128,6 @@ class WorldPlacementAllocationTests(TestCase):
                 receipt=review(p,'map01',state_key(p),[second]);p.command(dict(type='allocate_worldmap_placements',scene='map01',source_key=state_key(p),requests=[second],review_key=receipt['review_key']))
                 p.save();opened=ProjectService.open(p.root);self.assertEqual(opened.overrides,p.overrides)
                 binding=p.overrides[owner('map01')][COMPONENT];literal,_=replay(raw,floor,binding)
-                from sdk.worldmap_placement_export import export
-                old_disc=p.disc_path;p.disc_path='fixture-disc'
-                with patch('sdk.worldmap_placement_export.load_worldmap_geometry',side_effect=AssertionError('allocated GLB must not omit clones')):
-                    with self.assertRaisesRegex(ProjectError,'allocated decorations'):export(p,'map01',state_key(p))
-                p.disc_path=old_disc
                 expected=bytearray(literal);expected[9*32:9*32+2]=transformed[9*32:9*32+2]
                 self.assertEqual(base64.b64decode(receipt['proposed_map_base64']),bytes(expected))
                 disjoint=bytearray(transformed);disjoint[0x11000]=77

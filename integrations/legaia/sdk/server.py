@@ -1333,6 +1333,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                             raise ProjectError('World placement allocation Review requires exact source and clones')
                         self._json(200, review(self.server.project, body['scene'], body['source_key'], body['requests']))
                     return
+                if route == '/api/worldmap-placement-scene':
+                    if set(body) not in ({'scene','source_key'},{'scene','source_key','allocation_proposal'}):
+                        raise ProjectError('Current World scene requires exact source and optional reviewed allocation')
+                    from .worldmap_current_placements import inspect
+                    self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body.get('allocation_proposal')))
+                    return
                 if route == '/api/worldmap-placement-reset-review':
                     if set(body) != {'scene', 'source_key'}:
                         raise ProjectError('Kingdom reset review requires exact source scope')

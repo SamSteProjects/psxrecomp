@@ -25,8 +25,6 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
     if entity_id is not None and (not isinstance(entity_id,str) or len(entity_id)>1024 or not entity_id.startswith(f'scene://{scene}/worldmap/')):
         raise ProjectError('Selected placement export requires a bounded entity in the same kingdom')
     from .worldmap_placement_allocation_binding import COMPONENT, owner
-    if scope != 'ground' and COMPONENT in project.overrides.get(owner(scene),{}):
-        raise ProjectError('Current placement GLB composition for allocated decorations is not implemented yet')
     key=state_key(project)
     def current():
         if expected_key!=key or project.mode!='edit' or state_key(project)!=key:
@@ -75,9 +73,13 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
     active=binding_override if proposal is not None or batch_proposal is not None else binding
     exported_map,_,exported_seeds=patch(raw,records,(active or {}).get('entries',{}),scene=scene,floor=floor)
     indexed={p['entity_id']:p for p in exported_seeds}
-    changed=0
+    allocation_scene=None
+    if COMPONENT in project.overrides.get(owner(scene),{}):
+        from .worldmap_current_placements import compose as compose_placements
+        allocation_scene=compose_placements(project,geometry,transform_entries=(active or {}).get('entries',{}))
+    changed=allocation_scene['changed_source_entity_count'] if allocation_scene else 0
     for entity in geometry['scene_graph']['entities']:
-        if entity['placement_scope']=='source_ground':continue
+        if allocation_scene or entity['placement_scope']=='source_ground':continue
         seed=indexed.get(entity['entity_id'])
         if seed is None or seed['object_record_index']!=entity['object_record_index'] or seed['model_pool_index']!=entity['model_pool_index']:
             raise ProjectError('World placement export changed source model/instance ownership')
@@ -95,6 +97,11 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
         source_map_sha256=sha256(raw).hexdigest(),review_key=review_key,proposal=deepcopy(proposal),
         authored_records=deepcopy((active or {}).get('entries',{})),changed_source_entity_count=changed,
         override_scope='WorldMapPlacements',gameplay_verified=False,project_changed=False)
+    if allocation_scene:
+        metadata.update(schema_version='legaia.worldmap-placement-export.v2',
+            current_map_sha256=allocation_scene['current_map_sha256'],exported_map_sha256=allocation_scene['exported_map_sha256'],
+            allocation_binding=deepcopy(allocation_scene['allocation_binding']),
+            authored_allocations=deepcopy(allocation_scene['authored_allocations']),authored_entity_count=allocation_scene['authored_entity_count'])
     if batch_proposal is not None:metadata['batch_proposal']=deepcopy(batch_proposal)
     if record_ids is not None:metadata['selected_record_ids']=deepcopy(record_ids)
     metadata['model_authoring']=deepcopy(geometry['model_authoring'])
@@ -103,7 +110,7 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
     glb,audit=encode_worldmap_glb(geometry,key,scope,entity_id,placement_authoring=metadata,entity_ids=selected_ids)
     current()
     if len(glb)>MAX_WORLDMAP_GLB_BYTES:raise ProjectError('World placement GLB exceeds32 MiB')
-    response=dict(schema_version='legaia.worldmap-placement-export-response.v1',scene=scene,source_key=key,
+    response=dict(schema_version='legaia.worldmap-placement-export-response.v2' if allocation_scene else 'legaia.worldmap-placement-export-response.v1',scene=scene,source_key=key,
         representation=representation,review_key=review_key,scope=scope,entity_id=entity_id,glb_base64=base64.b64encode(glb).decode('ascii'),
         gameplay_verified=False,project_changed=False)
     if batch_proposal is not None:response['batch_proposal']=deepcopy(batch_proposal)
