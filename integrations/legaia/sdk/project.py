@@ -1508,17 +1508,22 @@ class ProjectService:
     def read_model_replacement(self, asset_id: str, binding: dict) -> bytes:
         from importer.model_authoring import replace_model_shape, replace_model_content
         removal = isinstance(binding, dict) and binding.get('format') == 'tmd-face-removal-v1'
-        addition = isinstance(binding, dict) and binding.get('format') == 'tmd-face-addition-v1'
+        world_allocation = isinstance(binding, dict) and binding.get('format') == 'world-tmd-vector-allocation-v1'
+        addition = world_allocation or (isinstance(binding, dict) and binding.get('format') == 'tmd-face-addition-v1')
         extra = {'base_binding', 'ledger'} if addition else {'removed_faces'} if removal else set()
-        if addition and 'mesh_imports' in binding: extra.add('mesh_imports')
+        if addition and not world_allocation and 'mesh_imports' in binding: extra.add('mesh_imports')
         if (not isinstance(binding, dict) or set(binding) != {'asset_sha256','source_sha256','byte_length','source_scene_id','format'} | extra
-                or binding['format'] not in ('tmd-shape', 'tmd-content-v1', 'tmd-content-v2', 'tmd-content-v3', 'tmd-face-removal-v1', 'tmd-face-addition-v1') or type(binding['byte_length']) is not int
+                or binding['format'] not in ('tmd-shape', 'tmd-content-v1', 'tmd-content-v2', 'tmd-content-v3', 'tmd-face-removal-v1', 'tmd-face-addition-v1', 'world-tmd-vector-allocation-v1') or type(binding['byte_length']) is not int
                 or not 1 <= binding['byte_length'] <= 4*1024*1024
                 or any(not isinstance(binding[k],str) or len(binding[k]) != 64 or any(c not in '0123456789abcdef' for c in binding[k]) for k in ('asset_sha256','source_sha256'))
                 or not isinstance(binding['source_scene_id'], str)):
             raise ProjectError('Invalid model shape binding')
         from .worldmap_model_binding import owner,validate
         if owner(asset_id):validate(asset_id,binding)
+        elif world_allocation:raise ProjectError('World vector allocation requires a canonical World model')
+        if world_allocation:
+            from .worldmap_model_allocation import validate_ledger
+            validate_ledger(binding)
         path = self.root / 'Authored' / 'Models' / (binding['asset_sha256'] + '.tmd')
         if not path.resolve().is_relative_to(self.root) or path.stat().st_size != binding['byte_length']:
             raise ProjectError('Model shape path or size differs from binding')
@@ -1586,7 +1591,11 @@ class ProjectService:
         self._publish_model_ledger(asset_id,candidate,binding,expected_key,'Mesh replacement' if replace_group or replace_object else 'Mesh append')
 
     def _publish_model_ledger(self,asset_id,content,binding,expected_key,operation):
-        from .scene_preview import source_key
+        from .worldmap_model_binding import owner
+        if owner(asset_id):
+            from .worldmap_authoring import state_key as source_key
+        else:
+            from .scene_preview import source_key
         from .model_mesh_sources import carry
         binding=carry(self,asset_id,binding)
         if asset_id not in self.model_overrides and len(self.model_overrides) >= 128:
@@ -4084,7 +4093,7 @@ class ProjectService:
             from .worldmap_model_binding import owner as world_model_owner,asset as world_model_asset
             if world_model_owner(identifier):
                 _,native=world_model_asset(self,identifier,binding)
-                records.append(dict(id=identifier,kind='model',name='World model '+identifier.rsplit('/',1)[-1],scene_id=None,source_scene=identifier.split('/')[2],changes=['TMD shape replacement'],authored=deepcopy(binding),source_record=native))
+                records.append(dict(id=identifier,kind='model',name='World model '+identifier.rsplit('/',1)[-1],scene_id=None,source_scene=identifier.split('/')[2],changes=['TMD vector allocation' if binding['format']=='world-tmd-vector-allocation-v1' else 'TMD shape replacement'],authored=deepcopy(binding),source_record=native))
                 continue
             asset = next(a for a in self.imports[scene_id]['assets']['models'] if a['semantic_id'] == identifier)
             records.append({'id':identifier, 'kind':'model', 'name':'Model shape ' + identifier.rsplit('/',1)[-1],

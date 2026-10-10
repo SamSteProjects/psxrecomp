@@ -8,7 +8,8 @@ from unittest import TestCase
 from unittest.mock import patch
 from importer.core import _pack_ranges
 from sdk.project import ProjectService, ProjectError
-from sdk.worldmap_model_allocation import prepare, review
+from sdk.worldmap_model_allocation import prepare, review, apply, FORMAT
+from sdk.worldmap_authoring import state_key
 from test_model_pack_growth import pack_source, container_for
 from test_model_primitive_workflow import http_server
 
@@ -42,3 +43,45 @@ class WorldModelAllocationTests(TestCase):
                     self.assertEqual(post('/api/worldmap-model-vector-allocation-review',dict(request,source_key='0'*64))[0],400)
                     self.assertEqual(post('/api/worldmap-model-vector-allocation-review',dict(request,requests=[dict(object_index=0,kind='vertices',vectors=[[32768,0,0]])]))[0],400)
                 self.assertEqual(project._document(),held);self.assertEqual(project.undo_stack,[])
+
+
+    def test_apply_retains_vector_only_ledger_and_reopens_with_history(self):
+        pack, _ = pack_source(); raw = container_for(pack); start, stop = _pack_ranges(pack)[0]
+        original = pack[start:stop]
+        native = dict(disc_sha256='a'*64, prot_entry_index=86, slot_index=1, pack_slot=0,
+                      decoded_member_offset=start, decoded_member_span_end=stop)
+        @contextmanager
+        def disc(_):
+            yield None, 'a'*64, None, None
+        with TemporaryDirectory() as root:
+            project = ProjectService(Path(root)); project.disc_path = 'fixture'
+            identifier = 'asset://map01/worldmap/models/0000'
+            with patch('sdk.worldmap_model_allocation.source',return_value=(original,native)), \
+                 patch('sdk.worldmap_model_binding.source',return_value=(original,native)), \
+                 patch('sdk.worldmap_model_allocation._disc_context',disc), \
+                 patch('sdk.worldmap_model_allocation._kingdom_table',return_value=(None,86,0,SimpleNamespace(table_offset=0),raw)), \
+                 patch('sdk.worldmap_model_allocation._slot',return_value=(pack,{})):
+                for wave in range(2):
+                    binding = project.model_overrides.get(identifier)
+                    current = project.read_model_replacement(identifier,binding) if binding else original
+                    request = dict(asset_id=identifier,source_key=state_key(project),
+                        member_sha256=sha256(original).hexdigest(),effective_sha256=sha256(current).hexdigest(),
+                        requests=[dict(object_index=0,kind='vertices',vectors=[[wave,2,3]])])
+                    held = deepcopy(project._document()); history = len(project.undo_stack)
+                    candidate,_,report = prepare(project,request)
+                    with self.assertRaises(ProjectError):apply(project,request,'0'*64)
+                    self.assertEqual(project._document(),held)
+                    apply(project,request,report['review_key'])
+                    self.assertEqual(len(project.undo_stack),history+1)
+                    binding = deepcopy(project.model_overrides[identifier])
+                    self.assertEqual(binding['format'],FORMAT)
+                    self.assertEqual(len(binding['ledger']['operations']),wave+1)
+                    self.assertEqual(project.read_model_replacement(identifier,binding),candidate)
+                    with self.assertRaises(ProjectError):apply(project,request,report['review_key'])
+                    project.undo(); self.assertEqual(project._document(),held)
+                    project.redo(); self.assertEqual(project.model_overrides[identifier],binding)
+                    forged = deepcopy(binding); forged['ledger']['operations'][0]['kind']='add_faces'
+                    with self.assertRaisesRegex(ProjectError,'vector-only'):project.read_model_replacement(identifier,forged)
+                reopened = ProjectService.open(project.save())
+                self.assertEqual(reopened.model_overrides,project.model_overrides)
+                self.assertEqual(reopened.read_model_replacement(identifier,binding),candidate)

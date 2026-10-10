@@ -1,8 +1,4 @@
-"""Read-only World vector allocation and complete native carrier qualification.
-
-No binding is published. Archive relocation, Apply and editor authoring remain
-separate integration work; a qualified carrier is not playable output.
-"""
+"""Source-bound World vector allocation, retained ledger and native carrier Review."""
 import base64
 import json
 import re
@@ -19,6 +15,26 @@ from importer.assets import decode_tmd
 from .project import ProjectError, digest
 from .worldmap_authoring import state_key
 from .worldmap_model_binding import owner, source
+
+
+FORMAT = 'world-tmd-vector-allocation-v1'
+
+
+def retained(project, identifier, original, binding, effective):
+    """Return the independently qualified base and replay record for a pack member."""
+    if binding and binding.get('format') == FORMAT:
+        from .model_face_addition import base_content
+        return base_content(project, identifier, original, binding), deepcopy(binding['base_binding']), deepcopy(binding['ledger'])
+    return effective, deepcopy(binding), create_face_ledger(effective)
+
+
+def validate_ledger(binding):
+    from importer.model_face_ledger import VECTOR_SCHEMA
+    ledger = binding.get('ledger')
+    if (not isinstance(ledger, dict) or ledger.get('schema_version') != VECTOR_SCHEMA
+            or not isinstance(ledger.get('operations'), list) or not ledger['operations']
+            or any(not isinstance(op, dict) or op.get('kind') != 'allocate_vectors' for op in ledger['operations'])):
+        raise ProjectError('World vector binding requires a nonempty vector-only replay ledger')
 
 
 def prepare(project, request):
@@ -38,7 +54,11 @@ def prepare(project, request):
     if (sha256(original).hexdigest() != request['member_sha256']
             or sha256(effective).hexdigest() != request['effective_sha256']):
         raise ProjectError('World allocation source changed; inspect Current again')
-    candidate, ledger, topology = append_vector_ledger(effective, create_face_ledger(effective), request['requests'])
+    base, base_binding, previous_ledger = retained(project, identifier, original, binding, effective)
+    candidate, ledger, topology = append_vector_ledger(base, previous_ledger, request['requests'])
+    proposed_binding = dict(format=FORMAT, source_scene_id=owner(identifier),
+        source_sha256=sha256(original).hexdigest(), asset_sha256=sha256(candidate).hexdigest(),
+        byte_length=len(candidate), base_binding=base_binding, ledger=deepcopy(ledger))
     independent, allocation = append_model_vectors(effective, request['effective_sha256'], request['requests'])
     if independent != candidate:
         raise ProjectError('World vector candidate differs from complete ledger replay')
@@ -61,9 +81,12 @@ def prepare(project, request):
                     or pack[spans[slot][0]:spans[slot][1]] != retail):
                 raise ProjectError('World allocation member differs from its exact Retail slot')
             current = effective if asset_id == identifier else project.read_model_replacement(asset_id, current_binding)
-            replay = ledger if asset_id == identifier else create_face_ledger(current)
+            _, retained_binding, replay = retained(project, asset_id, retail, current_binding, current)
+            if asset_id == identifier:
+                retained_binding, replay = base_binding, ledger
+            retained_payload = project.read_model_replacement(asset_id, retained_binding) if retained_binding else None
             replacements.append(dict(slot_index=slot, source_model_byte_length=len(retail),
-                base_binding=deepcopy(current_binding), base_payload=current if current_binding else None, ledger=replay))
+                base_binding=retained_binding, base_payload=retained_payload, ledger=replay))
             expected[slot] = candidate if asset_id == identifier else current
             composed.append(dict(asset_id=asset_id, slot_index=slot, current_sha256=sha256(current).hexdigest(),
                                  proposed_sha256=sha256(expected[slot]).hexdigest()))
@@ -79,11 +102,11 @@ def prepare(project, request):
             wanted = expected.get(slot, pack[before_start:before_stop])
             if reopened[start:stop] != wanted:
                 raise ProjectError('World allocation changed a model member or unselected neighbor')
-    report = dict(schema_version='legaia.worldmap-model-vector-allocation-review.v1',
+    report = dict(schema_version='legaia.worldmap-model-vector-allocation-review.v2',
         project_path=str(project.root), request=deepcopy(request), source_record=deepcopy(native),
         proposed_sha256=sha256(candidate).hexdigest(), proposed_model_base64=base64.b64encode(candidate).decode('ascii'),
         source_byte_length=len(original), current_byte_length=len(effective), proposed_byte_length=len(candidate),
-        ledger=deepcopy(ledger), topology=topology, allocation=allocation,
+        binding=deepcopy(proposed_binding), ledger=deepcopy(ledger), topology=topology, allocation=allocation,
         current_preview=decode_tmd(effective), proposed_preview=decode_tmd(candidate),
         composed_models=composed, carrier=carrier_audit,
         read_only=True, project_changed=False, gameplay_verified=False, build_ready=False,
@@ -98,3 +121,11 @@ def prepare(project, request):
 
 def review(project, request):
     return prepare(project, request)[2]
+
+
+def apply(project, request, review_key):
+    candidate, _, report = prepare(project, request)
+    if review_key != report['review_key']:
+        raise ProjectError('World vector allocation differs from its fresh reviewed candidate')
+    project._publish_model_ledger(request['asset_id'], candidate, report['binding'],
+                                  request['source_key'], 'World vector allocation')

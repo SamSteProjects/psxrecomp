@@ -35,10 +35,13 @@ def prepare_model_growth(project, archive):
     key = authored_state_key(project)
     groups, documents = {}, set()
     for identifier, binding in sorted(project.model_overrides.items()):
-        from .worldmap_model_binding import owner,validate
+        from .worldmap_model_binding import owner,validate,asset as world_asset
         if owner(identifier):
             validate(identifier,binding)
-            continue  # Existing-layout World carriers use the shared source-span serializer below.
+            asset, _ = world_asset(project, identifier, binding)
+            source = asset['source_record']
+            groups.setdefault((source['prot_entry_index'], source['container_section']), []).append((identifier, binding, source))
+            continue
         scene = binding['source_scene_id']
         document = project.imports.get(scene)
         if document is None:
@@ -55,7 +58,9 @@ def prepare_model_growth(project, archive):
         groups.setdefault(identity, []).append((identifier, binding, source))
     requests, reports, deferred, content_growth, content_changes = [], [], [], [], {}
     for (entry_index, section_index), members in sorted(groups.items(), key=lambda row:str(row[0])):
-        topology_growth = any(binding['format'] == 'tmd-face-addition-v1' for _, binding, _ in members)
+        topology_growth = any(binding['format'] in ('tmd-face-addition-v1', 'world-tmd-vector-allocation-v1') for _, binding, _ in members)
+        if not topology_growth and any(owner(identifier) for identifier, _, _ in members):
+            continue  # Existing-layout World members retain their existing serializer.
         if not topology_growth and not _content_requires_growth(project, archive, members):
             continue
         if not topology_growth:
@@ -104,7 +109,7 @@ def prepare_model_growth(project, archive):
                         allow_materials=binding['format'] in ('tmd-content-v2', 'tmd-content-v3'),
                         allow_normal_references=binding['format'] == 'tmd-content-v3')
                 content_changes[identifier] = changes
-            if binding['format'] == 'tmd-face-addition-v1':
+            if binding['format'] in ('tmd-face-addition-v1', 'world-tmd-vector-allocation-v1'):
                 base_binding = deepcopy(binding['base_binding'])
                 base_payload = project.read_model_replacement(identifier, base_binding) if base_binding else None
                 ledger = deepcopy(binding['ledger'])

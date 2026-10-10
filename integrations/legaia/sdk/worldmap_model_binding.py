@@ -18,8 +18,8 @@ def source(project,identifier):
 
 
 def validate(identifier,binding):
-    if not isinstance(binding,dict) or binding.get('source_scene_id')!=owner(identifier) or binding.get('format') not in ('tmd-shape','tmd-content-v1','tmd-content-v2','tmd-content-v3'):
-        raise ProjectError('World model binding requires canonical native ownership and existing-layout qualified native content')
+    if not isinstance(binding,dict) or binding.get('source_scene_id')!=owner(identifier) or binding.get('format') not in ('tmd-shape','tmd-content-v1','tmd-content-v2','tmd-content-v3','world-tmd-vector-allocation-v1'):
+        raise ProjectError('World model binding requires canonical native ownership and qualified native content')
 
 
 def asset(project,identifier,binding):
@@ -27,5 +27,5 @@ def asset(project,identifier,binding):
     normalized=dict(record_kind='decoded_tmd_pack_slot',prot_entry_index=native['prot_entry_index'],
                     container_section=native['slot_index'],byte_offset=native['decoded_member_offset'],
                     byte_length=native['decoded_member_span_end']-native['decoded_member_offset'],
-                    containing_size=native['decoded_byte_length'])
+                    containing_size=native['decoded_byte_length'], compressed_stream_offset=native['compressed_stream_offset'])
     return dict(semantic_id=identifier,source_record=normalized),native
