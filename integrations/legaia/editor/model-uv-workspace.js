@@ -2,6 +2,11 @@ const fail=m=>{throw new Error(m);},int=(v,a,b)=>Number.isSafeInteger(v)&&v>=a&&
 const uv=rows=>Array.isArray(rows)&&[3,4].includes(rows.length)&&rows.every(r=>Array.isArray(r)&&r.length===2&&r.every(v=>int(v,0,255)));
 export function uvPointerByte(value,start,length){if(![value,start,length].every(Number.isFinite)||length<=0)fail('UV pointer needs a finite canvas rectangle.');return Math.max(0,Math.min(255,Math.floor((value-start)*256/length)));}
 export function moveUvCorner(rows,corner,u,v){if(!uv(rows)||!int(corner,0,rows.length-1)||!int(u,0,255)||!int(v,0,255))fail('UV corner must remain an existing native byte pair.');const next=structuredClone(rows);next[corner]=[u,v];return next;}
+export function transformUvRows(rows,operation,du=0,dv=0){
+ if(!uv(rows)||!['offset','flip-u','flip-v','clockwise'].includes(operation)||!int(du,-255,255)||!int(dv,-255,255))fail('Choose a supported UV transform and integer byte offsets.');
+ const next=rows.map(([u,v])=>operation==='offset'?[u+du,v+dv]:operation==='flip-u'?[255-u,v]:operation==='flip-v'?[u,255-v]:[255-v,u]);
+ if(!uv(next))fail('UV offset would leave 0–255; the draft is unchanged.');return next;
+}
 /** Find the selected native face's qualified static crop, without inventing residency. */
 export function nativeUvTexture(preview,source,objectIndex,primitiveIndex,expectedUvs){
  const obj=source.objects[objectIndex],face=obj?.primitives[primitiveIndex],shown=preview?.objects?.[objectIndex];if(!face||!uv(expectedUvs)||expectedUvs.length!==face.corner_count||preview.semantic_id!==source.asset_id||preview.coordinate_system!=='retail_tmd_object_local'||preview.posed===true||shown?.object_index!==objectIndex||shown.vertex_count!==obj.vertex_count)fail('UV texture preview differs from its source face.');

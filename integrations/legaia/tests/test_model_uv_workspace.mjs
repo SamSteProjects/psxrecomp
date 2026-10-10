@@ -7,3 +7,14 @@ const source={asset_id:'asset://fixture/model/0',objects:[{object_index:0,vertex
 const copy=structuredClone(preview),layer=nativeUvTexture(preview,source,0,0,rows);assert.deepEqual([...layer.pixels],[255,0,0,255,0,0,255,255]);layer.pixels[0]=0;layer.uv_origin[0]=0;assert.deepEqual(preview,copy);
 for(const change of [p=>p.semantic_id='foreign',p=>p.posed=true,p=>p.objects[0].triangle_count=1,p=>p.triangle_materials[1]=1,p=>p.triangle_uvs[1].reverse(),p=>p.textures[0].width=3,p=>p.textures[0].rgba_base64='AA==',p=>p.textures.push(p.textures[0])]){const bad=structuredClone(preview);change(bad);assert.throws(()=>nativeUvTexture(bad,source,0,0,rows));}
 const ambiguous=structuredClone(preview);ambiguous.textures[0]={material_index:0,status:'ambiguous',reason:'conflicting uploads'};assert.deepEqual(nativeUvTexture(ambiguous,source,0,0,rows),{status:'ambiguous',reason:'conflicting uploads'});assert.deepEqual(rows,before);console.log('Native byte dragging, clamped canvas coordinates, quad UV/material ownership, detached crop pixels and ambiguous/stale/malformed evidence guards passed.');
+
+const {transformUvRows}=await import('../editor/model-uv-workspace.js');
+const quad=[[10,20],[30,20],[10,40],[30,40]],snapshot=structuredClone(quad);
+assert.deepEqual(transformUvRows(quad,'offset',3,-2),[[13,18],[33,18],[13,38],[33,38]]);
+assert.deepEqual(transformUvRows(quad,'flip-u'),[[245,20],[225,20],[245,40],[225,40]]);
+assert.deepEqual(transformUvRows(quad,'flip-v'),[[10,235],[30,235],[10,215],[30,215]]);
+assert.deepEqual(transformUvRows(quad,'clockwise'),[[235,10],[235,30],[215,10],[215,30]]);
+assert.deepEqual(transformUvRows(transformUvRows(quad,'flip-u'),'flip-u'),quad);
+let cycled=quad;for(let i=0;i<4;i++)cycled=transformUvRows(cycled,'clockwise');assert.deepEqual(cycled,quad);
+for(const [op,u,v] of [['offset',255,0],['offset',-255,0],['offset',0,0.5],['other',0,0]])assert.throws(()=>transformUvRows(quad,op,u,v));
+assert.deepEqual(quad,snapshot);console.log('UV offsets refuse overflow without mutation; full-page flips and clockwise quarter turns preserve native corner ownership and exact cycles.');
