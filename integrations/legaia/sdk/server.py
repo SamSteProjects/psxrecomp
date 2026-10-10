@@ -227,6 +227,8 @@ class EditorServer(ThreadingHTTPServer):
         state['capabilities']['worldmap_export'] = bool(self.project.disc_path and self.project.imports)
         state['capabilities']['worldmap_placements'] = bool(self.project.disc_path and self.project.imports)
         from .project_assets import source_key as project_assets_source_key
+        from .scene_import_batch import source_key as scene_import_source_key
+        state['scene_import_source_key'] = scene_import_source_key(self.project)
         state['project_assets_source_key'] = None
         state['project_assets_unavailable_reason'] = None
         try:
@@ -1088,6 +1090,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-effect-colors.js": ("script-effect-colors.js", "text/javascript"),
                  "/script-animation-operands.js": ("script-animation-operands.js", "text/javascript"),
                  "/scene-catalog.js": ("scene-catalog.js", "text/javascript"),
+                 "/scene-import-batch.js": ("scene-import-batch.js", "text/javascript"),
                  "/catalog-scene-preview.js": ("catalog-scene-preview.js", "text/javascript"),
                  "/model-resolution.js": ("model-resolution.js", "text/javascript"),
                  "/scene-controller.js": ("scene-controller.js", "text/javascript"),
@@ -1307,6 +1310,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Batch placement export requires exact source, scene/ground scope and optional reviewed batch')
                     from .worldmap_placement_export import export
                     self._json(200,export(self.server.project,body['scene'],body['source_key'],scope=body['scope'],batch_proposal=body['batch_proposal'],record_ids=body.get('record_ids')))
+                    return
+                if route == '/api/import-batch-review':
+                    if set(body)!={'disc','scenes','source_key'}:raise ProjectError('Scene group review requires exact disc, scene names and project source')
+                    from .scene_import_batch import review
+                    self._json(200,review(self.server.project,body['disc'],body['scenes'],body['source_key']))
                     return
                 if route == '/api/worldmap-placement-batch-restore-review':
                     if set(body) != {'scene', 'source_key', 'record_ids', 'shared_record'}:
@@ -4138,6 +4146,9 @@ class EditorHandler(BaseHTTPRequestHandler):
                 project.mode = "edit"
                 project.correlate_runtime(self.server.live_status)
                 raise ProjectError("Runtime identity changed before attach")
+        elif route == "/api/import-batch":
+            from .scene_import_batch import apply
+            apply(project,body)
         elif route == "/api/import":
             from importer.pipeline import import_scene
             metadata = import_scene(Path(body["disc"]), body.get("scene", "town01"))
@@ -4179,7 +4190,7 @@ class EditorHandler(BaseHTTPRequestHandler):
             raise ProjectError("Unsupported editor command route")
         if route in ("/api/project/new", "/api/project/open"):
             self.server.last_build = None
-        if route in ("/api/project/new", "/api/project/open", "/api/import"):
+        if route in ("/api/project/new", "/api/project/open", "/api/import", "/api/import-batch"):
             self.server.texture_catalogs.clear()
         if route in ("/api/runtime/discover", "/api/runtime/observe", "/api/run/attach", "/api/mode"):
             project.correlate_runtime(self.server.live_status)

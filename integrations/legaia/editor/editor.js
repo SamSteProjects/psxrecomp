@@ -7,6 +7,8 @@ import {mountControllerOwnerInspector} from '/controller-owner-inspector.js';
 import {createAssetResourceDiscovery,assetSearchNeedsResources} from '/asset-resource-discovery.js';
 import {copiedAnimationAsset,variantAnimationAsset} from '/animation-copy-selection.js';
 import {decodeSceneCatalog} from '/scene-catalog.js';
+import {mountSceneImportBatch} from '/scene-import-batch.js';
+let sceneImportBatch=null;
 import {openCatalogScenePreview} from '/catalog-scene-preview.js';
 import {openModelResolution} from '/model-resolution.js';
 import {openSceneController} from '/scene-controller.js';
@@ -914,7 +916,7 @@ function setBusy(value) {
   if($('project-copy-button'))$('project-copy-button').disabled=value||!state.capabilities?.project_copy;
   if($('project-animation-inputs'))$('project-animation-inputs').disabled=value||!state.project?.path;
   document.querySelectorAll('#script-report [data-script-family]').forEach(button=>button.disabled=value);
-  busy=value;hierarchyHistory?.refresh();sceneCameraInspector?.update();if($('select-matching-actors'))hierarchyMatchSelect.disabled=!canSelectHierarchyMatches()||!hierarchyMatchIds.length||hierarchyMatchKey!==resourceStateKey();npcPresetControls?.update();triggerScriptsDialog?.refresh?.();triggerGroupDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();updateSceneVisibilityButtons();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
+  busy=value;sceneImportBatch?.update();hierarchyHistory?.refresh();sceneCameraInspector?.update();if($('select-matching-actors'))hierarchyMatchSelect.disabled=!canSelectHierarchyMatches()||!hierarchyMatchIds.length||hierarchyMatchKey!==resourceStateKey();npcPresetControls?.update();triggerScriptsDialog?.refresh?.();triggerGroupDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();updateSceneVisibilityButtons();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);updateAssetPlacementActions();
@@ -970,12 +972,12 @@ function setBusy(value) {
 async function api(path, payload, {dialog,success,signal}={}) {
   if(busy) return false;
   if(sceneAnimationController?.active()&&path!=='/api/selection'){
-    if(['/api/scene','/api/project/open','/api/project/new','/api/import','/api/mode'].includes(path))sceneAnimationController.stop();
+    if(['/api/scene','/api/project/open','/api/project/new','/api/import','/api/import-batch','/api/mode'].includes(path))sceneAnimationController.stop();
     else{notify('Stop the scene animation preview before changing project or runtime state.',true);return false;}
   }
-  if(worldmapDraftPending&&['/api/undo','/api/redo','/api/project/save','/api/project/save-reviewed','/api/build','/api/scene','/api/project/open','/api/import','/api/mode','/api/project/new'].includes(path)){notify('Apply or discard the world-map landmark draft first.',true);return false;}
+  if(worldmapDraftPending&&['/api/undo','/api/redo','/api/project/save','/api/project/save-reviewed','/api/build','/api/scene','/api/project/open','/api/import','/api/import-batch','/api/mode','/api/project/new'].includes(path)){notify('Apply or discard the world-map landmark draft first.',true);return false;}
   if(liveFollow.active){
-    const reason=['/api/project/new','/api/project/open','/api/import'].includes(path)?'Project changed':path==='/api/scene'?'Scene changed':path==='/api/mode'?'Mode changed':path==='/api/run/stop'?'Owned runtime stopped':path.startsWith('/api/runtime')||path==='/api/run/attach'?'Manual runtime action':null;
+    const reason=['/api/project/new','/api/project/open','/api/import','/api/import-batch'].includes(path)?'Project changed':path==='/api/scene'?'Scene changed':path==='/api/mode'?'Mode changed':path==='/api/run/stop'?'Owned runtime stopped':path.startsWith('/api/runtime')||path==='/api/run/attach'?'Manual runtime action':null;
     if(reason)stopLiveFollow(reason);
   }
   setBusy(true);
@@ -1225,6 +1227,7 @@ $('open-project').onclick=async()=>{if(!$('project-path-input').reportValidity()
 const sceneCatalog=document.createElement('section');sceneCatalog.id='import-scene-catalog';
 sceneCatalog.innerHTML='<h3>Find a scene</h3><label>Name prefix<input id="catalog-prefix" placeholder="town, dolk, station…" spellcheck="false"></label><div class="dialog-actions"><button type="button" id="catalog-search">Read scene catalog</button><button type="button" id="catalog-previous" disabled>Previous</button><button type="button" id="catalog-next" disabled>Next</button></div><p id="catalog-status" role="status">Checks 16 structural blocks per page for metadata import readiness. Rendering and gameplay remain unverified.</p><div id="catalog-scenes"></div>';
 $('scene-input').parentElement.before(sceneCatalog);
+sceneImportBatch=mountSceneImportBatch({host:sceneCatalog,discInput:$('disc-input'),dialog:$('import-dialog'),getState:()=>state,busy:()=>busy,setBusy,api,onError:error=>notify(error.message,true)});
 let catalogGeneration=0,catalogOffset=0,catalogNext=null;
 function clearSceneCatalog(){catalogGeneration++;catalogOffset=0;catalogNext=null;$('catalog-status').textContent='Read the catalog for the current disc path and name prefix. Catalog checks metadata import readiness; rendering and gameplay remain unverified.';$('catalog-scenes').replaceChildren();$('catalog-previous').disabled=true;$('catalog-next').disabled=true;}
 $('disc-input').addEventListener('input',clearSceneCatalog);$('catalog-prefix').oninput=clearSceneCatalog;
@@ -1244,7 +1247,7 @@ async function readSceneCatalog(offset=0){
     for(const scene of result.scenes){
       const button=document.createElement('button');button.type='button';button.className='catalog-scene';button.textContent=`${scene.name} · ${scene.actor_count} actors · ${scene.man_source_kind==='raw_streaming_man'?'Streaming field':scene.man_source_kind==='descriptor_man'?'Compressed field':'Source format unknown'}`;button.title=scene.semantic_id;
       const status=document.createElement('p');status.textContent=scene.import_status==='supported'?`Metadata import ready · ${scene.scene_model_count} scene models · ${scene.global_model_count} global models · ${scene.unresolved_actor_model_count} unresolved actor model references`:`Placement readable · Import unavailable: ${scene.import_reason}`;
-      button.disabled=scene.import_status!=='supported';button.onclick=()=>{if(scene.import_status!=='supported')return;$('scene-input').value=scene.name;$('catalog-status').textContent=`Selected ${scene.name}. Use Import scene to add it to the project. Rendering and gameplay remain unverified.`;};const preview=document.createElement('button');preview.type='button';preview.textContent='Preview '+scene.name+' before import';preview.disabled=scene.import_status!=='supported';preview.onclick=()=>{if(busy||generation!==catalogGeneration||scene.import_status!=='supported')return;const identity=result.source.disc_identity;$('import-dialog').close();openCatalogScenePreview({disc,scene:scene.name,discIdentity:identity,getState:()=>state,busy:()=>busy,onImport:importCatalogPreviewSelection,onError:error=>notify(error.message,true)});};$('catalog-scenes').append(button,status,preview);
+      button.disabled=scene.import_status!=='supported';button.onclick=()=>{if(scene.import_status!=='supported')return;$('scene-input').value=scene.name;$('catalog-status').textContent=`Selected ${scene.name}. Use Import scene to add it to the project. Rendering and gameplay remain unverified.`;};const preview=document.createElement('button');preview.type='button';preview.textContent='Preview '+scene.name+' before import';preview.disabled=scene.import_status!=='supported';preview.onclick=()=>{if(busy||generation!==catalogGeneration||scene.import_status!=='supported')return;const identity=result.source.disc_identity;$('import-dialog').close();openCatalogScenePreview({disc,scene:scene.name,discIdentity:identity,getState:()=>state,busy:()=>busy,onImport:importCatalogPreviewSelection,onError:error=>notify(error.message,true)});};const add=document.createElement('button');add.type='button';add.textContent='Add '+scene.name+' to import group';add.disabled=scene.import_status!=='supported';add.onclick=()=>{if(generation===catalogGeneration)sceneImportBatch.add(scene,result.source.disc_identity,disc);};$('catalog-scenes').append(button,status,preview,add);
     }
     if(result.unsupported_blocks.length){const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Unsupported structural blocks';details.append(summary);for(const block of result.unsupported_blocks){const row=document.createElement('p');row.textContent=`${block.name}: ${block.reason}`;details.append(row);}$('catalog-scenes').append(details);}
   }catch(error){if(generation===catalogGeneration)$('catalog-status').textContent=String(error.message);}
