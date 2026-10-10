@@ -7,7 +7,7 @@ from unittest.mock import patch
 from importer.model_face_ledger import create_face_ledger, append_vector_ledger
 from sdk.project import ProjectService, ProjectError
 from sdk.worldmap_authoring import state_key
-from sdk.worldmap_model_restoration import review, apply
+from sdk.worldmap_model_restoration import review, apply, preview
 from test_importer_assets import model
 
 
@@ -31,6 +31,8 @@ class WorldModelRestorationTests(TestCase):
                 for bad in [dict(request,source_key='0'*64),dict(request,effective_sha256='0'*64),dict(request,member_sha256='0'*64)]:
                     with self.assertRaises(ProjectError):review(p,bad)
                 with self.assertRaises(ProjectError):apply(p,request,'0'*64)
+                with patch('sdk.worldmap_geometry.inspect',side_effect=AssertionError('forged preview must not read geometry')):
+                    with self.assertRaises(ProjectError):preview(p,request,'0'*64)
                 self.assertEqual(p._document(),held)
                 apply(p,request,report['review_key']);self.assertNotIn(identifier,p.model_overrides)
                 self.assertEqual(len(p.undo_stack),len(history[0])+1)
