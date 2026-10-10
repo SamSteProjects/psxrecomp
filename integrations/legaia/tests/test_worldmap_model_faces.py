@@ -14,7 +14,7 @@ from sdk.worldmap_model_replacement import prepare as prepare_content, apply as 
 import base64,struct
 from sdk.project import ProjectService, ProjectError
 from sdk.worldmap_authoring import state_key
-from sdk.worldmap_model_faces import source, prepare, review, apply
+from sdk.worldmap_model_faces import source, prepare, review, apply, preview
 from test_model_pack_growth import pack_source, container_for
 from test_model_primitive_workflow import http_server
 
@@ -42,6 +42,11 @@ class WorldModelFaceTests(TestCase):
                 candidate,result=prepare(p,proposal)
                 self.assertGreater(len(candidate),len(original));self.assertEqual(result['topology']['authored_face_count'],1)
                 self.assertFalse(result['build_ready']);self.assertTrue(result['read_only'])
+                with patch('sdk.worldmap_geometry.inspect',side_effect=AssertionError('stale preview must not read geometry')):
+                    with self.assertRaises(ProjectError):preview(p,proposal,'0'*64)
+                with http_server(p) as (_,post):
+                    self.assertEqual(post('/api/worldmap-model-face-preview',dict(request=proposal,review_key='0'*64))[0],400)
+                    self.assertEqual(post('/api/worldmap-model-face-preview',dict(request=proposal,review_key=result['review_key'],extra=True))[0],400)
                 self.assertEqual(result['addition']['growth_bytes'],len(candidate)-len(original))
                 for bad in [dict(proposal,source_key='0'*64),dict(proposal,effective_sha256='0'*64),dict(proposal,extra=True)]:
                     with self.assertRaises(ProjectError):review(p,bad)

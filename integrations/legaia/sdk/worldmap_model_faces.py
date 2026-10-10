@@ -96,3 +96,38 @@ def apply(project,request,review_key):
     if review_key!=report['review_key']:
         raise ProjectError('World face addition differs from its fresh reviewed candidate')
     project._publish_model_ledger(request['asset_id'],candidate,report['binding'],request['source_key'],'World face addition')
+
+
+def preview(project, request, review_key):
+    """Fresh textured scene graphs for a face proposal; no files or history written."""
+    from copy import copy
+    from .worldmap_geometry import inspect
+    candidate, report = prepare(project, request)
+    if report['review_key'] != review_key:
+        raise ProjectError('World face preview requires its exact fresh Review')
+    scene = request['asset_id'].split('/')[2]
+    retail = inspect(project, scene, request['source_key'], texture_layer='retail', model_layer='retail')
+    current = inspect(project, scene, request['source_key'], texture_layer='current', model_layer='current')
+    view = copy(project)
+    view.model_overrides = deepcopy(project.model_overrides)
+    view.model_overrides[request['asset_id']] = deepcopy(report['binding'])
+    original_read = project.read_model_replacement
+    def read(identifier, binding):
+        if identifier == request['asset_id']:
+            if binding != report['binding']:
+                raise ProjectError('World face preview lost its reviewed binding')
+            return candidate
+        return original_read(identifier, binding)
+    view.read_model_replacement = read
+    proposed = inspect(view, scene, state_key(view), texture_layer='current', model_layer='current')
+    proposed['project_source_key'] = request['source_key']
+    proposed['model_layer'] = 'proposed'
+    proposed['representation'] = 'proposed-source'
+    value = dict(schema_version='legaia.worldmap-model-face-preview.v1',
+        project_path=str(project.root), request=deepcopy(request), review_key=review_key,
+        current_sha256=request['effective_sha256'], proposed_sha256=report['proposed_sha256'],
+        retail_graph=retail, current_graph=current, proposed_graph=proposed,
+        read_only=True, project_changed=False, gameplay_verified=False)
+    _budget(value, 64*1024*1024)
+    _fresh(project, request)
+    return value
