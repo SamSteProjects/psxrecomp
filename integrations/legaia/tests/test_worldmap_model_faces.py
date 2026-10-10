@@ -15,7 +15,7 @@ import base64,struct
 from sdk.project import ProjectService, ProjectError
 from sdk.worldmap_authoring import state_key
 from sdk.worldmap_model_faces import source, prepare, review, apply, preview
-from sdk.worldmap_model_groups import source as group_source, review as group_review, apply as group_apply
+from sdk.worldmap_model_groups import source as group_source, review as group_review, apply as group_apply, preview as group_preview
 from test_model_pack_growth import pack_source, container_for
 from test_model_primitive_workflow import http_server
 
@@ -49,6 +49,10 @@ class WorldModelFaceTests(TestCase):
                 self.assertEqual(group_result['ledger']['schema_version'],'legaia.model-face-addition-ledger.v6')
                 self.assertEqual(group_result['topology']['allocated_group_count'],1)
                 self.assertFalse(group_result['build_ready'])
+                with patch('sdk.worldmap_geometry.inspect',side_effect=AssertionError('stale group preview must not read geometry')):
+                    with self.assertRaises(ProjectError):group_preview(p,group_proposal,'0'*64)
+                with http_server(p) as (_,post):
+                    self.assertEqual(post('/api/worldmap-model-group-preview',dict(request=group_proposal,review_key=group_result['review_key'],extra=True))[0],400)
                 self.assertEqual(group_result['topology']['authored_face_count'],1)
                 for bad in [dict(group_proposal,source_key='0'*64),dict(group_proposal,effective_sha256='0'*64)]:
                     with self.assertRaises(ProjectError):group_review(p,bad)

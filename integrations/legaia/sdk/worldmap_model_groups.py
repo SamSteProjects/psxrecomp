@@ -74,3 +74,11 @@ def apply(project, request, review_key):
     if report['review_key'] != review_key:
         raise ProjectError('World group allocation differs from its fresh reviewed candidate')
     project._publish_model_ledger(request['asset_id'],candidate,report['binding'],request['source_key'],'World group allocation')
+
+
+def preview(project, request, review_key):
+    from .worldmap_model_faces import _preview_candidate
+    candidate, report = prepare(project, request)
+    if report['review_key'] != review_key:
+        raise ProjectError('World group preview requires its exact fresh Review')
+    return _preview_candidate(project,request,review_key,candidate,report,'legaia.worldmap-model-group-preview.v1')

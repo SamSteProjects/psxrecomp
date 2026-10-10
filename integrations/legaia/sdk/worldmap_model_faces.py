@@ -100,11 +100,15 @@ def apply(project,request,review_key):
 
 def preview(project, request, review_key):
     """Fresh textured scene graphs for a face proposal; no files or history written."""
-    from copy import copy
-    from .worldmap_geometry import inspect
     candidate, report = prepare(project, request)
     if report['review_key'] != review_key:
         raise ProjectError('World face preview requires its exact fresh Review')
+    return _preview_candidate(project,request,review_key,candidate,report,'legaia.worldmap-model-face-preview.v2')
+
+
+def _preview_candidate(project,request,review_key,candidate,report,schema):
+    from copy import copy
+    from .worldmap_geometry import inspect
     scene = request['asset_id'].split('/')[2]
     retail = inspect(project, scene, request['source_key'], texture_layer='retail')
     current = inspect(project, scene, request['source_key'], texture_layer='current', model_layer='current')
@@ -125,7 +129,7 @@ def preview(project, request, review_key):
     proposed['project_source_key'] = request['source_key']
     proposed['model_layer'] = 'proposed'
     proposed['representation'] = 'proposed-source'
-    value = dict(schema_version='legaia.worldmap-model-face-preview.v2',
+    value = dict(schema_version=schema,
         project_path=str(project.root), request=deepcopy(request), review_key=review_key,
         current_sha256=request['effective_sha256'], proposed_sha256=report['proposed_sha256'],
         retail_graph=retail, current_graph=current, proposed_graph=proposed, proposed_model_source=proposed_source,

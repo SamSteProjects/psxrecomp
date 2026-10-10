@@ -1360,6 +1360,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_model_faces import apply
                     apply(self.server.project,body['request'],body['review_key'])
                     self._json(200,self.server.state());return
+                if route=='/api/worldmap-model-group-preview':
+                    if set(body)!={'request','review_key'}:
+                        raise ProjectError('World group preview requires request and Review key')
+                    from .worldmap_model_groups import preview
+                    self._json(200,preview(self.server.project,body['request'],body['review_key']));return
                 if route=='/api/worldmap-model-group-apply':
                     if set(body)!={'request','review_key'}:
                         raise ProjectError('World group Apply requires request and Review key')
