@@ -183,10 +183,7 @@ def _replacement_inputs(project,request):
     except ValueError as exc:raise ProjectError('World TIM replacement requires valid base64') from exc
     if not 1<=len(content)<=1048576 or base64.b64encode(content).decode('ascii')!=encoded:
         raise ProjectError('World TIM replacement requires bounded canonical base64 bytes')
-    ctx=project._texture_context(request['texture_id']);original=ctx.original_tim(request['texture_id'])
-    binding=project.texture_overrides.get(request['texture_id']);effective=project.read_texture_replacement(binding) if binding else original
-    if sha256(original).hexdigest()!=request['member_sha256'] or sha256(effective).hexdigest()!=request['effective_sha256']:
-        raise ProjectError('World TIM replacement source changed; preview Current again')
+    ctx,original,effective=_inspected_current(project,request)
     ctx.validate_replacement(request['texture_id'],content)
     return content,effective
 
@@ -218,3 +215,29 @@ def apply_replacement(project,request,review_key):
         import base64
         project.set_texture_replacement(request['texture_id'],base64.b64decode(request['content_base64'],validate=True))
     return receipt
+
+
+def _inspected_current(project,request):
+    ctx=project._texture_context(request['texture_id']);original=ctx.original_tim(request['texture_id'])
+    binding=project.texture_overrides.get(request['texture_id']);effective=project.read_texture_replacement(binding) if binding else original
+    if sha256(original).hexdigest()!=request['member_sha256'] or sha256(effective).hexdigest()!=request['effective_sha256']:
+        raise ProjectError('World TIM replacement source changed; preview Current again')
+    ctx.validate_replacement(request['texture_id'],effective)
+    return ctx,original,effective
+
+
+def tim_source(project,request):
+    """Return freshly qualified Retail or Current bytes without changing the project."""
+    import base64
+    from .worldmap_authoring import state_key
+    fields={'texture_id','source_key','member_sha256','effective_sha256','layer'}
+    if not isinstance(request,dict) or set(request)!=fields or project.mode!='edit' or request['source_key']!=state_key(project) or not scene_for(request['texture_id']) or request['layer'] not in ('retail','current'):
+        raise ProjectError('World TIM download requires the exact current Edit source and layer')
+    if any(not isinstance(request[k],str) or not re.fullmatch('[0-9a-f]{64}',request[k]) for k in ('member_sha256','effective_sha256')):
+        raise ProjectError('World TIM download requires inspected source and Current hashes')
+    _,original,effective=_inspected_current(project,request)
+    content=original if request['layer']=='retail' else effective
+    if not 1<=len(content)<=2097152:raise ProjectError('World TIM download exceeds its 2 MiB native source budget')
+    result=dict(schema_version='legaia.worldmap-tim-source.v1',project_path=str(project.root),request=dict(request),tim_sha256=sha256(content).hexdigest(),byte_length=len(content),tim_base64=base64.b64encode(content).decode('ascii'),read_only=True,project_changed=False,gameplay_verified=False)
+    if project.mode!='edit' or request['source_key']!=state_key(project):raise ProjectError('World TIM source changed during download')
+    return result

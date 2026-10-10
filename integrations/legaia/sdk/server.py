@@ -1324,6 +1324,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_views import review
                     self._json(200,review(self.server.project,body['view_id'],body['review_key'],body['source_key']))
                     return
+                if route == '/api/worldmap-tim-source':
+                    from .worldmap_texture_authoring import tim_source
+                    self._json(200,tim_source(self.server.project,body))
+                    return
                 if route in ('/api/worldmap-replacement-review','/api/worldmap-replacement-apply'):
                     from .worldmap_texture_authoring import review_replacement,apply_replacement
                     if route.endswith('-review'):self._json(200,review_replacement(self.server.project,body))

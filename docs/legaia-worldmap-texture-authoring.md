@@ -16,7 +16,7 @@ Thirteen focused Python checks passed with the retail disc enabled and no failur
 
 Private native evidence: `local-output/sdk-20260909/worldmap-texture-authoring-20261010/proof.json` and `project-proof.json`. All three first native TIMs matched the independent read-only decoder; a one-word palette edit produced exact complete decoded-pack reconstruction. The project probe passed palette authoring, Undo/Redo, Save/Open and one normal SDK package Build containing all three kingdom changes. Every packaged stream exactly matched the independently requested overlay and decoded to the complete expected pack. Imported documents stayed unchanged. Private outputs and retail payloads are not committed.
 
-The [Native World TIM Inspector](legaia-worldmap-texture.md) now offers separate Retail and Current TIM-local pixel layers. Full replacement and rectangle authoring controls remain next. No native recomp compile, game, runtime attachment, install or disc export ran. Runtime palette selection, animation and appearance remain unknown until gameplay verification. The full SDK goal remains active.
+The [Native World TIM Inspector](legaia-worldmap-texture.md) now offers separate Retail and Current TIM-local pixel layers. Palette, single-pixel, rectangle fill/copy and exact-layout TIM file replacement controls are implemented, including Retail/Current downloads. No native recomp compile, game, runtime attachment, install or disc export ran. Runtime palette selection, animation and appearance remain unknown until gameplay verification. The full SDK goal remains active.
 
 ## Current Pixel Inspector — 2026-10-10
 
@@ -56,7 +56,7 @@ Pixel and palette tools share the same bounded editing UI, request ownership, ca
 
 Nine focused Python checks passed across pixel and palette Review/Apply, project history and Retail/Current inspection. The new pixel checks construct literal 4-bpp/8-bpp expected bytes independently, verify exact whole TIM hashes and unchanged packed neighbors, and cover no-op behavior, wrong/stale receipts, bounds, source mismatch, Live refusal and Save/Open. Two Node suites qualify six actual native pixel receipts (eleven forged-response refusals each) and six retained palette receipts (ten each). Two JavaScript syntax and two Python AST checks passed.
 
-Private evidence: `local-output/sdk-20260909/worldmap-pixel-editor-20261010/`. Actual three-kingdom TIM 0000 browser workflows pass Shift-click coordinate selection, immutable Review, draft invalidation, Apply with independently literal packed-byte hashes, Undo/Redo/Undo and Save/Open. The fixture document is fully restored; content-addressed authored TIM files remain retained normally. Desktop/400 px pixel controls were visually inspected with no horizontal overflow or page errors. The refactored palette controls also passed a native browser recheck without project mutation. No Build, native compile, game, runtime attachment, install or disc export ran in this pixel slice. Native gameplay appearance remains unverified; replacement/rectangle tools and the broader SDK buildout remain active work.
+Private evidence: `local-output/sdk-20260909/worldmap-pixel-editor-20261010/`. Actual three-kingdom TIM 0000 browser workflows pass Shift-click coordinate selection, immutable Review, draft invalidation, Apply with independently literal packed-byte hashes, Undo/Redo/Undo and Save/Open. The fixture document is fully restored; content-addressed authored TIM files remain retained normally. Desktop/400 px pixel controls were visually inspected with no horizontal overflow or page errors. The refactored palette controls also passed a native browser recheck without project mutation. No Build, native compile, game, runtime attachment, install or disc export ran in this pixel slice. Native gameplay appearance remains unverified; the sections below describe the subsequently implemented rectangle and file tools. The broader SDK buildout remains active.
 
 
 ## World Indexed Rectangle Review and Apply — 2026-10-10
@@ -65,7 +65,7 @@ Both World TIM resource inspectors provide a rectangle fill tool alongside palet
 
 The tool uses the existing 4/8-bpp indexed rectangle codec. It preserves palette words, TIM headers/layout and packed pixel lanes outside the rectangle. Pixel indices are shared across palette variants. Draft changes, changed source keys and stale effective hashes invalidate Review; Live mode refuses authoring. No-op fills add no history. Undo/Redo and Save/Open use the existing private content-addressed TIM binding, which already feeds Current viewport/export and SDK package Build.
 
-Copy tools and full replacement controls remain unfinished. Gameplay appearance, runtime palette selection and blending remain unverified.
+Copy and exact-layout file replacement are implemented in the sections below. Gameplay appearance, runtime palette selection and blending remain unverified.
 
 
 ## World Indexed Rectangle Copy Review and Apply — 2026-10-10
@@ -74,7 +74,7 @@ Both World texture inspectors now include **Copy Current pixel rectangle**. Prev
 
 Copy reads every source index from the immutable pre-edit image, including overlapping regions. It preserves the palette, header/layout and pixel lanes outside the destination. A source equal to the destination is a no-op and adds no history. Draft/source changes withdraw the receipt; Live mode refuses authoring. Undo/Redo, private payload retention, Save/Open, Current viewport/export and package Build use the same binding as pixel and fill edits.
 
-Full replacement controls remain unfinished. Runtime palette selection, residency, blending and gameplay appearance remain unverified.
+Exact-layout file replacement is implemented in the section below. Runtime palette selection, residency, blending and gameplay appearance remain unverified.
 
 
 ## World TIM File Replacement Review and Apply — 2026-10-10
@@ -84,3 +84,10 @@ Both World texture inspectors provide **Replace Current TIM file**. Preview Curr
 Review leaves the project unchanged. Choosing/discarding a file or changing preview/source withdraws the receipt and proposed canvas. Apply recomputes the receipt against freshly inspected source and effective bytes, then retains the exact file through the existing private TIM command. Matching Current is a no-op that creates no binding or history. Undo/Redo, Save/Open, Current viewport/export and SDK package Build use that same source-bound binding.
 
 This is exact-layout native TIM replacement. PNG conversion, resizing/new allocation and shared-bank/runtime palette discovery are separate future World tools. Gameplay appearance, residency and blending remain unverified.
+
+
+## World Retail and Current TIM Downloads — 2026-10-10
+
+Preview Current, then choose **Download Retail TIM** or **Download Current TIM** in the file replacement tool. Each request requalifies the original member, Current binding, inspected hashes and project source key. The browser independently checks the exact byte length and SHA256 before downloading a clearly named Retail or Current file. A source/preview change withdraws a pending download. Downloads do not mutate project data or history and do not alter a reviewed replacement draft.
+
+This completes the native file round trip: download the desired layer, edit palette/image payloads externally while preserving headers/layout, select the TIM, Review proposed pixels/differences, then Apply and Save. Downloading Current and reviewing it unchanged is a no-op. Native source export is bounded at 2 MiB; replacement retains the existing 1 MiB project authoring limit. Runtime palette/residency, PNG/allocation World tools and gameplay appearance remain separate work.
