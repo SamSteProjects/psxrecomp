@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {modelPreviewFrame} from '../editor/model-preview-frame.js';
+import {modelPreviewFrame,modelPreviewFaceFrame} from '../editor/model-preview-frame.js';
 const current={vertices:[[0,0,0],[100,0,0],[0,100,0],[99999,-99999,99999]],triangles:[[0,1,2]]};
 const proposed={vertices:[[1000,0,0],[1002,0,0],[1000,2,0],[-99999,99999,-99999]],triangles:[[0,1,2]]};
 const before=structuredClone({current,proposed});
@@ -19,3 +19,14 @@ for(const bad of [{vertices:[[NaN,0,0]],triangles:[[0,0,0]]},{...current,triangl
 assert.throws(()=>modelPreviewFrame(current,proposed,'other'));assert.throws(()=>modelPreviewFrame(current,proposed,'current','other'));
 assert.deepEqual({current,proposed},before);
 console.log('Visible, shared and stored model framing; retired rows, empty geometry, malformed references and immutable source previews passed.');
+
+const quad={vertices:[[0,0,0],[2,0,0],[0,2,0],[2,2,0],[30000,30000,30000]],triangles:[[0,1,2],[1,3,2],[4,4,4]]},moved={vertices:[[10,0,0],[12,0,0],[10,2,0],[12,2,0],[-30000,-30000,-30000]],triangles:quad.triangles};
+const native=structuredClone({quad,moved});
+assert.deepEqual(modelPreviewFaceFrame(quad,moved,[0,1]).bounds,{min:[0,0,0],max:[12,2,0]});
+assert.deepEqual(modelPreviewFaceFrame(quad,moved,[0,1],'proposed','visible').bounds,{min:[10,0,0],max:[12,2,0]});
+assert.deepEqual(modelPreviewFaceFrame(quad,moved,[0,1],'current','visible').bounds,{min:[0,0,0],max:[2,2,0]});
+assert.deepEqual(modelPreviewFaceFrame(quad,moved,[1,0]),modelPreviewFaceFrame(quad,moved,[0,1]));
+for(const indices of [[],[0,0],[0,1,2],[-1],[3],[0.5],[true]])assert.throws(()=>modelPreviewFaceFrame(quad,moved,indices));
+assert.throws(()=>modelPreviewFaceFrame(quad,moved,[0],'current','stored'));
+assert.deepEqual({quad,moved},native);
+console.log('Selected face framing covers both quad triangles, shared and visible proposals, distant stored/other-face exclusion, immutable previews and invalid selections.');

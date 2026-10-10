@@ -18,6 +18,12 @@ export function modelPreviewFrame(current,proposed,layer='proposed',mode='compar
   return {bounds:{min,max},center:min.map((v,i)=>(v+max[i])/2),radius:Math.max(1,Math.hypot(...max.map((v,i)=>v-min[i]))/2),empty:false};
 }
 
+export function modelPreviewFaceFrame(current,proposed,triangleIndices,layer='proposed',mode='comparison'){
+  if(!['comparison','visible'].includes(mode)||!Array.isArray(triangleIndices)||!triangleIndices.length||triangleIndices.length>2||new Set(triangleIndices).size!==triangleIndices.length||triangleIndices.some(i=>!Number.isSafeInteger(i)||i<0))throw new Error('Frame one qualified native face with existing decoded triangles.');
+  const subset=preview=>{if(!Array.isArray(preview?.triangles)||preview.triangles.length>100000||triangleIndices.some(i=>i>=preview.triangles.length))throw new Error('Selected face exceeds model triangle coverage.');return {vertices:preview.vertices,triangles:triangleIndices.map(i=>preview.triangles[i])};};
+  return modelPreviewFrame(subset(current),subset(proposed),layer,mode);
+}
+
 export function modelFrameControls(host,onChange){
   const label=document.createElement('label');label.textContent='Camera framing';
   const select=document.createElement('select');select.dataset.frameMode='true';select.setAttribute('aria-label','Model camera framing');
