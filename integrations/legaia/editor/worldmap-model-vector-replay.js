@@ -43,7 +43,7 @@ export async function replayWorldVectors(retail,base,binding,{withFaces=false}={
  const operations=batches?ledger.batches.map(op=>{if(!exact(op,['input_sha256','proposed_sha256','additions']))fail('World face batch schema differs.');return {...op,kind:'add_faces'};}):ledger.operations;
  let faces=worldFaceIdentities(base,ledger.source_sha256),faceCount=0,faceBatches=0;
  let current=base,total=0;
- let allocations=0,edits=0,groupCount=0;const groupIds=new Set();
+ let allocations=0,edits=0,groupCount=0;const groupIds=new Set(),groupRecords=[],ranks=new Map([...faces.keys()].map((id,i)=>[id,i]));let groupBatches=0;
  for(const operation of operations){
   if(operation?.input_sha256!==await vectorDigest(current))fail('World ledger operation source differs.');
   if(operation.kind==='allocate_vectors'){
@@ -54,7 +54,7 @@ export async function replayWorldVectors(retail,base,binding,{withFaces=false}={
    const added=addWorldFaces(current,faces,operation.additions);current=added.bytes;faces=added.faces;
   }else if(operation.kind==='allocate_groups'&&grouped){
    if(!exact(operation,['kind','input_sha256','proposed_sha256','requests'])||!Array.isArray(operation.requests)||(groupCount+=operation.requests.length)>64||++faceBatches>8||(faceCount+=operation.requests.reduce((n,r)=>n+(Array.isArray(r?.faces)?r.faces.length:513),0))>512)fail('World group operation schema or budget differs.');
-   const added=allocateWorldGroups(current,faces,operation.requests,groupIds);current=added.bytes;faces=added.faces;for(const r of operation.requests)groupIds.add(r.group_id);
+   const added=allocateWorldGroups(current,faces,operation.requests,groupIds);current=added.bytes;faces=added.faces;groupBatches++;for(const r of operation.requests){groupIds.add(r.group_id);groupRecords.push(added.groups.find(g=>g.group_id===r.group_id));}
   }else if(operation.kind==='edit_content'&&['world-tmd-vector-content-v1','world-tmd-face-addition-v1','world-tmd-group-allocation-v1'].includes(binding.format)){
    if(!exact(operation,['kind','input_sha256','proposed_sha256','runs'])||!Array.isArray(operation.runs)||!operation.runs.length||operation.runs.length>600000)fail('World content operation schema differs.');
    const candidate=current.slice();let end=0;
@@ -64,10 +64,11 @@ export async function replayWorldVectors(retail,base,binding,{withFaces=false}={
    }
    worldModelContentAudit(current,candidate);current=candidate;edits++;
   }else fail('Unsupported World ledger operation.');
+  for(const id of operation.kind==='add_faces'?operation.additions.map(r=>r.face_id):operation.kind==='allocate_groups'?operation.requests.flatMap(r=>r.faces.map(f=>f.face_id)):[])if(!ranks.has(id))ranks.set(id,ranks.size);
   if(total>4096||operation.proposed_sha256!==await vectorDigest(current))fail('World vector operation output differs.');
  }
  if(grouped?!groupCount:topology?!faceCount:!allocations||binding.format==='world-tmd-vector-content-v1'&&!edits)fail('World content binding lacks its native allocation/edit lineage.');
- if(current.length!==binding.byte_length||await vectorDigest(current)!==binding.asset_sha256)fail('World vector binding output differs.');return withFaces?{bytes:current,faces}:current;
+ if(current.length!==binding.byte_length||await vectorDigest(current)!==binding.asset_sha256)fail('World vector binding output differs.');return withFaces?{bytes:current,faces,groups:groupRecords.map(g=>({...g,current_group_index:g.origin_group_index,face_ids:[...faces].filter(([,f])=>f.owner===g.object_index&&f.group===g.origin_group_index).map(([id])=>id).sort((a,b)=>ranks.get(a)-ranks.get(b))})),groupBatches}:current;
 }
 
 export function worldContentRuns(before,after){
