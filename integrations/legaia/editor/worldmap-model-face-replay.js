@@ -27,13 +27,7 @@ export function addWorldFaces(source,faces,requests){
  for(let owner=0;owner<v.getUint32(8,true);owner++){const header=12+owner*28;for(const field of [0,8,16]){const old=v.getUint32(header+field,true),count=v.getUint32(header+field+4,true);if(field===16||count)output.setUint32(header+field,relocate(old+12)-12,true);}output.setUint32(header+20,v.getUint32(header+20,true)+events.filter(e=>e.g.owner===owner).reduce((n,e)=>n+e.added.length,0),true);}
  for(const e of events)output.setUint16(relocate(e.g.at),e.g.count+e.added.length,true);
  const updated=new Map(),newRows=[];for(const g of rows){const prefix=events.filter(e=>e.g.owner===g.owner&&e.g.index<g.index).reduce((n,e)=>n+e.added.length,0);for(const [id,face] of faces)if(face.owner===g.owner&&face.group===g.index)updated.set(id,{...face,index:face.index+prefix});for(const [n,a] of (additions.get(g.owner+'/'+g.index)??[]).entries()){const face={owner:g.owner,group:g.index,index:g.first+g.count+prefix+n,donor_id:a.request.donor_face_id};updated.set(a.request.face_id,face);newRows.push({...face,fields:a.request.fields});}}
- const fields=worldModelContentFields(candidate);
- for(const row of newRows){const native=fields.filter(f=>f.kind==='primitive'&&f.object_index===row.owner&&f.primitive_index===row.index);
-  for(const [name,value] of Object.entries(row.fields)){const kind={vertices:'vertex_index',uvs:'uv',colors:'color',normal_indices:'normal_index'}[name],selected=native.filter(f=>f.field===kind),corners=selected.reduce((n,f)=>Math.max(n,f.corner_index+1),0),width=name==='uvs'?2:name==='colors'?3:1;
-   if(!selected.length||!Array.isArray(value)||value.length!==corners||value.some(v=>width===1?!Number.isSafeInteger(v):!Array.isArray(v)||v.length!==width||v.some(n=>!Number.isSafeInteger(n))))fail('World face typed field coverage differs.');
-   for(const f of selected){const number=width===1?value[f.corner_index]:value[f.corner_index][(name==='uvs'?'uv':'rgb').indexOf(f.axis)],maximum=f.reference_count===null?255:Math.min(f.reference_count-1,8191);if(number<0||number>maximum)fail('World face field exceeds native bounds.');if(f.width===1)output.setUint8(f.byte_offset,number);else output.setUint16(f.byte_offset,number*8,true);}
-  }
- }
+ writeWorldFaceFields(candidate,newRows);
  worldModelContentAudit(candidate,candidate);return {bytes:candidate,faces:updated};
 }
 
@@ -44,4 +38,16 @@ export function worldFaceObjects(bytes){
   for(let n=0;n<g.count;n++){const native=byFace.get(g.owner+'/'+(g.first+n))??[],values=field=>native.filter(f=>f.field===field).sort((a,b)=>a.corner_index-b.corner_index),typed=(name,axes)=>{const selected=values(name);if(!selected.length)return null;const rows=[];for(const f of selected){rows[f.corner_index]??=Array(axes.length);rows[f.corner_index][axes.indexOf(f.axis)]=f.value;}return rows;};objects[g.owner].primitives.push({primitive_index:g.first+n,group_index:g.index,flags,byte_offset:g.at+8+n*g.stride,vertices:values('vertex_index').map(f=>f.value),uvs:typed('uv','uv'),colors:typed('color','rgb'),material:{clut:native.find(f=>f.field==='clut')?.value??null,tpage:native.find(f=>f.field==='tpage')?.value??null,semi_transparent:!!(v.getUint8(g.at+7)&2)},corner_count:corners,gouraud,baked_colors:baked,normal_indices:baked?null:values('normal_index').map(f=>f.value)});}
  }
  return objects;
+}
+
+export function worldNativeGroups(bytes){return groups(bytes);}
+export function writeWorldFaceFields(candidate,newRows){
+ const output=new DataView(candidate.buffer,candidate.byteOffset,candidate.byteLength);
+ const fields=worldModelContentFields(candidate);
+ for(const row of newRows){const native=fields.filter(f=>f.kind==='primitive'&&f.object_index===row.owner&&f.primitive_index===row.index);
+  for(const [name,value] of Object.entries(row.fields)){const kind={vertices:'vertex_index',uvs:'uv',colors:'color',normal_indices:'normal_index'}[name],selected=native.filter(f=>f.field===kind),corners=selected.reduce((n,f)=>Math.max(n,f.corner_index+1),0),width=name==='uvs'?2:name==='colors'?3:1;
+   if(!selected.length||!Array.isArray(value)||value.length!==corners||value.some(v=>width===1?!Number.isSafeInteger(v):!Array.isArray(v)||v.length!==width||v.some(n=>!Number.isSafeInteger(n))))fail('World face typed field coverage differs.');
+   for(const f of selected){const number=width===1?value[f.corner_index]:value[f.corner_index][(name==='uvs'?'uv':'rgb').indexOf(f.axis)],maximum=f.reference_count===null?255:Math.min(f.reference_count-1,8191);if(number<0||number>maximum)fail('World face field exceeds native bounds.');if(f.width===1)output.setUint8(f.byte_offset,number);else output.setUint16(f.byte_offset,number*8,true);}
+  }
+ }
 }
