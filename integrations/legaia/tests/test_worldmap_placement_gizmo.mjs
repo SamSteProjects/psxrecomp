@@ -11,3 +11,9 @@ assert.equal(translateOffset({offset:{x:0,y:0,z:0},yaw_units:0},'x',{x:-32,y:0},
 assert.equal(base.offset.x,7);assert.equal(base.yaw_units,2112);
 for(const [axis,delta,basis,units,step] of [['w',{x:0,y:0},{x:64,y:0},128,1],['x',{x:Infinity,y:0},{x:64,y:0},128,1],['x',{x:10,y:0},{x:1,y:0},128,1],['x',{x:64000,y:0},{x:64,y:0},128,1],['x',{x:10,y:0},{x:64,y:0},128,2]])assert.throws(()=>translateOffset(base,axis,delta,basis,units,step));
 console.log('World translation source directions, projected-axis deltas, absolute signed snapping and bounds passed');
+
+const large={offset:{x:40000,y:-40000,z:0},yaw_units:0};
+assert.equal(translateOffset(large,'x',{x:10,y:0},{x:100,y:0},100,1,'world-delta').offset.x,40010);
+assert.throws(()=>translateOffset(large,'x',{x:10,y:0},{x:100,y:0},100));
+assert.throws(()=>translateOffset(large,'x',{x:65535,y:0},{x:100,y:0},100,1,'world-delta'));
+assert.throws(()=>translateOffset(base,'x',{x:10,y:0},{x:100,y:0},100,1,'unbounded'));

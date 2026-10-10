@@ -70,3 +70,11 @@ export function worldPlacementRecordRows(report,sceneView,query='',scope='all',s
   let matching=0;const rows=[];for(const row of report.records){const match=matches(row);if(match)matching++;if(match||row.record_id===selectedRecordId)rows.push({recordId:row.record_id,matches:match});}
   return {rows,total:report.records.length,matching,selectedOutsideFilter:rows.some(r=>!r.matches)};
 }
+
+
+export function worldPlacementBatchDraft(report,recordIds,delta,shared){
+  if(!report||!Array.isArray(report.records)||!report.records.length||report.records.length>512||!Array.isArray(recordIds)||!recordIds.length||recordIds.length>128||recordIds.some((id,i)=>typeof id!=='string'||!/^\d{4}$/.test(id)||Number(id)>=512||i>0&&id<=recordIds[i-1])||!delta||Object.keys(delta).sort().join(',')!=='x,y,yaw_units,z'||!['x','y','z'].every(a=>Number.isSafeInteger(delta[a])&&Math.abs(delta[a])<=65535)||!Number.isSafeInteger(delta.yaw_units)||Math.abs(delta.yaw_units)>4095||typeof shared!=='boolean')fail('Batch preview requires canonical records, bounded integer deltas and shared-cell consent.');
+  const candidate=structuredClone(report),ids=new Set(recordIds);
+  for(const id of ids){const matches=candidate.records.filter(r=>r.record_id===id);if(matches.length!==1||!matches[0].writable||!validValues(matches[0].current_values)||!Array.isArray(matches[0].placements)||!matches[0].placements.length||matches[0].placements.length!==matches[0].source_cell_count||matches[0].source_cell_count>1&&!shared)fail('Batch preview requires complete qualified record ownership and shared-cell consent.');const row=matches[0],value=row.current_values;row.current_values={offset:Object.fromEntries(['x','y','z'].map(a=>[a,value.offset[a]+delta[a]])),yaw_units:((value.yaw_units+delta.yaw_units)%4096+4096)%4096};if(!validValues(row.current_values))fail('Batch preview would overflow a native source record.');}
+  return candidate;
+}
