@@ -3,6 +3,7 @@ from copy import deepcopy
 from pathlib import Path
 import base64
 import struct
+from hashlib import sha256
 import tempfile
 from unittest import TestCase
 from unittest.mock import patch
@@ -14,6 +15,7 @@ from sdk.project import ProjectService, ProjectError
 from sdk.worldmap_authoring import state_key
 from sdk.worldmap_placement_allocation import source, review
 from test_model_primitive_workflow import http_server
+from test_project_workflow import synthetic_scene
 
 
 def fixture():
@@ -85,8 +87,10 @@ class WorldPlacementAllocationTests(TestCase):
     def test_readonly_http_source_review_exact_scope_and_stale_live_refusal(self):
         raw,floor=fixture()
         with tempfile.TemporaryDirectory() as root:
-            p=ProjectService(Path(root));key=state_key(p);held=deepcopy(p._document());history=deepcopy((p.undo_stack,p.redo_stack))
-            context=(raw,dict(scene='map01'),{},0,floor,None,raw,[])
+            p=ProjectService(Path(root));doc=synthetic_scene();doc['source']['disc_identity']='sha256:'+'b'*64;p.import_metadata(doc)
+            key=state_key(p);held=deepcopy(p._document());history=deepcopy((p.undo_stack,p.redo_stack))
+            provenance=dict(scene='map01',source_disc_sha256='b'*64,source_map_sha256=sha256(raw).hexdigest(),source_floor_lut_sha256='c'*64)
+            context=(raw,provenance,{},0,floor,None,raw,[])
             with patch('sdk.worldmap_placement_allocation.context',return_value=context):
                 value=source(p,'map01',key);self.assertEqual(value['current_map_base64'],base64.b64encode(raw).decode('ascii'))
                 result=review(p,'map01',key,[request()]);self.assertFalse(result['build_ready'])
@@ -102,3 +106,42 @@ class WorldPlacementAllocationTests(TestCase):
                 with self.assertRaises(ProjectError): review(p,'map01',state_key(p),[request()])
                 p.mode='edit'
             self.assertEqual(p._document(),held);self.assertEqual((p.undo_stack,p.redo_stack),history)
+
+    def test_retained_authored_donor_apply_history_save_open_and_guarded_build_merge(self):
+        from sdk.worldmap_placement_allocation import build
+        from sdk.worldmap_placement_allocation_binding import COMPONENT,owner,validate,replay
+        raw,floor=fixture()
+        with tempfile.TemporaryDirectory() as root:
+            p=ProjectService(Path(root));doc=synthetic_scene();doc['source']['disc_identity']='sha256:'+'b'*64;p.import_metadata(doc);p.save()
+            provenance=dict(scene='map01',source_disc_sha256='b'*64,source_map_sha256=sha256(raw).hexdigest(),source_floor_lut_sha256='c'*64)
+            transformed=bytearray(raw);struct.pack_into('<h',transformed,9*32,96)
+            native_context=(raw,provenance,{},200,floor,None,bytes(transformed),[])
+            with patch('sdk.worldmap_placement_allocation.context',return_value=native_context):
+                before=deepcopy(p._document());first=review(p,'map01',state_key(p),[request()])
+                command=dict(type='allocate_worldmap_placements',scene='map01',source_key=state_key(p),requests=[request()],review_key=first['review_key'])
+                with self.assertRaises(ProjectError):p.command({**command,'review_key':'0'*64})
+                self.assertEqual(p._document(),before)
+                with http_server(p) as (_,post):self.assertEqual(post('/api/command',command)[0],200)
+                after=deepcopy(p._document());p.undo();self.assertEqual(p._document(),before);p.redo();self.assertEqual(p._document(),after)
+                current=source(p,'map01',state_key(p));self.assertEqual(len(current['authored_allocations']),1)
+                second=request(5,201,2);second['donor_cell']=200
+                receipt=review(p,'map01',state_key(p),[second]);p.command(dict(type='allocate_worldmap_placements',scene='map01',source_key=state_key(p),requests=[second],review_key=receipt['review_key']))
+                p.save();opened=ProjectService.open(p.root);self.assertEqual(opened.overrides,p.overrides)
+                binding=p.overrides[owner('map01')][COMPONENT];literal,_=replay(raw,floor,binding)
+                from sdk.worldmap_placement_export import export
+                old_disc=p.disc_path;p.disc_path='fixture-disc'
+                with patch('sdk.worldmap_placement_export.load_worldmap_geometry',side_effect=AssertionError('allocated GLB must not omit clones')):
+                    with self.assertRaisesRegex(ProjectError,'allocated decorations'):export(p,'map01',state_key(p))
+                p.disc_path=old_disc
+                expected=bytearray(literal);expected[9*32:9*32+2]=transformed[9*32:9*32+2]
+                self.assertEqual(base64.b64decode(receipt['proposed_map_base64']),bytes(expected))
+                disjoint=bytearray(transformed);disjoint[0x11000]=77
+                overlays=[dict(offset=200,size=len(raw),payload=bytes(disjoint),expected_sha256=sha256(raw).hexdigest())]
+                changes=build(p,overlays);expected[0x11000]=77;self.assertEqual(overlays[0]['payload'],bytes(expected));self.assertEqual(len(changes),2)
+                bad=deepcopy(binding);bad['operations'][1]['requests'][0]['placement_id']=bad['operations'][0]['requests'][0]['placement_id']
+                with self.assertRaises(ProjectError):validate(p,owner('map01'),bad)
+                bad=deepcopy(binding);bad['operations'][0]['proposed_map_sha256']='0'*64
+                with self.assertRaises(ProjectError):replay(raw,floor,bad)
+                conflict=bytearray(raw);conflict[4*32]=77
+                with self.assertRaises(ProjectError):build(p,[dict(offset=200,size=len(raw),payload=bytes(conflict),expected_sha256=sha256(raw).hexdigest())])
+                self.assertEqual(p.imports,opened.imports)

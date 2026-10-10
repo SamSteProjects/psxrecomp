@@ -24,6 +24,9 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
             raise ProjectError('Selected record export must match the reviewed batch records')
     if entity_id is not None and (not isinstance(entity_id,str) or len(entity_id)>1024 or not entity_id.startswith(f'scene://{scene}/worldmap/')):
         raise ProjectError('Selected placement export requires a bounded entity in the same kingdom')
+    from .worldmap_placement_allocation_binding import COMPONENT, owner
+    if scope != 'ground' and COMPONENT in project.overrides.get(owner(scene),{}):
+        raise ProjectError('Current placement GLB composition for allocated decorations is not implemented yet')
     key=state_key(project)
     def current():
         if expected_key!=key or project.mode!='edit' or state_key(project)!=key:

@@ -242,7 +242,7 @@ def build_report(audit) -> dict:
                         **({"affected_grid_cell_count":len(change["affected_grid_cells"])}
                            if "affected_grid_cells" in change else {}),
                         **({key: deepcopy(change[key]) for key in ('record_index', 'source_record_sha256', 'affected_source_entities') if key in change}
-                           if change.get('scope') == 'worldmap-source-record-transform-only' else {}),
+                           if change.get('scope') in ('worldmap-source-record-transform-only','walk-decoration-cell-allocation') else {}),
                         "scope": change.get("scope", "initial-man-placement-only"),
                         **({"event_offset": change["event_offset"], "entry_byte_offset": change["entry_byte_offset"], "byte_length": change["byte_length"]}
                            if change.get("scope") == "audio-SEQ-fixed-operands-only" else {}),
@@ -584,6 +584,12 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             components = {k:v for k,v in components.items() if k != 'AnimationRecords'}
             if not components:
                 continue
+        if isinstance(components, dict) and 'WorldMapPlacementAllocations' in components:
+            from .worldmap_placement_allocation_binding import validate
+            if set(components) != {'WorldMapPlacementAllocations'}:
+                raise BuildError('World allocation owner accepts only its dedicated component')
+            validate(project,identifier,components['WorldMapPlacementAllocations'])
+            continue
         if isinstance(components, dict) and 'WorldMapPlacements' in components:
             from .worldmap_placements import validate
             if set(components) != {'WorldMapPlacements'}:
@@ -1371,6 +1377,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 overlays.append({**overlay, "file": f"assets/{scene}-texture-{offset:08x}.bin"})
     from .worldmap_placements import build as build_world_placements
     audit_edits.extend(build_world_placements(project,overlays))
+    from .worldmap_placement_allocation import build as build_world_allocations
+    audit_edits.extend(build_world_allocations(project,overlays))
     relocation, relocation_audit = None, None
     if growth_requests:
         from .build_relocation import prepare_build_relocation

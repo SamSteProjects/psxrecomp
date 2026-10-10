@@ -2255,6 +2255,10 @@ class ProjectService:
             from .worldmap_authoring import apply
             apply(self, command)
             return
+        if command.get('type') == 'allocate_worldmap_placements':
+            from .worldmap_placement_allocation import apply
+            apply(self, command)
+            return
         if command.get('type') == 'set_worldmap_placement':
             from .worldmap_placements import apply
             apply(self, command)
@@ -3515,12 +3519,19 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - ({"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptAnimationOperands", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements"} | CONTROLLER_COMPONENTS):
+            if not isinstance(components, dict) or not components or set(components) - ({"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptAnimationOperands", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements", "WorldMapPlacementAllocations"} | CONTROLLER_COMPONENTS):
                 raise ProjectError("Unsupported authored component")
             if CONTROLLER_COMPONENTS & set(components):
                 from .controller_system_flags import validate_components
                 validate_components(result,identifier,components)
                 result.overrides[identifier]=deepcopy(components)
+                continue
+            if 'WorldMapPlacementAllocations' in components:
+                from .worldmap_placement_allocation_binding import validate
+                if set(components) != {'WorldMapPlacementAllocations'}:
+                    raise ProjectError('World allocations cannot contain field-actor components')
+                validate(result, identifier, components['WorldMapPlacementAllocations'])
+                result.overrides[identifier] = deepcopy(components)
                 continue
             if 'WorldMapPlacements' in components:
                 from .worldmap_placements import validate
@@ -3938,6 +3949,13 @@ class ProjectService:
         """Project-wide authored references, independent of derived resource caches."""
         records = []
         for identifier, components in sorted(self.overrides.items()):
+            if 'WorldMapPlacementAllocations' in components:
+                binding=components['WorldMapPlacementAllocations']
+                count=sum(len(op['requests']) for op in binding['operations'])
+                records.append(dict(id=identifier,kind='worldmap',scene_id=None,source_scene=binding['scene'],
+                    name=f"{binding['scene']} authored decoration placements",placement_record_count=count,
+                    changes=[f"New decoration placements: {count}"],
+                    authored={'WorldMapPlacementAllocations':deepcopy(binding)}))
             if 'WorldMapPlacements' in components:
                 binding=components['WorldMapPlacements']
                 records.append(dict(id=identifier,kind='worldmap',scene_id=None,source_scene=binding['scene'],
