@@ -1,0 +1,27 @@
+import {decodeWorldmapResources} from './worldmap-resources.js';
+const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b),node=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
+export function worldmapResourceProjectRecords(index,projectSourceKey){return index.assets.map(data=>({id:data.id,type:data.kind,label:data.name,source:'Global world resources · '+data.source_scene,sceneId:null,data:structuredClone(data),projectWorldResource:{sourceKey:index.source_key,projectSourceKey}}));}
+export function qualifyWorldmapProjectResource(record,index,state){
+ if(!record?.projectWorldResource||state.project?.mode!=='edit'||record.projectWorldResource.projectSourceKey!==state.project_assets_source_key||record.projectWorldResource.sourceKey!==state.worldmap_authoring_state_key)throw Error('World resource project sources changed. Refresh Project resources.');
+ const graph=decodeWorldmapResources(index,state),row=graph.assets.find(a=>a.id===record.id),root=graph.assets.find(a=>a.id==='worldmap://'+row?.source_scene+'/resources');
+ if(!row||!root||record.sceneId!==null||record.type!==row.kind||!same(record.data,row))throw Error('World resource record differs from its verified project index.');
+ return {projectPath:state.project.path,projectSourceKey:state.project_assets_source_key,sourceKey:graph.source_key,record:row,root};
+}
+export function showWorldmapProjectResource({dialog,record,lookup,getReport,getState,busy,onFocus,onError}){
+ const history=[];let shown=record,generation=0;
+ const current=()=>dialog.open&&!!lookup().find(r=>r.id===shown.id&&same(r,shown));
+ function qualify(){if(busy()||!current())throw Error('World resource details are no longer current.');return qualifyWorldmapProjectResource(shown,getReport(),getState());}
+ function render(next,remember=false){
+  qualifyWorldmapProjectResource(next,getReport(),getState());if(remember){if(history.length===32)history.shift();history.push(shown);}shown=next;generation++;dialog.replaceChildren();
+  const heading=node('div'),title=node('h2',shown.label),close=node('button','×');heading.className='dialog-heading';close.setAttribute('aria-label','Close asset details');close.onclick=()=>dialog.close();heading.append(title,close);dialog.append(heading);
+  const note=node('p','Global source resource; no imported field-scene membership or observed runtime residency. Ground is derived from MAP/floor data. Material links are static TIM address evidence.');dialog.append(note);
+  const actions=node('div');actions.className='dialog-actions';actions.style.flexWrap='wrap';
+  if(history.length){const back=node('button','Back to '+history.at(-1).label);back.onclick=()=>{try{qualify();render(history.pop());}catch(e){onError(e);}};actions.append(back);}
+  const focus=node('button','Focus representative source instance');focus.id='focus-project-world-resource';focus.disabled=shown.type!=='model';focus.onclick=async()=>{try{const target=qualify();dialog.close();await onFocus(target);}catch(e){onError(e);}};
+  const save=node('button','Save world resource index');save.onclick=async()=>{const ticket=generation;save.disabled=true;try{qualify();const response=await fetch('/api/state'),fresh=await response.json();if(!response.ok||ticket!==generation||!current())throw Error('World resource details changed during download.');qualifyWorldmapProjectResource(shown,getReport(),fresh);const index=getReport(),url=URL.createObjectURL(new Blob([JSON.stringify(index,null,2)],{type:'application/json'})),link=node('a');link.href=url;link.download='worldmap-resource-index.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){onError(e);}finally{if(ticket===generation)save.disabled=false;}};actions.append(focus,save);dialog.append(actions);
+  const edges=getReport().references.filter(e=>e.source_id===shown.id||e.target_id===shown.id),links=node('details'),summary=node('summary',`Recorded resource relationships (${edges.length})`);links.append(summary);links.dataset.worldResourceRelationships='';const targets=new Map(lookup().map(r=>[r.id,r]));
+  for(const edge of edges){const out=edge.source_id===shown.id,id=out?edge.target_id:edge.source_id,target=targets.get(id);if(!target)throw Error('Related world resource is absent from Project resources.');const button=node('button',(out?'Uses/owns: ':'Referenced by: ')+target.label);button.dataset.worldResourceId=id;Object.assign(button.style,{display:'block',whiteSpace:'normal',textAlign:'left',overflowWrap:'anywhere',maxWidth:'100%'});button.onclick=()=>{try{qualify();render(target,true);}catch(e){onError(e);}};links.append(button);}dialog.append(links);
+  const metadata=node('details'),summarySource=node('summary','SDK source and provenance'),pre=node('pre',JSON.stringify(shown.data,null,2));metadata.open=true;pre.id='asset-source-data';pre.className='diagnostic-detail';Object.assign(pre.style,{whiteSpace:'pre-wrap',overflowWrap:'anywhere'});metadata.append(summarySource,pre);dialog.append(metadata);dialog.scrollTop=0;
+ }
+ render(record);dialog.showModal();
+}

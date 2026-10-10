@@ -12,7 +12,7 @@ Open **World ground**, choose a kingdom and **Inspect kingdom**, then **Browse w
 
 The native input qualified 215 records: three roots, 77 geometry assets (three derived ground surfaces and 74 placed models), 135 TIM textures and 375 relationships. Geometry enumerates verified drawable assets referenced by source walk placements. It does not claim all unplaced TMDs. Ground comes from the MAP/floor heightfield rather than a native primitive pool. Static material/TIM address associations do not establish runtime palette behavior, VRAM residency or gameplay visibility. No standalone TIM pixel viewer or model authoring is added here.
 
-This reusable SDK index is connected to **World ground**. The **Project resources** global browser continues to expose its separate placement ownership graph; unified Project Asset Database integration remains future work.
+This reusable SDK index is connected to **World ground** and the main **Project resources** browser. The placement ownership graph remains a distinct global source graph; the browser combines their records without adding imported field memberships.
 
 ## Offline Evidence — 2026-10-09
 
@@ -21,3 +21,13 @@ Three focused Python tests cover metadata-only output, unchanged project state, 
 The muted editor browser workflow navigates resources and native TIM consumers in all three kingdoms. Fresh viewport focus verifies models with 126, 138 and 109 source instances respectively, selects their first canonical instance on Retail, and preserves the active field scene. Full downloaded JSON matches the fresh SDK graph exactly. Stale source keys and unexpected scene selectors return HTTP 400. Desktop and 400px layouts were visually inspected; no page errors occurred.
 
 Private evidence is retained under `local-output/sdk-20260909/worldmap-resources-20261009/`: native/downloaded indexes, browser proof, unchanged-project proof and screenshots. All fixture files, imported/authored inputs and history remain unchanged. No Apply, Build, game launch or runtime attachment occurred. Offline checks are not user acceptance or gameplay proof; the full SDK goal remains active.
+
+## Project Resource Integration — 2026-10-09
+
+Choose **Project resources** in **Asset database scope**, then **Global world-map sources** in the source filter. The combined global inventory contains 1,141 identities: 926 placement ownership identities and 215 geometry/TIM/resource-root records. **Models**, **Textures** and **World-map assets** retain their existing category meanings. Search works by stable ID, type, source kingdom and recorded provenance. Imported scene filters and Active scene resources exclude these global records. Discovery currently requires at least one imported scene and an available source disc.
+
+Geometry cards open World ground directly and focus one freshly qualified Retail source instance. **Details** opens source metadata, resource relationships and **Save world resource index**. Texture cards open Details; their geometry focus is disabled. Follow a consumer link to geometry or an owner link to its resource root. Back retains at most 32 prior resource selections. Field model assignment, donor NPC creation and field editable-instance actions are not offered for global geometry.
+
+The UI qualifies both the navigation-independent Project resources source key and the world geometry source key, which includes active scene context. Discovery withdraws stale combined results, rejects conflicting identities and enforces a combined 32 MiB metadata budget. Viewport handoff re-reads the native kingdom, matches model provenance and complete source membership, and leaves the active imported field scene unchanged. Pending world-map drafts must be resolved before navigation.
+
+Two focused Node suites cover existing project discovery/membership behavior and all 215 native resource adapters, separate source keys, search/filter isolation and nine malformed/stale handoffs. Four JavaScript syntax checks and the server AST check passed. Actual editor workflows cover all three kingdoms, source Details and exact full-index download readback, native TIM consumers, Back and representative viewport focus. Desktop and 400px layouts were inspected with zero page errors. All fixture files, imported/authored inputs and history remain unchanged. Evidence is private under `local-output/sdk-20260909/project-world-resources-20261009/`. No Build, game or runtime attachment occurred; gameplay verification remains deferred.
