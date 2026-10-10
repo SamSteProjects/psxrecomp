@@ -1348,6 +1348,9 @@ class EditorHandler(BaseHTTPRequestHandler):
                         apply_restore(self.server.project,body['request'],body['review_key'])
                         self._json(200,self.server.state())
                     return
+                if route == '/api/worldmap-model-vector-allocation-review':
+                    from .worldmap_model_allocation import review
+                    self._json(200,review(self.server.project,body));return
                 if route == '/api/worldmap-model-replacement-preview':
                     if set(body)!={'request','review_key'}:raise ProjectError('World model preview requires request and Review key')
                     from .worldmap_model_replacement import preview
