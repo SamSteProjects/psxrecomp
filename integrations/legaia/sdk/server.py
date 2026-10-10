@@ -1130,6 +1130,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-project-resources.js": ("worldmap-project-resources.js", "text/javascript"),
                  "/worldmap-model-replacement.js": ("worldmap-model-replacement.js", "text/javascript"),
                  "/worldmap-model-vector.js": ("worldmap-model-vector.js", "text/javascript"),
+                 "/worldmap-model-restoration.js": ("worldmap-model-restoration.js", "text/javascript"),
                  "/worldmap-model-allocation.js": ("worldmap-model-allocation.js", "text/javascript"),
                  "/worldmap-model-vector-replay.js": ("worldmap-model-vector-replay.js", "text/javascript"),
                  "/worldmap-model-object.js": ("worldmap-model-object.js", "text/javascript"),
@@ -1348,6 +1349,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                     else:
                         if set(body)!={'request','review_key'}:raise ProjectError('World Retail restoration Apply requires request and Review key')
                         apply_restore(self.server.project,body['request'],body['review_key'])
+                        self._json(200,self.server.state())
+                    return
+                if route in ('/api/worldmap-model-restoration-review', '/api/worldmap-model-restoration-apply'):
+                    from .worldmap_model_restoration import review, apply
+                    if route.endswith('-review'):
+                        self._json(200,review(self.server.project,body))
+                    else:
+                        if set(body)!={'request','review_key'}:
+                            raise ProjectError('World restoration Apply requires request and Review key')
+                        apply(self.server.project,body['request'],body['review_key'])
                         self._json(200,self.server.state())
                     return
                 if route in ('/api/worldmap-model-vector-allocation-review', '/api/worldmap-model-vector-allocation-apply'):
