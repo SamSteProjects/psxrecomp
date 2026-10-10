@@ -1277,6 +1277,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_placements import review_reset
                     self._json(200, review_reset(self.server.project, body['scene'], body['source_key']))
                     return
+                if route in ('/api/worldmap-placement-file', '/api/worldmap-placement-file-review'):
+                    expected = {'scene', 'source_key'} | ({'content'} if route.endswith('-review') else set())
+                    if set(body) != expected:
+                        raise ProjectError('Placement file request requires exact source scope and optional review content')
+                    from .worldmap_placement_files import export_file, review
+                    result = (review(self.server.project, body['scene'], body['source_key'], body['content'])
+                              if route.endswith('-review') else export_file(self.server.project, body['scene'], body['source_key']))
+                    self._json(200, result)
+                    return
                 if route in ('/api/worldmap-placements','/api/worldmap-placement-review'):
                     expected={'scene','source_key'} | ({'record_id','values','shared_record'} if route.endswith('-review') else set())
                     if set(body)!=expected:

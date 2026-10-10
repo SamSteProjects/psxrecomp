@@ -22,10 +22,10 @@ KINDS={
     'Transitions':('set_transition_entry','transition_id'),
 }
 
-def parse_json(content):
+def parse_json(content, *, max_bytes=MAX_BYTES):
     if not isinstance(content,str):raise ProjectError('Operand file must be UTF-8 JSON')
     try:
-        if len(content.encode('utf-8'))>MAX_BYTES:raise ProjectError('Operand file exceeds 64 KiB')
+        if len(content.encode('utf-8'))>max_bytes:raise ProjectError(f'Operand file exceeds {max_bytes//1024} KiB')
         def pairs(rows):
             result={}
             for key,value in rows:

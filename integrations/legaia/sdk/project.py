@@ -2229,6 +2229,10 @@ class ProjectService:
             from .worldmap_placements import apply_reset
             apply_reset(self, command)
             return
+        if command.get('type') == 'import_worldmap_placement_file':
+            from .worldmap_placement_files import apply
+            apply(self, command)
+            return
         if command.get('type') == 'import_controller_operand_file':
             from .controller_operand_files import apply
             apply(self,command)
