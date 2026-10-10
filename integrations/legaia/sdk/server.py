@@ -1323,9 +1323,9 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200,review(self.server.project,body['view_id'],body['review_key'],body['source_key']))
                     return
                 if route == '/api/worldmap-texture':
-                    if set(body)!={'texture_id','source_key','member_sha256','palette_index'}:raise ProjectError('World TIM preview requires exact texture, source and palette fields')
+                    if set(body) not in ({'texture_id','source_key','member_sha256','palette_index'},{'texture_id','source_key','member_sha256','palette_index','layer'}):raise ProjectError('World TIM preview requires exact texture, source, palette and optional layer fields')
                     from .worldmap_texture import inspect
-                    self._json(200,inspect(self.server.project,body['texture_id'],body['source_key'],body['member_sha256'],body['palette_index']))
+                    self._json(200,inspect(self.server.project,body['texture_id'],body['source_key'],body['member_sha256'],body['palette_index'],body.get('layer')))
                     return
                 if route == '/api/worldmap-resources':
                     if set(body)!={'source_key'}:raise ProjectError('World resource discovery requires the exact project source key')

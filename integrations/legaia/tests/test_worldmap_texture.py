@@ -2,7 +2,7 @@ from pathlib import Path
 from copy import deepcopy
 from hashlib import sha256
 import base64,struct,tempfile,unittest
-from unittest.mock import patch
+from unittest.mock import patch,Mock
 from importer.textures import parse_tim,TextureCatalog
 from sdk.project import ProjectService,ProjectError
 from sdk.worldmap_texture import inspect
@@ -36,6 +36,38 @@ class WorldTextureTests(unittest.TestCase):
             r=inspect(self.p,f[1]['semantic_id'],H,f[1]['decoded_member_sha256'],0);self.assertEqual((r['status'],r['palette_count']),(status,count))
             if not count:self.assertEqual(r['rgba_base64'],'');self.assertIn('CLUT',r['reason'])
             with self.assertRaises(ProjectError):inspect(self.p,f[1]['semantic_id'],H,f[1]['decoded_member_sha256'],1)
+ def test_current_pixels_distinct_from_retail_without_project_mutation(self):
+    f=fixture();tim=f[0]
+    original=struct.pack('<II',16,8)+struct.pack('<IHHHH',12+len(tim.clut.data),0,0,32,1)+tim.clut.data+struct.pack('<IHHHH',14,0,0,1,1)+tim.image.data
+    self.assertEqual(sha256(original).hexdigest(),f[1]['decoded_member_sha256'])
+    changed=bytearray(original);struct.pack_into('<H',changed,22,0x7fff);changed=bytes(changed)
+    identifier=f[1]['semantic_id'];self.p.texture_overrides[identifier]={'format':'tim'}
+    context=Mock();context.original_tim.return_value=original
+    held=deepcopy(self.p._document())
+    with patch('sdk.worldmap_texture.load_worldmap_texture',return_value=f),patch.object(self.p,'_texture_context',return_value=context),patch.object(self.p,'read_texture_replacement',return_value=changed):
+        retail=inspect(self.p,identifier,H,f[1]['decoded_member_sha256'],0,'retail')
+        current=inspect(self.p,identifier,H,f[1]['decoded_member_sha256'],0,'current')
+        self.assertFalse(retail['authored']);self.assertTrue(current['authored'])
+        self.assertEqual(current['effective_tim_sha256'],sha256(changed).hexdigest())
+        self.assertEqual(base64.b64decode(current['rgba_base64']),bytes([0,0,0,0,255,255,255,255,0,255,0,255,0,0,255,255]))
+        self.assertNotEqual(current['rgba_sha256'],retail['rgba_sha256'])
+        context.validate_replacement.assert_called_once_with(identifier,changed)
+        context.original_tim.return_value=changed
+        with self.assertRaises(ProjectError):inspect(self.p,identifier,H,f[1]['decoded_member_sha256'],0,'current')
+    self.assertEqual(self.p._document(),held)
+    with patch('sdk.worldmap_texture.load_worldmap_texture',return_value=f):
+        self.p.texture_overrides={}
+        current=inspect(self.p,identifier,H,f[1]['decoded_member_sha256'],0,'current')
+        self.assertFalse(current['authored']);self.assertEqual(current['source_tim_sha256'],current['effective_tim_sha256'])
+    with patch('sdk.worldmap_texture.load_worldmap_texture',side_effect=AssertionError('must refuse before source')):
+        with self.assertRaises(ProjectError):inspect(self.p,identifier,H,H,0,'live')
+
+ def test_source_change_during_pixel_read_refuses_result(self):
+    f=fixture()
+    with patch('sdk.worldmap_texture.load_worldmap_texture',return_value=f),patch('sdk.worldmap_texture.state_key',side_effect=[H,'0'*64]):
+        with self.assertRaisesRegex(ProjectError,'changed during preview'):
+            inspect(self.p,f[1]['semantic_id'],H,f[1]['decoded_member_sha256'],0,'current')
+
  def test_stale_live_and_noncanonical_ids_refuse_before_source(self):
     with patch('sdk.worldmap_texture.load_worldmap_texture',side_effect=AssertionError('must not load')):
         for id,key in [('texture://map01/kingdom/00000',H),('texture://town01/0000',H),('texture://map01/kingdom/0000','0'*64)]:

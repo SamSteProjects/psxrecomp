@@ -1,6 +1,6 @@
 # World TIM Project Authoring and Build
 
-Offline checks passed on 2026-10-10. This slice connects existing native kingdom TIM payloads to project authoring, history, persistence and the normal SDK package Build. Dedicated World texture editing controls and a Current pixel/geometry preview still require editor integration. Gameplay appearance is unverified; this is not full feature acceptance.
+Offline checks passed on 2026-10-10. This slice connects existing native kingdom TIM payloads to project authoring, history, persistence and the normal SDK package Build. Dedicated World texture editing controls and a Current geometry texture preview still require editor integration. Current TIM-local pixels are now available as described below. Gameplay appearance is unverified; this is not full feature acceptance.
 
 ## Native source and project ownership
 
@@ -16,4 +16,14 @@ Thirteen focused Python checks passed with the retail disc enabled and no failur
 
 Private native evidence: `local-output/sdk-20260909/worldmap-texture-authoring-20261010/proof.json` and `project-proof.json`. All three first native TIMs matched the independent read-only decoder; a one-word palette edit produced exact complete decoded-pack reconstruction. The project probe passed palette authoring, Undo/Redo, Save/Open and one normal SDK package Build containing all three kingdom changes. Every packaged stream exactly matched the independently requested overlay and decoded to the complete expected pack. Imported documents stayed unchanged. Private outputs and retail payloads are not committed.
 
-The existing [Native World TIM Inspector](legaia-worldmap-texture.md) continues to show Retail source pixels. Dedicated World Review/Apply controls, Current preview, viewport texture refresh and their browser workflow verification remain next. No native recomp compile, game, runtime attachment, install or disc export ran. Runtime palette selection, animation and appearance remain unknown until gameplay verification. The full SDK goal remains active.
+The [Native World TIM Inspector](legaia-worldmap-texture.md) now offers separate Retail and Current TIM-local pixel layers. Dedicated World Review/Apply controls and viewport texture refresh remain next. No native recomp compile, game, runtime attachment, install or disc export ran. Runtime palette selection, animation and appearance remain unknown until gameplay verification. The full SDK goal remains active.
+
+## Current Pixel Inspector — 2026-10-10
+
+Both World resource inspection entry points reuse the same pixel component and now expose a Retail/Current selector. Retail always decodes the selected native source member. Current uses its exact-layout authored TIM when present, with independently retained source/effective hashes; an absent override explicitly reports Current matches Retail. Source metadata and root provenance stay Retail. The layer is explicit in the v2 response; old layerless requests retain the v1 contract. The preview remains read-only.
+
+Layer and palette changes withdraw the old canvas and cancel pending qualification. Resource/source withdrawal hides the pixels; response completion must retain its layer and request generation. Color, transparent-zero alpha and PSX STP remain separate views. A Current TIM preview does not update the 3D viewport or establish runtime palette selection.
+
+Five focused pixel service tests cover literal edited pixels, retained Retail output, no-override behavior, immutable reads, stale source refusal before/after reading, unsupported palettes and old request compatibility. The two project-history checks remain green. Two Node suites qualify six native Retail/Current reports with eight forged-response refusals per report, and three native legacy reports with twelve refusal cases each. One JavaScript syntax and two Python AST checks passed.
+
+Private browser evidence: `local-output/sdk-20260909/worldmap-current-texture-20261010/`. The actual World resource dialog traversed all three kingdom TIM 0000 resources and verified both loaded canvas bytes against independent Retail/authored TIM decoding. Layer and palette changes withdrew the displayed canvas. Desktop and 400 px captures were inspected; no page errors or horizontal overflow occurred. The project document and authored state key stayed unchanged. No Build, game or runtime attachment ran in this preview slice.
