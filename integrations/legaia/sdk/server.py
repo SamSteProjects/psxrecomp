@@ -1132,6 +1132,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/project-assets.js": ("project-assets.js", "text/javascript"),
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
                  "/worldmap-asset-references.js": ("worldmap-asset-references.js", "text/javascript"),
+                 "/worldmap-reference-trace.js": ("worldmap-reference-trace.js", "text/javascript"),
                  "/script-facing.js": ("script-facing.js", "text/javascript"),
                  "/texture-usage.js": ("texture-usage.js", "text/javascript"),
                  "/runtime-review.js": ("runtime-review.js", "text/javascript"),
@@ -2185,6 +2186,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200,export_file(self.server.project))
                     return
                 if route == '/api/asset-reference-trace':
+                    if body.get('scope') == 'global':
+                        if set(body)!={'asset_id','direction','depth','layer','expected_source_key','scope'}:
+                            raise ProjectError('Global trace requires exact asset, direction, depth, derived layer and project source key')
+                        from .worldmap_reference_trace import inspect
+                        self._json(200,inspect(self.server.project,body['asset_id'],body['direction'],body['depth'],body['layer'],body['expected_source_key']))
+                        return
                     if set(body)!={'asset_id','direction','depth','layer','expected_source_key'}:raise ProjectError('Reference trace requires exact asset, direction, depth, layer and source key')
                     from .asset_reference_trace import inspect
                     self._json(200,inspect(self.server.project,body['asset_id'],body['direction'],body['depth'],body['layer'],body['expected_source_key']))
