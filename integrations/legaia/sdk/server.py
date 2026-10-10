@@ -1126,6 +1126,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/source-build-script.js": ("source-build-script.js", "text/javascript"),
                  "/worldmap-authoring.js": ("worldmap-authoring.js", "text/javascript"),
                  "/worldmap-geometry.js": ("worldmap-geometry.js", "text/javascript"),
+                 "/worldmap-resources.js": ("worldmap-resources.js", "text/javascript"),
                  "/worldmap-placement-editor.js": ("worldmap-placement-editor.js", "text/javascript"),
                  "/worldmap-placement-batch-editor.js": ("worldmap-placement-batch-editor.js", "text/javascript"),
                  "/worldmap-placement-state.js": ("worldmap-placement-state.js", "text/javascript"),
@@ -1310,6 +1311,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Batch placement export requires exact source, scene/ground scope and optional reviewed batch')
                     from .worldmap_placement_export import export
                     self._json(200,export(self.server.project,body['scene'],body['source_key'],scope=body['scope'],batch_proposal=body['batch_proposal'],record_ids=body.get('record_ids')))
+                    return
+                if route == '/api/worldmap-resources':
+                    if set(body)!={'source_key'}:raise ProjectError('World resource discovery requires the exact project source key')
+                    from .worldmap_resources import inspect
+                    self._json(200,inspect(self.server.project,body['source_key']))
                     return
                 if route == '/api/import-batch-review':
                     if set(body)!={'disc','scenes','source_key'}:raise ProjectError('Scene group review requires exact disc, scene names and project source')
