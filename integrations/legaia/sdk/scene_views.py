@@ -109,6 +109,10 @@ def validate(project, identifier, value):
             raise ValueError()
     except ValueError:
         raise ProjectError('Invalid scene view identity') from None
+    if isinstance(value,dict) and value.get('kind')=='worldmap':
+        from .worldmap_views import validate as validate_world_view
+        validate_world_view(project,identifier,value)
+        return
     if (not isinstance(value, dict) or set(value) != {'id', 'name', 'scene_id', 'import_sha256', 'display'} or
             value['id'] != identifier or not isinstance(value['name'], str) or
             value['name'] != value['name'].strip() or not 1 <= len(value['name']) <= 80 or
@@ -142,6 +146,7 @@ def command(project, body):
         if not isinstance(identifier, str) or identifier not in project.scene_views:
             raise ProjectError('Saved scene view is unavailable')
         before = deepcopy(project.scene_views[identifier])
+        if before.get('kind')=='worldmap':raise ProjectError('Use world view commands for this saved global view')
         validate(project, identifier, before)
         if body['review_key'] != review_key(project, before):
             raise ProjectError('Scene view changed since review; reopen it')

@@ -5839,7 +5839,7 @@ worldmapControls=mountWorldmapAuthoring({after:$('resource-refresh'),
   onDraftChange:pending=>{if(worldmapDraftPending===pending)return;worldmapDraftPending=pending;setBusy(busy);},
   onInspectDestination:label=>{if(busy||worldmapDraftPending)return;$('import-button').click();$('catalog-prefix').value=label;clearSceneCatalog();$('catalog-search').click();}});
 
-worldmapGeometryControls=mountWorldmapGeometry({after:$('resource-refresh'),getState:()=>state,busy:()=>busy,setBusy,onInspectPlacement:target=>worldPlacementControls.openTarget(target),onError:error=>notify(error.message,true)});
+worldmapGeometryControls=mountWorldmapGeometry({after:$('resource-refresh'),getState:()=>state,busy:()=>busy,setBusy,api,onInspectPlacement:target=>worldPlacementControls.openTarget(target),onError:error=>notify(error.message,true)});
 worldPlacementControls=mountWorldPlacements({after:$('resource-refresh'),getState:()=>state,busy:()=>busy,setBusy,api,
   onDraftChange:pending=>{if(worldmapDraftPending===pending)return;worldmapDraftPending=pending;setBusy(busy);},onError:error=>notify(error.message,true)});
 

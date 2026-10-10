@@ -2267,6 +2267,10 @@ class ProjectService:
         if isinstance(command.get('type'),str) and command['type'] in bookmark_commands:
             bookmark_command(self,command)
             return
+        from .worldmap_views import COMMANDS as world_view_commands, command as world_view_command
+        if isinstance(command.get('type'),str) and command['type'] in world_view_commands:
+            world_view_command(self,command)
+            return
         from .scene_views import COMMANDS as view_commands, command as view_command
         if isinstance(command.get('type'), str) and command.get('type') in view_commands:
             view_command(self, command)

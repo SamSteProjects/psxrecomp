@@ -62,9 +62,9 @@ export function mountSceneViews({after,getState,getDisplay,isBusy,canEdit,canRec
   const dialog=document.createElement('dialog');dialog.id='scene-views-dialog';document.body.append(dialog);
   let context=null,signature=null,revision=0,transfer=null,reading=false;
   dialog.addEventListener('close',()=>{revision++;transfer=null;reading=false;update();});
-  const chosen=()=>getState().scene_views?.find(row=>row.id===dialog.querySelector('[data-saved-views]')?.value);
+  const chosen=()=>getState().scene_views?.find(row=>row.kind!=='worldmap'&&row.id===dialog.querySelector('[data-saved-views]')?.value);
   function update(){
-    const state=getState(),busy=isBusy()||reading,value=chosen();button.textContent=`Saved scene views (${state.scene_views?.length??0})`;button.disabled=busy||!canRecall()||!state.scene?.id;
+    const state=getState(),busy=isBusy()||reading,value=chosen();button.textContent=`Saved scene views (${state.scene_views?.filter(v=>v.kind!=='worldmap').length??0})`;button.disabled=busy||!canRecall()||!state.scene?.id;
     if(!dialog.open)return;
     const ok=canEdit()&&state.project.path===context;
     dialog.querySelectorAll('input,select,button').forEach(control=>{if(!control.matches('[data-close]'))control.disabled=busy||!ok;});
@@ -81,7 +81,7 @@ export function mountSceneViews({after,getState,getDisplay,isBusy,canEdit,canRec
   }
   function list(preferred=null){
     if(!dialog.open)return;const state=getState(),select=dialog.querySelector('[data-saved-views]'),old=preferred??select.value;select.replaceChildren();
-    for(const value of state.scene_views??[]){const option=document.createElement('option');option.value=value.id;option.textContent=`${state.scenes.find(scene=>scene.id===value.scene_id)?.name??value.scene_id} - ${value.name}`;select.append(option);}
+    for(const value of (state.scene_views??[]).filter(row=>row.kind!=='worldmap')){const option=document.createElement('option');option.value=value.id;option.textContent=`${state.scenes.find(scene=>scene.id===value.scene_id)?.name??value.scene_id} - ${value.name}`;select.append(option);}
     if([...select.options].some(item=>item.value===old))select.value=old;
     show();
   }
