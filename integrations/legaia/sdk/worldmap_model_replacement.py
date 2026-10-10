@@ -53,3 +53,32 @@ def apply(project,request,review_key):
     if report['review_key']!=review_key:raise ProjectError('World model Apply requires the exact freshly qualified Review')
     if report['changed']:project.set_model_replacement(request['asset_id'],candidate)
     return report
+
+
+def preview(project,request,review_key):
+    """Read-only object-local geometry for an exact, freshly recomputed Review."""
+    from importer.assets import decode_tmd
+    candidate,report=prepare(project,request)
+    if report['review_key']!=review_key:
+        raise ProjectError('World model preview requires the exact freshly qualified Review')
+    original,native=source(project,request['asset_id'])
+    if native!=report['source_record'] or sha256(original).hexdigest()!=request['member_sha256']:
+        raise ProjectError('World model native source changed during comparison')
+    binding=project.model_overrides.get(request['asset_id'])
+    effective=project.read_model_replacement(request['asset_id'],binding) if binding else original
+    if sha256(effective).hexdigest()!=request['effective_sha256']:
+        raise ProjectError('World model Current bytes changed during comparison')
+    def geometry(content):
+        decoded=decode_tmd(content)
+        return {k:decoded[k] for k in ('vertices','triangles')}
+    value=dict(schema_version='legaia.worldmap-model-comparison.v1',project_path=str(project.root),
+        asset_id=request['asset_id'],source_key=request['source_key'],review_key=review_key,
+        current_sha256=request['effective_sha256'],proposed_sha256=report['proposed_sha256'],
+        current=geometry(effective),proposed=geometry(candidate),
+        coordinate_system='retail_tmd_object_local_y_down',read_only=True,
+        project_changed=False,gameplay_verified=False)
+    if len(json.dumps(value,allow_nan=False).encode('utf-8'))>16*1024*1024:
+        raise ProjectError('World model comparison exceeds its geometry budget')
+    if request['source_key']!=state_key(project):
+        raise ProjectError('World model source changed during comparison')
+    return value

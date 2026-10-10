@@ -1131,6 +1131,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-model-replacement.js": ("worldmap-model-replacement.js", "text/javascript"),
                  "/worldmap-model-vector.js": ("worldmap-model-vector.js", "text/javascript"),
                  "/worldmap-model-object.js": ("worldmap-model-object.js", "text/javascript"),
+                 "/worldmap-model-comparison.js": ("worldmap-model-comparison.js", "text/javascript"),
                  "/worldmap-current-models.js": ("worldmap-current-models.js", "text/javascript"),
                  "/worldmap-model-source.js": ("worldmap-model-source.js", "text/javascript"),
                  "/worldmap-texture-uses.js": ("worldmap-texture-uses.js", "text/javascript"),
@@ -1207,7 +1208,7 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/worldmap-replacement-review", "/api/worldmap-replacement-apply", "/api/text-json-preview", "/api/text-json-import") else 32768
-            if urlsplit(self.path).path in ('/api/worldmap-model-replacement-review','/api/worldmap-model-replacement-apply'):
+            if urlsplit(self.path).path in ('/api/worldmap-model-replacement-review','/api/worldmap-model-replacement-apply','/api/worldmap-model-replacement-preview'):
                 request_limit = 24 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/audio-sample-source-review','/api/audio-sample-source-retain','/api/audio-sample-allocation-source-review','/api/audio-sample-allocation-source-retain'):
                 request_limit = 2 * 1024 * 1024
@@ -1340,6 +1341,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                         apply_restore(self.server.project,body['request'],body['review_key'])
                         self._json(200,self.server.state())
                     return
+                if route == '/api/worldmap-model-replacement-preview':
+                    if set(body)!={'request','review_key'}:raise ProjectError('World model preview requires request and Review key')
+                    from .worldmap_model_replacement import preview
+                    self._json(200,preview(self.server.project,body['request'],body['review_key']));return
                 if route in ('/api/worldmap-model-replacement-review','/api/worldmap-model-replacement-apply'):
                     from .worldmap_model_replacement import review,apply
                     if route.endswith('-review'):self._json(200,review(self.server.project,body))
