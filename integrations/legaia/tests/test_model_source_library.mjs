@@ -31,3 +31,16 @@ console.log('Native model comparison hashes, historical/current distinction and 
 const world=structuredClone(value);world.imports[0].asset_id='asset://map01/worldmap/models/0001';world.imports[0].scene_id='worldmap://map01/models';world.imports[0].binding={schema_version:'legaia.worldmap-model-glb-binding.v1',asset_id:world.imports[0].asset_id,source_scene_id:world.imports[0].scene_id};assert.deepEqual(decodeModelSourceLibrary(world,path),world);
 for(const mutate of [r=>r.scene_id='worldmap://map02/models',r=>r.binding.source_scene_id='worldmap://map03/models',r=>r.asset_id='asset://town01/models/scene-tmd/0000',r=>r.binding.schema_version='legaia.model-glb-binding.v1']){const bad=structuredClone(world);mutate(bad.imports[0]);assert.throws(()=>decodeModelSourceLibrary(bad,path));}
 console.log('World retained-input canonical kingdom/asset/binding ownership passes; four cross-domain claims rejected.');
+
+if(process.argv[2]){
+ const fs=await import('node:fs'),fixture=JSON.parse(fs.readFileSync(process.argv[2]));
+ for(const record of fixture.catalog.imports){
+  let state=structuredClone(fixture.state),opens=0,reads=0;const current=()=>state;
+  const options={record,catalog:fixture.catalog,getState:current,busy:()=>false,readLibrary:async()=>{reads++;return structuredClone(fixture.catalog);},readWorldResources:async key=>{assert.equal(key,state.worldmap_authoring_state_key);return structuredClone(fixture.index);},openWorldModel:async(target,records,index)=>{opens++;assert.equal(target.id,record.asset_id);assert.equal(target.sceneId,null);assert.equal(target.projectWorldResource.projectSourceKey,state.project_assets_source_key);assert(records.includes(target));assert.equal(index.source_key,state.worldmap_authoring_state_key);},changeScene:async()=>{throw Error('World navigation must not switch field scenes');},openModel:async()=>{throw Error('World navigation must not call the field model editor');}};
+  assert.equal(await navigateModelSource(options),true);assert.equal(opens,1);assert.equal(reads,2);assert.deepEqual(state,fixture.state);
+  for(const modify of [o=>o.busy=()=>true,o=>o.getState=()=>({...fixture.state,project:{...fixture.state.project,mode:'live'}}),o=>o.getState=()=>({...fixture.state,capabilities:{worldmap_geometry:false}}),o=>o.readLibrary=async()=>({...fixture.catalog,library_key:'f'.repeat(64)}),o=>o.readWorldResources=async()=>{state.worldmap_authoring_state_key='0'.repeat(64);return structuredClone(fixture.index);},o=>o.readWorldResources=async()=>{state.project_assets_source_key='0'.repeat(64);return structuredClone(fixture.index);},o=>o.readWorldResources=async()=>({...fixture.index,source_key:'0'.repeat(64)})]){
+   state=structuredClone(fixture.state);const bad={...options};modify(bad);await assert.rejects(()=>navigateModelSource(bad));assert.equal(opens,1);
+  }
+ }
+ console.log('Three native World input navigations preserve field scene/state and qualify two fresh library reads; seven stale/busy/mode/capability/source guards each passed.');
+}
