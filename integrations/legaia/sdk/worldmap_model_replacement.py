@@ -27,6 +27,8 @@ def prepare(project,request):
         raise ProjectError('World model replacement byte coverage differs')
     original,native=source(project,request['asset_id']);binding=project.model_overrides.get(request['asset_id'])
     effective=project.read_model_replacement(request['asset_id'],binding) if binding else original
+    if binding and binding['format']=='world-tmd-vector-allocation-v1':
+        raise ProjectError('Allocated World content editing needs ledger-aware Review; Current inspection and export remain supported')
     if sha256(original).hexdigest()!=request['member_sha256'] or sha256(effective).hexdigest()!=request['effective_sha256']:
         raise ProjectError('World model source changed; inspect Current again')
     candidate=content if request['format']!='json' else import_shape_json(effective,request['effective_sha256'],content)[0]

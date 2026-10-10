@@ -1,6 +1,7 @@
 """Read-only World TMD/vector exchange through shared source codecs."""
 import base64
 import re
+from copy import deepcopy
 from .project import ProjectError
 from .worldmap_authoring import state_key
 from importer.worldmap_model_authoring import model_identity, read_worldmap_model
@@ -42,7 +43,13 @@ def inspect(project, request):
                       source_tmd_sha256=sha256(original).hexdigest(),effective_tmd_sha256=sha256(effective).hexdigest(),
                       authored=effective!=original,retail_tmd_base64=base64.b64encode(original).decode('ascii'))
     binding=project.model_overrides.get(request['asset_id'])
-    if layered and binding and binding['format']!='tmd-shape':
+    if layered and binding and binding['format']=='world-tmd-vector-allocation-v1' and request['layer']=='current':
+        from .model_face_addition import base_content
+        base=base_content(project,request['asset_id'],original,binding)
+        result.update(schema_version='legaia.worldmap-model-source.v4',model_format=binding['format'],
+                      allocation_binding=deepcopy(binding),base_byte_length=len(base),
+                      base_tmd_base64=base64.b64encode(base).decode('ascii'))
+    elif layered and binding and binding['format'] not in ('tmd-shape','world-tmd-vector-allocation-v1'):
         from importer.model_authoring import replace_model_content
         _,changes=replace_model_content(original,source['decoded_member_sha256'],content,allow_normal_references=True)
         result.update(schema_version='legaia.worldmap-model-source.v3',model_format=binding['format'],content_changes=sorted(changes,key=lambda r:r['byte_offset']))
