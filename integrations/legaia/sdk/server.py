@@ -1266,6 +1266,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .project_assets import inspect
                     self._json(200, inspect(self.server.project))
                     return
+                if route == '/api/worldmap-assets':
+                    if set(body) != {'source_key'}:
+                        raise ProjectError('Global world-map asset discovery requires the project source_key only')
+                    from .worldmap_asset_index import inspect
+                    self._json(200, inspect(self.server.project, body['source_key']))
+                    return
                 if route == '/api/worldmap-geometry':
                     if set(body) != {'scene', 'source_key'}:
                         raise ProjectError('World ground inspection accepts only scene and source_key')
