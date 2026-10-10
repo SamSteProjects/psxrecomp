@@ -80,10 +80,20 @@ def compose(project, geometry, *, transform_entries=None, allocation_binding=_DE
     return geometry['placement_authoring']
 
 
-def inspect(project, scene, key, allocation_proposal=None):
+def inspect(project, scene, key, allocation_proposal=None, allocation_edit_proposal=None):
     if project.mode != 'edit' or key != state_key(project):
         raise ProjectError('Current World scene requires fresh Edit source inputs')
     binding=_DEFAULT
+    if allocation_proposal is not None and allocation_edit_proposal is not None:
+        raise ProjectError('Choose one proposed World allocation or decoration transform')
+    if allocation_edit_proposal is not None:
+        if not isinstance(allocation_edit_proposal,dict) or set(allocation_edit_proposal) != {'placement_id','values','review_key'}:
+            raise ProjectError('Proposed decoration transform requires exact reviewed identity and values')
+        from .worldmap_placement_edit import review
+        reviewed=review(project,scene,key,allocation_edit_proposal['placement_id'],allocation_edit_proposal['values'])
+        if reviewed['review_key'] != allocation_edit_proposal['review_key']:
+            raise ProjectError('Proposed decoration transform Review is stale')
+        binding=reviewed['binding']
     if allocation_proposal is not None:
         if not isinstance(allocation_proposal,dict) or set(allocation_proposal) != {'requests','review_key'}:
             raise ProjectError('Proposed World scene requires exact reviewed allocation requests')
@@ -95,8 +105,10 @@ def inspect(project, scene, key, allocation_proposal=None):
     from .worldmap_geometry import inspect as inspect_geometry
     geometry=inspect_geometry(project,scene,key,texture_layer='current',model_layer='current')
     compose(project,geometry,allocation_binding=binding)
-    geometry.update(representation='proposed-source' if allocation_proposal else 'current-source',
+    geometry.update(representation='proposed-source' if allocation_proposal or allocation_edit_proposal else 'current-source',
         allocation_proposal=deepcopy(allocation_proposal))
+    if allocation_edit_proposal is not None:
+        geometry['allocation_edit_proposal']=deepcopy(allocation_edit_proposal)
     if project.mode != 'edit' or key != state_key(project):
         raise ProjectError('Current World scene source changed during composition')
     import json

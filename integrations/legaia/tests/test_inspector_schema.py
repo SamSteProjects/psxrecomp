@@ -16,7 +16,7 @@ class InspectorSchema(unittest.TestCase):
     def test_authored_world_decoration_has_distinct_native_identity_and_no_retail_transform(self):
         schema=inspector_schema();component=schema['components']['WorldAuthoredPlacement']
         self.assertEqual(component['layout'],'read-only-properties')
-        self.assertEqual([a['id'] for a in component['actions']],['inspect-world-source-asset'])
+        self.assertEqual([a['id'] for a in component['actions']],['inspect-world-source-asset','edit-world-decoration-transform'])
         props={p['id']:p for p in component['properties']}
         self.assertEqual(props['placement']['path'],['authored_placement','placement_id'])
         self.assertEqual(props['native-identity']['path'],['native_entity_id'])

@@ -471,7 +471,8 @@ def inspector_schema():
     }
     schema['components']['WorldAuthoredPlacement']={
         'label':'Authored World decoration','layout':'read-only-properties',
-        'actions':[{'id':'inspect-world-source-asset','label':'Inspect donor model asset','capability':'worldmap_geometry','requires_edit':True}],
+        'actions':[{'id':'inspect-world-source-asset','label':'Inspect donor model asset','capability':'worldmap_geometry','requires_edit':True},
+            {'id':'edit-world-decoration-transform','label':'Edit decoration transform','capability':'worldmap_placements','requires_edit':True}],
         'properties':[
             {'id':'identity','label':'Entity','path':['entity_id'],'type':'entity-reference','state':'read-only-project'},
             {'id':'placement','label':'Authored placement','path':['authored_placement','placement_id'],'type':'string','state':'read-only-project'},
@@ -484,7 +485,7 @@ def inspector_schema():
             {'id':'visibility','label':'Runtime visibility','path':['runtime_visibility'],'type':'string','state':'unresolved'},
             {'id':'resting','label':'Runtime resting position','path':['runtime_resting_position'],'type':'string','state':'unresolved'},
         ],
-        'notes':['This decoration is authored and has no Retail instance transform. Native coordinates use Y-down; viewport Y reflection is separate.', 'The existing donor model can be inspected. Clone editing, collision, script behavior and native visibility are not established by this preview.'],
+        'notes':['This decoration is authored and has no Retail instance transform. Native coordinates use Y-down; viewport Y reflection is separate.', 'Retained decoration XYZ/yaw can be reviewed and edited through its dedicated tool. Cell, record and model stay fixed; collision, scripts and native visibility remain unverified.'],
         'details':[{'label':'Native allocation provenance','path':['authored_placement']}],
     }
     schema['authored_asset_inspectors']['world_placements']='AssetWorldPlacements'

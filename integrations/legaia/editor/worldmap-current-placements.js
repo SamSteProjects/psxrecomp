@@ -153,3 +153,26 @@ export async function qualifyProposedWorldPlacements(retail, current, proposed, 
   const view = await qualifyCurrentWorldPlacements(retail, currentView, options);
   return {...view, entities: view.entities.map(entity => ({...entity, preview_layer: 'Proposed authored seeds'}))};
 }
+
+export async function qualifyProposedWorldPlacementEdit(retail, current, proposed, review, options) {
+  await qualifyCurrentWorldPlacements(retail,current,options);
+  const before=current.placement_authoring,after=proposed?.placement_authoring;
+  if (review?.schema_version !== 'legaia.worldmap-decoration-transform-review.v1' || proposed?.representation !== 'proposed-source' ||
+      proposed.allocation_proposal !== null || !same(proposed.allocation_edit_proposal,{placement_id:review.placement_id,values:review.values,review_key:review.review_key}) ||
+      review.source_key !== current.project_source_key || review.current_map_sha256 !== before.current_map_sha256 ||
+      !same(review.before_binding,before.allocation_binding) || !after ||
+      after.current_map_base64 !== before.current_map_base64 || after.current_map_sha256 !== before.current_map_sha256 ||
+      after.exported_map_base64 !== review.proposed_map_base64 || after.exported_map_sha256 !== review.proposed_map_sha256 ||
+      !same(after.authored_records,before.authored_records) || !same(after.allocation_binding,review.binding) ||
+      !same(proposed.scene_graph?.assets,current.scene_graph.assets) || !same(proposed.model_authoring,current.model_authoring) ||
+      !same(proposed.texture_authoring,current.texture_authoring)) fail('Proposed decoration transform differs from qualified Current and reviewed recipe.');
+  const revised=structuredClone(review.before_binding);let matches=0;
+  for(const op of revised.operations)for(const request of op.requests)if(request.placement_id===review.placement_id){request.values=structuredClone(review.values);matches++;}
+  for(let i=0;i<revised.operations.length;i++)revised.operations[i].proposed_map_sha256=review.binding?.operations?.[i]?.proposed_map_sha256;
+  if(matches!==1||!same(revised,review.binding))fail('Decoration transform changed another request or native identity.');
+  const normalized=structuredClone(proposed);delete normalized.allocation_edit_proposal;
+  normalized.representation='current-source';normalized.placement_authoring.current_map_base64=after.exported_map_base64;
+  normalized.placement_authoring.current_map_sha256=after.exported_map_sha256;
+  const view=await qualifyCurrentWorldPlacements(retail,normalized,options);
+  return {...view,entities:view.entities.map(entity=>({...entity,preview_layer:'Proposed authored seeds'}))};
+}

@@ -1,6 +1,7 @@
-import {worldPlacementInventory, allocateWorldPlacements, equalWorldPlacementBytes,
+import {worldPlacementInventory, allocateWorldPlacements, equalWorldPlacementBytes, placementDigest,
   replayWorldPlacementAllocations, composeWorldPlacementTransforms} from './worldmap-placement-replay.js';
 import {nativeWorldPlacementMatches} from './worldmap-current-placements.js';
+import {validValues} from './worldmap-placement-state.js';
 const fail = message => { throw Error(message); };
 const exact = (value, keys) => value && typeof value === 'object' && !Array.isArray(value) &&
   Object.keys(value).sort().join(',') === [...keys].sort().join(',');
@@ -67,5 +68,46 @@ export async function qualifyWorldDecorationReview(value, source, requests) {
   const canonical = await replayWorldPlacementAllocations(source.retailBytes, before.floor_lut, before.scene, binding, before.source_record);
   const composed = await composeWorldPlacementTransforms(source.retailBytes, canonical.bytes, before.floor_lut, before.scene, source.authoredRecords);
   if (!equalWorldPlacementBytes(composed, allocated.bytes)) fail('Decoration Review canonical lineage conflicts with original transforms.');
+  return structuredClone(value);
+}
+
+export async function reviseWorldDecoration(source, placementId, values) {
+  if (!validValues(values)) fail('Decoration transform requires signed16 XYZ and yaw 0–4095.');
+  const before = source.metadata.authored_allocations.find(a => a.placement_id === placementId), binding = structuredClone(source.metadata.binding);
+  const requests = binding?.operations.flatMap(op => op.requests).filter(r => r.placement_id === placementId) ?? [];
+  if (!before || requests.length !== 1 || same(requests[0].values, values)) fail('Choose a changed retained authored decoration transform.');
+  requests[0].values = structuredClone(values);
+  let bytes = source.retailBytes;
+  for (const op of binding.operations) {
+    const allocated = await allocateWorldPlacements(bytes, source.metadata.floor_lut, source.metadata.scene, op.requests);
+    bytes = allocated.bytes; op.proposed_map_sha256 = allocated.audit.proposed_sha256;
+  }
+  const replayed = await replayWorldPlacementAllocations(source.retailBytes, source.metadata.floor_lut, source.metadata.scene, binding, source.metadata.source_record);
+  bytes = await composeWorldPlacementTransforms(source.retailBytes, replayed.bytes, source.metadata.floor_lut, source.metadata.scene, source.authoredRecords);
+  const literal = source.bytes.slice(), view = new DataView(literal.buffer), at = before.record_index * 32;
+  for (const [i,axis] of ['x','y','z'].entries()) view.setInt16(at + i*2, values.offset[axis], true);
+  view.setUint16(at+10, (view.getUint16(at+10,true)&0xf000)|values.yaw_units, true);
+  if (!equalWorldPlacementBytes(bytes,literal)) fail('Decoration edit changed unrelated bytes or another authored clone.');
+  return {binding,bytes,audit:{before:structuredClone(before),after:replayed.allocations.find(a=>a.placement_id===placementId),
+    changed_bytes:Array.from(bytes.entries()).filter(([i,n])=>n!==source.bytes[i]).map(([i,n])=>({byte_offset:i,before_byte:source.bytes[i],after_byte:n})),
+    scope:'authored-decoration-transform-only',gameplay_verified:false}};
+}
+
+export async function qualifyWorldDecorationTransformReview(value, source, placementId, values) {
+  const before = source.metadata, selected = before.authored_allocations.find(a=>a.placement_id===placementId);
+  if (!exact(value,['schema_version','project_path','scene','source_key','source_record','placement_id','values','current_values',
+      'current_map_sha256','proposed_map_sha256','proposed_map_base64','before_binding','binding','audit',
+      'read_only','project_changed','gameplay_verified','build_ready','review_key']) ||
+      value.schema_version !== 'legaia.worldmap-decoration-transform-review.v1' || value.project_path !== before.project_path ||
+      value.scene !== before.scene || value.source_key !== before.source_key || !same(value.source_record,before.source_record) ||
+      value.placement_id !== placementId || !selected || !same(value.values,values) ||
+      !same(value.current_values,worldDecorationDonorValues(source,selected.target_cell)) ||
+      value.current_map_sha256 !== before.current_map_sha256 || !same(value.before_binding,before.binding) ||
+      value.read_only !== true || value.project_changed !== false || value.gameplay_verified !== false || value.build_ready !== false || !hash(value.review_key))
+    fail('Decoration transform Review changed its Current owner, values or read-only scope.');
+  const revised = await reviseWorldDecoration(source,placementId,values);
+  if (!same(value.binding,revised.binding) || !same(value.audit,revised.audit) ||
+      !equalWorldPlacementBytes(decode(value.proposed_map_base64),revised.bytes) || value.proposed_map_sha256 !== await placementDigest(revised.bytes))
+    fail('Decoration transform Review differs from independent recipe replay and literal native patch.');
   return structuredClone(value);
 }

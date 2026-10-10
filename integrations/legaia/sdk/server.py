@@ -1337,11 +1337,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                             raise ProjectError('World placement allocation Review requires exact source and clones')
                         self._json(200, review(self.server.project, body['scene'], body['source_key'], body['requests']))
                     return
+                if route == '/api/worldmap-decoration-transform-review':
+                    if set(body) != {'scene','source_key','placement_id','values'}:
+                        raise ProjectError('Decoration transform Review requires exact current identity and values')
+                    from .worldmap_placement_edit import review
+                    self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_id'],body['values']))
+                    return
                 if route == '/api/worldmap-placement-scene':
-                    if set(body) not in ({'scene','source_key'},{'scene','source_key','allocation_proposal'}):
+                    if set(body) not in ({'scene','source_key'},{'scene','source_key','allocation_proposal'},{'scene','source_key','allocation_edit_proposal'}):
                         raise ProjectError('Current World scene requires exact source and optional reviewed allocation')
                     from .worldmap_current_placements import inspect
-                    self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body.get('allocation_proposal')))
+                    self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body.get('allocation_proposal'),body.get('allocation_edit_proposal')))
                     return
                 if route == '/api/worldmap-placement-reset-review':
                     if set(body) != {'scene', 'source_key'}:
