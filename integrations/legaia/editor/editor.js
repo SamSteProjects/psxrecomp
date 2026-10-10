@@ -31,6 +31,7 @@ import {mountDraftOutputReview} from '/draft-review.js';
 import {mountBuildHistory} from '/build-history.js';
 import {openAssetBuildHistory} from '/asset-build-history.js';
 import {openAssetReferences,qualifyAssetReferenceInstructionSite} from '/asset-references.js';
+import {openGlobalAssetReferences,qualifyGlobalAssetReferenceRecord} from '/worldmap-asset-references.js';
 import {openActorAnimationAssignment} from '/actor-animation.js';
 import {mountProjectSettings} from '/project-settings.js';
 import {mountProjectCopy} from '/project-copy.js';
@@ -2048,6 +2049,11 @@ function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false}={})
     const key=record.projectMembership.sourceKey;
     choice.onchange=()=>{if(busy||key!==state.project_assets_source_key||!projectAssetControls?.chooseVariant(record.id,choice.value))return;const next=assetRecords().find(item=>item.id===record.id);if(next){assetDetails.close();showAssetDetails(next);}};
     label.append(choice);membership.append(label,note);$('asset-source-data').parentElement.before(membership);
+  }
+  if(state.capabilities?.asset_references&&record.projectGlobal){
+    const button=document.createElement('button');button.textContent='Inspect asset references…';button.id='inspect-asset-references';
+    button.onclick=()=>{if(busy||!exportCurrent())return;try{const index=projectAssetControls?.sourceReport()?.globalWorldmap;assetDetails.close();openGlobalAssetReferences({record,index,getState:()=>state,busy:()=>busy,onError:error=>notify(error.message,true),onNavigate:async node=>{const target=lookup().find(r=>r.id===node.id);qualifyGlobalAssetReferenceRecord(target,{source_key:node.projectGlobal.sourceKey,assets:[node.data]});showAssetDetails(target,lookup);}});}catch(error){notify(error.message,true);}};
+    $('asset-source-data').parentElement.before(button);
   }
   if(state.capabilities?.asset_references&&record.type!=='template'&&!record.projectGlobal){
     const button=document.createElement('button');button.textContent='Inspect asset references…';button.id='inspect-asset-references';const key=state.asset_reference_source_key;

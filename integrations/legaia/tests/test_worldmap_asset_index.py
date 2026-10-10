@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 from sdk.project import AssetDatabase, ProjectError
-from sdk.worldmap_asset_index import inspect
+from sdk.worldmap_asset_index import inspect, references
 
 H='a'*64
 class WorldmapAssetIndexTests(unittest.TestCase):
@@ -38,4 +38,24 @@ class WorldmapAssetIndexTests(unittest.TestCase):
     def test_changed_source_during_read_refuses_result(self):
         with patch('sdk.worldmap_asset_index.source_key',side_effect=[H,H,'b'*64]),patch('sdk.worldmap_asset_index.context',side_effect=self.context):
             with self.assertRaises(ProjectError):inspect(self.project,H)
+    def test_reference_neighborhoods_retain_exact_full_graph(self):
+        held=deepcopy(vars(self.project))
+        with patch('sdk.worldmap_asset_index.source_key',return_value=H),patch('sdk.worldmap_asset_index.context',side_effect=self.context):
+            for scene in ('map01','map02','map03'):
+                for identifier in (f'worldmap://{scene}/placements',f'worldmap://{scene}/placements/records/0001',f'scene://{scene}/worldmap/placements/0003'):
+                    result=references(self.project,identifier,H);graph=result['global_worldmap_index']
+                    self.assertEqual(result['incoming'],[e for e in graph['references'] if e['target_id']==identifier])
+                    self.assertEqual(result['outgoing'],[e for e in graph['references'] if e['source_id']==identifier])
+                    self.assertEqual(graph['coverage']['asset_count'],12)
+                    self.assertTrue(result['read_only']);self.assertEqual(result['asset_id'],identifier)
+        self.assertEqual(self.project.overrides,held['overrides']);self.assertEqual(self.project.active_scene,held['active_scene'])
+    def test_reference_identity_and_final_source_refusal(self):
+        with patch('sdk.worldmap_asset_index.context') as read:
+            for identifier in (None,5,'scene://field/actors/0001','worldmap://map04/placements','worldmap://map01/placements/records/0001/extra'):
+                with self.assertRaises(ProjectError):references(self.project,identifier,H)
+            read.assert_not_called()
+        with patch('sdk.worldmap_asset_index.source_key',return_value=H),patch('sdk.worldmap_asset_index.context',side_effect=self.context):
+            with self.assertRaises(ProjectError):references(self.project,'worldmap://map01/placements/records/0999',H)
+        with patch('sdk.worldmap_asset_index.source_key',side_effect=[H]*4+['b'*64]),patch('sdk.worldmap_asset_index.context',side_effect=self.context):
+            with self.assertRaises(ProjectError):references(self.project,'worldmap://map01/placements',H)
 if __name__=='__main__':unittest.main()

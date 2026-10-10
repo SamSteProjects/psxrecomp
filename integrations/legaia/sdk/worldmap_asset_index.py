@@ -92,3 +92,22 @@ def inspect(project, expected_key):
     if expected_key != source_key(project) or expected_key != source_key(view):
         raise ProjectError('Global world-map source changed during inventory')
     return deepcopy(result)
+
+
+def references(project, identifier, expected_key):
+    """A qualified global neighborhood with its complete recorded ownership graph."""
+    if not isinstance(identifier, str) or not re.fullmatch(
+            r'(?:worldmap://map0[123]/placements(?:/records/[0-9]{4})?|scene://map0[123]/worldmap/placements/[0-9a-f]{4})', identifier):
+        raise ProjectError('Global asset references require a world-map source identity')
+    graph = inspect(project, expected_key)
+    if not any(node['id'] == identifier for node in graph['assets']):
+        raise ProjectError('Global asset is absent from the qualified ownership graph')
+    result = dict(schema_version='legaia.global-asset-references.v1', asset_id=identifier,
+                  source_key=expected_key, read_only=True, global_worldmap_index=graph,
+                  incoming=[edge for edge in graph['references'] if edge['target_id'] == identifier],
+                  outgoing=[edge for edge in graph['references'] if edge['source_id'] == identifier])
+    _metadata(result)
+    _budget(result)
+    if source_key(project) != expected_key:
+        raise ProjectError('Global reference source changed during qualification')
+    return deepcopy(result)

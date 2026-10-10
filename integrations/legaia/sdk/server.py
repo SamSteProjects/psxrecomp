@@ -1130,7 +1130,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-placement-yaw.js": ("worldmap-placement-yaw.js", "text/javascript"),
                  "/worldmap-scene.js": ("worldmap-scene.js", "text/javascript"),
                  "/project-assets.js": ("project-assets.js", "text/javascript"),
-                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
+                "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
+                 "/worldmap-asset-references.js": ("worldmap-asset-references.js", "text/javascript"),
                  "/script-facing.js": ("script-facing.js", "text/javascript"),
                  "/texture-usage.js": ("texture-usage.js", "text/javascript"),
                  "/runtime-review.js": ("runtime-review.js", "text/javascript"),
@@ -2189,6 +2190,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200,inspect(self.server.project,body['asset_id'],body['direction'],body['depth'],body['layer'],body['expected_source_key']))
                     return
                 if route == '/api/asset-references':
+                    if body.get('scope') == 'global':
+                        if set(body) != {'asset_id','scope','source_key'}:
+                            raise ProjectError('Global asset references require asset_id, global scope and project source_key only')
+                        from .worldmap_asset_index import references
+                        self._json(200,references(self.server.project,body['asset_id'],body['source_key']))
+                        return
                     if set(body) not in ({'asset_id'}, {'asset_id','scope'}):raise ProjectError('Asset references require a stable asset ID and optional scope')
                     scope=body.get('scope','active')
                     if scope not in ('active','project'):raise ProjectError('Asset reference scope must be active or project')
