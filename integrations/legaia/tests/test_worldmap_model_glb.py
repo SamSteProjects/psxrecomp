@@ -47,6 +47,14 @@ class WorldModelGlbTests(TestCase):
     from test_model_primitive_workflow import http_server
     with http_server(p) as (_,post):
      status,body=post('/api/worldmap-model-glb-review',request);self.assertEqual(status,200);self.assertEqual(body,report)
+    external_doc,external_binary=_read_glb(glb)
+    for node in external_doc['nodes']:node['name']='External mesh';node.pop('extras',None)
+    count=len(external_doc['nodes']);external_doc['nodes']=[dict(name='External group',children=list(range(1,count+1)))]+external_doc['nodes'];external_doc['scenes'][0]['nodes']=[0]
+    external=_write_glb(external_doc,external_binary);external_request={**request,'glb_base64':base64.b64encode(external).decode()}
+    with self.assertRaises(Exception):review_import(p,external_request)
+    mapped={**external_request,'binding':{**exported['binding'],'external_object_nodes':[1]}};mapped_report=review_import(p,mapped);self.assertEqual(mapped_report['candidate_base64'],report['candidate_base64']);self.assertEqual(p._document(),held)
+    for nodes in (None,[],[True],[1.0],[1024],[0]):
+     with self.assertRaises(Exception):review_import(p,{**mapped,'binding':{**mapped['binding'],'external_object_nodes':nodes}})
     apply_import(p,request,report['review_key']);candidate=base64.b64decode(report['candidate_base64']);self.assertEqual(p.read_model_replacement(identifier,p.model_overrides[identifier]),candidate);self.assertEqual(len(p.undo_stack),1);self.assertEqual(p.undo_stack[0]['target'],'model_source_import')
     record=next(iter(p.model_sources.values()));self.assertEqual(read_source(p,record),glb);self.assertEqual(record['scene_id'],'worldmap://map01/models');self.assertEqual(record['binding'],exported['binding'])
     catalog=library(p,str(p.root));download=library_download(p,record['receipt_key'],str(p.root),catalog['library_key']);self.assertEqual(base64.b64decode(download['glb_base64']),glb)

@@ -21,7 +21,7 @@ def validate_record(record):
     if record['scene_id'].startswith('worldmap://')!=world:raise ProjectError('Model source domain changed')
     if world:
         from .worldmap_model_binding import owner
-        if owner(record['asset_id'])!=record['scene_id'] or b.get('source_scene_id')!=record['scene_id'] or set(b)!={'schema_version','asset_id','source_scene_id','project_source_key','source_sha256','effective_sha256','profile','scope'} or b.get('scope')!='existing-native-model-layout':raise ProjectError('World model source ownership changed')
+        if owner(record['asset_id'])!=record['scene_id'] or b.get('source_scene_id')!=record['scene_id'] or set(b)!=({'schema_version','asset_id','source_scene_id','project_source_key','source_sha256','effective_sha256','profile','scope'}|({'external_object_nodes'} if 'external_object_nodes' in b else set())) or b.get('scope')!='existing-native-model-layout':raise ProjectError('World model source ownership changed')
     if not isinstance(b,dict) or b.get('asset_id')!=record['asset_id'] or (b.get('source_scene_id') if world else b.get('scene_id'))!=record['scene_id'] or b.get('schema_version') not in ('legaia.model-glb-binding.v1','legaia.model-glb-binding.v2','legaia.model-glb-binding.v3','legaia.worldmap-model-glb-binding.v1'):raise ProjectError('Model source binding identity changed')
     from .model_glb import _json_size
     _json_size(b,128*1024,'Model source binding')

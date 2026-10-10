@@ -67,11 +67,15 @@ def prepare_import(project,request):
         raise ProjectError('World GLB binding exceeds its metadata budget')
     context={k:request[k] for k in ('asset_id','source_key','member_sha256','effective_sha256')}
     fresh=export(project,context)
-    if digest(binding)!=digest(fresh['binding']):raise ProjectError('World GLB binding differs from Current; export again')
+    if digest({k:v for k,v in binding.items() if k!='external_object_nodes'})!=digest(fresh['binding']):raise ProjectError('World GLB binding differs from Current; export again')
+    if 'external_object_nodes' in binding:
+        nodes=binding['external_object_nodes']
+        if not isinstance(nodes,list) or len(nodes)!=len(fresh['binding']['profile']['objects']) or any(type(n) is not int or not 0<=n<1024 for n in nodes) or len(set(nodes))!=len(nodes):
+            raise ProjectError('World GLB mapping requires one distinct bounded node per native object')
     source=inspect(project,{k:v for k,v in context.items() if k!='effective_sha256'}|{'layer':'current'})
     effective=base64.b64decode(source['tmd_base64'],validate=True)
     if sha256(effective).hexdigest()!=context['effective_sha256']:raise ProjectError('World Current model changed during GLB conversion')
-    candidate,analysis=import_model_glb(effective,content,binding['profile'])
+    candidate,analysis=import_model_glb(effective,content,binding['profile'],**({'object_node_indices':binding['external_object_nodes']} if 'external_object_nodes' in binding else {}))
     native_request={**context,'format':'content-tmd','content_base64':base64.b64encode(candidate).decode('ascii')}
     candidate,native_review=prepare(project,native_request)
     report=dict(schema_version='legaia.worldmap-model-glb-review.v1',project_path=str(project.root),
