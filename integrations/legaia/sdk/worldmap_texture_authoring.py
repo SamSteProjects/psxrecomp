@@ -166,3 +166,55 @@ def apply_rectangle(project,request,review_key):
         raise ProjectError('World rectangle Apply requires the exact fresh Review receipt')
     project.set_texture_index_rectangle(request['texture_id'],request['x'],request['y'],request['width'],request['height'],request['palette_entry'],request['effective_sha256'])
     return receipt
+
+
+def _replacement_inputs(project,request):
+    import base64
+    from .worldmap_authoring import state_key
+    fields={'texture_id','source_key','member_sha256','effective_sha256','palette_index','content_base64'}
+    if not isinstance(request,dict) or set(request)!=fields or project.mode!='edit' or request['source_key']!=state_key(project) or not scene_for(request['texture_id']):
+        raise ProjectError('World TIM replacement requires the exact current Edit source')
+    if any(not isinstance(request[k],str) or not re.fullmatch('[0-9a-f]{64}',request[k]) for k in ('member_sha256','effective_sha256')) or type(request['palette_index']) is not int or not 0<=request['palette_index']<=32767:
+        raise ProjectError('World TIM replacement requires inspected hashes and an explicit palette')
+    encoded=request['content_base64']
+    if not isinstance(encoded,str) or not 1<=len(encoded)<=1398104:
+        raise ProjectError('World TIM replacement exceeds its 1 MiB file budget')
+    try:content=base64.b64decode(encoded,validate=True)
+    except ValueError as exc:raise ProjectError('World TIM replacement requires valid base64') from exc
+    if not 1<=len(content)<=1048576 or base64.b64encode(content).decode('ascii')!=encoded:
+        raise ProjectError('World TIM replacement requires bounded canonical base64 bytes')
+    ctx=project._texture_context(request['texture_id']);original=ctx.original_tim(request['texture_id'])
+    binding=project.texture_overrides.get(request['texture_id']);effective=project.read_texture_replacement(binding) if binding else original
+    if sha256(original).hexdigest()!=request['member_sha256'] or sha256(effective).hexdigest()!=request['effective_sha256']:
+        raise ProjectError('World TIM replacement source changed; preview Current again')
+    ctx.validate_replacement(request['texture_id'],content)
+    return content,effective
+
+
+def review_replacement(project,request):
+    import base64
+    from .project import digest
+    from .worldmap_authoring import state_key
+    from importer.texture_authoring import texture_payload_changes
+    from importer.textures import parse_tim,decode_tim
+    content,effective=_replacement_inputs(project,request)
+    tim=parse_tim(content);count=len(tim.clut.data)//((1<<tim.bpp)*2) if tim.bpp<=8 and tim.clut else 0 if tim.bpp<=8 else 1
+    if request['palette_index']>=max(1,count):raise ProjectError('Replacement preview palette is unavailable')
+    if not 0<tim.width*tim.image.height<=2097152:raise ProjectError('Replacement preview exceeds its pixel budget')
+    rgba=stp=b''
+    if count:
+        pixels=decode_tim(tim,request['palette_index']);rgba=pixels['rgba'];stp=pixels['stp']
+    changes=texture_payload_changes(effective,content)
+    result=dict(schema_version='legaia.worldmap-replacement-review.v1',project_path=str(project.root),request={k:v for k,v in request.items() if k!='content_base64'},candidate_tim_sha256=sha256(content).hexdigest(),byte_length=len(content),bpp=tim.bpp,width=tim.width,height=tim.image.height,palette_count=count,changed=content!=effective,changed_pixel_count=changes['pixel_indices_changed'],changed_palette_words=changes['palette_words_changed'],changed_image_bytes=changes['image_bytes_changed'],rgba_base64=base64.b64encode(rgba).decode('ascii'),stp_base64=base64.b64encode(stp).decode('ascii'),rgba_sha256=sha256(rgba).hexdigest(),stp_sha256=sha256(stp).hexdigest(),scope='existing-TIM-exact-layout-replacement',project_changed=False,gameplay_verified=False)
+    result['review_key']=digest(result)
+    if project.mode!='edit' or request['source_key']!=state_key(project):raise ProjectError('World TIM source changed during replacement Review')
+    return result
+
+
+def apply_replacement(project,request,review_key):
+    receipt=review_replacement(project,request)
+    if not isinstance(review_key,str) or receipt['review_key']!=review_key:raise ProjectError('World TIM replacement Apply requires the exact fresh Review receipt')
+    if receipt['changed']:
+        import base64
+        project.set_texture_replacement(request['texture_id'],base64.b64decode(request['content_base64'],validate=True))
+    return receipt

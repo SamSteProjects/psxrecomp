@@ -1128,6 +1128,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-geometry.js": ("worldmap-geometry.js", "text/javascript"),
                  "/worldmap-resources.js": ("worldmap-resources.js", "text/javascript"),
                  "/worldmap-project-resources.js": ("worldmap-project-resources.js", "text/javascript"),
+                 "/worldmap-tim-replacement.js": ("worldmap-tim-replacement.js", "text/javascript"),
                  "/worldmap-tim-palette.js": ("worldmap-tim-palette.js", "text/javascript"),
                  "/worldmap-texture.js": ("worldmap-texture.js", "text/javascript"),
                  "/worldmap-view-scope.js": ("worldmap-view-scope.js", "text/javascript"),
@@ -1199,7 +1200,7 @@ class EditorHandler(BaseHTTPRequestHandler):
             return
         try:
             length = int(self.headers.get("Content-Length", "0"))
-            request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/text-json-preview", "/api/text-json-import") else 32768
+            request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/worldmap-replacement-review", "/api/worldmap-replacement-apply", "/api/text-json-preview", "/api/text-json-import") else 32768
             if urlsplit(self.path).path in ('/api/audio-sample-source-review','/api/audio-sample-source-retain','/api/audio-sample-allocation-source-review','/api/audio-sample-allocation-source-retain'):
                 request_limit = 2 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/model-face-addition-preview', '/api/model-face-addition'):
@@ -1322,6 +1323,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'view_id','review_key','source_key'}:raise ProjectError('World view recall requires exact view and source keys')
                     from .worldmap_views import review
                     self._json(200,review(self.server.project,body['view_id'],body['review_key'],body['source_key']))
+                    return
+                if route in ('/api/worldmap-replacement-review','/api/worldmap-replacement-apply'):
+                    from .worldmap_texture_authoring import review_replacement,apply_replacement
+                    if route.endswith('-review'):self._json(200,review_replacement(self.server.project,body))
+                    else:
+                        if set(body)!={'request','review_key'}:raise ProjectError('World replacement Apply requires request and Review key')
+                        apply_replacement(self.server.project,body['request'],body['review_key'])
+                        self._json(200,self.server.state())
                     return
                 if route in ('/api/worldmap-copy-review','/api/worldmap-copy-apply'):
                     from .worldmap_texture_authoring import review_copy,apply_copy

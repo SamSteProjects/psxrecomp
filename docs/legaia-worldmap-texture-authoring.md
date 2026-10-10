@@ -75,3 +75,12 @@ Both World texture inspectors now include **Copy Current pixel rectangle**. Prev
 Copy reads every source index from the immutable pre-edit image, including overlapping regions. It preserves the palette, header/layout and pixel lanes outside the destination. A source equal to the destination is a no-op and adds no history. Draft/source changes withdraw the receipt; Live mode refuses authoring. Undo/Redo, private payload retention, Save/Open, Current viewport/export and package Build use the same binding as pixel and fill edits.
 
 Full replacement controls remain unfinished. Runtime palette selection, residency, blending and gameplay appearance remain unverified.
+
+
+## World TIM File Replacement Review and Apply — 2026-10-10
+
+Both World texture inspectors provide **Replace Current TIM file**. Preview Current, choose one TIM file up to the existing 1 MiB private authoring limit, then Review. The server independently qualifies exact Retail headers, flags, dimensions, CLUT/image VRAM rectangles and byte length; only palette/image payloads may change. The receipt binds the file hash, Current hash and project source key, reports exact palette-word/image-byte/index differences, and decodes proposed pixels using the selected local palette. Color, transparent-zero alpha and PSX STP previews remain separate. An indexed TIM without a complete local palette retains an explicit unavailable local pixel preview rather than inventing a runtime palette.
+
+Review leaves the project unchanged. Choosing/discarding a file or changing preview/source withdraws the receipt and proposed canvas. Apply recomputes the receipt against freshly inspected source and effective bytes, then retains the exact file through the existing private TIM command. Matching Current is a no-op that creates no binding or history. Undo/Redo, Save/Open, Current viewport/export and SDK package Build use that same source-bound binding.
+
+This is exact-layout native TIM replacement. PNG conversion, resizing/new allocation and shared-bank/runtime palette discovery are separate future World tools. Gameplay appearance, residency and blending remain unverified.
