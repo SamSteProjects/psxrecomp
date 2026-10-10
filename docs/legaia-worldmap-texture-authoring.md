@@ -66,3 +66,12 @@ Both World TIM resource inspectors provide a rectangle fill tool alongside palet
 The tool uses the existing 4/8-bpp indexed rectangle codec. It preserves palette words, TIM headers/layout and packed pixel lanes outside the rectangle. Pixel indices are shared across palette variants. Draft changes, changed source keys and stale effective hashes invalidate Review; Live mode refuses authoring. No-op fills add no history. Undo/Redo and Save/Open use the existing private content-addressed TIM binding, which already feeds Current viewport/export and SDK package Build.
 
 Copy tools and full replacement controls remain unfinished. Gameplay appearance, runtime palette selection and blending remain unverified.
+
+
+## World Indexed Rectangle Copy Review and Apply — 2026-10-10
+
+Both World texture inspectors now include **Copy Current pixel rectangle**. Preview Current pixels and choose a TIM-local source origin, destination origin and positive width/height. Review requires both regions wholly inside that same indexed TIM, reports their coordinates and exact changed pixel count, and leaves the project untouched. Apply recomputes the receipt against the current source/effective hashes before issuing one existing project copy command.
+
+Copy reads every source index from the immutable pre-edit image, including overlapping regions. It preserves the palette, header/layout and pixel lanes outside the destination. A source equal to the destination is a no-op and adds no history. Draft/source changes withdraw the receipt; Live mode refuses authoring. Undo/Redo, private payload retention, Save/Open, Current viewport/export and package Build use the same binding as pixel and fill edits.
+
+Full replacement controls remain unfinished. Runtime palette selection, residency, blending and gameplay appearance remain unverified.

@@ -1323,6 +1323,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_views import review
                     self._json(200,review(self.server.project,body['view_id'],body['review_key'],body['source_key']))
                     return
+                if route in ('/api/worldmap-copy-review','/api/worldmap-copy-apply'):
+                    from .worldmap_texture_authoring import review_copy,apply_copy
+                    if route.endswith('-review'):self._json(200,review_copy(self.server.project,body))
+                    else:
+                        if set(body)!={'request','review_key'}:raise ProjectError('World copy Apply requires request and Review key')
+                        apply_copy(self.server.project,body['request'],body['review_key'])
+                        self._json(200,self.server.state())
+                    return
                 if route in ('/api/worldmap-rectangle-review','/api/worldmap-rectangle-apply'):
                     from .worldmap_texture_authoring import review_rectangle,apply_rectangle
                     if route.endswith('-review'):self._json(200,review_rectangle(self.server.project,body))
