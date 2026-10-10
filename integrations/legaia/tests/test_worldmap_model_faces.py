@@ -15,6 +15,7 @@ import base64,struct
 from sdk.project import ProjectService, ProjectError
 from sdk.worldmap_authoring import state_key
 from sdk.worldmap_model_faces import source, prepare, review, apply, preview
+from sdk.worldmap_model_groups import source as group_source, review as group_review
 from test_model_pack_growth import pack_source, container_for
 from test_model_primitive_workflow import http_server
 
@@ -40,6 +41,22 @@ class WorldModelFaceTests(TestCase):
                 proposal=dict(request,requests=[dict(face_id='face://authored/00000000-0000-4000-8000-000000000001',
                     donor_face_id=donor['face_id'],fields=dict(vertices=[2,1,0]))])
                 candidate,result=prepare(p,proposal)
+                grouped=group_source(p,request)
+                self.assertEqual(grouped['groups'][0]['face_ids'],[f['face_id'] for f in inspected['topology']['faces'] if f['object_index']==0 and f['group_index']==0])
+                group_proposal=dict(request,requests=[dict(group_id='group://authored/00000000-0000-4000-8000-000000000001',
+                    donor_face_id=donor['face_id'],faces=deepcopy(proposal['requests']))])
+                group_result=group_review(p,group_proposal)
+                self.assertEqual(group_result['ledger']['schema_version'],'legaia.model-face-addition-ledger.v6')
+                self.assertEqual(group_result['topology']['allocated_group_count'],1)
+                self.assertFalse(group_result['build_ready'])
+                self.assertEqual(group_result['topology']['authored_face_count'],1)
+                for bad in [dict(group_proposal,source_key='0'*64),dict(group_proposal,effective_sha256='0'*64)]:
+                    with self.assertRaises(ProjectError):group_review(p,bad)
+                with http_server(p) as (_,post):
+                    self.assertEqual(post('/api/worldmap-model-group-source',request),(200,grouped))
+                    self.assertEqual(post('/api/worldmap-model-group-review',group_proposal),(200,group_result))
+                self.assertEqual(p._document(),held);self.assertEqual((p.undo_stack,p.redo_stack),history)
+
                 self.assertGreater(len(candidate),len(original));self.assertEqual(result['topology']['authored_face_count'],1)
                 self.assertFalse(result['build_ready']);self.assertTrue(result['read_only'])
                 with patch('sdk.worldmap_geometry.inspect',side_effect=AssertionError('stale preview must not read geometry')):

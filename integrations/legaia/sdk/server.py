@@ -1359,6 +1359,9 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_model_faces import apply
                     apply(self.server.project,body['request'],body['review_key'])
                     self._json(200,self.server.state());return
+                if route in ('/api/worldmap-model-group-source','/api/worldmap-model-group-review'):
+                    from .worldmap_model_groups import source, review
+                    self._json(200,(source if route.endswith('-source') else review)(self.server.project,body));return
                 if route in ('/api/worldmap-model-face-source','/api/worldmap-model-face-addition-review'):
                     from .worldmap_model_faces import source, review
                     self._json(200,(source if route.endswith('-source') else review)(self.server.project,body))
