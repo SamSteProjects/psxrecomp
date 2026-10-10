@@ -1166,6 +1166,9 @@ class ProjectService:
 
     def _validate_texture_binding(self, binding: dict) -> None:
         fields = {"asset_sha256", "byte_length", "format", "source_scene_id"}
+        from .worldmap_texture_authoring import OWNERS, validate as validate_world_texture
+        world = isinstance(binding, dict) and isinstance(binding.get("source_scene_id"), str) and binding["source_scene_id"] in OWNERS
+        if world: fields |= {"source_disc_sha256", "source_sha256"}
         if isinstance(binding, dict) and binding.get('format') == 'tim-image-layout-v1':
             fields |= {'source_sha256', 'image_layout'}
         if (not isinstance(binding, dict) or set(binding) not in (fields, fields | {'glb_source'})
@@ -1173,8 +1176,9 @@ class ProjectService:
                 or not 1 <= binding["byte_length"] <= 1024 * 1024
                 or not isinstance(binding["asset_sha256"], str) or len(binding["asset_sha256"]) != 64
                 or any(c not in "0123456789abcdef" for c in binding["asset_sha256"])
-                or not isinstance(binding["source_scene_id"], str) or binding["source_scene_id"] not in self.imports):
+                or not isinstance(binding["source_scene_id"], str) or binding["source_scene_id"] not in self.imports and not world):
             raise ProjectError("Invalid authored TIM content reference")
+        if world: validate_world_texture(self, binding)
         if binding['format']=='tim-image-layout-v1':
             from .texture_resize import validate_binding
             validate_binding(binding)
@@ -1234,6 +1238,8 @@ class ProjectService:
         return result
 
     def _texture_context(self, asset_id: str):
+        from .worldmap_texture_authoring import scene_for, context as world_context
+        if scene_for(asset_id): return world_context(self, asset_id)
         from importer.texture_authoring import load_texture_authoring_context
         from importer.pipeline import _disc_context, import_scene
         document = self.imports.get(self.active_scene)
@@ -1414,6 +1420,10 @@ class ProjectService:
         if asset_id not in self.texture_overrides and len(self.texture_overrides) >= 128:
             raise ProjectError("Project supports at most 128 texture replacements")
         context=self._texture_context(asset_id)
+        from .worldmap_texture_authoring import scene_for
+        world_scene=scene_for(asset_id)
+        if world_scene and image_allocation:
+            raise ProjectError("World TIM authoring preserves the existing image and palette layout")
         existing=self.texture_overrides.get(asset_id)
         allocated=image_allocation or bool(existing and existing['format']=='tim-image-layout-v1')
         original=context.original_tim(asset_id) if allocated else None
@@ -1429,6 +1439,10 @@ class ProjectService:
         else:context.validate_replacement(asset_id,content)
         binding = {"asset_sha256": hashlib.sha256(content).hexdigest(), "byte_length": len(content),
                    "format": "tim", "source_scene_id": self.active_scene}
+        if world_scene:
+            binding.update(source_scene_id=f"worldmap://{world_scene}/textures",
+                source_disc_sha256=context._source(asset_id)["disc"]["sha256"],
+                source_sha256=hashlib.sha256(context.original_tim(asset_id)).hexdigest())
         from .texture_resize import image_layout
         if allocated and image_layout(original)!=image_layout(content):
             binding.update(format='tim-image-layout-v1',source_sha256=hashlib.sha256(original).hexdigest(),image_layout=image_layout(content))
@@ -3672,7 +3686,10 @@ class ProjectService:
             raise ProjectError("Invalid texture replacement collection")
         for identifier, binding in textures.items():
             result._validate_texture_binding(binding)
-            scene = result.imports[binding["source_scene_id"]]["scene"]["name"]
+            from .worldmap_texture_authoring import OWNERS, validate as validate_world_texture
+            scene = OWNERS.get(binding["source_scene_id"])
+            if scene: validate_world_texture(result,binding,identifier)
+            else: scene = result.imports[binding["source_scene_id"]]["scene"]["name"]
             if not isinstance(identifier, str) or len(identifier) > 512 or not identifier.startswith(f"texture://{scene}/"):
                 raise ProjectError("Texture reference does not belong to its imported scene")
             result.read_texture_replacement(binding)
@@ -4097,7 +4114,7 @@ class ProjectService:
         for identifier, binding in sorted(self.texture_overrides.items()):
             scene_id = binding["source_scene_id"]
             records.append({"id": identifier, "kind": "texture", "name": "TIM " + identifier.split("/", 3)[-1].replace("/", " / "),
-                            "scene_id": scene_id, "source_scene": self.imports[scene_id]["scene"]["name"],
+                            "scene_id": scene_id, "source_scene": self.imports.get(scene_id, {}).get("scene", {}).get("name", scene_id),
                             "changes": ["TIM replacement"], "authored": deepcopy(binding)})
         draft_models={row['source_id']:row for row in self.model_references() if row['kind']=='draft_initial_model_assignment'}
         for identifier, draft in sorted(self.actor_drafts.items()):
