@@ -1322,6 +1322,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_geometry import inspect
                     self._json(200, inspect(self.server.project, body['scene'], body['source_key'],body.get('texture_layer'),body.get('model_layer')))
                     return
+                if route in ('/api/worldmap-placement-allocation-source', '/api/worldmap-placement-allocation-review'):
+                    from .worldmap_placement_allocation import source, review
+                    if route.endswith('-source'):
+                        if set(body) != {'scene', 'source_key'}:
+                            raise ProjectError('World placement allocation source requires exact scene and source key')
+                        self._json(200, source(self.server.project, body['scene'], body['source_key']))
+                    else:
+                        if set(body) != {'scene', 'source_key', 'requests'}:
+                            raise ProjectError('World placement allocation Review requires exact source and clones')
+                        self._json(200, review(self.server.project, body['scene'], body['source_key'], body['requests']))
+                    return
                 if route == '/api/worldmap-placement-reset-review':
                     if set(body) != {'scene', 'source_key'}:
                         raise ProjectError('Kingdom reset review requires exact source scope')
