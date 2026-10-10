@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {worldPlacementBatchSelection as select} from '../editor/worldmap-placement-state.js';
+const row=(id,count=1)=>({record_id:id,writable:true,source_cell_count:count,placements:Array.from({length:count},(_,i)=>({entity_id:id+'/'+i}))});
+const source={records:[row('0001',3),row('0002')]},held=structuredClone(source);
+assert.deepEqual(select(source,[],'0001/2'),{recordIds:['0001'],entityIds:['0001/0','0001/1','0001/2']});
+assert.deepEqual(select(source,['0001'],'0002/0',true).recordIds,['0001','0002']);
+assert.deepEqual(select(source,['0001'],'0001/0',true),{recordIds:[],entityIds:[]});
+assert.deepEqual(select(source,['0001','0002'],'0002/0').recordIds,['0002']);
+for(const ids of [['0001','0001'],['9999'],['0003']])assert.throws(()=>select(source,ids));
+assert.throws(()=>select(source,[],'ground'));const missing=structuredClone(source);missing.records[0].placements.pop();assert.throws(()=>select(missing,[],'0001/0'));
+const duplicate=structuredClone(source);duplicate.records[1].placements[0].entity_id='0001/0';assert.throws(()=>select(duplicate,[],'0001/0'));
+const unavailable=structuredClone(source);unavailable.records[0].writable=false;assert.throws(()=>select(unavailable,[],'0001/0'));assert.throws(()=>select(unavailable,['0001'],'0001/0',true));
+const many={records:Array.from({length:129},(_,i)=>row(String(i).padStart(4,'0')))};assert.equal(select(many,many.records.slice(0,128).map(r=>r.record_id)).entityIds.length,128);assert.throws(()=>select(many,many.records.slice(0,128).map(r=>r.record_id),'0128/0',true));
+assert.deepEqual(source,held);console.log('Batch selection complete shared ownership, replace/toggle, ambiguity, unavailable owners, 128-record budget and immutable source passed.');
