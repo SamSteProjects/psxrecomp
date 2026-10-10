@@ -2,7 +2,7 @@ import {worldmapCurrentTextureView} from './worldmap-scene.js';
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 export function worldModelPacketAttributes(source,bytes=source.retail){
  const v=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),triangle_colors=[],triangle_uvs=[],triangle_materials=[],materials=[],ids=new Map();let total=0;
- for(let i=0;i<source.shape.objects.length;i++){
+ for(let i=0;i<v.getUint32(8,true);i++){
   const at=12+i*28,vc=v.getUint32(at+4,true),nc=v.getUint32(at+12,true),end=Math.min(...[vc?12+v.getUint32(at,true):bytes.length,nc?12+v.getUint32(at+8,true):bytes.length]);let pos=12+v.getUint32(at+16,true);
   while(pos+4<=end){const count=v.getUint16(pos,true),flags=v.getUint16(pos+2,true);if(!count&&!flags)break;if(pos+8>end||flags<16||flags>39)throw Error('Unsupported native material packet.');const stride=v.getUint8(pos+5)*4,next=pos+8+(count+1)*stride,row=Math.floor((flags-16)/4),corners=flags&2?4:3,textured=[0,1,4,5].includes(row),gouraud=[1,3,5].includes(row),baked=row>=2,uvOffset=row<2?0:gouraud?corners*4:4,colorsCount=gouraud?corners:1;
    if(!count||!stride||next>end||(total+=count)>100000||baked&&colorsCount*4>stride||textured&&uvOffset+(corners===4?12:10)>stride)throw Error('Native material fields exceed their packet.');
