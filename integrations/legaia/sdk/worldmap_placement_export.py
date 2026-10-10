@@ -31,11 +31,16 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
     current()
     representation='current-source';review_key=None;binding_override=None
     if batch_proposal is not None:
-        if proposal is not None or not isinstance(batch_proposal,dict) or set(batch_proposal)!={'record_ids','delta','shared_record','review_key'}:
-            raise ProjectError('Batch world export requires only the reviewed batch identity and deltas')
-        from .worldmap_placement_batch import review as review_batch
+        if proposal is not None or not isinstance(batch_proposal,dict):
+            raise ProjectError('Batch world export requires an exact reviewed operation')
+        from .worldmap_placement_batch import review as review_batch, restore_review
         batch_proposal=deepcopy(batch_proposal)
-        assessed=review_batch(project,scene,key,batch_proposal['record_ids'],batch_proposal['delta'],batch_proposal['shared_record'])
+        if set(batch_proposal)=={'record_ids','operation','shared_record','review_key'} and batch_proposal['operation']=='restore-retail':
+            assessed=restore_review(project,scene,key,batch_proposal['record_ids'],batch_proposal['shared_record'])
+        elif set(batch_proposal)=={'record_ids','delta','shared_record','review_key'}:
+            assessed=review_batch(project,scene,key,batch_proposal['record_ids'],batch_proposal['delta'],batch_proposal['shared_record'])
+        else:
+            raise ProjectError('Batch world export requires exact reviewed deltas or Retail restoration')
         if batch_proposal['review_key']!=assessed['review_key']:
             raise ProjectError('Batch world export review is stale; review again')
         binding_override=(assessed['after'] or {}).get('WorldMapPlacements')

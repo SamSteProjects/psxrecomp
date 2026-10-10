@@ -1308,6 +1308,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_placement_export import export
                     self._json(200,export(self.server.project,body['scene'],body['source_key'],scope=body['scope'],batch_proposal=body['batch_proposal'],record_ids=body.get('record_ids')))
                     return
+                if route == '/api/worldmap-placement-batch-restore-review':
+                    if set(body) != {'scene', 'source_key', 'record_ids', 'shared_record'}:
+                        raise ProjectError('Batch restore review requires exact source records and consent')
+                    from .worldmap_placement_batch import restore_review
+                    self._json(200, restore_review(self.server.project, body['scene'], body['source_key'], body['record_ids'], body['shared_record']))
+                    return
                 if route == '/api/worldmap-placement-batch-review':
                     if set(body) != {'scene', 'source_key', 'record_ids', 'delta', 'shared_record'}:
                         raise ProjectError('Batch placement review requires exact records, deltas and shared scope')

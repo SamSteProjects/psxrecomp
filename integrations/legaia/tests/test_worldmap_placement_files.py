@@ -50,6 +50,34 @@ class PlacementFiles(unittest.TestCase):
      self.assertEqual(p.overrides,batch_before)
     with self.assertRaises(ProjectError):p.command({**batch,'review_key':'f'*64})
     zero=dict(x=0,y=0,z=0,yaw_units=0);r=batch_review(p,'map01',state_key(p),['0005','0006'],zero,False);self.assertTrue(r['no_op']);p.command({**batch,'delta':zero,'source_key':state_key(p),'review_key':r['review_key']});self.assertEqual(len(p.undo_stack),count)
+    from sdk.worldmap_placement_batch import restore_review
+    r=batch_review(p,'map01',state_key(p),['0005','0006'],delta,False)
+    p.command({**batch,'source_key':state_key(p),'review_key':r['review_key']});both=deepcopy(p.overrides)
+    held_restore=deepcopy((p.overrides,p.undo_stack,p.redo_stack))
+    for ids,consent in (([],False),(['0005','0005'],False),(['0512'],False),(['0006','0005'],False),(['0005'],1)):
+     with self.assertRaises(ProjectError):restore_review(p,'map01',state_key(p),ids,consent)
+    with self.assertRaises(ProjectError):restore_review(p,'map01','f'*64,['0005'],False)
+    def shared_source(project,scene):
+     result=list(context(project,scene));result[2]['0005']['source_cell_count']=2;result[2]['0005']['placements'].append(deepcopy(result[2]['0005']['placements'][0]));return tuple(result)
+    with patch('sdk.worldmap_placement_files.context',side_effect=shared_source):
+     with self.assertRaises(ProjectError):restore_review(p,'map01',state_key(p),['0005'],False)
+    self.assertEqual((p.overrides,p.undo_stack,p.redo_stack),held_restore)
+    r=restore_review(p,'map01',state_key(p),['0005'],False)
+    self.assertEqual(r['records'][0]['proposed_values'],records['0005']['retail_values'])
+    self.assertEqual(r['after']['WorldMapPlacements']['entries']['0006'],both[owner('map01')]['WorldMapPlacements']['entries']['0006'])
+    self.assertNotIn('0005',r['after']['WorldMapPlacements']['entries'])
+    restore=dict(type='restore_worldmap_records',scene='map01',source_key=state_key(p),record_ids=['0005'],shared_record=False,review_key=r['review_key'])
+    held=deepcopy((p.overrides,p.undo_stack,p.redo_stack))
+    with self.assertRaises(ProjectError):p.command({**restore,'review_key':'f'*64})
+    self.assertEqual((p.overrides,p.undo_stack,p.redo_stack),held)
+    p.command(restore);self.assertEqual(len(p.undo_stack),len(held[1])+1);one=deepcopy(p.overrides)
+    p.undo();self.assertEqual(p.overrides,both);p.redo();self.assertEqual(p.overrides,one)
+    r=restore_review(p,'map01',state_key(p),['0005'],False);self.assertTrue(r['no_op']);count=len(p.undo_stack)
+    p.command({**restore,'source_key':state_key(p),'review_key':r['review_key']});self.assertEqual(len(p.undo_stack),count)
+    r=restore_review(p,'map01',state_key(p),['0005','0006'],False);self.assertIsNone(r['after'])
+    p.command({**restore,'record_ids':['0005','0006'],'source_key':state_key(p),'review_key':r['review_key']});self.assertNotIn(owner('map01'),p.overrides)
+    p.save();self.assertEqual(ProjectService.open(p.root).overrides,p.overrides);self.assertEqual(p.imports,imported)
+    p.undo();p.undo();self.assertEqual(p.overrides,both);p.undo();self.assertEqual(p.overrides,batch_before)
     exported['entries']['0006']['values']['offset']['x']=999;self.assertEqual(p.overrides[owner('map01')]['WorldMapPlacements']['entries']['0006'],original_entry)
  def test_json_budget_duplicates_nonfinite_and_unknown_schema(self):
   for value in ('{"entries":{},"entries":{}}','{"x":NaN}','x'*262145,'{}'):

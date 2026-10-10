@@ -2235,6 +2235,10 @@ class ProjectService:
             from .worldmap_placement_files import apply
             apply(self, command)
             return
+        if command.get('type') == 'restore_worldmap_records':
+            from .worldmap_placement_batch import restore_apply
+            restore_apply(self, command)
+            return
         if command.get('type') == 'transform_worldmap_records':
             from .worldmap_placement_batch import apply
             apply(self, command)

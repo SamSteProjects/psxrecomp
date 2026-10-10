@@ -51,3 +51,39 @@ def apply(project, command):
         project.overrides[identifier] = deepcopy(result['after'])
     project.undo_stack.append(dict(entity_id=identifier, before=result['before'], after=deepcopy(result['after'])))
     project.redo_stack.clear()
+
+
+def restore_review(project, scene, key, record_ids, shared_record):
+    """Restore each selected owner to its own Retail values, preserving neighbors."""
+    arguments(record_ids, dict(x=0, y=0, z=0, yaw_units=0), shared_record)
+    _, source, records, _, _, _, _, _ = prepare(project, scene, key)
+    for identifier in record_ids:
+        row = records.get(identifier)
+        if not row or not row['writable'] or row['source_cell_count'] != len(row['placements']):
+            raise ProjectError('Batch restore requires complete writable source ownership')
+        if row['source_cell_count'] > 1 and not shared_record:
+            raise ProjectError('Batch restore requires consent for every shared source cell')
+    content = json.dumps(dict(schema_version=SCHEMA, scene=scene, source_record=source,
+                              entries={identifier: None for identifier in record_ids}))
+    result = review_file(project, scene, key, content)
+    result.update(schema_version='legaia.worldmap-placement-batch-restore-review.v1',
+                  operation='restore-retail', record_ids=list(record_ids), shared_record=shared_record)
+    result['review_key'] = digest(result)
+    return result
+
+
+def restore_apply(project, command):
+    if set(command) != {'type', 'scene', 'source_key', 'record_ids', 'shared_record', 'review_key'} or command['type'] != 'restore_worldmap_records':
+        raise ProjectError('Batch restore Apply requires exact reviewed source records and consent')
+    result = restore_review(project, command['scene'], command['source_key'], command['record_ids'], command['shared_record'])
+    if command['review_key'] != result['review_key']:
+        raise ProjectError('Batch restore review changed; review again')
+    if result['no_op']:
+        return
+    identifier = owner(command['scene'])
+    if result['after'] is None:
+        project.overrides.pop(identifier, None)
+    else:
+        project.overrides[identifier] = deepcopy(result['after'])
+    project.undo_stack.append(dict(entity_id=identifier, before=result['before'], after=deepcopy(result['after'])))
+    project.redo_stack.clear()
