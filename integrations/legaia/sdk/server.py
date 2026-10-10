@@ -1351,6 +1351,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                         apply_restore(self.server.project,body['request'],body['review_key'])
                         self._json(200,self.server.state())
                     return
+                if route in ('/api/worldmap-model-face-source','/api/worldmap-model-face-addition-review'):
+                    from .worldmap_model_faces import source, review
+                    self._json(200,(source if route.endswith('-source') else review)(self.server.project,body))
+                    return
                 if route=='/api/worldmap-model-restoration-preview':
                     if set(body)!={'request','review_key'}:
                         raise ProjectError('World restoration preview requires request and Review key')

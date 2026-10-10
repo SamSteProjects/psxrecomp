@@ -41,37 +41,15 @@ def validate_ledger(binding):
         raise ProjectError('World vector-only binding requires allocation replay' if binding.get('format')==FORMAT else 'World allocated content binding requires vector/content replay')
 
 
-def prepare(project, request):
-    fields = {'asset_id', 'source_key', 'member_sha256', 'effective_sha256', 'requests'}
-    if (not isinstance(request, dict) or set(request) != fields or project.mode != 'edit'
-            or request['source_key'] != state_key(project) or not owner(request['asset_id'])):
-        raise ProjectError('World vector allocation requires the exact Current Edit source')
-    if any(not isinstance(request[k], str) or not re.fullmatch('[0-9a-f]{64}', request[k])
-           for k in ('member_sha256', 'effective_sha256')):
-        raise ProjectError('World allocation requires native and effective model hashes')
-    if len(json.dumps(request, allow_nan=False).encode('utf-8')) > 128*1024:
-        raise ProjectError('World vector allocation request exceeds its metadata budget')
-    identifier = request['asset_id']; scene = identifier.split('/')[2]
-    original, native = source(project, identifier)
-    binding = project.model_overrides.get(identifier)
-    effective = project.read_model_replacement(identifier, binding) if binding else original
-    if (sha256(original).hexdigest() != request['member_sha256']
-            or sha256(effective).hexdigest() != request['effective_sha256']):
-        raise ProjectError('World allocation source changed; inspect Current again')
-    base, base_binding, previous_ledger = retained(project, identifier, original, binding, effective)
-    candidate, ledger, topology = append_vector_ledger(base, previous_ledger, request['requests'])
-    proposed_binding = dict(format=binding['format'] if binding and binding['format'] in FORMATS else FORMAT, source_scene_id=owner(identifier),
-        source_sha256=sha256(original).hexdigest(), asset_sha256=sha256(candidate).hexdigest(),
-        byte_length=len(candidate), base_binding=base_binding, ledger=deepcopy(ledger))
-    independent, allocation = append_model_vectors(effective, request['effective_sha256'], request['requests'])
-    if independent != candidate:
-        raise ProjectError('World vector candidate differs from complete ledger replay')
+
+def qualify_carrier(project, identifier, original, native, effective, candidate, base_binding, ledger):
+    """Compose a proposed native member and prove every remaining pack member."""
     with _disc_context(project.disc_path) as (_, disc_hash, _, archive):
-        _, entry, offset, bundle, raw = _kingdom_table(archive, KINGDOM_BASES[scene])
+        _, entry, offset, bundle, raw = _kingdom_table(archive, KINGDOM_BASES[identifier.split('/')[2]])
         pack, _ = _slot(bundle, raw, 1); spans = _pack_spans(pack)
         if (disc_hash != native['disc_sha256'] or entry != native['prot_entry_index']
                 or offset != 0 or bundle.table_offset != 0 or native['slot_index'] != 1):
-            raise ProjectError('World allocation native carrier ownership changed')
+            raise ProjectError('World model carrier native carrier ownership changed')
         replacements = []; expected = {}; composed = []
         bindings = dict(project.model_overrides); bindings.setdefault(identifier, None)
         for asset_id, current_binding in sorted(bindings.items()):
@@ -83,7 +61,7 @@ def prepare(project, request):
                     or record['slot_index'] != 1 or not 0 <= slot < len(spans)
                     or spans[slot] != (record['decoded_member_offset'], record['decoded_member_span_end'])
                     or pack[spans[slot][0]:spans[slot][1]] != retail):
-                raise ProjectError('World allocation member differs from its exact Retail slot')
+                raise ProjectError('World model carrier member differs from its exact Retail slot')
             current = effective if asset_id == identifier else project.read_model_replacement(asset_id, current_binding)
             _, retained_binding, replay = retained(project, asset_id, retail, current_binding, current)
             if asset_id == identifier:
@@ -100,12 +78,40 @@ def prepare(project, request):
         reopened, _ = decompress_lzs(carrier[descriptor.data_offset:], descriptor.size)
         moved = _pack_spans(reopened)
         if len(moved) != len(spans):
-            raise ProjectError('World allocation changed native pack slot count')
+            raise ProjectError('World model carrier changed native pack slot count')
         for slot, (start, stop) in enumerate(moved):
             before_start, before_stop = spans[slot]
             wanted = expected.get(slot, pack[before_start:before_stop])
             if reopened[start:stop] != wanted:
-                raise ProjectError('World allocation changed a model member or unselected neighbor')
+                raise ProjectError('World model carrier changed a model member or unselected neighbor')
+    return composed, carrier_audit
+
+def prepare(project, request):
+    fields = {'asset_id', 'source_key', 'member_sha256', 'effective_sha256', 'requests'}
+    if (not isinstance(request, dict) or set(request) != fields or project.mode != 'edit'
+            or request['source_key'] != state_key(project) or not owner(request['asset_id'])):
+        raise ProjectError('World vector allocation requires the exact Current Edit source')
+    if any(not isinstance(request[k], str) or not re.fullmatch('[0-9a-f]{64}', request[k])
+           for k in ('member_sha256', 'effective_sha256')):
+        raise ProjectError('World allocation requires native and effective model hashes')
+    if len(json.dumps(request, allow_nan=False).encode('utf-8')) > 128*1024:
+        raise ProjectError('World vector allocation request exceeds its metadata budget')
+    identifier = request['asset_id']
+    original, native = source(project, identifier)
+    binding = project.model_overrides.get(identifier)
+    effective = project.read_model_replacement(identifier, binding) if binding else original
+    if (sha256(original).hexdigest() != request['member_sha256']
+            or sha256(effective).hexdigest() != request['effective_sha256']):
+        raise ProjectError('World allocation source changed; inspect Current again')
+    base, base_binding, previous_ledger = retained(project, identifier, original, binding, effective)
+    candidate, ledger, topology = append_vector_ledger(base, previous_ledger, request['requests'])
+    proposed_binding = dict(format=binding['format'] if binding and binding['format'] in FORMATS else FORMAT, source_scene_id=owner(identifier),
+        source_sha256=sha256(original).hexdigest(), asset_sha256=sha256(candidate).hexdigest(),
+        byte_length=len(candidate), base_binding=base_binding, ledger=deepcopy(ledger))
+    independent, allocation = append_model_vectors(effective, request['effective_sha256'], request['requests'])
+    if independent != candidate:
+        raise ProjectError('World vector candidate differs from complete ledger replay')
+    composed, carrier_audit = qualify_carrier(project, identifier, original, native, effective, candidate, base_binding, ledger)
     report = dict(schema_version='legaia.worldmap-model-vector-allocation-review.v2',
         project_path=str(project.root), request=deepcopy(request), source_record=deepcopy(native),
         proposed_sha256=sha256(candidate).hexdigest(), proposed_model_base64=base64.b64encode(candidate).decode('ascii'),
