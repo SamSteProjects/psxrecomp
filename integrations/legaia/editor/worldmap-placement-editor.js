@@ -19,6 +19,13 @@ export function worldPlacementTarget(report,target){
   if(rows.length!==1)fail('World entity does not have one qualified placement record owner.');
   return structuredClone(rows[0]);
 }
+export function worldPlacementBatchTarget(report,target){
+ const first=worldPlacementTarget(report,target),items=target.recordTargets;
+ if(!hash(target.currentMapHash)||target.currentMapHash!==report.current_map_sha256||typeof target.completeKingdom!=='boolean'||!Array.isArray(items)||items.length<1||items.length>128)fail('Batch ownership source or scope changed.');
+ const ids=[],seeds=new Set();for(const item of items){const keys=['recordId','recordIndex','sourceRecordHash','currentValues','ownedEntityIds','sourceCellCount'];if(!item||Object.keys(item).length!==keys.length||keys.some(k=>!Object.hasOwn(item,k))||typeof item.recordId!=='string'||ids.includes(item.recordId)||!Number.isSafeInteger(item.recordIndex)||item.recordId!==String(item.recordIndex).padStart(4,'0')||!Array.isArray(item.ownedEntityIds)||item.ownedEntityIds.length<1||item.ownedEntityIds.length>512||item.sourceCellCount!==item.ownedEntityIds.length)fail('Batch ownership selection has incomplete or ambiguous records.');const matches=report.records.filter(r=>r.record_id===item.recordId&&r.object_record_index===item.recordIndex&&r.source_record_sha256===item.sourceRecordHash);if(matches.length!==1)fail('Batch native owner differs from its fresh source.');const row=matches[0],owned=row.placements.map(p=>p.entity_id).sort();if(!row.writable||row.source_cell_count!==item.sourceCellCount||JSON.stringify(row.current_values)!==JSON.stringify(item.currentValues)||JSON.stringify(owned)!==JSON.stringify([...item.ownedEntityIds].sort()))fail('Batch Current values or complete source membership changed.');for(const id of owned){if(seeds.has(id))fail('Batch seed has conflicting native owners.');seeds.add(id);}ids.push(item.recordId);}
+ if(ids[0]!==first.record_id||JSON.stringify(ids)!==JSON.stringify([...ids].sort())||seeds.size>512||target.completeKingdom&&JSON.stringify(ids)!==JSON.stringify(report.records.map(r=>r.record_id).sort()))fail('Batch ownership navigation omits or reorders selected source owners.');
+ return [...ids];
+}
 const node=(tag,text)=>{const e=document.createElement(tag);if(text)e.textContent=text;return e;};
 export function mountWorldPlacements({after,getState,busy,setBusy,api,onDraftChange,onError}){
   const open=node('button','World placements');open.id='world-placement-editor';after.after(open);
@@ -156,7 +163,7 @@ export function mountWorldPlacements({after,getState,busy,setBusy,api,onDraftCha
     apply:next=>{gizmo.cancel();drag=null;Object.assign(camera,next);if(camera.projection==='perspective')orbitPose={yaw:camera.yaw,pitch:camera.pitch};draw();}
   });
   batchEditor=mountWorldPlacementBatch({after:resetKingdom,getReport:()=>report,getBase:()=>base,getCamera:()=>camera,current:()=>!!(valid()&&report&&base&&!dirty&&!applying&&!gizmo.isActive()),busy,setBusy,api,onApplied:()=>dialog.close(),onDraftChange:v=>onDraftChange(v||dirty),onError});
-  updateState();return {updateState,open:scene=>{select.value=scenes.includes(scene)?scene:'map01';open.click();},openAuthored:async target=>{
+  updateState();const tools={updateState,open:scene=>{select.value=scenes.includes(scene)?scene:'map01';open.click();},openAuthored:async target=>{
     const s=getState();if(busy()||dirty||dialog.open||s.project?.mode!=='edit'||s.project?.path!==target?.projectPath||s.worldmap_authoring_state_key!==target?.sourceKey||s.capabilities?.worldmap_placements!==true||!scenes.includes(target?.scene)||!target.entries||!Object.keys(target.entries).length)fail('Authored placement navigation requires the same idle Edit project and source records.');
     const entries=structuredClone(target.entries);select.value=target.scene;updateState();open.click();if(!dialog.open)return false;const binding=session;await inspect();if(!valid()||session!==binding||!report)return false;
     try{for(const [id,entry] of Object.entries(entries)){const r=report.records.find(r=>r.record_id===id);if(!r||r.source_record_sha256!==entry.source_record_sha256||!validValues(r.authored_values)||r.authored_values.yaw_units!==entry.values.yaw_units||!['x','y','z'].every(a=>r.authored_values.offset[a]===entry.values.offset[a]))fail('Authored placement asset differs from the fresh source record.');}record.value=Object.keys(entries).sort()[0];if(target.affectedEntityIds){const actual=row().placements.map(p=>p.entity_id).sort(),expected=[...target.affectedEntityIds].sort();if(JSON.stringify(actual)!==JSON.stringify(expected))fail('Build affected seeds differ from the fresh source record.');}anchorEntityId=row().placements[0].entity_id;fill();anchorFrame.onclick();return true;}catch(error){dialog.close();throw error;}
@@ -165,5 +172,8 @@ export function mountWorldPlacements({after,getState,busy,setBusy,api,onDraftCha
     select.value=target.scene;updateState();open.click();if(!dialog.open)return false;const binding=session;
     await inspect();if(!valid()||session!==binding||!report)return false;
     let selected;try{selected=worldPlacementTarget(report,target);}catch(error){dialog.close();throw error;}anchorEntityId=target.entityId;record.value=selected.record_id;fill();anchorFrame.onclick();return true;
-  }};
+  },openBatchTarget:async target=>{
+    if(!await tools.openTarget(target))return false;
+    try{if(!valid()||dirty||applying||busy())fail('Batch source navigation changed before opening.');const ids=worldPlacementBatchTarget(report,target);return batchEditor.openRecords(ids);}catch(error){dialog.close();throw error;}
+  }};return tools;
 }
