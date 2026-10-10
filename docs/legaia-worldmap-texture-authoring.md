@@ -100,3 +100,10 @@ Preview Current with a complete local palette, then choose **Edit World texture 
 World binding ownership is `worldmap://map01/textures` (or map02/map03), with the native World project source key. It does not depend on an imported active field scene. Apply checks the receipt and resulting World TIM identity before adopting editor state. Normal private TIM bindings, Undo/Redo and Save/Open remain shared with native file authoring. Imported facts and the Retail texture remain separate. A stale binding/source, unavailable local CLUT, dimension change or unsupported alpha refuses.
 
 The World adapter has no field-scene material proposal action: Current World textures are qualified through the existing World viewport after Apply. Image allocation, live residency/palette animation and gameplay verification remain separate work.
+
+
+## World Retail TIM Restoration — 2026-10-10
+
+Preview Current, then choose **Review Retail restoration** in either World texture inspector. The receipt reports palette words, image bytes and indexed pixels returning to Retail, the exact Retail TIM hash, and whether an override binding exists. Review changes nothing. **Apply reviewed Retail restoration** requalifies the receipt and removes only this texture binding through one ordinary Undo command; neighboring authored textures and private input files stay intact.
+
+Discarding the restoration review, choosing a file, reviewing a replacement, or changing source/preview withdraws its Apply eligibility. A binding containing exact Retail bytes can still be removed even when pixel changes are zero. With no binding, Review reports Already Retail and Apply is disabled; the service no-op adds no history. Undo restores the complete previous binding, Redo removes it again, and Save/Open preserves either result. Runtime palette selection and gameplay appearance remain unverified.

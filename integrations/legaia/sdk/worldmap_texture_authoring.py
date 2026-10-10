@@ -241,3 +241,26 @@ def tim_source(project,request):
     result=dict(schema_version='legaia.worldmap-tim-source.v1',project_path=str(project.root),request=dict(request),tim_sha256=sha256(content).hexdigest(),byte_length=len(content),tim_base64=base64.b64encode(content).decode('ascii'),read_only=True,project_changed=False,gameplay_verified=False)
     if project.mode!='edit' or request['source_key']!=state_key(project):raise ProjectError('World TIM source changed during download')
     return result
+
+
+def review_restore(project,request):
+    from .worldmap_authoring import state_key
+    from .project import digest
+    from importer.texture_authoring import texture_payload_changes
+    fields={'texture_id','source_key','member_sha256','effective_sha256'}
+    if not isinstance(request,dict) or set(request)!=fields or project.mode!='edit' or request['source_key']!=state_key(project) or not scene_for(request['texture_id']):
+        raise ProjectError('World Retail restoration requires the exact current Edit source')
+    if any(not isinstance(request[k],str) or not re.fullmatch('[0-9a-f]{64}',request[k]) for k in ('member_sha256','effective_sha256')):
+        raise ProjectError('World Retail restoration requires inspected TIM hashes')
+    _,original,effective=_inspected_current(project,request);changes=texture_payload_changes(effective,original)
+    result=dict(schema_version='legaia.worldmap-tim-restore.v1',project_path=str(project.root),request=dict(request),candidate_tim_sha256=sha256(original).hexdigest(),has_override=request['texture_id'] in project.texture_overrides,content_changed=original!=effective,changed_pixel_count=changes['pixel_indices_changed'],changed_palette_words=changes['palette_words_changed'],changed_image_bytes=changes['image_bytes_changed'],scope='selected-World-TIM-binding-removal',project_changed=False,gameplay_verified=False)
+    result['review_key']=digest(result)
+    if project.mode!='edit' or request['source_key']!=state_key(project):raise ProjectError('World TIM source changed during restoration Review')
+    return result
+
+
+def apply_restore(project,request,review_key):
+    receipt=review_restore(project,request)
+    if not isinstance(review_key,str) or receipt['review_key']!=review_key:raise ProjectError('World Retail restoration Apply requires the exact fresh Review receipt')
+    if receipt['has_override']:project.command(dict(type='clear_texture_replacement',asset_id=request['texture_id']))
+    return receipt

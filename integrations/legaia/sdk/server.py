@@ -1324,6 +1324,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_views import review
                     self._json(200,review(self.server.project,body['view_id'],body['review_key'],body['source_key']))
                     return
+                if route in ('/api/worldmap-tim-restore-review','/api/worldmap-tim-restore-apply'):
+                    from .worldmap_texture_authoring import review_restore,apply_restore
+                    if route.endswith('-review'):self._json(200,review_restore(self.server.project,body))
+                    else:
+                        if set(body)!={'request','review_key'}:raise ProjectError('World Retail restoration Apply requires request and Review key')
+                        apply_restore(self.server.project,body['request'],body['review_key'])
+                        self._json(200,self.server.state())
+                    return
                 if route == '/api/worldmap-tim-source':
                     from .worldmap_texture_authoring import tim_source
                     self._json(200,tim_source(self.server.project,body))
