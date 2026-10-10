@@ -1129,6 +1129,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-resources.js": ("worldmap-resources.js", "text/javascript"),
                  "/worldmap-project-resources.js": ("worldmap-project-resources.js", "text/javascript"),
                  "/worldmap-texture.js": ("worldmap-texture.js", "text/javascript"),
+                 "/worldmap-view-scope.js": ("worldmap-view-scope.js", "text/javascript"),
                  "/worldmap-placement-editor.js": ("worldmap-placement-editor.js", "text/javascript"),
                  "/worldmap-placement-batch-editor.js": ("worldmap-placement-batch-editor.js", "text/javascript"),
                  "/worldmap-placement-state.js": ("worldmap-placement-state.js", "text/javascript"),

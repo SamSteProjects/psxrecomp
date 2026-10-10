@@ -1,5 +1,7 @@
 # Global World-Map Source Resource Browser
 
+Model resources also offer [complete source instance isolation and group framing](legaia-worldmap-view-scope.md) from both browser entry points. This retains a selected source entity while framing every qualified instance of its asset.
+
 Open **World ground**, choose a kingdom and **Inspect kingdom**, then **Browse world resources**. Filter by kingdom and geometry or native TIM textures. Metadata shows stable resource identities, native source hashes and spans, geometry bounds, complete source instance membership and material address associations. Expand **Recorded relationships** and select a link to navigate to its owner, texture or consumer.
 
 **Focus representative source instance** re-reads the selected kingdom, verifies the resource source and complete instance membership, enables source model rendering and frames the first canonical source instance on the Retail layer. It does not frame every instance together. The existing field scene remains active. Texture rows have no geometry focus; navigate to a model consumer first.
