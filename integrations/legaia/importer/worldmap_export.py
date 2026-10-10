@@ -133,8 +133,18 @@ def adapt_worldmap_scene(result, source_key, scope='source-scene', entity_id=Non
     return scene_preview
 
 
-def encode_worldmap_glb(result, source_key, scope='source-scene', entity_id=None, *, placement_authoring=None):
-    scene = adapt_worldmap_scene(result, source_key, scope, entity_id)
+def encode_worldmap_glb(result, source_key, scope='source-scene', entity_id=None, *, placement_authoring=None,entity_ids=None):
+    if scope=='selected-records':
+        if not isinstance(result,dict) or entity_id is not None or not isinstance(entity_ids,list) or not 1<=len(entity_ids)<=511 or any(not isinstance(i,str) or not re.fullmatch(re.escape(f"scene://{result.get('scene')}/worldmap/placements/")+r'[0-3][0-9a-f]{3}',i) for i in entity_ids) or entity_ids!=sorted(set(entity_ids)):
+            raise ImportError('Selected world records require canonical complete source-seed identities')
+        scene=adapt_worldmap_scene(result,source_key)
+        selected=[e for e in scene['entities'] if e['entity_id'] in entity_ids]
+        if sorted(e['entity_id'] for e in selected)!=entity_ids:raise ImportError('Selected world source seeds are unavailable')
+        keys={e['geometry_key'] for e in selected}
+        scene.update(entities=selected,assets=[a for a in scene['assets'] if a['geometry_key'] in keys],export_scope=scope,selected_entity_ids=deepcopy(entity_ids))
+    else:
+        if entity_ids is not None:raise ImportError('Only selected-records scope accepts world source-seed identities')
+        scene = adapt_worldmap_scene(result, source_key, scope, entity_id)
     if placement_authoring is not None:
         if (not isinstance(placement_authoring, dict) or placement_authoring.get('schema_version') != 'legaia.worldmap-placement-export.v1' or
                 placement_authoring.get('representation') not in ('current-source', 'proposed-source') or
@@ -147,6 +157,7 @@ def encode_worldmap_glb(result, source_key, scope='source-scene', entity_id=None
     provenance = dict(scene=result['scene'], scope=scope, entity_id=entity_id,
         source_record=deepcopy(result['source_record']), coverage=deepcopy(result['scene_graph']['coverage']),
         metrics=deepcopy(result['scene_graph']['metrics']), limitations=deepcopy(scene['limits']))
+    if entity_ids is not None:provenance['entity_ids']=deepcopy(entity_ids)
     if placement_authoring is not None:
         provenance['placement_authoring'] = deepcopy(placement_authoring)
     size = struct.unpack_from('<I', raw, 12)[0]

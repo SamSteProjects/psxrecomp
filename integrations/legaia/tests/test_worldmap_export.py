@@ -27,6 +27,23 @@ def fixture():
 
 
 class WorldmapExportTests(unittest.TestCase):
+    def test_complete_record_seed_group_exceeds_generic_group_limit_without_ground(self):
+        source=fixture();template=deepcopy(source['scene_graph']['entities'][1]);seeds=[]
+        for index in range(129):
+            seed=deepcopy(template);seed['entity_id']=f'scene://map01/worldmap/placements/{index:04x}';seeds.append(seed)
+        graph=source['scene_graph'];graph['entities']=[graph['entities'][0]]+seeds
+        graph['coverage'].update(candidate_count=129,resolved_count=129,rendered_count=129)
+        graph['metrics'].update(entity_count=130,drawn_triangle_count=130)
+        held=deepcopy(source);ids=sorted(e['entity_id'] for e in seeds)
+        raw,audit=encode_worldmap_glb(source,KEY,'selected-records',entity_ids=ids);doc,binary=parse_glb(raw)
+        self.assertEqual(source,held);self.assertEqual(audit['selected_entity_ids'],ids);self.assertEqual(audit['entity_count'],129);self.assertEqual(audit['geometry_count'],1)
+        self.assertEqual([doc['nodes'][i]['extras']['entity_id'] for i in doc['scenes'][0]['nodes']],ids)
+        self.assertEqual(audit['worldmap_source']['entity_ids'],ids)
+        single,report=encode_worldmap_glb(source,KEY,'selected-records',entity_ids=[ids[0]]);self.assertEqual(report['entity_count'],1)
+        for selected in ([],[GROUND],['scene://map02/worldmap/placements/0000'],[ids[0],ids[0]],list(reversed(ids)),['scene://map01/worldmap/placements/3fff'],[{}]):
+            with self.subTest(selected=selected),self.assertRaises(ImportError):encode_worldmap_glb(source,KEY,'selected-records',entity_ids=selected)
+        with self.assertRaises(ImportError):encode_worldmap_glb(source,KEY,entity_ids=ids)
+
     def test_shared_mesh_yaw_translation_one_reflection_uv_color_and_provenance(self):
         source=fixture();before=deepcopy(source);raw,audit=encode_worldmap_glb(source,KEY);doc,binary=parse_glb(raw)
         self.assertEqual(source,before);self.assertEqual(len(doc['meshes']),2)

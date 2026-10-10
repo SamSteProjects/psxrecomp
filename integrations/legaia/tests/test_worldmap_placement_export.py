@@ -19,6 +19,13 @@ class WorldPlacementExportScope(unittest.TestCase):
    for scope,identity in [('unknown',None),('selected',None),('source-scene','scene://map01/worldmap/ground'),('selected','scene://map02/worldmap/ground'),('selected',123),('selected','scene://map01/worldmap/'+'a'*1024)]:
     with self.subTest(scope=scope,identity=identity),self.assertRaises(ProjectError):export(p,'map01','a'*64,scope=scope,entity_id=identity)
 
+ def test_selected_record_scope_rejects_invalid_or_mixed_owners_before_source_read(self):
+  p=type('Project',(),{'mode':'edit','disc_path':'private'})()
+  cases=[dict(scope='selected-records'),dict(scope='ground',record_ids=['0001']),dict(scope='selected-records',record_ids=[]),dict(scope='selected-records',record_ids=['0001','0001']),dict(scope='selected-records',record_ids=['0512']),dict(scope='selected-records',record_ids=['0001'],batch_proposal=3),dict(scope='selected-records',record_ids=['0001'],batch_proposal={'record_ids':['0002']}),dict(scope='selected-records',record_ids=['0001'],proposal={'record_id':'0001'})]
+  with patch('sdk.worldmap_placement_export.context',side_effect=AssertionError('must not read source')),patch('sdk.worldmap_placement_export.write_encoded_glb',side_effect=AssertionError('must not write')):
+   for kwargs in cases:
+    with self.subTest(kwargs=kwargs),self.assertRaises(ProjectError):export(p,'map01','a'*64,**kwargs)
+
 @unittest.skipUnless(os.environ.get('LEGAIA_DISC_BIN'),'requires private retail disc')
 class WorldPlacementExport(unittest.TestCase):
  def test_three_kingdom_current_proposed_and_unchanged_binary(self):

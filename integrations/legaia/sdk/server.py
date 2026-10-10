@@ -1288,10 +1288,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200, result)
                     return
                 if route == '/api/export/worldmap-placement-batch':
-                    if set(body) != {'scene','source_key','scope','batch_proposal'} or body['scope'] not in ('source-scene','ground'):
+                    if set(body) != {'scene','source_key','scope','batch_proposal'}|({'record_ids'} if body.get('scope')=='selected-records' else set()) or body['scope'] not in ('source-scene','ground','selected-records'):
                         raise ProjectError('Batch placement export requires exact source, scene/ground scope and optional reviewed batch')
                     from .worldmap_placement_export import export
-                    self._json(200,export(self.server.project,body['scene'],body['source_key'],scope=body['scope'],batch_proposal=body['batch_proposal']))
+                    self._json(200,export(self.server.project,body['scene'],body['source_key'],scope=body['scope'],batch_proposal=body['batch_proposal'],record_ids=body.get('record_ids')))
                     return
                 if route == '/api/worldmap-placement-batch-review':
                     if set(body) != {'scene', 'source_key', 'record_ids', 'delta', 'shared_record'}:

@@ -108,7 +108,7 @@ def encode_scene_glb(scene):
            'entity_count':len(entities),'geometry_count':len(assets),'unavailable_entities':unavailable,
            'geometry_exports':audits,'limitations':scene.get('limits',[])+['Static source preview, not runtime state. Unavailable entities retain metadata nodes only.',
             'Source units retained; physical meter scale unknown. Meshes are shared across instances.']}
-    if scene.get('export_scope')=='selected-group':audit['selected_entity_ids']=deepcopy(scene['selected_entity_ids'])
+    if scene.get('export_scope') in ('selected-group','selected-records'):audit['selected_entity_ids']=deepcopy(scene['selected_entity_ids'])
     for name in ('images','textures','samplers'):
         if not doc[name]:del doc[name]
     doc['extras']=audit;doc['buffers']=[{'byteLength':len(binary)}]
