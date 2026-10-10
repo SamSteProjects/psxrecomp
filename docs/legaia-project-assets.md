@@ -1,5 +1,7 @@
 # Imported project Asset Database
 
+Disc-backed empty projects now expose global world geometry/TIM resources with zero imported scene memberships. See [Disc-Backed Empty Projects](legaia-worldmap-resources.md#disc-backed-empty-projects--2026-10-09) for discovery, capability gates and current workflow evidence.
+
 ## Complete persistent input freshness — 2026-10-06
 
 Project resources now include the complete saved project document in their freshness key, including native audio bindings, retained animation/model inputs, texture additions, templates and saved metadata. Future persisted fields participate automatically. Active scene navigation remains excluded; selection, mode, history and transient caches do not invalidate inventory. Project root, disc path/stat and full import digests also participate.

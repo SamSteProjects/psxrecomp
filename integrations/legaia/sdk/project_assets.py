@@ -45,8 +45,8 @@ def _budget(value):
 
 def _imports(project):
     imports = project.imports
-    if not isinstance(imports, dict) or not 1 <= len(imports) <= MAX_SCENES:
-        raise ProjectError('Project Asset Database requires from 1 through 64 imported scenes')
+    if not isinstance(imports, dict) or not 0 <= len(imports) <= MAX_SCENES:
+        raise ProjectError('Project Asset Database supports at most 64 imported scenes')
     for scene, document in imports.items():
         if (not isinstance(scene, str) or not scene.startswith('scene://') or len(scene) > 1024 or
                 not isinstance(document, dict) or not isinstance(document.get('scene'), dict) or

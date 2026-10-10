@@ -14,7 +14,7 @@ def inspect(project, scene, expected_key):
     if scene not in ('map01', 'map02', 'map03'):
         raise ProjectError('Choose one of the three supported walk kingdoms')
     if not project.disc_path or project.mode != 'edit':
-        raise ProjectError('World ground inspection requires an imported disc in Edit mode')
+        raise ProjectError('World ground inspection requires the source disc in Edit mode')
     key = state_key(project)
     if expected_key != key:
         raise ProjectError('World ground source inputs changed; inspect the current project again')

@@ -41,6 +41,19 @@ class ProjectAssetsTests(unittest.TestCase):
                      bindings=[dict(actor_semantic_id=actor, model_asset_semantic_id=self.model)], source_record={'fixture': index}),
                 dict(id='texture://' + scene[8:] + '/0', kind='texture')])
 
+    def test_empty_project_index_is_read_only_and_has_zero_memberships(self):
+        empty=ProjectService(Path(self.tmp.name)/'empty');empty.disc_path=str(self.disc)
+        held=deepcopy((empty._document(),empty.imports,empty.selected,empty.undo_stack,empty.redo_stack))
+        key=source_key(empty);report=assemble(empty,{})
+        self.assertEqual(report['source_key'],key);self.assertEqual(report['scenes'],[]);self.assertEqual(report['assets'],[])
+        self.assertTrue(all(value==0 for value in report['coverage'].values()))
+        with patch('importer.pipeline._disc_context',return_value=nullcontext()),patch('sdk.resources._verify') as verify,patch('sdk.resources.refresh_resource_catalog') as refresh:
+            self.assertEqual(inspect(empty),report);verify.assert_not_called();refresh.assert_not_called()
+        self.assertEqual((empty._document(),empty.imports,empty.selected,empty.undo_stack,empty.redo_stack),held)
+        with self.assertRaises(ProjectError):assemble(empty,{'scene://missing':{}})
+        empty.disc_path=None
+        with self.assertRaises(ProjectError):inspect(empty)
+
     def test_authored_npc_membership_is_detached_and_distinct_from_retail(self):
         identifier='authored-actor://12345678-1234-1234-1234-123456789abc'
         scene='scene://other';donor=self.project.imports[scene]['actors'][0]['semantic_id']

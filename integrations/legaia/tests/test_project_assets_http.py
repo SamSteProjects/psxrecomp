@@ -58,6 +58,16 @@ class ProjectAssetsHttpTests(unittest.TestCase):
         self.assertEqual(before, (self.project._document(), self.project.selected,
                                  self.project.undo_stack, self.project.redo_stack))
 
+    def test_disc_backed_empty_project_exposes_source_geometry_without_authoring(self):
+        self.project.disc_path='C:/private/source.bin'
+        before=deepcopy((self.project._document(),self.project.imports,self.project.selected,self.project.undo_stack,self.project.redo_stack))
+        status,state=self.request('/api/state');self.assertEqual(status,200)
+        self.assertRegex(state['project_assets_source_key'],'^[0-9a-f]{64}$')
+        self.assertTrue(state['capabilities']['project_assets']);self.assertTrue(state['capabilities']['worldmap_geometry'])
+        for capability in ('worldmap_authoring','worldmap_placements','worldmap_export'):self.assertFalse(state['capabilities'][capability])
+        self.assertIsNone(state['scene']['id']);self.assertEqual(state['scene']['entities'],[]);self.assertEqual(state['scenes'],[])
+        self.assertEqual((self.project._document(),self.project.imports,self.project.selected,self.project.undo_stack,self.project.redo_stack),before)
+
     def test_index_budget_failure_does_not_break_existing_editor_state(self):
         self.project.import_metadata(synthetic_scene(), 'C:/private/not-a-disc.bin')
         with patch('sdk.project_assets.source_key', side_effect=ProjectError('Project index exceeds its metadata budget')):
