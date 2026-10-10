@@ -20,6 +20,9 @@ def preview_model_shape(preview: dict, replacement: bytes, binding: dict):
     if binding.get('format')=='tmd-face-addition-v1' and binding.get('ledger',{}).get('schema_version')=='legaia.model-face-addition-ledger.v7':
         from .model_object_preview import preview_object_model
         return preview_object_model(preview,replacement,binding)
+    if binding.get('format')=='world-tmd-face-addition-v1':
+        from .worldmap_model_ledger import validate_face_ledger
+        validate_face_ledger(binding.get('ledger'))
     if binding.get('format') in ('world-tmd-vector-allocation-v1','world-tmd-vector-content-v1'):
         ledger=binding.get('ledger',{})
         if (not isinstance(ledger,dict) or ledger.get('schema_version')!='legaia.model-face-addition-ledger.v5'
@@ -31,9 +34,9 @@ def preview_model_shape(preview: dict, replacement: bytes, binding: dict):
     result = deepcopy(preview)
     shape = decode_tmd(replacement)
     objects = result['objects']
-    topology_changed = binding.get('format') in ('tmd-face-removal-v1', 'tmd-face-addition-v1', 'world-tmd-vector-allocation-v1','world-tmd-vector-content-v1')
+    topology_changed = binding.get('format') in ('tmd-face-removal-v1', 'tmd-face-addition-v1', 'world-tmd-vector-allocation-v1','world-tmd-vector-content-v1','world-tmd-face-addition-v1')
     vector_growth=None
-    if binding.get('format') in ('tmd-face-addition-v1','world-tmd-vector-allocation-v1','world-tmd-vector-content-v1') and binding.get('ledger',{}).get('schema_version') in ('legaia.model-face-addition-ledger.v5','legaia.model-face-addition-ledger.v6'):
+    if binding.get('format') in ('tmd-face-addition-v1','world-tmd-vector-allocation-v1','world-tmd-vector-content-v1','world-tmd-face-addition-v1') and binding.get('ledger',{}).get('schema_version') in ('legaia.model-face-addition-ledger.v5','legaia.model-face-addition-ledger.v6'):
         from .model_face_ledger import _operations,MAX_LEDGER_VECTORS
         from .model_primitives import _qualified_model
         _qualified_model(replacement)
@@ -59,7 +62,7 @@ def preview_model_shape(preview: dict, replacement: bytes, binding: dict):
                 if total>MAX_LEDGER_VECTORS:raise ImportError('Allocated vector preview exceeds its row budget')
                 if request['kind']=='vertices':vector_growth[request['object_index']]+=len(request['vectors'])
         preceding=result.get('authored_shape',{})
-        if (preceding.get('format')==binding.get('format') or preceding.get('format') in ('world-tmd-vector-allocation-v1','world-tmd-vector-content-v1') and binding.get('format') in ('world-tmd-vector-allocation-v1','world-tmd-vector-content-v1')) and 'ledger' in preceding:
+        if (preceding.get('format')==binding.get('format') or preceding.get('format') in ('world-tmd-vector-allocation-v1','world-tmd-vector-content-v1','world-tmd-face-addition-v1') and binding.get('format') in ('world-tmd-vector-allocation-v1','world-tmd-vector-content-v1','world-tmd-face-addition-v1')) and 'ledger' in preceding:
             old=preceding['ledger'];new=binding['ledger'];old_operations=_operations(old);new_operations=_operations(new)
             if (any(old[key]!=new[key] for key in ('source_sha256','source_byte_length'))
                     or old_operations!=new_operations[:len(old_operations)]
@@ -107,7 +110,7 @@ def preview_model_shape(preview: dict, replacement: bytes, binding: dict):
     material_changed = (len(result['materials']) != len(shape['materials']) or
             any(any(old.get(key) != new.get(key) for key in material_fields)
                 for old, new in zip(result['materials'], shape['materials'])))
-    material_v2 = binding.get('format') in ('tmd-content-v2', 'tmd-content-v3', 'tmd-face-removal-v1', 'tmd-face-addition-v1', 'world-tmd-vector-allocation-v1','world-tmd-vector-content-v1')
+    material_v2 = binding.get('format') in ('tmd-content-v2', 'tmd-content-v3', 'tmd-face-removal-v1', 'tmd-face-addition-v1', 'world-tmd-vector-allocation-v1','world-tmd-vector-content-v1','world-tmd-face-addition-v1')
     if material_changed and not material_v2:
         raise ImportError('Model content changed source material bindings')
     if material_v2:

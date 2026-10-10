@@ -1508,12 +1508,12 @@ class ProjectService:
     def read_model_replacement(self, asset_id: str, binding: dict) -> bytes:
         from importer.model_authoring import replace_model_shape, replace_model_content
         removal = isinstance(binding, dict) and binding.get('format') == 'tmd-face-removal-v1'
-        world_allocation = isinstance(binding, dict) and binding.get('format') in ('world-tmd-vector-allocation-v1','world-tmd-vector-content-v1')
+        world_allocation = isinstance(binding, dict) and binding.get('format') in ('world-tmd-vector-allocation-v1','world-tmd-vector-content-v1','world-tmd-face-addition-v1')
         addition = world_allocation or (isinstance(binding, dict) and binding.get('format') == 'tmd-face-addition-v1')
         extra = {'base_binding', 'ledger'} if addition else {'removed_faces'} if removal else set()
         if addition and not world_allocation and 'mesh_imports' in binding: extra.add('mesh_imports')
         if (not isinstance(binding, dict) or set(binding) != {'asset_sha256','source_sha256','byte_length','source_scene_id','format'} | extra
-                or binding['format'] not in ('tmd-shape', 'tmd-content-v1', 'tmd-content-v2', 'tmd-content-v3', 'tmd-face-removal-v1', 'tmd-face-addition-v1', 'world-tmd-vector-allocation-v1','world-tmd-vector-content-v1') or type(binding['byte_length']) is not int
+                or binding['format'] not in ('tmd-shape', 'tmd-content-v1', 'tmd-content-v2', 'tmd-content-v3', 'tmd-face-removal-v1', 'tmd-face-addition-v1', 'world-tmd-vector-allocation-v1','world-tmd-vector-content-v1','world-tmd-face-addition-v1') or type(binding['byte_length']) is not int
                 or not 1 <= binding['byte_length'] <= 4*1024*1024
                 or any(not isinstance(binding[k],str) or len(binding[k]) != 64 or any(c not in '0123456789abcdef' for c in binding[k]) for k in ('asset_sha256','source_sha256'))
                 or not isinstance(binding['source_scene_id'], str)):
@@ -4093,7 +4093,7 @@ class ProjectService:
             from .worldmap_model_binding import owner as world_model_owner,asset as world_model_asset
             if world_model_owner(identifier):
                 _,native=world_model_asset(self,identifier,binding)
-                records.append(dict(id=identifier,kind='model',name='World model '+identifier.rsplit('/',1)[-1],scene_id=None,source_scene=identifier.split('/')[2],changes=['TMD vector allocation and content' if binding['format']=='world-tmd-vector-content-v1' else 'TMD vector allocation' if binding['format']=='world-tmd-vector-allocation-v1' else 'TMD shape replacement'],authored=deepcopy(binding),source_record=native))
+                records.append(dict(id=identifier,kind='model',name='World model '+identifier.rsplit('/',1)[-1],scene_id=None,source_scene=identifier.split('/')[2],changes=['TMD face addition' if binding['format']=='world-tmd-face-addition-v1' else 'TMD vector allocation and content' if binding['format']=='world-tmd-vector-content-v1' else 'TMD vector allocation' if binding['format']=='world-tmd-vector-allocation-v1' else 'TMD shape replacement'],authored=deepcopy(binding),source_record=native))
                 continue
             asset = next(a for a in self.imports[scene_id]['assets']['models'] if a['semantic_id'] == identifier)
             records.append({'id':identifier, 'kind':'model', 'name':'Model shape ' + identifier.rsplit('/',1)[-1],

@@ -1,6 +1,6 @@
 """Read-only World face-growth sources and native model/carrier proposals.
 
-Persistence and editor authoring are intentionally not exposed by this service.
+Reviewed Apply uses shared persistence and history; editor controls remain separate.
 """
 import base64
 import json
@@ -14,7 +14,7 @@ from importer.model_face_addition import add_model_faces
 from .project import ProjectError, digest
 from .worldmap_authoring import state_key
 from .worldmap_model_binding import owner, source as native_source
-from .worldmap_model_allocation import retained, qualify_carrier
+from .worldmap_model_allocation import retained, qualify_carrier, FACE_FORMAT
 
 
 def _budget(value, maximum):
@@ -71,12 +71,15 @@ def prepare(project,request):
     independent,addition=add_model_faces(effective,request['effective_sha256'],additions)
     if independent!=candidate: raise ProjectError('World face candidate differs from direct native addition')
     composed,carrier=qualify_carrier(project,request['asset_id'],original,native,effective,candidate,base_binding,updated)
-    value=dict(schema_version='legaia.worldmap-model-face-addition-review.v1',project_path=str(project.root),
+    binding=dict(format=FACE_FORMAT,source_scene_id=owner(request['asset_id']),
+        source_sha256=sha256(original).hexdigest(),asset_sha256=sha256(candidate).hexdigest(),
+        byte_length=len(candidate),base_binding=deepcopy(base_binding),ledger=deepcopy(updated))
+    value=dict(schema_version='legaia.worldmap-model-face-addition-review.v2',project_path=str(project.root),
         request=deepcopy(request),source_record=deepcopy(native),
         current_sha256=sha256(effective).hexdigest(),proposed_sha256=sha256(candidate).hexdigest(),
         current_byte_length=len(effective),proposed_byte_length=len(candidate),
         proposed_model_base64=base64.b64encode(candidate).decode('ascii'),
-        base_binding=deepcopy(base_binding),ledger=updated,current_topology=current_topology,topology=topology,addition=addition,
+        binding=binding,base_binding=deepcopy(base_binding),ledger=updated,current_topology=current_topology,topology=topology,addition=addition,
         current_preview=decode_tmd(effective),proposed_preview=decode_tmd(candidate),
         composed_models=composed,carrier=carrier,read_only=True,project_changed=False,
         gameplay_verified=False,build_ready=False,scope='native-face-addition-and-carrier-review-only')
@@ -86,3 +89,10 @@ def prepare(project,request):
 
 def review(project,request):
     return prepare(project,request)[1]
+
+
+def apply(project,request,review_key):
+    candidate,report=prepare(project,request)
+    if review_key!=report['review_key']:
+        raise ProjectError('World face addition differs from its fresh reviewed candidate')
+    project._publish_model_ledger(request['asset_id'],candidate,report['binding'],request['source_key'],'World face addition')

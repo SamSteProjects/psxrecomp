@@ -18,7 +18,7 @@ def source(project,identifier):
 
 
 def validate(identifier,binding):
-    if not isinstance(binding,dict) or binding.get('source_scene_id')!=owner(identifier) or binding.get('format') not in ('tmd-shape','tmd-content-v1','tmd-content-v2','tmd-content-v3','world-tmd-vector-allocation-v1','world-tmd-vector-content-v1'):
+    if not isinstance(binding,dict) or binding.get('source_scene_id')!=owner(identifier) or binding.get('format') not in ('tmd-shape','tmd-content-v1','tmd-content-v2','tmd-content-v3','world-tmd-vector-allocation-v1','world-tmd-vector-content-v1','world-tmd-face-addition-v1'):
         raise ProjectError('World model binding requires canonical native ownership and qualified native content')
 
 

@@ -12,6 +12,7 @@ from importer.model_vector_allocation import append_model_vectors
 from importer.model_pack_growth import grow_scene_model_pack
 from importer.core import parse_scene_assets, decompress_lzs
 from importer.assets import decode_tmd
+from importer.worldmap_model_ledger import FACE_FORMAT
 from .project import ProjectError, digest
 from .worldmap_authoring import state_key
 from .worldmap_model_binding import owner, source
@@ -19,7 +20,7 @@ from .worldmap_model_binding import owner, source
 
 FORMAT = 'world-tmd-vector-allocation-v1'
 CONTENT_FORMAT = 'world-tmd-vector-content-v1'
-FORMATS = (FORMAT, CONTENT_FORMAT)
+FORMATS = (FORMAT, CONTENT_FORMAT, FACE_FORMAT)
 
 
 def retained(project, identifier, original, binding, effective):
@@ -31,6 +32,10 @@ def retained(project, identifier, original, binding, effective):
 
 
 def validate_ledger(binding):
+    if binding.get('format') == FACE_FORMAT:
+        from importer.worldmap_model_ledger import validate_face_ledger
+        validate_face_ledger(binding.get('ledger'))
+        return
     from importer.model_face_ledger import VECTOR_SCHEMA
     ledger = binding.get('ledger')
     if (not isinstance(ledger, dict) or ledger.get('schema_version') != VECTOR_SCHEMA
