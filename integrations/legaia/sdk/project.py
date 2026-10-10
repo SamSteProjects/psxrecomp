@@ -2233,6 +2233,10 @@ class ProjectService:
             from .worldmap_placement_files import apply
             apply(self, command)
             return
+        if command.get('type') == 'transform_worldmap_records':
+            from .worldmap_placement_batch import apply
+            apply(self, command)
+            return
         if command.get('type') == 'import_controller_operand_file':
             from .controller_operand_files import apply
             apply(self,command)

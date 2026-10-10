@@ -1124,6 +1124,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-authoring.js": ("worldmap-authoring.js", "text/javascript"),
                  "/worldmap-geometry.js": ("worldmap-geometry.js", "text/javascript"),
                  "/worldmap-placement-editor.js": ("worldmap-placement-editor.js", "text/javascript"),
+                 "/worldmap-placement-batch-editor.js": ("worldmap-placement-batch-editor.js", "text/javascript"),
                  "/worldmap-placement-state.js": ("worldmap-placement-state.js", "text/javascript"),
                  "/worldmap-placement-gizmo.js": ("worldmap-placement-gizmo.js", "text/javascript"),
                  "/worldmap-placement-yaw.js": ("worldmap-placement-yaw.js", "text/javascript"),
@@ -1285,6 +1286,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     result = (review(self.server.project, body['scene'], body['source_key'], body['content'])
                               if route.endswith('-review') else export_file(self.server.project, body['scene'], body['source_key']))
                     self._json(200, result)
+                    return
+                if route == '/api/worldmap-placement-batch-review':
+                    if set(body) != {'scene', 'source_key', 'record_ids', 'delta', 'shared_record'}:
+                        raise ProjectError('Batch placement review requires exact records, deltas and shared scope')
+                    from .worldmap_placement_batch import review
+                    self._json(200, review(self.server.project, body['scene'], body['source_key'], body['record_ids'], body['delta'], body['shared_record']))
                     return
                 if route in ('/api/worldmap-placements','/api/worldmap-placement-review'):
                     expected={'scene','source_key'} | ({'record_id','values','shared_record'} if route.endswith('-review') else set())

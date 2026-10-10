@@ -39,6 +39,17 @@ class PlacementFiles(unittest.TestCase):
     after=deepcopy(p.overrides);p.undo();self.assertEqual(p.overrides,held[0]);p.redo();self.assertEqual(p.overrides,after)
     r=review(p,'map01',state_key(p),content);self.assertTrue(r['no_op']);count=len(p.undo_stack);p.command({**body,'source_key':state_key(p),'review_key':r['review_key']});self.assertEqual(len(p.undo_stack),count)
     clear={**supplied,'entries':{'0005':None}};r=review(p,'map01',state_key(p),json.dumps(clear));p.command({**body,'content':json.dumps(clear),'source_key':state_key(p),'review_key':r['review_key']});self.assertEqual(p.overrides,held[0]);p.save();self.assertEqual(ProjectService.open(p.root).overrides,p.overrides);self.assertEqual(p.imports,imported)
+    from sdk.worldmap_placement_batch import review as batch_review
+    batch_before=deepcopy(p.overrides);count=len(p.undo_stack);delta=dict(x=32,y=-16,z=64,yaw_units=-256);r=batch_review(p,'map01',state_key(p),['0005','0006'],delta,False);self.assertEqual(len(r['records']),2);self.assertEqual(p.overrides,batch_before)
+    for row in r['records']:
+     for axis in 'xyz':self.assertEqual(row['proposed_values']['offset'][axis],row['current_values']['offset'][axis]+delta[axis])
+     self.assertEqual(row['proposed_values']['yaw_units'],(row['current_values']['yaw_units']-256)%4096)
+    batch=dict(type='transform_worldmap_records',scene='map01',source_key=state_key(p),record_ids=['0005','0006'],delta=delta,shared_record=False,review_key=r['review_key']);p.command(batch);self.assertEqual(len(p.undo_stack),count+1);applied=deepcopy(p.overrides);p.undo();self.assertEqual(p.overrides,batch_before);p.redo();self.assertEqual(p.overrides,applied);p.undo()
+    for selected,change in ((['0005','0005'],delta),(['0005'],{**delta,'x':65535}),(['0005'],{**delta,'yaw_units':4096}),(['0512'],delta)):
+     with self.assertRaises(ProjectError):batch_review(p,'map01',state_key(p),selected,change,False)
+     self.assertEqual(p.overrides,batch_before)
+    with self.assertRaises(ProjectError):p.command({**batch,'review_key':'f'*64})
+    zero=dict(x=0,y=0,z=0,yaw_units=0);r=batch_review(p,'map01',state_key(p),['0005','0006'],zero,False);self.assertTrue(r['no_op']);p.command({**batch,'delta':zero,'source_key':state_key(p),'review_key':r['review_key']});self.assertEqual(len(p.undo_stack),count)
     exported['entries']['0006']['values']['offset']['x']=999;self.assertEqual(p.overrides[owner('map01')]['WorldMapPlacements']['entries']['0006'],original_entry)
  def test_json_budget_duplicates_nonfinite_and_unknown_schema(self):
   for value in ('{"entries":{},"entries":{}}','{"x":NaN}','x'*262145,'{}'):
