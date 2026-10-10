@@ -106,27 +106,29 @@ def preview(project, request, review_key):
     if report['review_key'] != review_key:
         raise ProjectError('World face preview requires its exact fresh Review')
     scene = request['asset_id'].split('/')[2]
-    retail = inspect(project, scene, request['source_key'], texture_layer='retail', model_layer='retail')
+    retail = inspect(project, scene, request['source_key'], texture_layer='retail')
     current = inspect(project, scene, request['source_key'], texture_layer='current', model_layer='current')
     view = copy(project)
     view.model_overrides = deepcopy(project.model_overrides)
     view.model_overrides[request['asset_id']] = deepcopy(report['binding'])
     original_read = project.read_model_replacement
     def read(identifier, binding):
-        if identifier == request['asset_id']:
-            if binding != report['binding']:
-                raise ProjectError('World face preview lost its reviewed binding')
+        if identifier == request['asset_id'] and binding == report['binding']:
             return candidate
         return original_read(identifier, binding)
     view.read_model_replacement = read
     proposed = inspect(view, scene, state_key(view), texture_layer='current', model_layer='current')
+    from .worldmap_model_source import inspect as inspect_source
+    proposed_source = inspect_source(view, dict(asset_id=request['asset_id'],
+        source_key=state_key(view), member_sha256=request['member_sha256'], layer='current'))
+    proposed_source['request']['source_key'] = request['source_key']
     proposed['project_source_key'] = request['source_key']
     proposed['model_layer'] = 'proposed'
     proposed['representation'] = 'proposed-source'
-    value = dict(schema_version='legaia.worldmap-model-face-preview.v1',
+    value = dict(schema_version='legaia.worldmap-model-face-preview.v2',
         project_path=str(project.root), request=deepcopy(request), review_key=review_key,
         current_sha256=request['effective_sha256'], proposed_sha256=report['proposed_sha256'],
-        retail_graph=retail, current_graph=current, proposed_graph=proposed,
+        retail_graph=retail, current_graph=current, proposed_graph=proposed, proposed_model_source=proposed_source,
         read_only=True, project_changed=False, gameplay_verified=False)
     _budget(value, 64*1024*1024)
     _fresh(project, request)
