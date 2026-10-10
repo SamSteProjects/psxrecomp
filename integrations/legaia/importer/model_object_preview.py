@@ -16,7 +16,7 @@ def preview_object_model(preview,replacement,binding):
     if not operations or operations[-1]['proposed_sha256']!=binding['asset_sha256']:
         raise ImportError('Object preview differs from the ledger operation chain')
     old_operations=[]
-    if previous.get('format')=='tmd-face-addition-v1':
+    if previous.get('format') in ('tmd-face-addition-v1','world-tmd-vector-allocation-v1','world-tmd-vector-content-v1','world-tmd-face-addition-v1','world-tmd-group-allocation-v1','world-tmd-object-allocation-v1'):
         old=previous['ledger'];old_operations=_operations(old)
         if (any(old[key]!=binding['ledger'][key] for key in ('source_sha256','source_byte_length'))
                 or old_operations!=operations[:len(old_operations)]

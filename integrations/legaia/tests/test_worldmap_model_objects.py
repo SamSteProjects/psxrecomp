@@ -10,9 +10,11 @@ from unittest.mock import patch
 import base64
 from importer.core import _pack_ranges, ImportError
 from importer.model_object_allocation import allocate_model_objects
+from importer.model_authoring import preview_model_shape
+from importer.assets import decode_tmd
 from sdk.project import ProjectService, ProjectError
 from sdk.worldmap_authoring import state_key
-from sdk.worldmap_model_objects import source, review
+from sdk.worldmap_model_objects import source, review, apply
 from test_model_pack_growth import pack_source, container_for
 from test_model_primitive_workflow import http_server
 
@@ -56,6 +58,9 @@ class WorldObjectReviewTests(TestCase):
                 self.assertEqual(receipt['topology']['objects'][-1]['donor_object_id'],clone['donor_object_id'])
                 self.assertFalse(receipt['build_ready']);self.assertTrue(receipt['read_only'])
                 self.assertEqual(receipt['binding']['ledger']['schema_version'],'legaia.model-face-addition-ledger.v7')
+                composed=preview_model_shape(decode_tmd(original),candidate,receipt['binding'])
+                self.assertEqual(composed['vertices'],receipt['proposed_preview']['vertices'])
+                self.assertEqual(composed['triangles'],receipt['proposed_preview']['triangles'])
                 for alter in [lambda v:v.update(source_key='0'*64),lambda v:v.update(member_sha256='0'*64),
                     lambda v:v.update(effective_sha256='0'*64),lambda v:v.update(extra=True),
                     lambda v:v['requests'][0].update(donor_object_id='foreign'),
@@ -71,7 +76,22 @@ class WorldObjectReviewTests(TestCase):
                     self.assertEqual(post('/api/worldmap-model-object-source',request),(200,inspected))
                     self.assertEqual(post('/api/worldmap-model-object-review',proposal),(200,receipt))
                     self.assertEqual(post('/api/worldmap-model-object-source',dict(request,extra=True))[0],400)
-                    self.assertEqual(post('/api/worldmap-model-object-apply',dict(request=proposal,review_key=receipt['review_key']))[0],400)
+                    self.assertEqual(post('/api/worldmap-model-object-apply',dict(request=proposal,review_key='0'*64))[0],400)
+                    self.assertEqual(post('/api/worldmap-model-object-apply',dict(request=proposal,review_key=receipt['review_key'],extra=True))[0],400)
                 self.assertEqual(p._document(),held);self.assertEqual((p.undo_stack,p.redo_stack),history)
+                with self.assertRaises(ProjectError):apply(p,proposal,'0'*64)
+                with http_server(p) as (_,post):
+                    status,body=post('/api/worldmap-model-object-apply',dict(request=proposal,review_key=receipt['review_key']))
+                    self.assertEqual(status,200,body)
+                    self.assertEqual(post('/api/worldmap-model-object-apply',dict(request=proposal,review_key=receipt['review_key']))[0],400)
+                binding=deepcopy(p.model_overrides[request['asset_id']])
+                self.assertEqual(p.read_model_replacement(request['asset_id'],binding),candidate)
+                bad=deepcopy(binding);bad['ledger']['operations']=[]
+                with self.assertRaises(ImportError):p.read_model_replacement(request['asset_id'],bad)
+                reopened=ProjectService.open(p.save())
+                self.assertEqual(reopened.read_model_replacement(request['asset_id'],binding),candidate)
+                p.undo();self.assertEqual(p._document(),held)
+                p.redo();self.assertEqual(p.read_model_replacement(request['asset_id'],binding),candidate)
+                p.undo()
                 p.mode='live'
                 with self.assertRaises(ProjectError):source(p,request)

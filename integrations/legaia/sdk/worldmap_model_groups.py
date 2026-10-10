@@ -9,7 +9,7 @@ from importer.model_face_removal import _groups
 from importer.model_face_ledger import (append_group_ledger, _apply_group_allocation,
     _operations, _reserved_faces, _reserved_groups)
 from .worldmap_model_faces import _context, _fresh, _budget
-from .worldmap_model_allocation import qualify_carrier, GROUP_FORMAT
+from .worldmap_model_allocation import qualify_carrier, GROUP_FORMAT, OBJECT_FORMAT
 from .project import ProjectError, digest
 
 
@@ -46,7 +46,7 @@ def prepare(project, request):
         raise ProjectError('World group proposal differs from complete retained replay')
     composed, carrier = qualify_carrier(project, request['asset_id'], original, native,
         effective, candidate, base_binding, updated)
-    binding = dict(format=GROUP_FORMAT,source_scene_id='worldmap://'+request['asset_id'].split('/')[2]+'/models',
+    binding = dict(format=OBJECT_FORMAT if updated['schema_version']=='legaia.model-face-addition-ledger.v7' else GROUP_FORMAT,source_scene_id='worldmap://'+request['asset_id'].split('/')[2]+'/models',
         source_sha256=request['member_sha256'],asset_sha256=sha256(candidate).hexdigest(),
         byte_length=len(candidate),base_binding=deepcopy(base_binding),ledger=deepcopy(updated))
     value = dict(schema_version='legaia.worldmap-model-group-review.v2', project_path=str(project.root),

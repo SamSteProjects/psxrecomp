@@ -1,8 +1,8 @@
-"""Read-only World object donors and complete native object/carrier proposals.
+"""World object donors, complete native proposals and guarded shared Apply.
 
 Objects are native model parts, not scene entities or new World placements.
-The proposal family is deliberately not admitted by persistence until its
-shared command, Current scene and package paths are qualified.
+Persistent bindings retain full native replay; browser/editor integration is
+separate from command, Current scene and package qualification.
 """
 import base64
 import struct
@@ -14,13 +14,11 @@ from importer.model_face_removal import _groups
 from importer.model_face_ledger import (append_object_ledger, _operations,
     _reserved_faces, _reserved_groups)
 from importer.model_object_ledger import source_objects, apply_object_allocation
+from importer.worldmap_model_ledger import OBJECT_FORMAT as FORMAT
 from .worldmap_model_faces import _context, _fresh, _budget
 from .worldmap_model_allocation import qualify_carrier
 from .worldmap_model_binding import owner
 from .project import ProjectError, digest
-
-
-FORMAT = 'world-tmd-object-allocation-v1'
 
 
 def source(project, request):
@@ -88,3 +86,11 @@ def prepare(project, request):
 
 def review(project, request):
     return prepare(project,request)[1]
+
+
+def apply(project, request, review_key):
+    candidate, report = prepare(project,request)
+    if report['review_key'] != review_key:
+        raise ProjectError('World object allocation differs from its fresh reviewed candidate')
+    project._publish_model_ledger(request['asset_id'],candidate,report['binding'],
+        request['source_key'],'World object allocation')
