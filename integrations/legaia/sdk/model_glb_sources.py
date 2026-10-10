@@ -15,9 +15,14 @@ def validate_record(record):
     if any(not _hash(record[k]) for k in ('glb_sha256','candidate_sha256','review_key','receipt_key')):raise ProjectError('Invalid model source digest')
     if type(record['byte_length']) is not int or not 28<=record['byte_length']<=MAX_GLB_BYTES:raise ProjectError('Model source exceeds its GLB byte budget')
     if not isinstance(record['asset_id'],str) or not record['asset_id'].startswith('asset://') or not 9<=len(record['asset_id'])<=512:raise ProjectError('Model source requires a stable asset identity')
-    if not isinstance(record['scene_id'],str) or not record['scene_id'].startswith('scene://') or not 9<=len(record['scene_id'])<=160:raise ProjectError('Model source requires a stable scene identity')
+    if not isinstance(record['scene_id'],str) or not (record['scene_id'].startswith('scene://') or record['scene_id'] in ('worldmap://map01/models','worldmap://map02/models','worldmap://map03/models')) or not 9<=len(record['scene_id'])<=160:raise ProjectError('Model source requires a stable scene identity')
     b=record['binding']
-    if not isinstance(b,dict) or b.get('asset_id')!=record['asset_id'] or b.get('scene_id')!=record['scene_id'] or b.get('schema_version') not in ('legaia.model-glb-binding.v1','legaia.model-glb-binding.v2','legaia.model-glb-binding.v3'):raise ProjectError('Model source binding identity changed')
+    world=isinstance(b,dict) and b.get('schema_version')=='legaia.worldmap-model-glb-binding.v1'
+    if record['scene_id'].startswith('worldmap://')!=world:raise ProjectError('Model source domain changed')
+    if world:
+        from .worldmap_model_binding import owner
+        if owner(record['asset_id'])!=record['scene_id'] or b.get('source_scene_id')!=record['scene_id'] or set(b)!={'schema_version','asset_id','source_scene_id','project_source_key','source_sha256','effective_sha256','profile','scope'} or b.get('scope')!='existing-native-model-layout':raise ProjectError('World model source ownership changed')
+    if not isinstance(b,dict) or b.get('asset_id')!=record['asset_id'] or (b.get('source_scene_id') if world else b.get('scene_id'))!=record['scene_id'] or b.get('schema_version') not in ('legaia.model-glb-binding.v1','legaia.model-glb-binding.v2','legaia.model-glb-binding.v3','legaia.worldmap-model-glb-binding.v1'):raise ProjectError('Model source binding identity changed')
     from .model_glb import _json_size
     _json_size(b,128*1024,'Model source binding')
     if 'external_object_nodes' in b:
@@ -62,7 +67,7 @@ def retain(project,records,content,binding,candidate_sha256,review_key):
     if not isinstance(binding,dict):raise ProjectError('Model source requires its binding JSON')
     from importer.animation_glb import _read_glb
     _read_glb(content)
-    record=dict(schema_version='legaia.model-source.v1',asset_id=binding.get('asset_id'),scene_id=binding.get('scene_id'),
+    record=dict(schema_version='legaia.model-source.v1',asset_id=binding.get('asset_id'),scene_id=binding.get('scene_id',binding.get('source_scene_id')),
                 glb_sha256=sha256(content).hexdigest(),byte_length=len(content),binding=deepcopy(binding),candidate_sha256=candidate_sha256,review_key=review_key)
     record['receipt_key']=digest(record);after=deepcopy(records);after[record['receipt_key']]=record;validate_collection(after)
     path=source_path(project,record)
@@ -75,7 +80,10 @@ def retain(project,records,content,binding,candidate_sha256,review_key):
 def apply(project,asset,candidate,content,binding,report):
     before=deepcopy((project.model_overrides,project.model_sources,project.undo_stack,project.redo_stack))
     after,record=retain(project,project.model_sources,content,binding,report['proposed_sha256'],report['review_key'])
-    from .scene_preview import source_key
+    if binding.get('schema_version')=='legaia.worldmap-model-glb-binding.v1':
+        from .worldmap_authoring import state_key as source_key
+    else:
+        from .scene_preview import source_key
     if source_key(project)!=binding['project_source_key']:raise ProjectError('Model source context changed before Apply')
     try:
         length=len(project.undo_stack);project.set_model_replacement(asset,candidate)
@@ -205,7 +213,10 @@ def compare_native(project,receipt_key,expected_project_path,expected_library_ke
     if not project.disc_path:raise ProjectError('Native model comparison requires the matching retail disc')
     disc=project.disc_path
     with _disc_context(disc):
-        original=project._model_source(row['asset_id'],scene)
+        if row['binding']['schema_version']=='legaia.worldmap-model-glb-binding.v1':
+            from .worldmap_model_binding import source
+            original=source(project,row['asset_id'])[0]
+        else:original=project._model_source(row['asset_id'],scene)
         binding=project.model_overrides.get(row['asset_id'])
         current=project.read_model_replacement(row['asset_id'],binding) if binding is not None else original
         if not isinstance(original,bytes) or not isinstance(current,bytes) or not 1<=len(current)<=4*1024*1024:

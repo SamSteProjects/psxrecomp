@@ -27,3 +27,7 @@ assert.equal(decodeModelSourceComparison(comparison,value,row).matches_current,t
 assert.equal(decodeModelSourceComparison({...comparison,current_sha256:'f'.repeat(64),representation:'retail',matches_current:false},value,row).matches_current,false);
 for(const mutate of [v=>v.matches_current=false,v=>v.current_byte_length=0,v=>v.library_key='bad',v=>v.native_content_changed=true,v=>v.project_changed=true,v=>v.representation='retail',v=>v.historical_candidate_sha256='f'.repeat(64),v=>v.asset_id='other']){const bad=structuredClone(comparison);mutate(bad);assert.throws(()=>decodeModelSourceComparison(bad,value,row));}
 console.log('Native model comparison hashes, historical/current distinction and context guards passed.');
+
+const world=structuredClone(value);world.imports[0].asset_id='asset://map01/worldmap/models/0001';world.imports[0].scene_id='worldmap://map01/models';world.imports[0].binding={schema_version:'legaia.worldmap-model-glb-binding.v1',asset_id:world.imports[0].asset_id,source_scene_id:world.imports[0].scene_id};assert.deepEqual(decodeModelSourceLibrary(world,path),world);
+for(const mutate of [r=>r.scene_id='worldmap://map02/models',r=>r.binding.source_scene_id='worldmap://map03/models',r=>r.asset_id='asset://town01/models/scene-tmd/0000',r=>r.binding.schema_version='legaia.model-glb-binding.v1']){const bad=structuredClone(world);mutate(bad.imports[0]);assert.throws(()=>decodeModelSourceLibrary(bad,path));}
+console.log('World retained-input canonical kingdom/asset/binding ownership passes; four cross-domain claims rejected.');

@@ -47,3 +47,51 @@ def export(project, request):
         glb_base64=base64.b64encode(glb).decode('ascii'),
         native_roundtrip_sha256=sha256(candidate).hexdigest(),read_only=True,
         project_changed=False,gameplay_verified=False)
+
+
+def prepare_import(project,request):
+    """Convert against a freshly regenerated Current binding, then native Review."""
+    from .project import digest
+    from .worldmap_model_replacement import prepare
+    if not isinstance(request,dict) or set(request)!={'asset_id','source_key','member_sha256','effective_sha256','binding','glb_base64'}:
+        raise ProjectError('World GLB import requires its exact Current context, GLB and export binding')
+    encoded=request['glb_base64']
+    if not isinstance(encoded,str) or not 40<=len(encoded)<=4*((32*1024*1024+2)//3):
+        raise ProjectError('World GLB exceeds its input byte budget')
+    try:content=base64.b64decode(encoded,validate=True)
+    except ValueError as exc:raise ProjectError('World GLB requires canonical base64 bytes') from exc
+    if not 28<=len(content)<=32*1024*1024 or base64.b64encode(content).decode('ascii')!=encoded:
+        raise ProjectError('World GLB byte coverage changed')
+    binding=request['binding']
+    if not isinstance(binding,dict) or len(json.dumps(binding,allow_nan=False).encode('utf-8'))>128*1024:
+        raise ProjectError('World GLB binding exceeds its metadata budget')
+    context={k:request[k] for k in ('asset_id','source_key','member_sha256','effective_sha256')}
+    fresh=export(project,context)
+    if digest(binding)!=digest(fresh['binding']):raise ProjectError('World GLB binding differs from Current; export again')
+    source=inspect(project,{k:v for k,v in context.items() if k!='effective_sha256'}|{'layer':'current'})
+    effective=base64.b64decode(source['tmd_base64'],validate=True)
+    if sha256(effective).hexdigest()!=context['effective_sha256']:raise ProjectError('World Current model changed during GLB conversion')
+    candidate,analysis=import_model_glb(effective,content,binding['profile'])
+    native_request={**context,'format':'content-tmd','content_base64':base64.b64encode(candidate).decode('ascii')}
+    candidate,native_review=prepare(project,native_request)
+    report=dict(schema_version='legaia.worldmap-model-glb-review.v1',project_path=str(project.root),
+        request=context,binding=deepcopy(binding),glb_sha256=sha256(content).hexdigest(),glb_byte_length=len(content),
+        candidate_base64=base64.b64encode(candidate).decode('ascii'),native_review=native_review,
+        analysis=analysis,project_changed=False,gameplay_verified=False)
+    report['review_key']=digest(report)
+    if len(json.dumps(report,allow_nan=False).encode('utf-8'))>24*1024*1024:raise ProjectError('World GLB Review exceeds its response budget')
+    if project.mode!='edit' or state_key(project)!=request['source_key']:raise ProjectError('World source changed during GLB Review')
+    return candidate,content,report
+
+
+def review_import(project,request):return prepare_import(project,request)[2]
+
+
+def apply_import(project,request,review_key):
+    candidate,content,report=prepare_import(project,request)
+    if report['review_key']!=review_key:raise ProjectError('World GLB Apply requires its exact fresh Review')
+    if not report['native_review']['changed']:raise ProjectError('World GLB has no quantized Current changes to Apply')
+    from .model_glb_sources import apply as retain_source
+    retain_source(project,request['asset_id'],candidate,content,request['binding'],
+                  dict(proposed_sha256=report['native_review']['proposed_sha256'],review_key=review_key))
+    return report
