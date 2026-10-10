@@ -111,3 +111,44 @@ export async function qualifyWorldDecorationTransformReview(value, source, place
     fail('Decoration transform Review differs from independent recipe replay and literal native patch.');
   return structuredClone(value);
 }
+
+export async function removeWorldDecoration(source,placementId){
+  let binding=structuredClone(source.metadata.binding);
+  const requests=binding?.operations.flatMap(op=>op.requests)??[],matches=requests.filter(r=>r.placement_id===placementId);
+  const removed=source.metadata.authored_allocations.find(a=>a.placement_id===placementId);
+  if(matches.length!==1||!removed)fail('Choose one retained authored decoration to remove.');
+  const selected=matches[0],rebases=[];
+  for(const op of binding.operations){
+    for(const request of op.requests)if(request.placement_id!==placementId&&request.donor_cell===selected.target_cell){
+      rebases.push({placement_id:request.placement_id,before_donor_cell:request.donor_cell,after_donor_cell:selected.donor_cell});request.donor_cell=selected.donor_cell;
+    }
+    op.requests=op.requests.filter(r=>r.placement_id!==placementId);
+  }
+  binding.operations=binding.operations.filter(op=>op.requests.length);
+  if(!binding.operations.length)binding=null;
+  let canonical=source.retailBytes;
+  for(const op of binding?.operations??[]){const allocated=await allocateWorldPlacements(canonical,source.metadata.floor_lut,source.metadata.scene,op.requests);canonical=allocated.bytes;op.proposed_map_sha256=allocated.audit.proposed_sha256;}
+  const replayed=binding?await replayWorldPlacementAllocations(source.retailBytes,source.metadata.floor_lut,source.metadata.scene,binding,source.metadata.source_record):{bytes:source.retailBytes,allocations:[]};
+  const bytes=await composeWorldPlacementTransforms(source.retailBytes,replayed.bytes,source.metadata.floor_lut,source.metadata.scene,source.authoredRecords);
+  const literal=source.bytes.slice(),at=removed.record_index*32,cellAt=0x8000+removed.target_cell*2;
+  if(source.retailBytes.subarray(at,at+32).some(n=>n!==0))fail('Removal no longer owns an original unused zero record.');
+  literal.set(source.retailBytes.subarray(at,at+32),at);literal.set(source.retailBytes.subarray(cellAt,cellAt+2),cellAt);
+  if(!equalWorldPlacementBytes(bytes,literal))fail('Removal or donor rebasing changed surviving native bytes.');
+  return {binding,bytes,audit:{removed:structuredClone(removed),rebased_donors:rebases,remaining_allocations:replayed.allocations,
+    changed_bytes:Array.from(bytes.entries()).filter(([i,n])=>n!==source.bytes[i]).map(([i,n])=>({byte_offset:i,before_byte:source.bytes[i],after_byte:n})),scope:'authored-decoration-removal-only',gameplay_verified:false}};
+}
+
+export async function qualifyWorldDecorationRemovalReview(value,source,placementId){
+  const before=source.metadata;
+  if(!exact(value,['schema_version','project_path','scene','source_key','source_record','placement_id','current_map_sha256',
+      'proposed_map_sha256','proposed_map_base64','before_binding','binding','audit','read_only','project_changed','gameplay_verified','build_ready','review_key'])||
+      value.schema_version!=='legaia.worldmap-decoration-removal-review.v1'||value.project_path!==before.project_path||value.scene!==before.scene||
+      value.source_key!==before.source_key||!same(value.source_record,before.source_record)||value.placement_id!==placementId||
+      value.current_map_sha256!==before.current_map_sha256||!same(value.before_binding,before.binding)||
+      value.read_only!==true||value.project_changed!==false||value.gameplay_verified!==false||value.build_ready!==false||!hash(value.review_key))
+    fail('Removal Review changed its Current identity or read-only scope.');
+  const removed=await removeWorldDecoration(source,placementId);
+  if(!same(value.binding,removed.binding)||!same(value.audit,removed.audit)||!equalWorldPlacementBytes(decode(value.proposed_map_base64),removed.bytes)||
+      value.proposed_map_sha256!==await placementDigest(removed.bytes))fail('Removal Review differs from complete independent donor rebase and literal byte replay.');
+  return structuredClone(value);
+}

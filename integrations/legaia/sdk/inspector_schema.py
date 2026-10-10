@@ -472,7 +472,8 @@ def inspector_schema():
     schema['components']['WorldAuthoredPlacement']={
         'label':'Authored World decoration','layout':'read-only-properties',
         'actions':[{'id':'inspect-world-source-asset','label':'Inspect donor model asset','capability':'worldmap_geometry','requires_edit':True},
-            {'id':'edit-world-decoration-transform','label':'Edit decoration transform','capability':'worldmap_placements','requires_edit':True}],
+            {'id':'edit-world-decoration-transform','label':'Edit decoration transform','capability':'worldmap_placements','requires_edit':True},
+            {'id':'remove-world-decoration','label':'Review decoration removal','capability':'worldmap_placements','requires_edit':True}],
         'properties':[
             {'id':'identity','label':'Entity','path':['entity_id'],'type':'entity-reference','state':'read-only-project'},
             {'id':'placement','label':'Authored placement','path':['authored_placement','placement_id'],'type':'string','state':'read-only-project'},
