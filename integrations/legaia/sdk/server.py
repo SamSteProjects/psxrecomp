@@ -1132,6 +1132,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-model-vector.js": ("worldmap-model-vector.js", "text/javascript"),
                  "/worldmap-model-object.js": ("worldmap-model-object.js", "text/javascript"),
                  "/worldmap-model-comparison.js": ("worldmap-model-comparison.js", "text/javascript"),
+                 "/worldmap-model-materials.js": ("worldmap-model-materials.js", "text/javascript"),
                  "/worldmap-current-models.js": ("worldmap-current-models.js", "text/javascript"),
                  "/worldmap-model-source.js": ("worldmap-model-source.js", "text/javascript"),
                  "/worldmap-texture-uses.js": ("worldmap-texture-uses.js", "text/javascript"),
