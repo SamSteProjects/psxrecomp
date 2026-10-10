@@ -2,7 +2,7 @@
 
 ## Native World Model Source Exchange — 2026-10-10
 
-World model authoring is partial. Native source ownership, coordinate inspection and source downloads are connected. SDK replacement Review/Apply, shared history/persistence and existing-span package Build are implemented below. Editor replacement controls, authored model viewport/export composition and compressed growth relocation remain unfinished.
+World model authoring is partial. Native source ownership, coordinate inspection and source downloads are connected. SDK replacement Review/Apply, shared history/persistence and existing-span package Build are implemented below. Editor replacement controls are implemented below. Authored model viewport/export composition and compressed growth relocation remain unfinished.
 
 In either World source resources or Project resources, select a native placed model and choose **Inspect native TMD source**. The inspector shows original object-local signed16 vertex and normal coordinates, then enables **Download Retail TMD** and **Download Retail vector JSON**. The JSON uses the existing field-model vector interchange codec and retains its source SHA-256. Model coordinates use Retail Y down and precede the World instance placement transform. Ground is derived MAP/floor geometry and has no native TMD member; these controls do not appear for it.
 
@@ -37,3 +37,17 @@ Four focused Python tests passed exact layer bytes, original/current JSON hashes
 Actual three-kingdom source-resource workflows inspect both layers and download twelve files with exact independent native or stored binding hashes. Layer changes withdraw download eligibility; derived-ground selection removes model controls. Wide/400px captures were inspected with no horizontal overflow or page errors. Actual Project browser workflows open all three Current authored model source inspectors and dispose them after close. Both private fixture documents remain unchanged.
 
 Evidence: `local-output/sdk-20260909/worldmap-model-current-20261010/`. No package Build, native recomp compilation, game, runtime attachment, installation or disc export ran for this source-view step. Replacement editor controls and authored model viewport/export composition remain next; gameplay unverified and the full goal remains active.
+
+## World Model Replacement Editor — 2026-10-10
+
+Both World source resources and Project asset details now expose native TMD/vector JSON file replacement. Select a placed model, inspect **Current**, choose the file and format, then **Review model replacement** and **Apply reviewed model replacement**. Review leaves the project unchanged; Discard withdraws the file and receipt. Apply uses shared project history and private model storage. Undo/Redo and Save/Open retain the same binding semantics as the SDK endpoint. Ground remains derived geometry with no TMD replacement controls.
+
+The browser independently reconstructs the candidate from inspected Current bytes, verifies its input/candidate hashes and exact Retail/Current coordinate differences, and refuses modifications to headers, topology, packets or vector padding. Only existing object-local signed16 vertex/normal XYZ words can change. Review receipts expire when the inspected source or draft changes. An unapplied file draft participates in the page-leave warning; closing the inspector discards that draft.
+
+Current model viewport and GLB composition remain unfinished. Applying a model does not yet show that geometry in the World viewport; gameplay appearance remains unverified. Existing package Build qualification is recorded separately above.
+
+Four focused Python tests passed existing source, Current-layer and replacement regressions. Two Node suites passed native source qualification and six native replacement receipts, including sixteen forged receipt variants plus protected-header and signed16 refusals per replacement receipt. Four JavaScript syntax checks, server AST and whitespace checks passed.
+
+Actual direct World inspector workflows pass immutable/discarded Review, exact TMD/JSON Apply, Undo/Redo/Undo and Save/Open for all three kingdoms. Fresh Project browser workflows pass Review/Discard/Apply/Undo and Save/Open for all three, along with draft page-leave warning withdrawal. Both retain unchanged final fixture documents and zero page errors; wide/400px captures were inspected. A literal line-break display issue was corrected. Initial Project harness runs exhausted their discovery/history time allowance; the corrected bounded workflow passed with a larger overall allowance and without repeating the direct inspector's Redo cycles.
+
+Evidence: `local-output/sdk-20260909/worldmap-model-editor-20261010/`. No new package Build, native recomp compile, game launch, runtime attachment, installation or disc export occurred in this editor step. Full goal active; manual gameplay verification remains deferred.
