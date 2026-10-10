@@ -28,7 +28,17 @@ def compose(project,geometry):
             edits.append(dict(asset_id=identifier,source_tmd_sha256=sha256(original).hexdigest(),
                 effective_tmd_sha256=sha256(replacement).hexdigest(),byte_length=len(replacement)))
     # Qualify every binding before changing any geometry, including failure paths.
+    graph=geometry['scene_graph']
+    previews={a['asset_id']:a['preview'] for a in graph['assets']}
+    previews.update({asset['asset_id']:preview for asset,preview in prepared})
+    if any(entity.get('asset_id') not in previews for entity in graph['entities']):
+        raise ProjectError('Current World entity lost its native model ownership')
+    stored=sum(len(preview['triangles']) for preview in previews.values())
+    drawn=sum(len(previews[entity['asset_id']]['triangles']) for entity in graph['entities'])
+    if stored>200000 or drawn>200000:
+        raise ProjectError('Current World topology exceeds its scene triangle budget')
     for asset,preview in prepared:asset['preview']=preview
+    graph['metrics'].update(stored_triangle_count=stored,drawn_triangle_count=drawn)
     extended=any(binding['format']!='tmd-shape' for identifier,binding in project.model_overrides.items() if (model_identity(identifier) or [None])[0]==scene)
     allocated=any(binding['format'] in ('world-tmd-vector-allocation-v1','world-tmd-vector-content-v1','world-tmd-face-addition-v1') for identifier,binding in project.model_overrides.items() if (model_identity(identifier) or [None])[0]==scene)
     face_growth=any(binding['format']=='world-tmd-face-addition-v1' for identifier,binding in project.model_overrides.items() if (model_identity(identifier) or [None])[0]==scene)

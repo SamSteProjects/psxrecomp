@@ -14,7 +14,7 @@ class CurrentWorldModelTests(TestCase):
  def test_literal_shape_history_and_immutable_scene_ownership(self):
   original=model(0x22);candidate=bytearray(original);at=12+struct.unpack_from('<I',original,12)[0];struct.pack_into('<h',candidate,at,123);candidate=bytes(candidate)
   identifier='asset://map01/worldmap/models/0000';native=dict(disc_sha256='a'*64,decoded_member_sha256=sha256(original).hexdigest());preview=decode_tmd(original);preview['textures']=[]
-  geometry=dict(scene='map01',source_record=dict(disc_sha256='a'*64),preview=dict(vertices=['ground']),scene_graph=dict(assets=[dict(asset_id=identifier,source_record=deepcopy(native),preview=preview)],entities=[dict(entity_id='seed',source_to_world=[1]*16)]))
+  geometry=dict(scene='map01',source_record=dict(disc_sha256='a'*64),preview=dict(vertices=['ground']),scene_graph=dict(assets=[dict(asset_id=identifier,source_record=deepcopy(native),preview=preview)],metrics=dict(stored_triangle_count=len(preview['triangles']),drawn_triangle_count=len(preview['triangles'])),entities=[dict(entity_id='seed',asset_id=identifier,source_to_world=[1]*16)]))
   before=deepcopy(geometry)
   with TemporaryDirectory() as root:
    p=ProjectService(Path(root));p.disc_path='fixture'
@@ -40,7 +40,7 @@ class CurrentWorldModelTests(TestCase):
   original=model(0x22);identifier='asset://map01/worldmap/models/0000'
   native=dict(disc_sha256='a'*64,decoded_member_sha256=sha256(original).hexdigest())
   preview=decode_tmd(original);preview['textures']=[]
-  geometry=dict(scene='map01',source_record=dict(disc_sha256='a'*64),preview=dict(vertices=['ground']),scene_graph=dict(assets=[dict(asset_id=identifier,source_record=deepcopy(native),preview=preview)],entities=[dict(entity_id='seed',source_to_world=[1]*16)]))
+  geometry=dict(scene='map01',source_record=dict(disc_sha256='a'*64),preview=dict(vertices=['ground']),scene_graph=dict(assets=[dict(asset_id=identifier,source_record=deepcopy(native),preview=preview)],metrics=dict(stored_triangle_count=len(preview['triangles']),drawn_triangle_count=len(preview['triangles'])),entities=[dict(entity_id='seed',asset_id=identifier,source_to_world=[1]*16)]))
   with TemporaryDirectory() as root:
    p=ProjectService(Path(root));p.disc_path='fixture'
    with patch('sdk.worldmap_model_binding.source',return_value=(original,native)),patch('sdk.worldmap_current_models.source',return_value=(original,native)),patch('sdk.worldmap_model_source.read_worldmap_model',return_value=(original,export_shape_json(original),native)):
@@ -58,3 +58,15 @@ class CurrentWorldModelTests(TestCase):
     self.assertEqual(p.model_overrides[identifier],binding)
     retail=inspect(p,dict(request,layer='retail'));self.assertEqual(base64.b64decode(retail['tmd_base64']),original);self.assertEqual(retail['schema_version'],'legaia.worldmap-model-source.v2')
     self.assertEqual(p._document(),held);self.assertEqual(p.undo_stack,history)
+
+    from importer.model_face_ledger import append_face_ledger
+    from importer.model_primitives import inspect_model_primitives
+    refs=inspect_model_primitives(candidate)['objects'][0]['primitives'][0]['vertices']
+    expanded,face_ledger,_=append_face_ledger(original,ledger,[dict(face_id='face://authored/00000000-0000-4000-8000-000000000001',donor_face_id='face://source/'+sha256(original).hexdigest()+'/0/0',fields=dict(vertices=refs))])
+    face_binding=deepcopy(binding);face_binding.update(format='world-tmd-face-addition-v1',asset_sha256=sha256(expanded).hexdigest(),byte_length=len(expanded),ledger=face_ledger)
+    p._publish_model_ledger(identifier,expanded,face_binding,state_key(p),'World face addition')
+    face_scene=compose(p,deepcopy(geometry));expected_triangles=decode_tmd(expanded)['triangles']
+    self.assertEqual(face_scene['scene_graph']['metrics']['stored_triangle_count'],len(expected_triangles))
+    self.assertEqual(face_scene['scene_graph']['metrics']['drawn_triangle_count'],len(expected_triangles))
+    self.assertEqual(face_scene['model_authoring']['schema_version'],'legaia.worldmap-current-models.v4')
+    self.assertEqual(face_scene['scene_graph']['entities'],geometry['scene_graph']['entities'])
