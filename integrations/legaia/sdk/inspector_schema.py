@@ -454,7 +454,7 @@ def inspector_schema():
     asset_actions.append({'id':'reset-npc-script','label':'Reset NPC-owned script edits','capability':'npc_script_reset','when':['authoredRecord','donor_entity_id']})
     schema['components']['WorldSourcePlacement']={
         'label':'World source entity','layout':'read-only-properties',
-        'actions':[{'id':'inspect-world-placement-record','label':'Inspect placement record','capability':'worldmap_placements','requires_edit':True},{'id':'edit-world-asset-owners','label':'Edit selected asset owner records…','capability':'worldmap_placements','requires_edit':True}],
+        'actions':[{'id':'inspect-world-source-asset','label':'Inspect source asset','capability':'worldmap_geometry','requires_edit':True},{'id':'inspect-world-placement-record','label':'Inspect placement record','capability':'worldmap_placements','requires_edit':True},{'id':'edit-world-asset-owners','label':'Edit selected asset owner records…','capability':'worldmap_placements','requires_edit':True}],
         'properties':[
             {'id':'identity','label':'Entity','path':['entity_id'],'type':'entity-reference','state':'derived'},
             {'id':'model','label':'Source model','path':['asset_id'],'type':'asset-reference','state':'derived'},
