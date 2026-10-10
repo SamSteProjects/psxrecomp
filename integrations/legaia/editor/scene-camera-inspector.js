@@ -30,5 +30,5 @@ export function mountSceneCameraInspector({after,getCamera,getContext,isBusy,ava
  button.onclick=()=>{if(button.disabled)return;dialog.showModal();capture();};refresh.onclick=()=>{if(!refresh.disabled)capture();};dialog.querySelector('[data-camera-close]').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{context=null;});
  for(const input of dialog.querySelectorAll('input,select'))input.addEventListener('input',update);
  set.onclick=()=>{if(isBusy()||!available()||context!==getContext()){update();return;}try{const next=cameraFromSceneDraft(parseSceneCameraDraft(read()));apply(next);capture();status.textContent='Viewport camera set. Project and actor transforms are unchanged.';}catch(error){status.textContent=error.message;set.disabled=true;}};
- update();return {update,close:()=>{if(dialog.open)dialog.close();}};
+ update();return {update,close:()=>{if(dialog.open)dialog.close();},dispose:()=>{if(dialog.open)dialog.close();dialog.remove();button.remove();context=null;}};
 }
