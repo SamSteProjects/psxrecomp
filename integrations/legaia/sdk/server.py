@@ -1133,6 +1133,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
                  "/worldmap-asset-references.js": ("worldmap-asset-references.js", "text/javascript"),
                  "/worldmap-reference-trace.js": ("worldmap-reference-trace.js", "text/javascript"),
+                 "/worldmap-selection-sets.js": ("worldmap-selection-sets.js", "text/javascript"),
                  "/script-facing.js": ("script-facing.js", "text/javascript"),
                  "/texture-usage.js": ("texture-usage.js", "text/javascript"),
                  "/runtime-review.js": ("runtime-review.js", "text/javascript"),
@@ -1274,6 +1275,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Global world-map asset discovery requires the project source_key only')
                     from .worldmap_asset_index import inspect
                     self._json(200, inspect(self.server.project, body['source_key']))
+                    return
+                if route == '/api/worldmap-selection-review':
+                    if set(body)!={'selection_set_id','review_key','source_key'}:raise ProjectError('World selection recall requires exact selection, review and source keys')
+                    from .worldmap_selection_sets import review
+                    self._json(200,review(self.server.project,body['selection_set_id'],body['review_key'],body['source_key']))
                     return
                 if route == '/api/worldmap-geometry':
                     if set(body) != {'scene', 'source_key'}:

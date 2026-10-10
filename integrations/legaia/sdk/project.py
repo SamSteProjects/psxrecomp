@@ -127,6 +127,7 @@ class ProjectService:
         self.actor_templates: dict[str, dict] = {}
         self.actor_selection_sets: dict[str, dict] = {}
         self.scene_selection_sets: dict[str, dict] = {}
+        self.worldmap_selection_sets: dict[str, dict] = {}
         self.model_vertex_groups: dict[str, dict] = {}
         self.scene_views: dict[str, dict] = {}
         self.animation_labels: dict[str, dict] = {}
@@ -227,6 +228,7 @@ class ProjectService:
                 **({"script_bookmarks": deepcopy(self.script_bookmarks)} if self.script_bookmarks else {}),
                 **({"actor_selection_sets": deepcopy(self.actor_selection_sets)} if self.actor_selection_sets else {}),
                 **({"scene_selection_sets": deepcopy(self.scene_selection_sets)} if self.scene_selection_sets else {}),
+                **({"worldmap_selection_sets": deepcopy(self.worldmap_selection_sets)} if self.worldmap_selection_sets else {}),
                 **({"model_vertex_groups": deepcopy(self.model_vertex_groups)} if self.model_vertex_groups else {}),
                 **({"actor_drafts": deepcopy(self.actor_drafts)} if self.actor_drafts else {}),
                 **({"texture_overrides": deepcopy(self.texture_overrides)} if self.texture_overrides else {}),
@@ -278,7 +280,7 @@ class ProjectService:
                   "imports": "Imported scenes", "active_scene": "Active scene",
                   "authored": "Scene and game-data edits", "actor_templates": "Actor presets",
                   "texture_additions": "New texture slots", "texture_overrides": "Texture replacements", "model_overrides": "Model content", "audio_sequence_replacements": "Audio sequence replacements", "audio_overrides": "Audio sequence operands", "audio_bank_overrides": "Audio bank parameters", "audio_sample_sources": "Retained WAV inputs", "audio_midi_sources": "Retained MIDI inputs", "audio_sample_overrides": "Native audio samples",
-                  "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "scene_views": "Saved scene views", "animation_labels": "Animation display names", "model_vertex_groups": "Saved model vertex groups", "script_bookmarks": "Saved script bookmarks",
+                  "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "worldmap_selection_sets": "Saved world selections", "scene_views": "Saved scene views", "animation_labels": "Animation display names", "model_vertex_groups": "Saved model vertex groups", "script_bookmarks": "Saved script bookmarks",
                   "model_sources": "Retained model inputs", "animation_sources": "Retained animation inputs"}
         return [label for key, label in labels.items()
                 if digest(document.get(key)) != self.saved_sections.get(key)]
@@ -289,7 +291,7 @@ class ProjectService:
         self.saved_document = deepcopy(document)
         self.saved_sections = {key: digest(document.get(key)) for key in
                                ("name", "retail_source", "imports", "active_scene",
-                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_sequence_replacements", "audio_bank_overrides", "audio_sample_sources", "audio_midi_sources", "audio_sample_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views", "animation_labels", "model_vertex_groups", "script_bookmarks", "model_sources", "animation_sources")}
+                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_sequence_replacements", "audio_bank_overrides", "audio_sample_sources", "audio_midi_sources", "audio_sample_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "worldmap_selection_sets", "scene_views", "animation_labels", "model_vertex_groups", "script_bookmarks", "model_sources", "animation_sources")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):
@@ -2269,6 +2271,10 @@ class ProjectService:
         if isinstance(command.get('type'),str) and command['type'] in vertex_group_commands:
             vertex_group_command(self,command)
             return
+        from .worldmap_selection_sets import COMMANDS as world_selection_commands, command as world_selection_command
+        if isinstance(command.get('type'),str) and command['type'] in world_selection_commands:
+            world_selection_command(self,command)
+            return
         from .scene_selection_sets import COMMANDS as scene_selection_commands, command as scene_selection_command
         if isinstance(command.get('type'),str) and command.get('type') in scene_selection_commands:
             scene_selection_command(self,command)
@@ -3343,6 +3349,8 @@ class ProjectService:
             collection, identifier = self.model_vertex_groups, entry['group_id']
         elif entry.get('target') == 'scene_views':
             collection, identifier = self.scene_views, entry['view_id']
+        elif entry.get('target') == 'worldmap_selection_sets':
+            collection, identifier = self.worldmap_selection_sets, entry['selection_set_id']
         elif entry.get('target') == 'scene_selection_sets':
             collection, identifier = self.scene_selection_sets, entry['selection_set_id']
         elif entry.get('target') == 'actor_selection_sets':
@@ -3609,6 +3617,16 @@ class ProjectService:
             if name in scene_selection_names:raise ProjectError('Duplicate saved scene selection name in scene')
             scene_selection_names.add(name)
         result.scene_selection_sets=deepcopy(scene_selections)
+        from .worldmap_selection_sets import validate as validate_world_selection
+        world_selections=raw.get('worldmap_selection_sets',{})
+        if not isinstance(world_selections,dict) or len(world_selections)>128:raise ProjectError('Invalid saved world selection collection')
+        world_selection_names=set()
+        for identifier,value in world_selections.items():
+            validate_world_selection(result,identifier,value)
+            name=(value['scene'],value['name'].casefold())
+            if name in world_selection_names:raise ProjectError('Duplicate saved world selection name in kingdom')
+            world_selection_names.add(name)
+        result.worldmap_selection_sets=deepcopy(world_selections)
         from .model_vertex_groups import validate as validate_vertex_group
         vertex_groups=raw.get('model_vertex_groups',{})
         if not isinstance(vertex_groups,dict) or len(vertex_groups)>128:raise ProjectError('Invalid saved model vertex group collection')
@@ -4142,6 +4160,7 @@ class ProjectService:
         from .scene_views import review_key as view_review_key
         from .script_bookmarks import review_key as bookmark_review_key
         from .scene_selection_sets import review_key as scene_selection_review_key
+        from .worldmap_selection_sets import review_key as world_selection_review_key
         from .selection_sets import review_key as selection_review_key
         from .inspector_schema import inspector_schema
         from .npc_script_binding import snapshots as npc_script_bindings
@@ -4219,6 +4238,7 @@ class ProjectService:
                 "model_vertex_groups": [{**deepcopy(value),"review_key":vertex_group_review_key(self,value)} for value in sorted(self.model_vertex_groups.values(),key=lambda v:(v["asset_id"],v["name"].casefold(),v["id"]))],
                 "scene_views": [{**deepcopy(value), "review_key": view_review_key(self, value)} for value in sorted(self.scene_views.values(), key=lambda item: (item["scene_id"], item["name"].casefold(), item["id"]))],
                 "scene_selection_sets": [{**deepcopy(value),'review_key':scene_selection_review_key(self,value)} for value in sorted(self.scene_selection_sets.values(),key=lambda item:(item['scene_id'],item['name'].casefold(),item['id']))],
+                "worldmap_selection_sets": [{**deepcopy(value),"review_key":world_selection_review_key(self,value)} for value in sorted(self.worldmap_selection_sets.values(),key=lambda v:(v["scene"],v["name"].casefold(),v["id"]))],
                 "actor_selection_source_key": digest(document) if document else None,
                 "actor_selection_sets": [{**deepcopy(value), 'review_key': selection_review_key(self, value)}
                                          for value in sorted(self.actor_selection_sets.values(), key=lambda item: (item['scene_id'], item['name'].casefold(), item['id']))],

@@ -162,7 +162,7 @@ export function mountWorldPlacements({after,getState,busy,setBusy,api,onDraftCha
     isBusy:()=>busy()||applying||!!drag||gizmo.isActive(),available:()=>!!(valid()&&report&&base),
     apply:next=>{gizmo.cancel();drag=null;Object.assign(camera,next);if(camera.projection==='perspective')orbitPose={yaw:camera.yaw,pitch:camera.pitch};draw();}
   });
-  batchEditor=mountWorldPlacementBatch({after:resetKingdom,getReport:()=>report,getBase:()=>base,getCamera:()=>camera,current:()=>!!(valid()&&report&&base&&!dirty&&!applying&&!gizmo.isActive()),busy,setBusy,api,onApplied:()=>dialog.close(),onDraftChange:v=>onDraftChange(v||dirty),onError});
+  batchEditor=mountWorldPlacementBatch({after:resetKingdom,getState,getReport:()=>report,getBase:()=>base,getCamera:()=>camera,current:()=>!!(valid()&&report&&base&&!dirty&&!applying&&!gizmo.isActive()),busy,setBusy,api,onApplied:()=>dialog.close(),onDraftChange:v=>onDraftChange(v||dirty),onError});
   updateState();const tools={updateState,open:scene=>{select.value=scenes.includes(scene)?scene:'map01';open.click();},openAuthored:async target=>{
     const s=getState();if(busy()||dirty||dialog.open||s.project?.mode!=='edit'||s.project?.path!==target?.projectPath||s.worldmap_authoring_state_key!==target?.sourceKey||s.capabilities?.worldmap_placements!==true||!scenes.includes(target?.scene)||!target.entries||!Object.keys(target.entries).length)fail('Authored placement navigation requires the same idle Edit project and source records.');
     const entries=structuredClone(target.entries);select.value=target.scene;updateState();open.click();if(!dialog.open)return false;const binding=session;await inspect();if(!valid()||session!==binding||!report)return false;
