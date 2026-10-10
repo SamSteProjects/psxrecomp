@@ -16,3 +16,11 @@ for(const [angle,step] of [[NaN,1],[Infinity,1],[1e308,1],[0,2]])assert.throws((
 assert.throws(()=>rotateSourceYaw({...values,yaw_units:4096},0));
 assert.throws(()=>sourcePlaneAngle({x:10,y:20},{matrix:Array(16).fill(0),pivot:{x:0,y:0,z:0},width:100,height:100,radius:10}),/edge-on/);
 console.log('Source yaw signs, wrapping, absolute snapping, offset preservation and independent perspective plane inversion passed');
+
+const batch={offset:{x:40000,y:-40000,z:65535},yaw_units:-256};
+assert.deepEqual(rotateSourceYaw(batch,Math.PI/2,64,'world-delta'),{offset:{x:40000,y:-40000,z:65535},yaw_units:768});
+assert.throws(()=>rotateSourceYaw(batch,0));
+assert.throws(()=>rotateSourceYaw({...batch,yaw_units:0},2*Math.PI,1,'world-delta'));
+assert.throws(()=>rotateSourceYaw({...batch,yaw_units:4095},Math.PI/2,64,'world-delta'));
+assert.throws(()=>rotateSourceYaw({...batch,yaw_units:-4095},-Math.PI/2,64,'world-delta'));
+assert.throws(()=>rotateSourceYaw(batch,0,1,'unbounded'));

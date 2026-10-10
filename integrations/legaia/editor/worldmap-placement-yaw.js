@@ -1,11 +1,13 @@
 const finite=value=>typeof value==='number'&&Number.isFinite(value);
 const wrap=value=>((value%4096)+4096)%4096;
 const nearest=value=>{const result=Math.sign(value)*Math.floor(Math.abs(value)+.5);return result===0?0:result;};
-export function rotateSourceYaw(values,radians,step=1){
-  if(!finite(radians)||![1,16,64,256,512,1024].includes(step)||!Number.isInteger(values?.yaw_units)||values.yaw_units<0||values.yaw_units>=4096||!values?.offset||!['x','y','z'].every(axis=>Number.isInteger(values.offset[axis])&&values.offset[axis]>=-32768&&values.offset[axis]<=32767))throw new Error('Invalid source yaw draft or snap');
+export function rotateSourceYaw(values,radians,step=1,range='source'){
+  const batch=range==='world-delta',bound=batch?65535:32768;
+  if(!['source','world-delta'].includes(range)||!finite(radians)||![1,16,64,256,512,1024].includes(step)||!Number.isInteger(values?.yaw_units)||values.yaw_units<(batch?-4095:0)||values.yaw_units>4095||!values?.offset||!['x','y','z'].every(axis=>Number.isInteger(values.offset[axis])&&values.offset[axis]>=-bound&&values.offset[axis]<=(batch?bound:bound-1)))throw new Error('Invalid source yaw draft or snap');
   const snapped=nearest((values.yaw_units+radians*4096/(2*Math.PI))/step)*step;
   if(!Number.isSafeInteger(snapped))throw new Error('Source yaw gesture exceeds its finite angle budget');
-  return {...values,offset:{...values.offset},yaw_units:wrap(snapped)};
+  if(batch&&Math.abs(snapped)>4095)throw new Error('Batch yaw delta exceeds−4095..4095 units');
+  return {...values,offset:{...values.offset},yaw_units:batch?snapped:wrap(snapped)};
 }
 // Solve the homogeneous projection on the frozen horizontal source plane.
 // This preserves perspective, rather than measuring angles in a screen ellipse.
@@ -20,13 +22,13 @@ export function sourcePlaneAngle(point,plane){
   if(!finite(x)||!finite(z)||cw+m[3]*x+m[11]*z<=0||Math.hypot(x,z)<plane.radius*.05)throw new Error('Yaw pointer is too close to the origin or behind the camera');
   return Math.atan2(-z,x);
 }
-export function mountPlacementYaw({host,getRotation,getContext,getValues,allowed,getStep,onBegin,onPreview,onEnd,onCancel,onError}){
+export function mountPlacementYaw({host,getRotation,getContext,getValues,allowed,getStep,idPrefix='world-placement',range='source',onBegin,onPreview,onEnd,onCancel,onError}){
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),group=document.createElementNS(ns,'g'),ring=document.createElementNS(ns,'path'),heading=document.createElementNS(ns,'line'),handle=document.createElementNS(ns,'circle'),label=document.createElementNS(ns,'text');
-  svg.id='world-placement-yaw-gizmo';group.id='world-placement-yaw-axis';ring.id='world-placement-yaw-ring';handle.id='world-placement-yaw-handle';
+  svg.id=idPrefix+'-yaw-gizmo';group.id=idPrefix+'-yaw-axis';ring.id=idPrefix+'-yaw-ring';handle.id=idPrefix+'-yaw-handle';
   Object.assign(svg.style,{position:'absolute',inset:'0',width:'100%',height:'100%',pointerEvents:'none',overflow:'hidden'});
   for(const item of [ring,heading]){item.setAttribute('stroke','#f3cf76');item.setAttribute('stroke-width',item===ring?'6':'3');item.setAttribute('fill','none');}
   handle.setAttribute('r','8');handle.setAttribute('fill','#f3cf76');handle.setAttribute('stroke','#101819');handle.setAttribute('stroke-width','2');label.textContent='YAW';label.setAttribute('fill','#f3cf76');label.setAttribute('font-size','14');label.setAttribute('font-weight','bold');
-  group.append(ring,heading,handle,label);svg.append(group);host.append(svg);let active=null;
+  group.append(ring,heading,handle,label);svg.append(group);host.append(svg);const events=new AbortController();let active=null;
   function cancel(reason='Yaw preview cancelled'){
     if(!active)return;const previous=active;active=null;if(group.hasPointerCapture(previous.id))group.releasePointerCapture(previous.id);onCancel(reason);update();
   }
@@ -38,7 +40,7 @@ export function mountPlacementYaw({host,getRotation,getContext,getValues,allowed
   };
   group.onpointermove=event=>{
     if(active?.id!==event.pointerId)return;event.preventDefault();if(!current()){cancel('Source, camera or viewport changed; yaw cancelled');return;}
-    try{const angle=sourcePlaneAngle(point(event),active.basis.plane);let delta=angle-active.previousAngle;if(delta>Math.PI)delta-=2*Math.PI;if(delta< -Math.PI)delta+=2*Math.PI;active.radians+=delta;active.previousAngle=angle;const values=rotateSourceYaw(active.values,active.radians,active.step);if(!active.changed&&values.yaw_units===active.values.yaw_units)return;active.changed=true;onPreview(values);update();}catch(error){onError(error.message);}
+    try{const angle=sourcePlaneAngle(point(event),active.basis.plane);let delta=angle-active.previousAngle;if(delta>Math.PI)delta-=2*Math.PI;if(delta< -Math.PI)delta+=2*Math.PI;active.radians+=delta;active.previousAngle=angle;const values=rotateSourceYaw(active.values,active.radians,active.step,range);if(!active.changed&&values.yaw_units===active.values.yaw_units)return;const gesture=active;onPreview(values);if(active===gesture)active.changed=true;update();}catch(error){onError(error.message);}
   };
   group.onpointerup=event=>{
     if(active?.id!==event.pointerId)return;event.preventDefault();event.stopPropagation();if(!current()){cancel('Source, camera or viewport changed; yaw cancelled');return;}const previous=active;active=null;if(group.hasPointerCapture(event.pointerId))group.releasePointerCapture(event.pointerId);if(previous.changed)onEnd();else onCancel('No source yaw change');update();
@@ -49,8 +51,8 @@ export function mountPlacementYaw({host,getRotation,getContext,getValues,allowed
     const basis=getRotation(),enabled=allowed();group.style.display=basis?'':'none';group.style.opacity=enabled?'1':'.35';ring.style.pointerEvents=enabled?'stroke':'none';handle.style.pointerEvents=enabled?'all':'none';ring.style.cursor=handle.style.cursor='grab';ring.style.touchAction=handle.style.touchAction='none';heading.style.pointerEvents=label.style.pointerEvents='none';if(!basis)return;
     ring.setAttribute('d',basis.points.map((p,index)=>`${index?'L':'M'}${p.x},${p.y}`).join(' ')+' Z');heading.setAttribute('x1',basis.center.x);heading.setAttribute('y1',basis.center.y);heading.setAttribute('x2',basis.heading.x);heading.setAttribute('y2',basis.heading.y);handle.setAttribute('cx',basis.heading.x);handle.setAttribute('cy',basis.heading.y);label.setAttribute('x',basis.heading.x+11);label.setAttribute('y',basis.heading.y-11);
   }
-  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&active){event.preventDefault();event.stopPropagation();cancel('Escape cancelled the yaw preview');}},true);
-  window.addEventListener('blur',()=>cancel('Focus changed; yaw cancelled'));document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel('Page hidden; yaw cancelled');});svg.addEventListener('wheel',()=>cancel('Camera input changed; yaw cancelled'));
-  new ResizeObserver(()=>{if(active&&!current())cancel('Viewport resized; yaw cancelled');update();}).observe(host);
-  return {update,cancel,isActive:()=>!!active};
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&active){event.preventDefault();event.stopPropagation();cancel('Escape cancelled the yaw preview');}},{capture:true,signal:events.signal});
+  window.addEventListener('blur',()=>cancel('Focus changed; yaw cancelled'),{signal:events.signal});document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel('Page hidden; yaw cancelled');},{signal:events.signal});svg.addEventListener('wheel',()=>cancel('Camera input changed; yaw cancelled'),{signal:events.signal});
+  const observer=new ResizeObserver(()=>{if(active&&!current())cancel('Viewport resized; yaw cancelled');update();});observer.observe(host);
+  return {update,cancel,isActive:()=>!!active,dispose(){cancel('Yaw view closed');events.abort();observer.disconnect();svg.remove();}};
 }
