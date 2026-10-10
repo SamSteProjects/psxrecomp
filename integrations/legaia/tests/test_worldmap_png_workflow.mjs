@@ -1,0 +1,9 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+import {texturePngContext,decodeTexturePngBinding,decodeTexturePngReview} from '../editor/texture-png.js';
+const receipts=JSON.parse(fs.readFileSync(process.argv[2]));assert.equal(receipts.length,3);
+for(const r of receipts){const context={projectPath:'C:/private/native-world',sceneId:r.scene_id,mode:'edit',sourceKey:r.project_source_key},binding={schema_version:'legaia.texture-png-binding.v1',asset_id:r.asset_id,scene_id:r.scene_id,source_sha256:r.source_sha256,effective_sha256:r.effective_sha256,project_source_key:r.project_source_key,profile:{schema_version:'legaia.texture-png-profile.v1',bpp:r.bpp,width:r.width,height:r.height,palette_index:r.palette_index,palette_count:r.palette_count,entry_count:2**r.bpp}};
+ texturePngContext(context);decodeTexturePngBinding(binding,r.asset_id,0,context);const held=structuredClone(r),result=decodeTexturePngReview(r,binding,r.asset_id,0,context,r.png_sha256,r.stp_png_sha256,'existing');result.changes.changes.length=0;assert.deepEqual(r,held);
+ for(const change of [v=>v.scene_id='scene://town01',v=>v.asset_id='texture://map02/kingdom/9999',v=>v.project_source_key='0'.repeat(64),v=>v.gameplay_verified=true,v=>v.pending_changes.pixel_indices_changed=-1]){const bad=structuredClone(r);change(bad);assert.throws(()=>decodeTexturePngReview(bad,binding,r.asset_id,0,context,r.png_sha256,r.stp_png_sha256,'existing'));}
+}
+for(const owner of ['worldmap://map04/textures','worldmap://map01/resources','worldmap://map01/textures/','worldmap://map1/textures'])assert.throws(()=>texturePngContext({projectPath:'fixture',sceneId:owner,mode:'edit',sourceKey:'a'.repeat(64)}));
+console.log('Three native World PNG receipts: canonical global ownership, detached audit metadata and forged owner/source/count refusals passed.');

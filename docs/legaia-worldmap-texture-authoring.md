@@ -83,11 +83,20 @@ Both World texture inspectors provide **Replace Current TIM file**. Preview Curr
 
 Review leaves the project unchanged. Choosing/discarding a file or changing preview/source withdraws the receipt and proposed canvas. Apply recomputes the receipt against freshly inspected source and effective bytes, then retains the exact file through the existing private TIM command. Matching Current is a no-op that creates no binding or history. Undo/Redo, Save/Open, Current viewport/export and SDK package Build use that same source-bound binding.
 
-This is exact-layout native TIM replacement. PNG conversion, resizing/new allocation and shared-bank/runtime palette discovery are separate future World tools. Gameplay appearance, residency and blending remain unverified.
+This is exact-layout native TIM replacement. The shared PNG workflow below supports existing layout conversion; resizing/new allocation and shared-bank/runtime palette discovery remain separate future World tools. Gameplay appearance, residency and blending remain unverified.
 
 
 ## World Retail and Current TIM Downloads — 2026-10-10
 
 Preview Current, then choose **Download Retail TIM** or **Download Current TIM** in the file replacement tool. Each request requalifies the original member, Current binding, inspected hashes and project source key. The browser independently checks the exact byte length and SHA256 before downloading a clearly named Retail or Current file. A source/preview change withdraws a pending download. Downloads do not mutate project data or history and do not alter a reviewed replacement draft.
 
-This completes the native file round trip: download the desired layer, edit palette/image payloads externally while preserving headers/layout, select the TIM, Review proposed pixels/differences, then Apply and Save. Downloading Current and reviewing it unchanged is a no-op. Native source export is bounded at 2 MiB; replacement retains the existing 1 MiB project authoring limit. Runtime palette/residency, PNG/allocation World tools and gameplay appearance remain separate work.
+This completes the native file round trip: download the desired layer, edit palette/image payloads externally while preserving headers/layout, select the TIM, Review proposed pixels/differences, then Apply and Save. Downloading Current and reviewing it unchanged is a no-op. Native source export is bounded at 2 MiB; replacement retains the existing 1 MiB project authoring limit. The shared PNG workflow below now supports World textures; allocation, runtime palette/residency and gameplay appearance remain separate work.
+
+
+## World PNG Editor Workflow — 2026-10-10
+
+Preview Current with a complete local palette, then choose **Edit World texture through PNG**. Both World inspectors open the existing shared PNG editor. Prepare the export and its source binding/STP sidecar, edit or select a same-size PNG, adopt the prepared binding/STP, then Review. Existing-palette matching and deterministic selected-palette rebuilding use the existing importer; proposed pixels and quantization diagnostics precede reviewed Apply.
+
+World binding ownership is `worldmap://map01/textures` (or map02/map03), with the native World project source key. It does not depend on an imported active field scene. Apply checks the receipt and resulting World TIM identity before adopting editor state. Normal private TIM bindings, Undo/Redo and Save/Open remain shared with native file authoring. Imported facts and the Retail texture remain separate. A stale binding/source, unavailable local CLUT, dimension change or unsupported alpha refuses.
+
+The World adapter has no field-scene material proposal action: Current World textures are qualified through the existing World viewport after Apply. Image allocation, live residency/palette animation and gameplay verification remain separate work.

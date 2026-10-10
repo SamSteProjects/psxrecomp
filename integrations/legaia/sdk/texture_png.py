@@ -43,23 +43,30 @@ def _content(content):
         raise ProjectError('Choose a PNG file no larger than 8 MiB')
 
 
-def _current(project, binding):
+def _source_key(project,asset_id):
+    from .worldmap_texture_authoring import scene_for
+    if scene_for(asset_id):
+        from .worldmap_authoring import state_key
+        return state_key(project)
     from .scene_preview import source_key
-    if source_key(project) != binding['project_source_key']:
+    return source_key(project)
+
+
+def _current(project, binding):
+    if _source_key(project,binding['asset_id']) != binding['project_source_key']:
         raise ProjectError('Texture export is stale; export the current texture and binding again')
 
 
 def _snapshot(project, asset_id, palette_index):
     from importer.pipeline import _disc_context
     from importer.texture_png import export_texture_png
-    from .scene_preview import source_key
     if project.mode != 'edit':
         raise ProjectError('Texture PNG authoring requires Edit mode')
     if not isinstance(asset_id, str) or not 1 <= len(asset_id) <= 512 or not asset_id.startswith('texture://'):
         raise ProjectError('Choose an imported texture in the active scene')
     if type(palette_index) is not int or not 0 <= palette_index <= 65535:
         raise ProjectError('Choose an integer source palette index')
-    key = source_key(project)
+    key = _source_key(project,asset_id)
     if not key or not project.disc_path:
         raise ProjectError('Texture PNG authoring requires a verified imported scene source')
     with _disc_context(project.disc_path):
@@ -75,8 +82,10 @@ def _snapshot(project, asset_id, palette_index):
             raise ProjectError('Texture PNG authoring requires a TIM of at most 1 MiB')
         png, stp, profile = export_texture_png(effective, palette_index)
         _content(png); _content(stp)
+        from .worldmap_texture_authoring import scene_for
+        world=scene_for(asset_id)
         binding = dict(schema_version='legaia.texture-png-binding.v1', asset_id=asset_id,
-                       scene_id=project.active_scene, source_sha256=sha256(retail).hexdigest(),
+                       scene_id=f'worldmap://{world}/textures' if world else project.active_scene, source_sha256=sha256(retail).hexdigest(),
                        effective_sha256=sha256(effective).hexdigest(), project_source_key=key,
                        profile=deepcopy(profile))
         _json_size(binding, MAX_BINDING_BYTES, 'Texture PNG binding')
