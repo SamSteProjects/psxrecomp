@@ -1128,6 +1128,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-geometry.js": ("worldmap-geometry.js", "text/javascript"),
                  "/worldmap-resources.js": ("worldmap-resources.js", "text/javascript"),
                  "/worldmap-project-resources.js": ("worldmap-project-resources.js", "text/javascript"),
+                 "/worldmap-texture.js": ("worldmap-texture.js", "text/javascript"),
                  "/worldmap-placement-editor.js": ("worldmap-placement-editor.js", "text/javascript"),
                  "/worldmap-placement-batch-editor.js": ("worldmap-placement-batch-editor.js", "text/javascript"),
                  "/worldmap-placement-state.js": ("worldmap-placement-state.js", "text/javascript"),
@@ -1312,6 +1313,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Batch placement export requires exact source, scene/ground scope and optional reviewed batch')
                     from .worldmap_placement_export import export
                     self._json(200,export(self.server.project,body['scene'],body['source_key'],scope=body['scope'],batch_proposal=body['batch_proposal'],record_ids=body.get('record_ids')))
+                    return
+                if route == '/api/worldmap-texture':
+                    if set(body)!={'texture_id','source_key','member_sha256','palette_index'}:raise ProjectError('World TIM preview requires exact texture, source and palette fields')
+                    from .worldmap_texture import inspect
+                    self._json(200,inspect(self.server.project,body['texture_id'],body['source_key'],body['member_sha256'],body['palette_index']))
                     return
                 if route == '/api/worldmap-resources':
                     if set(body)!={'source_key'}:raise ProjectError('World resource discovery requires the exact project source key')

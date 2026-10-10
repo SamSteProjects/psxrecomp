@@ -197,3 +197,24 @@ def load_worldmap_geometry(disc, scene='map01'):
         result['scene_graph'] = build_worldmap_scene_graph(result, map_data, model_pack, model_source, catalog)
         result['schema_version'] = 'legaia.worldmap-geometry.v2'
         return result
+
+
+def load_worldmap_texture(disc, scene, slot):
+    """Read one native kingdom TIM without constructing ground/model previews."""
+    _scene(scene)
+    if type(slot) is not int or not 0<=slot<65536:
+        raise ImportError('Choose a bounded native kingdom texture slot')
+    base=KINGDOM_BASES[scene]
+    with _disc_context(disc) as (_,digest,mapping,archive):
+        start,end=_bounded_scene_range(archive,mapping,scene)
+        if start!=base-2 or not start<=base<base+1<end:
+            raise ImportError('World texture range differs from the pinned kingdom mapping')
+        _,index,_,bundle,raw=_kingdom_table(archive,base)
+        pack,pack_source=_slot(bundle,raw,0)
+        members=_pack_members(pack,False)
+        if slot>=len(members):raise ImportError('Native world texture slot is unavailable')
+        at,stop=members[slot];tim=parse_tim(pack[at:stop])
+        member_hash=sha256(pack[at:at+tim.byte_length]).hexdigest()
+        catalog=TextureCatalog(scene,digest)
+        catalog.textures.append((tim,dict(semantic_id=f'texture://{scene}/kingdom/{slot:04d}',prot_entry_index=index,descriptor_index=0,pack_slot=slot,byte_offset=at,byte_length=tim.byte_length,decoded_member_sha256=member_hash)))
+        return tim,catalog.metadata()['textures'][0],dict(disc_sha256=digest,bundle_sha256=sha256(raw).hexdigest(),texture_pack_sha256=pack_source['decoded_sha256'])
