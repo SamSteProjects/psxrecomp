@@ -20,6 +20,16 @@ export function worldmapSceneView(report){
     assets.set(asset.asset_id,{...asset,geometry_key:asset.asset_id});
   }
   if(!assets.has(report.semantic_id))fail('World source scene omits its qualified ground.');
+  const inventory=graph.model_pack_coverage;
+  if(inventory!==undefined){
+    if(!inventory||Object.keys(inventory).sort().join(',')!=='slot_count,supported_count,unsupported'||!Number.isSafeInteger(inventory.slot_count)||inventory.slot_count<1||inventory.slot_count>128||inventory.supported_count!==assets.size-1||!Array.isArray(inventory.unsupported)||inventory.supported_count+inventory.unsupported.length!==inventory.slot_count)fail('World native model inventory coverage differs.');
+    const slots=new Set();
+    for(const asset of assets.values())if(asset.asset_id!==report.semantic_id){const slot=asset.source_record.pack_slot;if(!Number.isSafeInteger(slot)||slot<0||slot>=inventory.slot_count||slots.has(slot)||asset.asset_id!==`asset://${scene}/worldmap/models/${String(slot).padStart(4,'0')}`)fail('World native model inventory has duplicate or foreign slots.');slots.add(slot);}
+    for(const row of inventory.unsupported){if(!row||Object.keys(row).sort().join(',')!=='decoded_member_offset,decoded_member_sha256,decoded_member_span_end,pack_slot,reason'||!Number.isSafeInteger(row.pack_slot)||row.pack_slot<0||row.pack_slot>=inventory.slot_count||slots.has(row.pack_slot)||!hash(row.decoded_member_sha256)||!Number.isSafeInteger(row.decoded_member_offset)||!Number.isSafeInteger(row.decoded_member_span_end)||row.decoded_member_offset<0||row.decoded_member_span_end<=row.decoded_member_offset||row.decoded_member_span_end>graph.source_record.decoded_byte_length||typeof row.reason!=='string'||!row.reason||row.reason.length>8192)fail('Unsupported World model inventory lacks native ownership.');slots.add(row.pack_slot);}
+    if(slots.size!==inventory.slot_count)fail('World native model inventory omits a pack slot.');
+    const spans=[...assets.values()].filter(a=>a.asset_id!==report.semantic_id).map(a=>a.source_record).concat(inventory.unsupported).sort((a,b)=>a.pack_slot-b.pack_slot);
+    for(const [i,row] of spans.entries())if(!Number.isSafeInteger(row.decoded_member_offset)||row.decoded_member_offset<4+4*inventory.slot_count||row.decoded_member_offset%4||row.decoded_member_span_end!==(spans[i+1]?.decoded_member_offset??graph.source_record.decoded_byte_length)||row.decoded_member_span_end<=row.decoded_member_offset)fail('World native model inventory spans overlap or omit native bytes.');
+  }
   const instances=graph.entities.map(entity=>{
     const ground=entity.placement_scope==='source_ground';
     if(typeof entity.entity_id!=='string'||entities.has(entity.entity_id)||!(ground?entity.entity_id===`scene://${scene}/worldmap/ground`&&entity.asset_id===report.semantic_id:entity.entity_id.startsWith(`scene://${scene}/worldmap/placements/`))||!assets.has(entity.asset_id)||!['source_ground','source_spawn_seed'].includes(entity.placement_scope)||entity.runtime_visibility!=='not_evaluated'||entity.runtime_resting_position!=='unknown')fail('World source placement ownership or runtime confidence is invalid.');

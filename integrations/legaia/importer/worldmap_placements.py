@@ -109,8 +109,8 @@ def build_worldmap_scene_graph(ground, map_data, model_pack, model_source, textu
     stored_triangles = ground['metrics']['triangle_count']
     drawn_triangles = stored_triangles
     unresolved = list(decoded['unresolved'])
-    for seed in decoded['placements']:
-        index = seed['model_pool_index']
+    def load_model(index):
+        nonlocal texture_bytes, stored_triangles
         if index not in models and index not in failures:
             if not 0 <= index < len(spans):
                 failures[index] = 'Source model reference is outside the kingdom model pack'
@@ -142,6 +142,9 @@ def build_worldmap_scene_graph(ground, map_data, model_pack, model_source, textu
                                   decoded_member_span_end=stop, decoded_member_sha256=sha256(payload).hexdigest())
                     models[index] = dict(asset_id=asset_id,preview=preview,source_record=source)
                     assets.append(models[index])
+    for seed in decoded['placements']:
+        index = seed['model_pool_index']
+        load_model(index)
         if index in failures:
             unresolved.append(dict(seed,reason=failures[index]))
             continue
@@ -152,11 +155,22 @@ def build_worldmap_scene_graph(ground, map_data, model_pack, model_source, textu
                 stored_triangles>MAX_GRAPH_TRIANGLES or drawn_triangles>MAX_GRAPH_TRIANGLES or
                 texture_bytes>MAX_GRAPH_TEXTURE_BYTES):
             raise ImportError('World-map scene graph exceeds its asset/entity/triangle/texture budget')
+    # Native pack assets are inventory, not additional scene instances.
+    for index in range(len(spans)):
+        load_model(index)
+        if (len(assets)>MAX_GRAPH_ASSETS or stored_triangles>MAX_GRAPH_TRIANGLES
+                or texture_bytes>MAX_GRAPH_TEXTURE_BYTES):
+            raise ImportError('World-map model inventory exceeds its asset/triangle/texture budget')
+    model_coverage = dict(slot_count=len(spans), supported_count=len(models),
+        unsupported=[dict(pack_slot=index, decoded_member_offset=spans[index][0],
+            decoded_member_span_end=spans[index][1],
+            decoded_member_sha256=sha256(model_pack[spans[index][0]:spans[index][1]]).hexdigest(),
+            reason=failures[index]) for index in range(len(spans)) if index in failures])
     coverage = dict(decoded['coverage'],resolved_count=len(entities)-1,rendered_count=len(entities)-1,
                     unresolved_count=len(unresolved),unresolved=unresolved)
     return dict(schema_version='legaia.worldmap-scene-graph.v1',matrix_convention='column-major-affine',
                 coordinate_system='retail_field_y_down',assets=assets,entities=entities,coverage=coverage,
-                source_record=deepcopy(model_source),
+                source_record=deepcopy(model_source),model_pack_coverage=model_coverage,
                 metrics=dict(asset_count=len(assets),entity_count=len(entities),
                              stored_triangle_count=stored_triangles,drawn_triangle_count=drawn_triangles,
                              texture_output_bytes=texture_bytes),

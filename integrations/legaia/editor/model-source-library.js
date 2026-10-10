@@ -42,7 +42,7 @@ export async function navigateModelSource({record,catalog,getState,readLibrary,c
     const {decodeWorldmapResources}=await import('./worldmap-resources.js'),{worldmapResourceProjectRecords,qualifyWorldmapProjectResource}=await import('./worldmap-project-resources.js');
     const raw=await readWorldResources(sourceKey);if(!unchanged())throw Error('World source changed during saved input navigation.');
     const index=decodeWorldmapResources(raw,getState()),records=worldmapResourceProjectRecords(index,projectKey),target=records.find(r=>r.id===held.asset_id);
-    if(!target||target.type!=='model'||target.data.resource_role!=='native_placed_model')throw Error('Saved World model is absent from its qualified resource inventory.');
+    if(!target||target.type!=='model'||!['native_placed_model','native_unplaced_model'].includes(target.data.resource_role))throw Error('Saved World model is absent from its qualified resource inventory.');
     qualifyWorldmapProjectResource(target,index,getState());await qualify();if(!unchanged())throw Error('World source changed before opening the model inspector.');
     await openWorldModel(target,records,index);return true;
   }

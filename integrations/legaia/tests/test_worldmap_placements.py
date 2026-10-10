@@ -72,6 +72,31 @@ class WorldmapPlacementTests(unittest.TestCase):
         self.assertEqual(len(result['placements']), 1)
         self.assertEqual(len(result['unresolved']), 2)
 
+    def test_unplaced_pack_assets_and_unsupported_slots_do_not_create_entities(self):
+        from importer.worldmap_placements import build_worldmap_scene_graph
+        from importer.assets import decode_tmd
+        from test_importer_assets import model
+        from importer.textures import TextureCatalog
+        payload=model(0x22)
+        self.assertEqual(len(payload)%4,0)
+        pack=struct.pack('<3I',2,3,(12+len(payload))//4)+payload+bytes(4)
+        preview=decode_tmd(payload);preview['textures']=[]
+        ground=dict(scene='map01',semantic_id='asset://map01/worldmap/walk-ground',
+            preview=preview,source_record=dict(map_sha256='a'*64),floor_height_lut=[0]*16,
+            metrics=dict(texture_output_bytes=0,triangle_count=len(preview['triangles'])))
+        graph=build_worldmap_scene_graph(ground,bytes(0x12000),pack,
+            dict(decoded_byte_length=len(pack)),TextureCatalog('map01','a'*64))
+        self.assertEqual(len(graph['entities']),1)
+        self.assertEqual(graph['coverage']['candidate_count'],0)
+        self.assertEqual(graph['metrics']['drawn_triangle_count'],len(preview['triangles']))
+        self.assertEqual([a['asset_id'] for a in graph['assets']],
+            [ground['semantic_id'],'asset://map01/worldmap/models/0000'])
+        coverage=graph['model_pack_coverage']
+        self.assertEqual((coverage['slot_count'],coverage['supported_count']),(2,1))
+        self.assertEqual(coverage['unsupported'][0]['pack_slot'],1)
+        self.assertEqual(coverage['unsupported'][0]['decoded_member_sha256'],sha256(bytes(4)).hexdigest())
+        self.assertIn('reason',coverage['unsupported'][0])
+
     def test_foreign_scene_malformed_tables_and_floor_lut_fail_closed(self):
         from importer.worldmap_placements import decode_worldmap_placements, _pack_spans
         data, lut = fixture()
@@ -145,7 +170,15 @@ class RetailWorldmapPlacementTests(unittest.TestCase):
             self.assertEqual(graph['coverage']['resolved_count'], count)
             self.assertEqual(graph['coverage']['unresolved_count'], 0)
             self.assertEqual(graph['coverage']['inspected_cell_count'], 16384)
-            self.assertEqual(graph['metrics']['asset_count'], models + 1)
+            self.assertEqual(graph['metrics']['asset_count'], pack_count + 1)
+            self.assertEqual(graph['model_pack_coverage'],dict(slot_count=pack_count,supported_count=pack_count,unsupported=[]))
+            placed_ids={e['asset_id'] for e in graph['entities']}
+            unplaced=[a for a in graph['assets'] if a['asset_id'] not in placed_ids]
+            self.assertEqual(len(unplaced),pack_count-models)
+            for slot,(at,stop) in enumerate(ranges):
+                asset=assets[f'asset://{scene}/worldmap/models/{slot:04d}']
+                self.assertEqual(asset['preview']['vertices'],decode_tmd(pool[at:stop])['vertices'])
+                self.assertEqual(asset['source_record']['decoded_member_sha256'],sha256(pool[at:stop]).hexdigest())
             self.assertEqual(graph['metrics']['entity_count'], count + 1)
             self.assertLessEqual(graph['metrics']['drawn_triangle_count'], 200000)
             self.assertFalse(result['gameplay_verified'])

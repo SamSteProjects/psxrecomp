@@ -31,6 +31,14 @@ class WorldResources(unittest.TestCase):
    if isinstance(v,list):return set().union(*(keys(x) for x in v)) if v else set()
    return set()
   self.assertFalse(keys(r)&{'vertices','triangles','rgba','stp','glb_base64'})
+ def test_unplaced_native_inventory_has_no_source_instances(self):
+  def loader(d,s):
+   result=geometry(s);result['scene_graph']['entities']=result['scene_graph']['entities'][:1];return result
+  with patch('sdk.worldmap_resources.load_worldmap_geometry',side_effect=loader):r=inspect(self.p,H)
+  models=[a for a in r['assets'] if a['resource_role']=='native_unplaced_model']
+  self.assertEqual(len(models),3)
+  self.assertTrue(all(a['source_instance_ids']==[] and 'unplaced' in a['name'] for a in models))
+  self.assertFalse(any(e['kind']=='source_instance' for e in r['references']))
  def test_invalid_source_spans_foreign_material_and_duplicates_refuse(self):
   changes=[lambda g:g['preview']['texture_catalog']['textures'][0].update(byte_length=101),lambda g:g['scene_graph']['assets'][1]['source_record'].update(prot_entry_index=2),lambda g:g['scene_graph']['assets'][1]['preview']['textures'][0].update(source_ids=['foreign']),lambda g:g['scene_graph']['assets'].append(deepcopy(g['scene_graph']['assets'][1])),lambda g:g['scene_graph']['assets'][1]['preview'].update(bounds=dict(min=[2,0,0],max=[1,1,1]))]
   held=digest(self.p._document())

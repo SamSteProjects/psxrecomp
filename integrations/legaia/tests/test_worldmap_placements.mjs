@@ -45,3 +45,7 @@ for(const mutate of [
   r=>r.scene_graph.assets=Array(129).fill(r.scene_graph.assets[0]),
 ]){const candidate=report();mutate(candidate);assert.throws(()=>worldmapSceneView(candidate));}
 console.log('Kingdom source ownership, ground entity, alias/index/budget guards and single display Y conversion passed.');
+
+const inventory=report();inventory.scene_graph.assets[1].asset_id='asset://map01/worldmap/models/0000';Object.assign(inventory.scene_graph.assets[1].source_record,{pack_slot:0,decoded_member_offset:8,decoded_member_span_end:100});inventory.scene_graph.source_record={decoded_byte_length:100};inventory.scene_graph.model_pack_coverage={slot_count:1,supported_count:1,unsupported:[]};inventory.scene_graph.entities=inventory.scene_graph.entities.slice(0,1);Object.assign(inventory.scene_graph.metrics,{entity_count:1,drawn_triangle_count:1});Object.assign(inventory.scene_graph.coverage,{candidate_count:0,resolved_count:0,rendered_count:0});const inventoried=worldmapSceneView(inventory);assert.equal(inventoried.assets.length,2);assert.equal(inventoried.entities.length,1);
+for(const mutate of [v=>v.scene_graph.model_pack_coverage.slot_count++,v=>v.scene_graph.model_pack_coverage.supported_count--,v=>v.scene_graph.assets[1].source_record.pack_slot=1,v=>v.scene_graph.assets[1].source_record.decoded_member_span_end=99]){const bad=structuredClone(inventory);mutate(bad);assert.throws(()=>worldmapSceneView(bad));}
+console.log('Unplaced inventory retains assets without entities and rejects altered slot/span coverage.');
