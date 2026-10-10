@@ -1,0 +1,5 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+import {worldModelFaceSelection} from '../editor/worldmap-model-primitive.js';
+const rows=JSON.parse(fs.readFileSync(process.argv[2]));let count=0;
+for(const row of rows){const tmd=new Uint8Array(Buffer.from(row.tmd_base64,'base64')),source={metadata:{layer:'current'},tmd:new Uint8Array(Buffer.from(row.source_base64,'base64')),shape:row.shape},geometry={triangles:row.triangles};for(const [i,owner] of row.owners.entries()){assert.deepEqual(worldModelFaceSelection(source,tmd,geometry,i),owner);count++;}assert.throws(()=>worldModelFaceSelection(source,tmd,geometry,-1));assert.throws(()=>worldModelFaceSelection(source,tmd,geometry,row.triangles.length));assert.throws(()=>worldModelFaceSelection({...source,metadata:{layer:'retail'}},tmd,geometry,0));const forged=structuredClone(geometry);forged.triangles[0][0]++;assert.throws(()=>worldModelFaceSelection(source,tmd,forged,0));}
+console.log(count+' triangles map to independent native object/primitive/group owners across '+rows.length+' fixtures; quad pairs and forged/Retail/out-of-range refusals passed.');
