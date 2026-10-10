@@ -459,7 +459,7 @@ def inspector_schema():
             {'id':'identity','label':'Entity','path':['entity_id'],'type':'entity-reference','state':'derived'},
             {'id':'model','label':'Source model','path':['asset_id'],'type':'asset-reference','state':'derived'},
             {'id':'scope','label':'Placement scope','path':['placement_scope'],'type':'string','state':'derived'},
-            *[{'id':'position-'+axis,'label':'Source '+axis.upper(),'path':['source_position',axis],'type':'number','state':'derived','empty_label':'Not recorded'} for axis in ('x','y','z')],
+            *[{'id':'position-'+axis,'label':'Retail seed '+axis.upper(),'path':['retail_source_position',axis],'type':'number','state':'derived','empty_label':'Not recorded'} for axis in ('x','y','z')],
             *[{'id':key,'label':label,'path':[key],'type':'number','state':'read-only-retail','empty_label':'Not recorded for this entity'} for key,label in [('source_cell','Cell index'),('object_record_index','Object record'),('model_pool_index','Model pool index')]],
             {'id':'record-hash','label':'Source record hash','path':['source_record_sha256'],'type':'string','state':'derived','empty_label':'Not recorded for this entity'},
             {'id':'visibility','label':'Runtime visibility','path':['runtime_visibility'],'type':'string','state':'unresolved'},
@@ -468,6 +468,23 @@ def inspector_schema():
             *[{'id':'display-position-'+axis,'label':'Displayed seed '+axis.upper(),'path':['displayed_source_position',axis],'type':'number','state':'derived','empty_label':'Not recorded'} for axis in ('x','y','z')],
         ],
         'notes':['Source coordinates are decoded spawn seeds in the retail Y-down coordinate system. Display Y reflection is separate.', 'Runtime visibility and resting transforms are unverified; no authoring or runtime-write capability is inferred.'],
+    }
+    schema['components']['WorldAuthoredPlacement']={
+        'label':'Authored World decoration','layout':'read-only-properties',
+        'actions':[{'id':'inspect-world-source-asset','label':'Inspect donor model asset','capability':'worldmap_geometry','requires_edit':True}],
+        'properties':[
+            {'id':'identity','label':'Entity','path':['entity_id'],'type':'entity-reference','state':'read-only-project'},
+            {'id':'placement','label':'Authored placement','path':['authored_placement','placement_id'],'type':'string','state':'read-only-project'},
+            {'id':'model','label':'Model asset','path':['asset_id'],'type':'asset-reference','state':'derived'},
+            {'id':'native-identity','label':'Native cell identity','path':['native_entity_id'],'type':'string','state':'derived'},
+            *[{'id':'position-'+axis,'label':'Current seed '+axis.upper(),'path':['source_position',axis],'type':'number','state':'read-only-project'} for axis in ('x','y','z')],
+            *[{'id':key,'label':label,'path':['authored_placement',key],'type':'integer','state':'read-only-project'} for key,label in [('donor_cell','Donor cell'),('target_cell','Target cell'),('record_index','Allocated record')]],
+            {'id':'record-hash','label':'Allocated native record hash','path':['source_record_sha256'],'type':'string','state':'derived'},
+            {'id':'visibility','label':'Runtime visibility','path':['runtime_visibility'],'type':'string','state':'unresolved'},
+            {'id':'resting','label':'Runtime resting position','path':['runtime_resting_position'],'type':'string','state':'unresolved'},
+        ],
+        'notes':['This decoration is authored and has no Retail instance transform. Native coordinates use Y-down; viewport Y reflection is separate.', 'The existing donor model can be inspected. Clone editing, collision, script behavior and native visibility are not established by this preview.'],
+        'details':[{'label':'Native allocation provenance','path':['authored_placement']}],
     }
     schema['authored_asset_inspectors']['world_placements']='AssetWorldPlacements'
     schema['components']['AssetWorldPlacements']={

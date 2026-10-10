@@ -5,3 +5,10 @@ assert.deepEqual(worldmapViewScope(scene,'a1').visibleIds,['a1','a2','b1','g']);
 for(const [id,mode,shown] of [['missing','selected',true],['a1','foreign',true],['a1','all',1]])assert.throws(()=>worldmapViewScope(scene,id,mode,shown));
 for(const mutate of [s=>s.assets.push(s.assets[0]),s=>s.entities.push(s.entities[0]),s=>s.entities[0].geometry_key='foreign',s=>s.entities[0].placement_scope='runtime_actor',s=>s.entities[0].renderable=1,s=>s.assets[0].geometry_key=undefined]){const bad=structuredClone(scene);mutate(bad);assert.throws(()=>worldmapViewScope(bad,'a1'));}
 console.log('World display scopes qualify exact instance/asset memberships, ground and model visibility, detached hidden sets and nine invalid scopes/ownership cases without source mutation.');
+const cloneId='scene://map01/worldmap/authored-placements/00000000-0000-4000-8000-000000000001',authored=structuredClone(scene);
+authored.entities.push({entity_id:cloneId,geometry_key:'a',placement_scope:'authored_spawn_seed',renderable:true});
+assert.deepEqual(worldmapViewScope(authored,cloneId,'selected').visibleIds,[cloneId]);
+assert.deepEqual(worldmapViewScope(authored,cloneId,'selected-asset').visibleIds,['a1','a2',cloneId]);
+assert.deepEqual(worldmapViewScope(authored,cloneId,'all',false).visibleIds,['g']);
+authored.entities.at(-1).entity_id='foreign';assert.throws(()=>worldmapViewScope(authored,'a1'));
+console.log('Authored decoration selection, shared model isolation, model visibility and foreign identity refusal passed.');

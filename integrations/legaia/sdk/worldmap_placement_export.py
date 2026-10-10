@@ -55,10 +55,12 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
             raise ProjectError('Proposed world export review is stale; review again')
         representation='proposed-source';review_key=proposal['review_key']
     geometry=deepcopy(load_worldmap_geometry(project.disc_path,scene))
-    from .worldmap_current_textures import compose
-    compose(project,geometry)
     from .worldmap_current_models import compose as compose_models
     compose_models(project,geometry)
+    # Model growth can add material/UV spans. Associate textures only after
+    # composing the complete Current geometry, as the viewport does.
+    from .worldmap_current_textures import compose
+    compose(project,geometry)
     current()
     raw,provenance,records,_,floor,binding,current_map,placements=context(project,scene)
     selected_ids=None

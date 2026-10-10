@@ -7,11 +7,22 @@ class InspectorSchema(unittest.TestCase):
         self.assertEqual(component['actions'],[{'id':'inspect-world-source-asset','label':'Inspect source asset','capability':'worldmap_geometry','requires_edit':True},{'id':'inspect-world-placement-record','label':'Inspect placement record','capability':'worldmap_placements','requires_edit':True},{'id':'edit-world-asset-owners','label':'Edit selected asset owner records…','capability':'worldmap_placements','requires_edit':True}])
         self.assertTrue(all('authoring' not in prop for prop in component['properties']))
         props={prop['id']:prop for prop in component['properties']}
-        self.assertTrue(all(props['position-'+axis]['state']=='derived' for axis in ('x','y','z')))
+        self.assertTrue(all(props['position-'+axis]['state']=='derived' and props['position-'+axis]['path']==['retail_source_position',axis] for axis in ('x','y','z')))
         self.assertTrue(all(props[key]['state']=='unresolved' for key in ('visibility','resting')))
         self.assertEqual(props['preview-layer']['state'],'editor-state')
         self.assertTrue(all(props['display-position-'+axis]['path']==['displayed_source_position',axis] and props['display-position-'+axis]['state']=='derived' for axis in ('x','y','z')))
         self.assertTrue(all(prop['state'] in schema['property_states'] for prop in component['properties']))
+
+    def test_authored_world_decoration_has_distinct_native_identity_and_no_retail_transform(self):
+        schema=inspector_schema();component=schema['components']['WorldAuthoredPlacement']
+        self.assertEqual(component['layout'],'read-only-properties')
+        self.assertEqual([a['id'] for a in component['actions']],['inspect-world-source-asset'])
+        props={p['id']:p for p in component['properties']}
+        self.assertEqual(props['placement']['path'],['authored_placement','placement_id'])
+        self.assertEqual(props['native-identity']['path'],['native_entity_id'])
+        self.assertTrue(all(props['position-'+axis]['state']=='read-only-project' for axis in ('x','y','z')))
+        self.assertTrue(all(props[key]['state']=='unresolved' for key in ('visibility','resting')))
+        self.assertTrue(all(p['state'] in schema['property_states'] and 'authoring' not in p for p in component['properties']))
 
     def test_world_placement_record_layers_are_read_only_and_distinct(self):
         schema=inspector_schema();component=schema['components']['WorldPlacementRecord']
