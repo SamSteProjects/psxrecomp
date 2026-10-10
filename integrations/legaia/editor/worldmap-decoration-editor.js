@@ -3,7 +3,7 @@ import {qualifyWorldDecorationSource, qualifyWorldDecorationReview, worldDecorat
 import {validValues} from './worldmap-placement-state.js';
 const node = (tag, text) => { const element = document.createElement(tag); if (text) element.textContent = text; return element; };
 
-export function mountWorldDecorationEditor({host, getContext, getState, busy, setBusy, api, onPreview, onDiscard, onApplied, onError}) {
+export function mountWorldDecorationEditor({host, getContext, getState, busy, setBusy, api, onPreview, onDiscard, onApplied, onError,onTransformDraft=()=>{}}) {
   const panel = node('details'), summary = node('summary', 'Create, Edit or Remove World Decoration'), status = node('p');
   panel.dataset.worldDecorationEditor = ''; status.setAttribute('role', 'status');
   const inspect = node('button', 'Inspect decoration donors'), editSelected = node('button','Edit selected decoration'),removeReview=node('button','Review decoration removal'),reviewButton = node('button', 'Review decoration'),
@@ -20,9 +20,10 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   addField('World decoration donor', donor); target.type = 'number'; target.min = '0'; target.max = '16383'; target.step = '1'; addField('World decoration target cell', target);
   for (const axis of ['x','y','z']) { const input = node('input'); input.type = 'number'; input.min = '-32768'; input.max = '32767'; input.step = '1'; offsets[axis] = input; addField('World decoration offset ' + axis.toUpperCase(), input); }
   yaw.type = 'number'; yaw.min = '0'; yaw.max = '4095'; yaw.step = '1'; addField('World decoration yaw units', yaw);
+  const move=node('input');move.type='checkbox';move.id='world-decoration-translate';const moveLabel=node('label','Translate selected decoration ');moveLabel.append(move);const snap=node('select');snap.setAttribute('aria-label','Decoration translation snap');for(const step of [1,16,64,128]){const option=node('option',step+' source units');option.value=String(step);snap.append(option);}
   const evidence = node('pre'); evidence.className = 'diagnostic-detail';
   Object.assign(evidence.style, {whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxHeight: '220px', overflow: 'auto'});
-  panel.append(summary, node('p', 'Create a walk decoration from a drawable Current donor, or edit the selected retained decoration’s signed offsets and yaw. Existing edits retain the same UUID, cell, record and model; donor and target stay fixed. Review and preview leave the project unchanged. Apply uses shared Undo/Redo.'), fields, actions, status, evidence); host.append(panel);
+  panel.append(summary, node('p', 'Create a walk decoration from a drawable Current donor, or edit the selected retained decoration’s signed offsets and yaw. Existing edits retain the same UUID, cell, record and model; donor and target stay fixed. Review and preview leave the project unchanged. Apply uses shared Undo/Redo.'), fields,moveLabel,snap,node('p','Choose Edit selected decoration, enable translation and drag X/Y/Z in the viewport. This is an unreviewed display draft. Native Review and Proposed preview are required before Apply. Y and Z follow native offset directions, with one reflection into editor space.'), actions, status, evidence); host.append(panel);
   fields.before(node('p','Removal Review restores the selected record and cell, lists donor reassignments and checks that surviving decorations stay unchanged. Preview the removal before Apply.'));
   let source = null, held = null, review = null, placementId = null, editing = false,displayed = false, controller = null, pendingKind = null, generation = 0;
   const contextMatches = context => {
@@ -38,10 +39,21 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     return worldDecorationDraft(source, Number(donor.value), Number(target.value), values, undefined, placementId);
   }
   function withdrawReview() {
-    review = null; if (displayed) { displayed = false; onDiscard(); }
+    onTransformDraft(null);review = null; if (displayed) { displayed = false; onDiscard(); }
     evidence.textContent = ''; update();
   }
-  function change() { withdrawReview(); status.textContent = sourceReady() ? 'Draft changed. Review the current donor, target and offsets again.' : 'Inspect Current decoration donors first.'; }
+  function change() { withdrawReview();const draft=transformDraft();if(draft)onTransformDraft(draft);status.textContent = sourceReady() ? 'Draft changed. Review the current donor, target and offsets again.' : 'Inspect Current decoration donors first.'; }
+  function transformDraft(){
+    if(!editing||!sourceReady()||getContext()?.selectedId!==held.selectedId||displayed||review||!validValues(fieldValues()))return null;
+    const base=worldDecorationDonorValues(source,Number(donor.value)),values=fieldValues();
+    if(values.yaw_units!==base.yaw_units)return null;
+    return {entityId:held.selectedId,base,values,enabled:move.checked,step:Number(snap.value),sourceKey:held.key};
+  }
+  function setTransformDraft(values,restoring=false){
+    if(!validValues(values)||(restoring?(!editing||!sourceReady()||pendingKind==='apply'):(pendingKind||busy()||!transformDraft())))return false;
+    for(const axis of ['x','y','z'])offsets[axis].value=String(values.offset[axis]);yaw.value=String(values.yaw_units);change();return true;
+  }
+  move.onchange=snap.onchange=()=>{onTransformDraft(transformDraft());update();};
   function donorValues() {
     if (!sourceReady() || donor.value === '') return;
     const value = worldDecorationDonorValues(source, Number(donor.value));
@@ -55,7 +67,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   }
   donor.onchange = donorValues; for (const input of [target, yaw, ...Object.values(offsets)]) input.oninput = change;
   function cancel() {
-    generation++; controller?.abort(); source = held = review = placementId = null; displayed = editing = false;
+    move.checked=false;generation++; controller?.abort(); source = held = review = placementId = null; displayed = editing = false;onTransformDraft(null);
     donor.replaceChildren(); evidence.textContent = ''; status.textContent = 'Switch to a qualified Current scene and inspect decoration donors.';
     if (pendingKind !== 'apply') { controller = null; if (pendingKind) setBusy(false); pendingKind = null; }
     update();
@@ -63,7 +75,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   function update() {
     if (source && !contextMatches(held) && pendingKind !== 'apply') { cancel(); return; }
     const locked = !!pendingKind || busy(), available = !!getContext();
-    inspect.disabled = locked || !available;
+    move.disabled=locked||!transformDraft();snap.disabled=move.disabled;inspect.disabled = locked || !available;
     editSelected.disabled=locked||!available||!getContext()?.current.scene_graph.entities.some(e=>e.entity_id===getContext().selectedId&&e.placement_scope==='authored_spawn_seed');
     for (const field of [donor, target, yaw, ...Object.values(offsets)]) field.disabled = locked || !sourceReady();
     if(editing){donor.disabled=true;target.disabled=true;}
@@ -163,8 +175,8 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
       catch (error) { status.textContent = 'Decoration applied, but scene refresh failed: ' + error.message; onError(error); }
     }
   };
-  discard.onclick = () => { if (discard.disabled) return; withdrawReview(); status.textContent = 'Decoration Review discarded; draft fields retained, Current scene restored and project unchanged.'; };
-  update(); return {update,cancel,panel,editSelected:()=>{update();panel.open=true;return inspectDonors(true);},reviewRemoval:async()=>{
+  discard.onclick = () => { if (discard.disabled) return; move.checked=false;withdrawReview(); status.textContent = 'Decoration Review discarded; draft fields retained, Current scene restored and project unchanged.'; };
+  update(); return {update,cancel,panel,getTransformDraft:()=>!pendingKind&&!busy()?transformDraft():null,setTransformDraft,editSelected:()=>{update();panel.open=true;return inspectDonors(true);},reviewRemoval:async()=>{
     update();panel.open=true;const selectedId=getContext()?.selectedId;
     if(await inspectDonors(true)!==true||held?.selectedId!==selectedId||getContext()?.selectedId!==selectedId)return;
     return removeReview.onclick();

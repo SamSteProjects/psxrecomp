@@ -1160,6 +1160,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-placement-replay.js": ("worldmap-placement-replay.js", "text/javascript"),
                  "/worldmap-current-placements.js": ("worldmap-current-placements.js", "text/javascript"),
                  "/worldmap-decoration-state.js": ("worldmap-decoration-state.js", "text/javascript"),
+                 "/worldmap-decoration-gizmo.js": ("worldmap-decoration-gizmo.js", "text/javascript"),
                  "/worldmap-decoration-editor.js": ("worldmap-decoration-editor.js", "text/javascript"),
                  "/worldmap-placement-gizmo.js": ("worldmap-placement-gizmo.js", "text/javascript"),
                  "/worldmap-placement-yaw.js": ("worldmap-placement-yaw.js", "text/javascript"),

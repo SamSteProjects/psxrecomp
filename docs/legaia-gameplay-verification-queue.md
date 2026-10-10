@@ -3136,3 +3136,5 @@ its transient proposal was undone before this saved package. No game launched or
 package installed. This queue does not authorize a game launch.
 
 2026-10-10: [Authored World Target Views](legaia-worldmap-views.md#authored-decoration-targets--2026-10-10) is editor display metadata and requires no immediate gameplay verification. Native and browser checks cover retained target identity across transform edits, donor rebasing, deletion refusal and Undo recovery. It does not qualify the decorations' runtime visibility, collision or script effects; those remain in the existing deferred placement campaign. No game or runtime attachment ran.
+
+2026-10-10: [Authored Decoration Viewport Translation](legaia-worldmap-placement-allocation.md#authored-decoration-viewport-translation--2026-10-10) passes native-coordinate and actual editor gesture/Review/Preview/Apply/history checks without launching a game. No immediate gameplay verification is needed to continue SDK work. Runtime visibility, resting positions, collision and script effects remain part of the existing deferred decoration placement campaign.
