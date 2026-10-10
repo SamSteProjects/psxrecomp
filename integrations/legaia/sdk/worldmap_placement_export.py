@@ -56,6 +56,8 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
     geometry=deepcopy(load_worldmap_geometry(project.disc_path,scene))
     from .worldmap_current_textures import compose
     compose(project,geometry)
+    from .worldmap_current_models import compose as compose_models
+    compose_models(project,geometry)
     current()
     raw,provenance,records,_,floor,binding,current_map,placements=context(project,scene)
     selected_ids=None
@@ -92,8 +94,9 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
         override_scope='WorldMapPlacements',gameplay_verified=False,project_changed=False)
     if batch_proposal is not None:metadata['batch_proposal']=deepcopy(batch_proposal)
     if record_ids is not None:metadata['selected_record_ids']=deepcopy(record_ids)
+    metadata['model_authoring']=deepcopy(geometry['model_authoring'])
     metadata['texture_authoring']=deepcopy(geometry['texture_authoring'])
-    geometry['limitations'].append('Current source record transforms and exact-layout authored TIM payloads are composed; native geometry remains Retail and runtime texture residency is unverified.')
+    geometry['limitations'].append('Current source record transforms and exact-layout authored TIM payloads are composed; same-layout authored TMD vertex/normal geometry is composed; runtime visibility and texture residency are unverified.')
     glb,audit=encode_worldmap_glb(geometry,key,scope,entity_id,placement_authoring=metadata,entity_ids=selected_ids)
     current()
     if len(glb)>MAX_WORLDMAP_GLB_BYTES:raise ProjectError('World placement GLB exceeds32 MiB')

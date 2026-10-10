@@ -1298,10 +1298,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200,review(self.server.project,body['selection_set_id'],body['review_key'],body['source_key']))
                     return
                 if route == '/api/worldmap-geometry':
-                    if set(body) not in ({'scene','source_key'},{'scene','source_key','texture_layer'}):
-                        raise ProjectError('World ground inspection requires scene/source and an optional texture layer')
+                    if set(body) not in ({'scene','source_key'},{'scene','source_key','texture_layer'},{'scene','source_key','model_layer'},{'scene','source_key','texture_layer','model_layer'}):
+                        raise ProjectError('World ground inspection requires scene/source and optional texture/model layers')
                     from .worldmap_geometry import inspect
-                    self._json(200, inspect(self.server.project, body['scene'], body['source_key'],body.get('texture_layer')))
+                    self._json(200, inspect(self.server.project, body['scene'], body['source_key'],body.get('texture_layer'),body.get('model_layer')))
                     return
                 if route == '/api/worldmap-placement-reset-review':
                     if set(body) != {'scene', 'source_key'}:

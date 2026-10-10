@@ -9,8 +9,9 @@ MAX_TEXTURE_BYTES = 16 * 1024 * 1024
 MAX_RESPONSE_BYTES = 32 * 1024 * 1024
 
 
-def inspect(project, scene, expected_key, texture_layer=None):
+def inspect(project, scene, expected_key, texture_layer=None, model_layer=None):
     if texture_layer not in (None,'retail','current'):raise ProjectError('Choose Retail or Current world textures')
+    if model_layer not in (None,'retail','current'):raise ProjectError('Choose Retail or Current world models')
     from importer.worldmap_geometry import load_worldmap_geometry
     if scene not in ('map01', 'map02', 'map03'):
         raise ProjectError('Choose one of the three supported walk kingdoms')
@@ -20,6 +21,10 @@ def inspect(project, scene, expected_key, texture_layer=None):
     if expected_key != key:
         raise ProjectError('World ground source inputs changed; inspect the current project again')
     result = deepcopy(load_worldmap_geometry(project.disc_path, scene))
+    if model_layer=='current':
+        from .worldmap_current_models import compose as compose_models
+        compose_models(project,result)
+    elif model_layer=='retail':result['model_layer']='retail'
     if texture_layer=='current':
         from .worldmap_current_textures import compose
         compose(project,result)
@@ -45,7 +50,8 @@ def inspect(project, scene, expected_key, texture_layer=None):
     if project.mode != 'edit' or state_key(project) != key:
         raise ProjectError('World ground source inputs changed during inspection')
     result.update(project_source_key=key, project_changed=False, gameplay_verified=False,
-                  representation='retail-source', authored_geometry=False)
+                  representation='current-source' if model_layer=='current' else 'retail-source',
+                  authored_geometry=bool(result.get('model_authoring',{}).get('edits')))
     encoded = json.dumps(result, ensure_ascii=False, allow_nan=False).encode('utf-8')
     if len(encoded) > MAX_RESPONSE_BYTES:
         raise ProjectError('World ground inspection exceeds its metadata and geometry budget')
