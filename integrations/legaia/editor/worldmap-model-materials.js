@@ -13,9 +13,9 @@ export function worldModelPacketAttributes(source){
  }
  if(materials.length>64||triangle_materials.length>100000)throw Error('Model materials exceed comparison limits.');return {triangle_colors,triangle_uvs,triangle_materials,materials};
 }
-export function qualifyWorldModelMaterials(retail,current,{source,receipt,currentGeometry,proposedGeometry}){
- if(retail?.project_source_key!==receipt.request.source_key||retail.scene!==receipt.request.asset_id.split('/')[2]||retail.project_changed!==false||retail.gameplay_verified!==false||current?.project_changed!==false||current.gameplay_verified!==false)throw Error('Model materials lost their reviewed kingdom source.');
- const view=worldmapCurrentTextureView(retail,current),asset=view.assets.find(a=>a.asset_id===receipt.request.asset_id),original=retail.scene_graph.assets.find(a=>a.asset_id===receipt.request.asset_id);
+export function qualifyWorldModelMaterials(retail,current,{source,receipt,request=receipt?.request,currentGeometry,proposedGeometry}){
+ if(retail?.project_source_key!==request.source_key||retail.scene!==request.asset_id.split('/')[2]||retail.project_changed!==false||retail.gameplay_verified!==false||current?.project_changed!==false||current.gameplay_verified!==false)throw Error('Model materials lost their reviewed kingdom source.');
+ const view=worldmapCurrentTextureView(retail,current),asset=view.assets.find(a=>a.asset_id===request.asset_id),original=retail.scene_graph.assets.find(a=>a.asset_id===request.asset_id);
  if(!asset||!original||!same(asset.source_record,source.metadata.source_record)||!same(original.preview.triangles,currentGeometry.triangles)||!same(currentGeometry.triangles,proposedGeometry.triangles))throw Error('Model material asset differs from its native source.');
  const attrs=worldModelPacketAttributes(source);for(const key of Object.keys(attrs))if(!same(original.preview[key],attrs[key]))throw Error('Model material fields differ from literal native packets.');
  return {current:{...structuredClone(currentGeometry),...structuredClone(attrs),textures:structuredClone(asset.preview.textures)},proposed:{...structuredClone(proposedGeometry),...structuredClone(attrs),textures:structuredClone(asset.preview.textures)},texture_authoring:structuredClone(current.texture_authoring)};
