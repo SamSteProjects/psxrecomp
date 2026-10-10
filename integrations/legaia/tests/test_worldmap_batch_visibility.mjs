@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {worldPlacementBatchVisibility as visible} from '../editor/worldmap-placement-state.js';
+const record=(id,count)=>({record_id:id,object_record_index:Number(id),source_record_sha256:id,writable:true,source_cell_count:count,placements:Array.from({length:count},(_,i)=>({entity_id:id+'/'+i}))});
+const report={records:[record('0001',3),record('0002',2)]},base={entities:[{entity_id:'ground',placement_scope:'source_ground'},...report.records.flatMap(r=>r.placements.map(p=>({...p,placement_scope:'source_model',object_record_index:r.object_record_index,source_record_sha256:r.source_record_sha256})))]},held=structuredClone({base,report});
+assert.deepEqual([...visible(base,report,[])],[]);assert.deepEqual([...visible(base,report,[],'records')],['0001/0','0001/1','0001/2','0002/0','0002/1']);
+assert.deepEqual([...visible(base,report,['0001'],'records',false)],['ground','0002/0','0002/1']);assert.deepEqual([...visible(base,report,['0001','0002'],'records')],[]);
+assert.deepEqual([...visible(base,report,['0001'],'scene',false)],['ground']);
+for(const scope of ['anchor','record',null])assert.throws(()=>visible(base,report,['0001'],scope));assert.throws(()=>visible(base,report,['0001'],'scene',1));
+const missing=structuredClone(base);missing.entities.pop();assert.throws(()=>visible(missing,report,['0002']));const duplicate=structuredClone(base);duplicate.entities.push(duplicate.entities[1]);assert.throws(()=>visible(duplicate,report,['0001']));const foreign=structuredClone(base);foreign.entities[1].source_record_sha256='foreign';assert.throws(()=>visible(foreign,report,['0001']));
+assert.deepEqual({base,report},held);console.log('Batch visibility complete shared owners, empty/all selection, independent ground, source ownership and immutable inputs passed.');

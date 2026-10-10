@@ -88,3 +88,11 @@ export function worldPlacementBatchSelection(report,recordIds,entityId=null,togg
  const entities=new Set();for(const id of ids){const owners=report.records.filter(r=>r.record_id===id),r=owners[0];if(owners.length!==1||!r.writable||!Array.isArray(r.placements)||!r.placements.length||r.placements.length!==r.source_cell_count)fail('Selected record does not have complete writable source ownership.');for(const p of r.placements){if(typeof p.entity_id!=='string'||entities.has(p.entity_id)||report.records.filter(row=>row.placements?.some(seed=>seed.entity_id===p.entity_id)).length!==1)fail('Selected seed ownership is ambiguous.');entities.add(p.entity_id);if(entities.size>512)fail('Selected source seeds exceed the qualified budget.');}}
  return {recordIds:[...ids].sort(),entityIds:[...entities].sort()};
 }
+
+// Visibility filters draw/pick only; selected owners keep their complete seed scope.
+export function worldPlacementBatchVisibility(base,report,recordIds,scope='scene',ground=true){
+ if(!['scene','records'].includes(scope)||typeof ground!=='boolean'||!Array.isArray(base?.entities)||base.entities.length>513)fail('Batch visibility scope is invalid.');
+ const selection=worldPlacementBatchSelection(report,recordIds),members=new Set(selection.entityIds),entities=new Map(base.entities.map(e=>[e.entity_id,e]));if(entities.size!==base.entities.length)fail('Batch visibility source entities are ambiguous.');
+ for(const id of selection.recordIds){const row=report.records.find(r=>r.record_id===id);for(const p of row.placements){const e=entities.get(p.entity_id);if(!e||e.placement_scope==='source_ground'||e.object_record_index!==row.object_record_index||e.source_record_sha256!==row.source_record_sha256)fail('Batch visibility source ownership changed.');}}
+ return new Set(base.entities.filter(e=>e.placement_scope==='source_ground'?!ground:scope==='records'&&!members.has(e.entity_id)).map(e=>e.entity_id));
+}
