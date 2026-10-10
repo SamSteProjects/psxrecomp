@@ -10,7 +10,7 @@ def compose(project,geometry,*,force=False):
     scene=geometry['scene'];source=geometry['source_record']
     bindings={identifier:binding for identifier,binding in project.texture_overrides.items() if scene_for(identifier)==scene}
     edits=[]
-    if bindings or force or geometry.get('model_authoring',{}).get('schema_version') in ('legaia.worldmap-current-models.v2','legaia.worldmap-current-models.v3','legaia.worldmap-current-models.v4'):
+    if bindings or force or geometry.get('model_authoring',{}).get('schema_version') in ('legaia.worldmap-current-models.v2','legaia.worldmap-current-models.v3','legaia.worldmap-current-models.v4','legaia.worldmap-current-models.v5'):
         identifiers=geometry['preview'].get('texture_catalog',{}).get('textures',[])
         identifier=next(iter(bindings)) if bindings else next((t['semantic_id'] for t in identifiers if scene_for(t.get('semantic_id'))==scene),None)
         if identifier is None:raise ProjectError('Current World material association requires a native kingdom texture catalog')

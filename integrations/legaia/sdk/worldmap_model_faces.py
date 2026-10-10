@@ -14,7 +14,7 @@ from importer.model_face_addition import add_model_faces
 from .project import ProjectError, digest
 from .worldmap_authoring import state_key
 from .worldmap_model_binding import owner, source as native_source
-from .worldmap_model_allocation import retained, qualify_carrier, FACE_FORMAT
+from .worldmap_model_allocation import retained, qualify_carrier, FACE_FORMAT, GROUP_FORMAT
 
 
 def _budget(value, maximum):
@@ -71,7 +71,7 @@ def prepare(project,request):
     independent,addition=add_model_faces(effective,request['effective_sha256'],additions)
     if independent!=candidate: raise ProjectError('World face candidate differs from direct native addition')
     composed,carrier=qualify_carrier(project,request['asset_id'],original,native,effective,candidate,base_binding,updated)
-    binding=dict(format=FACE_FORMAT,source_scene_id=owner(request['asset_id']),
+    binding=dict(format=GROUP_FORMAT if project.model_overrides.get(request['asset_id'],{}).get('format')==GROUP_FORMAT else FACE_FORMAT,source_scene_id=owner(request['asset_id']),
         source_sha256=sha256(original).hexdigest(),asset_sha256=sha256(candidate).hexdigest(),
         byte_length=len(candidate),base_binding=deepcopy(base_binding),ledger=deepcopy(updated))
     value=dict(schema_version='legaia.worldmap-model-face-addition-review.v2',project_path=str(project.root),

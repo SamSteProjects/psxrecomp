@@ -30,7 +30,7 @@ def prepare(project,request):
     if sha256(original).hexdigest()!=request['member_sha256'] or sha256(effective).hexdigest()!=request['effective_sha256']:
         raise ProjectError('World model source changed; inspect Current again')
     candidate=content if request['format']!='json' else import_shape_json(effective,request['effective_sha256'],content)[0]
-    from .worldmap_model_allocation import FORMATS,CONTENT_FORMAT,FACE_FORMAT
+    from .worldmap_model_allocation import FORMATS,CONTENT_FORMAT,FACE_FORMAT,GROUP_FORMAT
     if binding and binding['format'] in FORMATS:
         from copy import deepcopy
         from .model_face_addition import base_content
@@ -42,7 +42,7 @@ def prepare(project,request):
         if replay!=candidate:raise ProjectError('Allocated content differs from complete native ledger replay')
         proposed=deepcopy(binding)
         if candidate!=effective:
-            proposed.update(format=FACE_FORMAT if binding['format']==FACE_FORMAT else CONTENT_FORMAT,asset_sha256=sha256(candidate).hexdigest(),byte_length=len(candidate),ledger=ledger)
+            proposed.update(format=binding['format'] if binding['format'] in (FACE_FORMAT,GROUP_FORMAT) else CONTENT_FORMAT,asset_sha256=sha256(candidate).hexdigest(),byte_length=len(candidate),ledger=ledger)
         report=dict(schema_version='legaia.worldmap-model-replacement.v3',project_path=str(project.root),
             request={k:v for k,v in request.items() if k!='content_base64'},input_sha256=sha256(content).hexdigest(),
             source_record=native,proposed_sha256=sha256(candidate).hexdigest(),byte_length=len(candidate),

@@ -15,7 +15,7 @@ import base64,struct
 from sdk.project import ProjectService, ProjectError
 from sdk.worldmap_authoring import state_key
 from sdk.worldmap_model_faces import source, prepare, review, apply, preview
-from sdk.worldmap_model_groups import source as group_source, review as group_review
+from sdk.worldmap_model_groups import source as group_source, review as group_review, apply as group_apply
 from test_model_pack_growth import pack_source, container_for
 from test_model_primitive_workflow import http_server
 
@@ -57,6 +57,22 @@ class WorldModelFaceTests(TestCase):
                     self.assertEqual(post('/api/worldmap-model-group-review',group_proposal),(200,group_result))
                 self.assertEqual(p._document(),held);self.assertEqual((p.undo_stack,p.redo_stack),history)
 
+                with self.assertRaises(ProjectError):group_apply(p,group_proposal,'0'*64)
+                with http_server(p) as (_,post):
+                    status,body=post('/api/worldmap-model-group-apply',dict(request=group_proposal,review_key=group_result['review_key']))
+                    self.assertEqual(status,200,body)
+                    self.assertEqual(post('/api/worldmap-model-group-apply',dict(request=group_proposal,review_key=group_result['review_key']))[0],400)
+                group_binding=deepcopy(p.model_overrides[request['asset_id']])
+                group_bytes=base64.b64decode(group_result['proposed_model_base64'])
+                self.assertEqual(group_binding['format'],'world-tmd-group-allocation-v1')
+                self.assertEqual(p.read_model_replacement(request['asset_id'],group_binding),group_bytes)
+                forged_group=deepcopy(group_binding);forged_group['ledger']['operations']=[]
+                with self.assertRaises(ImportError):p.read_model_replacement(request['asset_id'],forged_group)
+                saved_group=ProjectService.open(p.save())
+                self.assertEqual(saved_group.read_model_replacement(request['asset_id'],group_binding),group_bytes)
+                p.undo();self.assertEqual(p._document(),held)
+                p.redo();self.assertEqual(p.read_model_replacement(request['asset_id'],group_binding),group_bytes)
+                p.undo();history=deepcopy((p.undo_stack,p.redo_stack))
                 self.assertGreater(len(candidate),len(original));self.assertEqual(result['topology']['authored_face_count'],1)
                 self.assertFalse(result['build_ready']);self.assertTrue(result['read_only'])
                 with patch('sdk.worldmap_geometry.inspect',side_effect=AssertionError('stale preview must not read geometry')):

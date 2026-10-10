@@ -9,7 +9,7 @@ from importer.model_face_removal import _groups
 from importer.model_face_ledger import (append_group_ledger, _apply_group_allocation,
     _operations, _reserved_faces, _reserved_groups)
 from .worldmap_model_faces import _context, _fresh, _budget
-from .worldmap_model_allocation import qualify_carrier
+from .worldmap_model_allocation import qualify_carrier, GROUP_FORMAT
 from .project import ProjectError, digest
 
 
@@ -46,12 +46,15 @@ def prepare(project, request):
         raise ProjectError('World group proposal differs from complete retained replay')
     composed, carrier = qualify_carrier(project, request['asset_id'], original, native,
         effective, candidate, base_binding, updated)
-    value = dict(schema_version='legaia.worldmap-model-group-review.v1', project_path=str(project.root),
+    binding = dict(format=GROUP_FORMAT,source_scene_id='worldmap://'+request['asset_id'].split('/')[2]+'/models',
+        source_sha256=request['member_sha256'],asset_sha256=sha256(candidate).hexdigest(),
+        byte_length=len(candidate),base_binding=deepcopy(base_binding),ledger=deepcopy(updated))
+    value = dict(schema_version='legaia.worldmap-model-group-review.v2', project_path=str(project.root),
         request=deepcopy(request), source_record=deepcopy(native),
         current_sha256=sha256(effective).hexdigest(), proposed_sha256=sha256(candidate).hexdigest(),
         current_byte_length=len(effective), proposed_byte_length=len(candidate),
         proposed_model_base64=base64.b64encode(candidate).decode('ascii'),
-        base_binding=deepcopy(base_binding), ledger=updated, current_topology=current_topology,
+        binding=binding, base_binding=deepcopy(base_binding), ledger=updated, current_topology=current_topology,
         topology=topology, allocation=allocation, current_preview=decode_tmd(effective),
         proposed_preview=decode_tmd(candidate), composed_models=composed, carrier=carrier,
         read_only=True, project_changed=False, gameplay_verified=False, build_ready=False,
@@ -64,3 +67,10 @@ def prepare(project, request):
 
 def review(project, request):
     return prepare(project, request)[1]
+
+
+def apply(project, request, review_key):
+    candidate, report = prepare(project, request)
+    if report['review_key'] != review_key:
+        raise ProjectError('World group allocation differs from its fresh reviewed candidate')
+    project._publish_model_ledger(request['asset_id'],candidate,report['binding'],request['source_key'],'World group allocation')

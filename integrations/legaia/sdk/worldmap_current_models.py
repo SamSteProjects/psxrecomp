@@ -40,9 +40,10 @@ def compose(project,geometry):
     for asset,preview in prepared:asset['preview']=preview
     graph['metrics'].update(stored_triangle_count=stored,drawn_triangle_count=drawn)
     extended=any(binding['format']!='tmd-shape' for identifier,binding in project.model_overrides.items() if (model_identity(identifier) or [None])[0]==scene)
-    allocated=any(binding['format'] in ('world-tmd-vector-allocation-v1','world-tmd-vector-content-v1','world-tmd-face-addition-v1') for identifier,binding in project.model_overrides.items() if (model_identity(identifier) or [None])[0]==scene)
+    allocated=any(binding['format'] in ('world-tmd-vector-allocation-v1','world-tmd-vector-content-v1','world-tmd-face-addition-v1','world-tmd-group-allocation-v1') for identifier,binding in project.model_overrides.items() if (model_identity(identifier) or [None])[0]==scene)
     face_growth=any(binding['format']=='world-tmd-face-addition-v1' for identifier,binding in project.model_overrides.items() if (model_identity(identifier) or [None])[0]==scene)
+    group_growth=any(binding['format']=='world-tmd-group-allocation-v1' for identifier,binding in project.model_overrides.items() if (model_identity(identifier) or [None])[0]==scene)
     geometry['model_layer']='current'
-    geometry['model_authoring']=dict(schema_version='legaia.worldmap-current-models.v4' if face_growth else 'legaia.worldmap-current-models.v3' if allocated else 'legaia.worldmap-current-models.v2' if extended else 'legaia.worldmap-current-models.v1',scene=scene,
-        disc_sha256=disc,edits=edits,scope='qualified-TMD-face-addition' if face_growth else 'qualified-TMD-vector-allocation' if allocated else 'existing-TMD-layout-content' if extended else 'existing-TMD-vertex-normal-XYZ-only',gameplay_verified=False)
+    geometry['model_authoring']=dict(schema_version='legaia.worldmap-current-models.v5' if group_growth else 'legaia.worldmap-current-models.v4' if face_growth else 'legaia.worldmap-current-models.v3' if allocated else 'legaia.worldmap-current-models.v2' if extended else 'legaia.worldmap-current-models.v1',scene=scene,
+        disc_sha256=disc,edits=edits,scope='qualified-TMD-group-allocation' if group_growth else 'qualified-TMD-face-addition' if face_growth else 'qualified-TMD-vector-allocation' if allocated else 'existing-TMD-layout-content' if extended else 'existing-TMD-vertex-normal-XYZ-only',gameplay_verified=False)
     return geometry
