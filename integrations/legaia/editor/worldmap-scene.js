@@ -50,3 +50,12 @@ export function worldmapHierarchyRows(sceneView,query='',selectedId=null){
   }
   return {rows,total:entities.length,matching,selectedOutsideFilter:rows.some(row=>!row.matches)};
 }
+
+
+export function worldmapCurrentTextureView(retail,current){
+ const receipt=current?.texture_authoring;
+ if(current?.texture_layer!=='current'||current.project_source_key!==retail.project_source_key||!receipt||receipt.schema_version!=='legaia.worldmap-current-textures.v1'||receipt.scene!==retail.scene||receipt.disc_sha256!==retail.source_record.disc_sha256||receipt.scope!=='exact-layout-TIM-payloads-static-material-association'||receipt.gameplay_verified!==false||!Array.isArray(receipt.edits)||receipt.edits.length>128||new Set(receipt.edits.map(e=>e.texture_id)).size!==receipt.edits.length||receipt.edits.some(e=>typeof e.texture_id!=='string'||!e.texture_id.startsWith(`texture://${retail.scene}/kingdom/`)||!hash(e.source_tim_sha256)||!hash(e.effective_tim_sha256)||retail.preview.texture_catalog?.textures?.find(t=>t.semantic_id===e.texture_id)?.decoded_member_sha256!==e.source_tim_sha256||e.source_tim_sha256===e.effective_tim_sha256))fail('Current world texture receipt lost its native source identity.');
+ const strip=value=>{const v=structuredClone(value);delete v.texture_layer;delete v.texture_authoring;const previews=[v.preview,...v.scene_graph.assets.map(a=>a.preview)];for(const p of previews)delete p.textures;for(const k of ['texture_output_bytes','matched_texture_count','unsupported_texture_count'])delete v.metrics[k];delete v.scene_graph.metrics.texture_output_bytes;return v;};
+ if(JSON.stringify(strip(retail))!==JSON.stringify(strip(current)))fail('Current textures changed native world geometry, source metadata or membership.');
+ return worldmapSceneView(current);
+}

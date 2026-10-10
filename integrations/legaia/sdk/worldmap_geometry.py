@@ -9,7 +9,8 @@ MAX_TEXTURE_BYTES = 16 * 1024 * 1024
 MAX_RESPONSE_BYTES = 32 * 1024 * 1024
 
 
-def inspect(project, scene, expected_key):
+def inspect(project, scene, expected_key, texture_layer=None):
+    if texture_layer not in (None,'retail','current'):raise ProjectError('Choose Retail or Current world textures')
     from importer.worldmap_geometry import load_worldmap_geometry
     if scene not in ('map01', 'map02', 'map03'):
         raise ProjectError('Choose one of the three supported walk kingdoms')
@@ -19,6 +20,10 @@ def inspect(project, scene, expected_key):
     if expected_key != key:
         raise ProjectError('World ground source inputs changed; inspect the current project again')
     result = deepcopy(load_worldmap_geometry(project.disc_path, scene))
+    if texture_layer=='current':
+        from .worldmap_current_textures import compose
+        compose(project,result)
+    elif texture_layer=='retail':result['texture_layer']='retail'
     previews = [result['preview']] + [asset['preview'] for asset in result.get('scene_graph', {}).get('assets', [])]
     seen = set()
     used = 0

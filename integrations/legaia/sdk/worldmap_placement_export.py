@@ -54,6 +54,8 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
             raise ProjectError('Proposed world export review is stale; review again')
         representation='proposed-source';review_key=proposal['review_key']
     geometry=deepcopy(load_worldmap_geometry(project.disc_path,scene))
+    from .worldmap_current_textures import compose
+    compose(project,geometry)
     current()
     raw,provenance,records,_,floor,binding,current_map,placements=context(project,scene)
     selected_ids=None
@@ -90,7 +92,8 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
         override_scope='WorldMapPlacements',gameplay_verified=False,project_changed=False)
     if batch_proposal is not None:metadata['batch_proposal']=deepcopy(batch_proposal)
     if record_ids is not None:metadata['selected_record_ids']=deepcopy(record_ids)
-    geometry['limitations'].append('Only WorldMapPlacements record transforms are composed; geometry, textures and ground remain retail source assets.')
+    metadata['texture_authoring']=deepcopy(geometry['texture_authoring'])
+    geometry['limitations'].append('Current source record transforms and exact-layout authored TIM payloads are composed; native geometry remains Retail and runtime texture residency is unverified.')
     glb,audit=encode_worldmap_glb(geometry,key,scope,entity_id,placement_authoring=metadata,entity_ids=selected_ids)
     current()
     if len(glb)>MAX_WORLDMAP_GLB_BYTES:raise ProjectError('World placement GLB exceeds32 MiB')

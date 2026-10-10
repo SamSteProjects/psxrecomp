@@ -10,18 +10,20 @@ authored changes. Proposed requires a successful transform review and binds the
 artifact to that exact review key. It composes the proposed record with other
 applied world placement records without Apply, history, Save or Build writes.
 Unreviewed input cannot be exported as Proposed. Choosing Current explicitly
-excludes the pending proposal.
+excludes the pending proposal. Both representations now also compose supported exact-layout World TIM overrides through the [Current texture pipeline](legaia-worldmap-texture-authoring.md#current-world-viewport-textures-and-glb-export--2026-10-10).
 
 The GLB records its representation, source key, retail MAP identity, current and
 exported MAP hashes, authored record bindings, proposal/review identity and the
 number of changed source entities. Each instance retains its retail transform
 and record identity alongside its exported transform and record hash. Positions
 and yaw use the same qualified MAP patch construction as normal Build. The
-renderer/exporter reflects source Y once; model geometry, materials, textures
-and ground remain retail source assets. Other authoring component families are
+renderer/exporter reflects source Y once; model geometry, material definitions
+and ground geometry remain Retail source assets. Current textures retain separate
+Retail/effective TIM hashes in export provenance. Other authoring component families are
 not silently interpreted as world placement overrides.
 
-The existing **World ground** exports remain explicitly retail-source exports.
+The **Retail** World scene layer exports Retail assets; **Current** exports compose
+applied record transforms and qualified Current TIM pixels.
 Current/Proposed are source spawn seeds, with script-driven visibility, native
 resting positions, collision and gameplay behavior still unverified.
 
