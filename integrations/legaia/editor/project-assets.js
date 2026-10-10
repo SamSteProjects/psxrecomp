@@ -1,3 +1,4 @@
+import {decodeWorldmapAssets,worldmapProjectRecords} from './worldmap-assets.js';
 // A read-only project index with distinct imported and authored records. Each selected record keeps one scene's source binding.
 import {createAssetResourceDiscovery} from './asset-resource-discovery.js';
 const MAX_METADATA_BYTES=32*1024*1024;
@@ -59,13 +60,13 @@ export function decodeProjectAssets(value,context){
 
 /** Shared IDs retain every membership; data always comes from one complete variant. */
 export function projectAssetRecords(report,filter='all',activeSceneId=null,preferredScenes=new Map()){
-  if(filter!=='all'&&!report.scenes.some(row=>row.id===filter))fail('Choose an imported source scene for project resource filtering.');
+  if(filter!=='all'&&filter!=='global-worldmap'&&!report.scenes.some(row=>row.id===filter))fail('Choose an imported source scene for project resource filtering.');
   const scenes=new Map(report.scenes.map(row=>[row.id,row]));
-  return report.assets.filter(asset=>filter==='all'||asset.scene_ids.includes(filter)).map(asset=>{
+  const records=report.assets.filter(asset=>filter==='all'||asset.scene_ids.includes(filter)).map(asset=>{
     const preferred=preferredScenes.get(asset.id),chosenId=filter!=='all'?filter:asset.scene_ids.includes(preferred)?preferred:asset.scene_ids.includes(activeSceneId)?activeSceneId:[...asset.scene_ids].sort()[0],variant=asset.variants.find(row=>row.scene_id===chosenId);
     const source=asset.scene_ids.length>1?`Shared across ${asset.scene_ids.length} imported scenes · ${scenes.get(chosenId).name}`:scenes.get(chosenId).name;
     return {id:asset.id,type:asset.kind,label:asset.label,source,sceneId:chosenId,data:clone(variant.record),projectMembership:{scene_ids:clone(asset.scene_ids),variants:clone(asset.variants),chosenSceneId:chosenId,sourceKey:report.source_key}};
-  });
+  });return ['all','global-worldmap'].includes(filter)&&report.globalWorldmap?[...records,...worldmapProjectRecords(report.globalWorldmap)]:records;
 }
 
 // Source activation uses one retained variant, never an ID-prefix membership guess.
@@ -87,7 +88,7 @@ export function qualifyProjectCatalogVariant(variant,record,catalogKey){
 }
 
 function element(tag,label){const node=document.createElement(tag);if(label!==undefined)node.textContent=label;return node;}
-export function mountProjectAssets({host,getContext,busy,setBusy,onChange=()=>{},onError=()=>{},getUnavailableReason=()=>null,schedule}){
+export function mountProjectAssets({host,getContext,busy,setBusy,onChange=()=>{},onError=()=>{},getUnavailableReason=()=>null,globalWorldmap=()=>false,schedule}){
   if(!host||[getContext,busy,setBusy,onChange,onError,getUnavailableReason].some(callback=>typeof callback!=='function'))fail('Project asset controls require source and lifecycle callbacks.');
   const section=element('section');section.className='asset-scope project-assets-scope';section.dataset.projectAssets='';Object.assign(section.style,{gridColumn:'1 / -1',minWidth:'0'});
   const controls=element('div');Object.assign(controls.style,{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,180px),1fr))',gap:'7px',minWidth:'0'});
@@ -104,7 +105,7 @@ export function mountProjectAssets({host,getContext,busy,setBusy,onChange=()=>{}
   const release=token=>{if(busyOwner===token){busyOwner=null;setBusy(false);}};
   function invalidate(){generation++;controller?.abort();controller=null;pending=false;report=null;preferredScenes.clear();sceneRows.replaceChildren();if(busyOwner)release(busyOwner);}
   function renderFilters(){
-    filterInput.replaceChildren();const all=element('option','All imported scenes');all.value='all';filterInput.append(all);for(const scene of context?.scenes??[]){const option=element('option',scene.name);option.value=scene.id;filterInput.append(option);}if(filterValue!=='all'&&!context?.scenes.some(scene=>scene.id===filterValue))filterValue='all';filterInput.value=filterValue;
+    filterInput.replaceChildren();const all=element('option',globalWorldmap()?'All project resources':'All imported scenes');all.value='all';filterInput.append(all);if(globalWorldmap()){const option=element('option','Global world-map sources');option.value='global-worldmap';filterInput.append(option);}for(const scene of context?.scenes??[]){const option=element('option',scene.name);option.value=scene.id;filterInput.append(option);}if(filterValue!=='all'&&!(filterValue==='global-worldmap'&&globalWorldmap())&&!context?.scenes.some(scene=>scene.id===filterValue))filterValue='all';filterInput.value=filterValue;
   }
   function renderCoverage(){
     filterLabel.hidden=refresh.hidden=coverage.hidden=scopeValue!=='project';
@@ -113,8 +114,8 @@ export function mountProjectAssets({host,getContext,busy,setBusy,onChange=()=>{}
     if(scopeValue!=='project'){status.textContent='Choose Project resources to discover imported project inventory.';return;}
     if(pending){status.textContent=`Verifying resources across ${context?.scenes.length??0} imported scenes…`;return;}
     if(!report){status.textContent=!context?'Project source is unavailable.':!context.scenes.length?'No imported scenes. Import scenes before refreshing project resources.':error.textContent?`Project resources are not verified. Refresh to retry ${context.scenes.length} imported scenes.`:`Project resources are not verified. Discovery will load ${context.scenes.length} imported scenes when the editor is ready.`;return;}
-    const counts=report.coverage,filtered=filterValue==='all'?counts.asset_count:report.assets.filter(asset=>asset.scene_ids.includes(filterValue)).length;
-    status.textContent=`${filtered} scoped / ${counts.asset_count} project identities · ${counts.membership_count} scene memberships · ${counts.available_scene_count} available / ${counts.partial_scene_count} partial / ${counts.unavailable_scene_count} unavailable of ${counts.imported_scene_count} imported scenes.`;
+    const counts=report.coverage,globalCount=report.globalWorldmap?.coverage.asset_count??0,total=counts.asset_count+globalCount,filtered=filterValue==='all'?total:filterValue==='global-worldmap'?globalCount:report.assets.filter(asset=>asset.scene_ids.includes(filterValue)).length;
+    status.textContent=`${filtered} scoped / ${total} project identities · ${counts.membership_count} scene memberships${report.globalWorldmap?' · '+report.globalWorldmap.coverage.asset_count+' global world-map identities':''} · ${counts.available_scene_count} available / ${counts.partial_scene_count} partial / ${counts.unavailable_scene_count} unavailable of ${counts.imported_scene_count} imported scenes.`;
   }
   function renderScenes(){
     sceneRows.replaceChildren();if(!report)return;
@@ -131,10 +132,10 @@ export function mountProjectAssets({host,getContext,busy,setBusy,onChange=()=>{}
   async function refreshReport(){
     updateState();if(disposed||scopeValue!=='project'||!fresh()||busy()!==false||pending||!context.scenes.length)return false;
     const ticket=++generation,expected=clone(context),token={};report=null;sceneRows.replaceChildren();pending=true;controller=new AbortController();const signal=controller.signal;busyOwner=token;setBusy(true);error.textContent='';notify();updateState();const valid=()=>fresh()&&generation===ticket&&!signal.aborted&&scopeValue==='project';
-    try{const response=await fetch('/api/project-assets',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal});const raw=await response.text();if(new TextEncoder().encode(raw).byteLength>MAX_METADATA_BYTES)fail('Project asset metadata exceeds the 32 MiB budget.');const value=JSON.parse(raw);if(!response.ok||value?.error)fail(typeof value?.error==='string'?value.error:'Project resource verification failed.');if(!valid())return false;report=decodeProjectAssets(value,expected);renderScenes();notify();return true;}catch(value){if(valid()&&value?.name!=='AbortError'){report=null;sceneRows.replaceChildren();error.textContent=value?.message??String(value);onError(value instanceof Error?value:new Error(String(value)));notify();}return false;}finally{if(generation===ticket){controller=null;pending=false;}release(token);if(!disposed)updateState();}
+    try{const response=await fetch('/api/project-assets',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal});const raw=await response.text();if(new TextEncoder().encode(raw).byteLength>MAX_METADATA_BYTES)fail('Project asset metadata exceeds the 32 MiB budget.');const value=JSON.parse(raw);if(!response.ok||value?.error)fail(typeof value?.error==='string'?value.error:'Project resource verification failed.');if(!valid())return false;const imported=decodeProjectAssets(value,expected);if(globalWorldmap()){const response=await fetch('/api/worldmap-assets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source_key:expected.sourceKey}),signal}),raw=await response.text();if(new TextEncoder().encode(raw).length>MAX_METADATA_BYTES)fail('Global world-map metadata exceeds the 32 MiB budget.');const value=JSON.parse(raw);if(!response.ok)fail(value.error||'Global world-map discovery failed.');if(!valid())return false;imported.globalWorldmap=decodeWorldmapAssets(value,expected);const globalIds=new Set(imported.globalWorldmap.assets.map(r=>r.id));if(imported.assets.some(r=>globalIds.has(r.id)))fail('Global world-map identities conflict with imported field memberships.');if(new TextEncoder().encode(JSON.stringify(imported)).length>MAX_METADATA_BYTES)fail('Combined project asset metadata exceeds the 32 MiB budget.');}report=imported;renderScenes();notify();return true;}catch(value){if(valid()&&value?.name!=='AbortError'){report=null;sceneRows.replaceChildren();error.textContent=value?.message??String(value);onError(value instanceof Error?value:new Error(String(value)));notify();}return false;}finally{if(generation===ticket){controller=null;pending=false;}release(token);if(!disposed)updateState();}
   }
   scopeInput.onchange=()=>{if(disposed||!['active','project'].includes(scopeInput.value))return false;if(busy()!==false&&busyOwner===null){scopeInput.value=scopeValue;return false;}const next=scopeInput.value;if(next===scopeValue)return true;scopeValue=next;if(pending)invalidate();error.textContent='';updateState();notify();discovery.request(true);return true;};
-  filterInput.onchange=()=>{if(disposed||scopeValue!=='project'||busy()!==false||!fresh()||filterInput.value!=='all'&&!context.scenes.some(scene=>scene.id===filterInput.value)){filterInput.value=filterValue;return false;}filterValue=filterInput.value;renderCoverage();notify();return true;};refresh.onclick=()=>refresh.disabled?false:refreshReport();
+  filterInput.onchange=()=>{if(disposed||scopeValue!=='project'||busy()!==false||!fresh()||filterInput.value!=='all'&&!(filterInput.value==='global-worldmap'&&globalWorldmap())&&!context.scenes.some(scene=>scene.id===filterInput.value)){filterInput.value=filterValue;return false;}filterValue=filterInput.value;renderCoverage();notify();return true;};refresh.onclick=()=>refresh.disabled?false:refreshReport();
   function records(){updateState();return scopeValue==='project'&&report&&fresh()?projectAssetRecords(report,filterValue,context.activeSceneId??null,preferredScenes):[];}
   function chooseVariant(assetId,sceneId){updateState();if(disposed||scopeValue!=='project'||!report||!fresh()||busy()!==false||pending||filterValue!=='all'&&filterValue!==sceneId)return false;const asset=report.assets.find(row=>row.id===assetId);if(!asset?.scene_ids.includes(sceneId))return false;preferredScenes.set(assetId,sceneId);notify();return true;}
   function revealSource(sceneId){updateState();if(disposed||scopeValue!=='project'||!fresh()||busy()!==false||pending||!context.scenes.some(scene=>scene.id===sceneId))return false;if(filterValue!=='all'&&filterValue!==sceneId){filterValue=sceneId;filterInput.value=sceneId;renderCoverage();notify();}return true;}

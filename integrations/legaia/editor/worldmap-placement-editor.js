@@ -14,6 +14,7 @@ const fail=m=>{throw new Error(m);};
 const validValues=v=>v&&Object.keys(v).sort().join(',')==='offset,yaw_units'&&v.offset&&Object.keys(v.offset).sort().join(',')==='x,y,z'&&Object.values(v.offset).every(n=>Number.isSafeInteger(n)&&n>=-32768&&n<=32767)&&Number.isSafeInteger(v.yaw_units)&&v.yaw_units>=0&&v.yaw_units<4096;
 export function worldPlacementTarget(report,target){
   if(!target||!scenes.includes(target.scene)||target.scene!==report?.scene||!hash(target.sourceKey)||target.sourceKey!==report.source_key||!hash(target.sourceRecordHash)||!Number.isSafeInteger(target.recordIndex)||target.recordIndex<0||target.recordIndex>=512||typeof target.entityId!=='string')fail('World placement navigation source changed.');
+  if(target.sourceRecord!==undefined&&(!target.sourceRecord||Object.keys(target.sourceRecord).length!==4||['scene','source_disc_sha256','source_map_sha256','source_floor_lut_sha256'].some(k=>target.sourceRecord[k]!==report.source_record?.[k])))fail('Global kingdom provenance differs from the fresh placement source.');
   const rows=report.records.filter(row=>row.object_record_index===target.recordIndex&&row.source_record_sha256===target.sourceRecordHash&&row.placements.some(p=>p.entity_id===target.entityId));
   if(rows.length!==1)fail('World entity does not have one qualified placement record owner.');
   return structuredClone(rows[0]);

@@ -1130,6 +1130,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-placement-yaw.js": ("worldmap-placement-yaw.js", "text/javascript"),
                  "/worldmap-scene.js": ("worldmap-scene.js", "text/javascript"),
                  "/project-assets.js": ("project-assets.js", "text/javascript"),
+                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
                  "/script-facing.js": ("script-facing.js", "text/javascript"),
                  "/texture-usage.js": ("texture-usage.js", "text/javascript"),
                  "/runtime-review.js": ("runtime-review.js", "text/javascript"),

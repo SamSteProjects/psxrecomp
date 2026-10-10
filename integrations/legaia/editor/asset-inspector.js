@@ -13,6 +13,7 @@ export function worldPlacementAsset(record){
   return structuredClone(binding);
 }
 export function assetInspectorDefinition(schema,record){
+  if(record?.projectGlobal)return null;
   if(worldPlacementAsset(record)){if(schema?.authored_asset_inspectors?.world_placements!=='AssetWorldPlacements')throw Error('Unsupported authored world placement inspector descriptor.');return 'AssetWorldPlacements';}
   if(record?.type==='actor'&&Object.hasOwn(record.authoredRecord??{},'draft')){
     const authored=record.authoredRecord,value=authored.authored;

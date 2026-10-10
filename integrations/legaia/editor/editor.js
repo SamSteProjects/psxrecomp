@@ -1,3 +1,4 @@
+import {worldmapAssetTarget} from '/worldmap-assets.js';
 import {worldPlacementBuildTarget} from '/worldmap-placement-state.js';
 import {hierarchyControllerRecord,hierarchyNeedsControllerResources} from '/controller-hierarchy.js';
 import {controllerNavigationTarget,qualifyControllerNavigation} from '/controller-navigation.js';
@@ -2012,7 +2013,7 @@ function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false}={})
   if(!keepTrail)assetDetailsTrail.clear();
   assetPlacementSelection?.dispose();assetPlacementSelection=null;animationContributions?.dispose();animationContributions=null;
   const isAuthored=!!record.authoredRecord,inspectorId=assetInspectorDefinition(state.inspector_schema,record);
-  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${inspectorId?'':property('Stable ID',record.id)+property('Record type',record.type)+property(record.data?.scope?.startsWith('global-')?'Source scope':'Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='worldmap'?'Open world-map editor':record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='model'?'Inspect authored model':record.type==='script'?'Open script workspace':record.type==='controller'?'Inspect controller':record.type==='scene'?'Open scene':'Select actor'}${!['template','worldmap'].includes(record.type)&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
+  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${inspectorId?'':property('Stable ID',record.id)+property('Record type',record.type)+property(record.data?.scope?.startsWith('global-')?'Source scope':'Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='worldmap'?'Open world-map editor':record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='model'?'Inspect authored model':record.type==='script'?'Open script workspace':record.type==='controller'?'Inspect controller':record.type==='scene'?'Open scene':'Select actor'}${!['template','worldmap'].includes(record.type)&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored||record.projectGlobal?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
   const exportContext=resourceStateKey(),exportSnapshot=JSON.stringify(record);
   const previous=assetDetailsTrail.peek();
   if(previous){
@@ -2034,6 +2035,9 @@ function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false}={})
   if(record.type==='animation'&&record.data?.source_record?.record_sha256)animationContributions=mountAnimationContributions(evidence,{record,current:exportCurrent,busy:()=>busy,getContext:()=>({projectPath:state.project.path,sceneId:state.scene.id,sourceKey:state.project_copy_source_key,entities:entities()}),onSelect:async(owner,current)=>{const okay=await selectCurrentPlacementGroup([owner],owner,current);if(okay&&current())assetDetails.close();return okay;},onError:error=>notify(error.message,true)});
   const source=isAuthored?(record.authoredRecord.source_record ?? record.data?.source_record ?? record.data?.components?.RetailMetadata ?? {note:'No additional imported provenance is attached to this authored record.'}):record.data;
   $('asset-source-data').textContent=JSON.stringify(source,null,2);
+  if(record.projectGlobal){
+    const graph=projectAssetControls?.sourceReport()?.globalWorldmap,section=document.createElement('section');section.dataset.globalWorldmapAsset='';const heading=document.createElement('h3');heading.textContent='Global world-map ownership';section.append(heading);const note=document.createElement('p');note.textContent='Recorded source ownership; no imported field-scene membership or runtime residency is implied.';section.append(note);const inspect=document.createElement('button');inspect.textContent='Inspect source placements';inspect.id='inspect-global-world-placements';inspect.onclick=()=>{if(busy||!exportCurrent())return;assetDetails.close();activateAsset(record,'inspect-global-world-placements');};section.append(inspect);if(record.data.resource_role==='native_source_record'){const table=document.createElement('table');const head=document.createElement('tr');for(const text of ['Layer','Offset X','Offset Y','Offset Z','Yaw units']){const cell=document.createElement('th');cell.textContent=text;head.append(cell);}table.append(head);for(const [label,value] of [['Retail',record.data.retail_values],['Current',record.data.current_values],['Authored',record.data.authored_values]]){const row=document.createElement('tr');for(const text of [label,value?.offset.x??'—',value?.offset.y??'—',value?.offset.z??'—',value?.yaw_units??'—']){const cell=document.createElement('td');cell.textContent=text;row.append(cell);}table.append(row);}section.append(table);}const related=graph?.references.filter(e=>e.source_id===record.id||e.target_id===record.id)??[],links=document.createElement('details'),summary=document.createElement('summary');summary.textContent=`Related source owners and seeds (${related.length})`;links.append(summary);section.append(links);const targets=new Map(lookup().map(r=>[r.id,r]));for(const edge of related){const id=edge.source_id===record.id?edge.target_id:edge.source_id,target=targets.get(id);if(!target)continue;const button=document.createElement('button');button.className='asset-global-reference';button.dataset.assetId=id;button.textContent=(edge.source_id===record.id?'Owns: ':'Owner: ')+target.label;button.style.display='block';button.onclick=()=>{if(busy||!exportCurrent())return;assetDetailsTrail.remember(record,assetDetailsTrailContext(),lookup);showAssetDetails(target,lookup,{keepTrail:true});};links.append(button);}(assetDetails.querySelector('[data-asset-details-navigation]')??assetDetails.querySelector('.dialog-heading')).after(section);
+  }
   if(record.projectMembership){
     const membership=document.createElement('section'),label=document.createElement('label'),choice=document.createElement('select'),note=document.createElement('p');
     const authoredNpc=record.data?.layer==='authored'&&record.authoredRecord?.draft===true;
@@ -2045,7 +2049,7 @@ function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false}={})
     choice.onchange=()=>{if(busy||key!==state.project_assets_source_key||!projectAssetControls?.chooseVariant(record.id,choice.value))return;const next=assetRecords().find(item=>item.id===record.id);if(next){assetDetails.close();showAssetDetails(next);}};
     label.append(choice);membership.append(label,note);$('asset-source-data').parentElement.before(membership);
   }
-  if(state.capabilities?.asset_references&&record.type!=='template'){
+  if(state.capabilities?.asset_references&&record.type!=='template'&&!record.projectGlobal){
     const button=document.createElement('button');button.textContent='Inspect asset references…';button.id='inspect-asset-references';const key=state.asset_reference_source_key;
     button.onclick=()=>{if(busy||key!==state.asset_reference_source_key)return;assetDetails.close();openAssetReferences({record,initialScope:record.sceneId&&record.sceneId!==state.scene?.id?'project':'active',getState:()=>state,busy:()=>busy,onError:error=>notify(error.message,true),onNavigate:async node=>{
       if(!node.available||!(state.scenes??[]).some(scene=>scene.id===node.scene_id))throw new Error('Reference source scene is not imported.');
@@ -2175,6 +2179,7 @@ function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false}={})
 }
 function projectAssetContext(){return state.capabilities?.project_assets?{projectPath:state.project.path,sourceKey:state.project_assets_source_key,scenes:(state.scenes??[]).map(({id,name})=>({id,name})),activeSceneId:state.scene?.id??null}:null;}
 async function resolveProjectAsset(record){
+  if(record.projectGlobal){const report=projectAssetControls?.sourceReport()?.globalWorldmap;worldmapAssetTarget(record,report,state);return record;}
   if(!record.projectMembership)return record;
   const variant=projectAssetVariant(record,projectAssetContext()),expected=record.projectMembership.sourceKey;
   if(record.sceneId!==state.scene?.id&&!await api('/api/scene',{scene_id:record.sceneId}))return null;
@@ -2203,6 +2208,10 @@ async function inspectControllerAsset(record,focusFlagPc=null){
 async function activateAsset(record,action=null){
   if(busy)return;
   try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
+  if(record.projectGlobal){
+    if(!canEdit()||!state.capabilities?.worldmap_placements||worldmapDraftPending||![null,'inspect-global-world-placements'].includes(action))return;
+    try{const target=worldmapAssetTarget(record,projectAssetControls?.sourceReport()?.globalWorldmap,state);await worldPlacementControls.openTarget(target);}catch(error){notify(error.message,true);}return;
+  }
   if(record.type==='worldmap'){
     try{const binding=worldPlacementAsset(record);if(binding){
       if(![null,'inspect-authored-world-scene','edit-authored-world-placements'].includes(action)||!canEdit()||!state.capabilities?.worldmap_placements||worldmapDraftPending)return;
@@ -5823,7 +5832,7 @@ worldPlacementControls=mountWorldPlacements({after:$('resource-refresh'),getStat
 
 const projectAssetHost=document.createElement('div');projectAssetHost.style.gridColumn='1 / -1';assetTools.prepend(projectAssetHost);
 projectAssetControls=mountProjectAssets({host:projectAssetHost,getContext:projectAssetContext,busy:()=>busy,setBusy,
-  getUnavailableReason:()=>state.project_assets_unavailable_reason,
+  getUnavailableReason:()=>state.project_assets_unavailable_reason,globalWorldmap:()=>state.capabilities?.worldmap_placements===true,
   onChange:()=>{assetPageSignature=null;renderAssets();},onError:error=>notify(error.message,true)});
 
 mountSceneToolDrawer({toolbar:document.querySelector('.viewport-toolbar'),viewport:$('viewport-wrap'),keep:[sceneRuler.bar,npcGroundPlacement.bar,groundPositionBar,npcCreationBar,runRibbon,fieldNote,scenePoseBar,actorGroupTools,scriptTargetTools,transitionArrivalTools,npcArrivalTools,historicalTools],onToggle:()=>{cancelViewportGesture();resize();}});
