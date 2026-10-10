@@ -28,7 +28,7 @@ export function allocateWorldVectors(source,requests){
 }
 export async function replayWorldVectors(retail,base,binding){
  const fields=['format','source_scene_id','source_sha256','asset_sha256','byte_length','base_binding','ledger'];
- if(!exact(binding,fields)||binding.format!=='world-tmd-vector-allocation-v1'||!/^worldmap:\/\/map0[123]\/models$/.test(binding.source_scene_id)||binding.source_sha256!==await vectorDigest(retail)||base.length!==retail.length)fail('World vector retained base ownership differs.');
+ if(!exact(binding,fields)||!['world-tmd-vector-allocation-v1','world-tmd-vector-content-v1'].includes(binding.format)||!/^worldmap:\/\/map0[123]\/models$/.test(binding.source_scene_id)||binding.source_sha256!==await vectorDigest(retail)||base.length!==retail.length)fail('World vector retained base ownership differs.');
  const retained=binding.base_binding;
  if(retained===null){if(await vectorDigest(base)!==binding.source_sha256)fail('World vector unedited base differs.');}
  else{
@@ -39,10 +39,29 @@ export async function replayWorldVectors(retail,base,binding){
  const ledger=binding.ledger;
  if(!exact(ledger,['schema_version','source_sha256','source_byte_length','operations'])||ledger.schema_version!=='legaia.model-face-addition-ledger.v5'||ledger.source_sha256!==await vectorDigest(base)||ledger.source_byte_length!==base.length||!Array.isArray(ledger.operations)||!ledger.operations.length||ledger.operations.length>64||new TextEncoder().encode(JSON.stringify(ledger)).length>2*1024*1024)fail('World vector ledger ownership differs.');
  let current=base,total=0;
+ let allocations=0,edits=0;
  for(const operation of ledger.operations){
-  if(!exact(operation,['kind','input_sha256','proposed_sha256','requests'])||operation.kind!=='allocate_vectors'||operation.input_sha256!==await vectorDigest(current))fail('World vector operation source differs.');
-  current=allocateWorldVectors(current,operation.requests);total+=operation.requests.reduce((sum,r)=>sum+r.vectors.length,0);
+  if(operation?.input_sha256!==await vectorDigest(current))fail('World ledger operation source differs.');
+  if(operation.kind==='allocate_vectors'){
+   if(!exact(operation,['kind','input_sha256','proposed_sha256','requests']))fail('World vector operation schema differs.');
+   current=allocateWorldVectors(current,operation.requests);total+=operation.requests.reduce((sum,r)=>sum+r.vectors.length,0);allocations++;
+  }else if(operation.kind==='edit_content'&&binding.format==='world-tmd-vector-content-v1'){
+   if(!exact(operation,['kind','input_sha256','proposed_sha256','runs'])||!Array.isArray(operation.runs)||!operation.runs.length||operation.runs.length>600000)fail('World content operation schema differs.');
+   const candidate=current.slice();let end=0;
+   for(const run of operation.runs){
+    if(!exact(run,['offset','before_hex','after_hex'])||!Number.isInteger(run.offset)||run.offset<end||typeof run.before_hex!=='string'||typeof run.after_hex!=='string'||!/^([0-9a-f]{2})+$/.test(run.before_hex)||!/^([0-9a-f]{2})+$/.test(run.after_hex)||run.before_hex.length!==run.after_hex.length||run.offset+run.before_hex.length/2>current.length)fail('World content run ownership differs.');
+    for(let n=0;n<run.before_hex.length/2;n++){const before=parseInt(run.before_hex.slice(n*2,n*2+2),16),after=parseInt(run.after_hex.slice(n*2,n*2+2),16);if(current[run.offset+n]!==before||before===after)fail('World content preimage differs.');candidate[run.offset+n]=after;}end=run.offset+run.before_hex.length/2;
+   }
+   worldModelContentAudit(current,candidate);current=candidate;edits++;
+  }else fail('Unsupported World ledger operation.');
   if(total>4096||operation.proposed_sha256!==await vectorDigest(current))fail('World vector operation output differs.');
  }
+ if(!allocations||binding.format==='world-tmd-vector-content-v1'&&!edits)fail('World content binding lacks its native allocation/edit lineage.');
  if(current.length!==binding.byte_length||await vectorDigest(current)!==binding.asset_sha256)fail('World vector binding output differs.');return current;
+}
+
+export function worldContentRuns(before,after){
+ worldModelContentAudit(before,after);const runs=[];let at=0;
+ const hex=bytes=>Array.from(bytes,n=>n.toString(16).padStart(2,'0')).join('');
+ while(at<before.length){if(before[at]===after[at]){at++;continue;}const start=at;while(at<before.length&&before[at]!==after[at])at++;runs.push({offset:start,before_hex:hex(before.subarray(start,at)),after_hex:hex(after.subarray(start,at))});}return runs;
 }

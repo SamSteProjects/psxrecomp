@@ -27,11 +27,33 @@ def prepare(project,request):
         raise ProjectError('World model replacement byte coverage differs')
     original,native=source(project,request['asset_id']);binding=project.model_overrides.get(request['asset_id'])
     effective=project.read_model_replacement(request['asset_id'],binding) if binding else original
-    if binding and binding['format']=='world-tmd-vector-allocation-v1':
-        raise ProjectError('Allocated World content editing needs ledger-aware Review; Current inspection and export remain supported')
     if sha256(original).hexdigest()!=request['member_sha256'] or sha256(effective).hexdigest()!=request['effective_sha256']:
         raise ProjectError('World model source changed; inspect Current again')
     candidate=content if request['format']!='json' else import_shape_json(effective,request['effective_sha256'],content)[0]
+    from .worldmap_model_allocation import FORMATS,CONTENT_FORMAT
+    if binding and binding['format'] in FORMATS:
+        from copy import deepcopy
+        from .model_face_addition import base_content
+        from importer.model_face_ledger import append_content_ledger
+        if request['format']!='content-tmd':replace_model_shape(effective,request['effective_sha256'],candidate)
+        candidate,pending=replace_model_content(effective,request['effective_sha256'],candidate,allow_normal_references=True)
+        base=base_content(project,request['asset_id'],original,binding)
+        replay,ledger,_=append_content_ledger(base,binding['ledger'],candidate)
+        if replay!=candidate:raise ProjectError('Allocated content differs from complete native ledger replay')
+        proposed=deepcopy(binding)
+        if candidate!=effective:
+            proposed.update(format=CONTENT_FORMAT,asset_sha256=sha256(candidate).hexdigest(),byte_length=len(candidate),ledger=ledger)
+        report=dict(schema_version='legaia.worldmap-model-replacement.v3',project_path=str(project.root),
+            request={k:v for k,v in request.items() if k!='content_base64'},input_sha256=sha256(content).hexdigest(),
+            source_record=native,proposed_sha256=sha256(candidate).hexdigest(),byte_length=len(candidate),
+            changes_from_retail=None,changes_from_current=sorted(pending,key=lambda r:r['byte_offset']),
+            changed=candidate!=effective,clears_override=False,scope='allocated-TMD-existing-layout-content',
+            proposed_binding=proposed,project_changed=False,gameplay_verified=False)
+        if len(json.dumps(report,allow_nan=False).encode('utf-8'))>16*1024*1024:
+            raise ProjectError('Allocated content Review exceeds its metadata budget')
+        report['review_key']=digest(report)
+        if project.mode!='edit' or state_key(project)!=request['source_key']:raise ProjectError('World source changed during allocated content Review')
+        return candidate,report
     extended=request['format']=='content-tmd' or binding is not None and binding['format']!='tmd-shape'
     if request['format']!='content-tmd':replace_model_shape(effective,request['effective_sha256'],candidate)
     if extended:
@@ -60,7 +82,10 @@ def review(project,request):return prepare(project,request)[1]
 def apply(project,request,review_key):
     candidate,report=prepare(project,request)
     if report['review_key']!=review_key:raise ProjectError('World model Apply requires the exact freshly qualified Review')
-    if report['changed']:project.set_model_replacement(request['asset_id'],candidate)
+    if report['changed']:
+        if 'proposed_binding' in report:
+            project._publish_model_ledger(request['asset_id'],candidate,report['proposed_binding'],request['source_key'],'World allocated content')
+        else:project.set_model_replacement(request['asset_id'],candidate)
     return report
 
 
@@ -105,11 +130,12 @@ def material_preview(project,request,review_key):
     proposed=copy.deepcopy(current)
     asset=next((a for a in proposed['scene_graph']['assets'] if a['asset_id']==request['asset_id']),None)
     if asset is None or asset['source_record']!=report['source_record']:raise ProjectError('Material proposal lost native source ownership')
-    changes=report['changes_from_retail']
+    changes=report['changes_from_current'] if 'proposed_binding' in report else report['changes_from_retail']
     normal=any(r['kind']=='primitive' and r['field']=='normal_index' for r in changes)
     material=any(r['kind']=='primitive_group' or r['kind']=='primitive' and r['field'] in ('clut','tpage') for r in changes)
     primitive=any(r['kind']=='primitive' for r in changes)
     binding=dict(format='tmd-content-v3' if normal else 'tmd-content-v2' if material else 'tmd-content-v1' if primitive else 'tmd-shape',source_scene_id=owner(request['asset_id']),source_sha256=request['member_sha256'],asset_sha256=report['proposed_sha256'],byte_length=len(candidate))
+    if 'proposed_binding' in report:binding=report['proposed_binding']
     asset['preview']=preview_model_shape(asset['preview'],candidate,binding)
     compose(project,proposed,force=True)
     for preview in [proposed['preview']]+[a['preview'] for a in proposed['scene_graph']['assets']]:

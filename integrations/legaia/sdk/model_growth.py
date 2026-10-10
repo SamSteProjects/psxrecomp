@@ -58,7 +58,7 @@ def prepare_model_growth(project, archive):
         groups.setdefault(identity, []).append((identifier, binding, source))
     requests, reports, deferred, content_growth, content_changes = [], [], [], [], {}
     for (entry_index, section_index), members in sorted(groups.items(), key=lambda row:str(row[0])):
-        topology_growth = any(binding['format'] in ('tmd-face-addition-v1', 'world-tmd-vector-allocation-v1') for _, binding, _ in members)
+        topology_growth = any(binding['format'] in ('tmd-face-addition-v1', 'world-tmd-vector-allocation-v1','world-tmd-vector-content-v1') for _, binding, _ in members)
         if not topology_growth and any(owner(identifier) for identifier, _, _ in members):
             continue  # Existing-layout World members retain their existing serializer.
         if not topology_growth and not _content_requires_growth(project, archive, members):
@@ -109,7 +109,7 @@ def prepare_model_growth(project, archive):
                         allow_materials=binding['format'] in ('tmd-content-v2', 'tmd-content-v3'),
                         allow_normal_references=binding['format'] == 'tmd-content-v3')
                 content_changes[identifier] = changes
-            if binding['format'] in ('tmd-face-addition-v1', 'world-tmd-vector-allocation-v1'):
+            if binding['format'] in ('tmd-face-addition-v1', 'world-tmd-vector-allocation-v1','world-tmd-vector-content-v1'):
                 base_binding = deepcopy(binding['base_binding'])
                 base_payload = project.read_model_replacement(identifier, base_binding) if base_binding else None
                 ledger = deepcopy(binding['ledger'])

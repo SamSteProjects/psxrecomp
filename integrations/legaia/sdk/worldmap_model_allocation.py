@@ -18,11 +18,13 @@ from .worldmap_model_binding import owner, source
 
 
 FORMAT = 'world-tmd-vector-allocation-v1'
+CONTENT_FORMAT = 'world-tmd-vector-content-v1'
+FORMATS = (FORMAT, CONTENT_FORMAT)
 
 
 def retained(project, identifier, original, binding, effective):
     """Return the independently qualified base and replay record for a pack member."""
-    if binding and binding.get('format') == FORMAT:
+    if binding and binding.get('format') in FORMATS:
         from .model_face_addition import base_content
         return base_content(project, identifier, original, binding), deepcopy(binding['base_binding']), deepcopy(binding['ledger'])
     return effective, deepcopy(binding), create_face_ledger(effective)
@@ -33,8 +35,10 @@ def validate_ledger(binding):
     ledger = binding.get('ledger')
     if (not isinstance(ledger, dict) or ledger.get('schema_version') != VECTOR_SCHEMA
             or not isinstance(ledger.get('operations'), list) or not ledger['operations']
-            or any(not isinstance(op, dict) or op.get('kind') != 'allocate_vectors' for op in ledger['operations'])):
-        raise ProjectError('World vector binding requires a nonempty vector-only replay ledger')
+            or not any(isinstance(op,dict) and op.get('kind')=='allocate_vectors' for op in ledger['operations'])
+            or any(not isinstance(op,dict) or op.get('kind') not in (('allocate_vectors','edit_content') if binding['format']==CONTENT_FORMAT else ('allocate_vectors',)) for op in ledger['operations'])
+            or binding['format']==CONTENT_FORMAT and not any(op.get('kind')=='edit_content' for op in ledger['operations'])):
+        raise ProjectError('World vector-only binding requires allocation replay' if binding.get('format')==FORMAT else 'World allocated content binding requires vector/content replay')
 
 
 def prepare(project, request):
@@ -56,7 +60,7 @@ def prepare(project, request):
         raise ProjectError('World allocation source changed; inspect Current again')
     base, base_binding, previous_ledger = retained(project, identifier, original, binding, effective)
     candidate, ledger, topology = append_vector_ledger(base, previous_ledger, request['requests'])
-    proposed_binding = dict(format=FORMAT, source_scene_id=owner(identifier),
+    proposed_binding = dict(format=binding['format'] if binding and binding['format'] in FORMATS else FORMAT, source_scene_id=owner(identifier),
         source_sha256=sha256(original).hexdigest(), asset_sha256=sha256(candidate).hexdigest(),
         byte_length=len(candidate), base_binding=base_binding, ledger=deepcopy(ledger))
     independent, allocation = append_model_vectors(effective, request['effective_sha256'], request['requests'])

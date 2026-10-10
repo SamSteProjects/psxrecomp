@@ -86,7 +86,12 @@ def apply(project,asset,candidate,content,binding,report):
         from .scene_preview import source_key
     if source_key(project)!=binding['project_source_key']:raise ProjectError('Model source context changed before Apply')
     try:
-        length=len(project.undo_stack);project.set_model_replacement(asset,candidate)
+        length=len(project.undo_stack)
+        if 'native_binding' in report:
+            if binding.get('schema_version')!='legaia.worldmap-model-glb-binding.v1':
+                raise ProjectError('Retained allocation content requires a World GLB context')
+            project._publish_model_ledger(asset,candidate,report['native_binding'],binding['project_source_key'],'World GLB allocated content')
+        else:project.set_model_replacement(asset,candidate)
         if len(project.undo_stack)!=length+1:raise ProjectError('Model source retention requires one native history step')
         project.model_sources=after
         project.undo_stack[-1]=dict(target='model_source_import',before=dict(model_overrides=before[0],model_sources=before[1]),after=dict(model_overrides=deepcopy(project.model_overrides),model_sources=deepcopy(after)))

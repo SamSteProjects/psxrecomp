@@ -97,5 +97,6 @@ def apply_import(project,request,review_key):
     if not report['native_review']['changed']:raise ProjectError('World GLB has no quantized Current changes to Apply')
     from .model_glb_sources import apply as retain_source
     retain_source(project,request['asset_id'],candidate,content,request['binding'],
-                  dict(proposed_sha256=report['native_review']['proposed_sha256'],review_key=review_key))
+                  dict(proposed_sha256=report['native_review']['proposed_sha256'],review_key=review_key,
+                       **({'native_binding':report['native_review']['proposed_binding']} if 'proposed_binding' in report['native_review'] else {})))
     return report
