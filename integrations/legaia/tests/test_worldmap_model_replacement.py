@@ -26,6 +26,6 @@ class WorldModelReplacementTests(TestCase):
     with self.assertRaises(ProjectError):p.read_model_replacement(identifier,{**binding,'source_scene_id':'scene://town01'})
     corrupt=bytearray(original);corrupt[0]^=1
     with self.assertRaises(Exception):p.set_model_replacement(identifier,bytes(corrupt))
-    latest=p.read_model_replacement(identifier,p.model_overrides[identifier]);restore={**request,'effective_sha256':sha256(latest).hexdigest(),'content_base64':base64.b64encode(original).decode()};receipt=review(p,restore);apply(p,restore,receipt['review_key']);self.assertNotIn(identifier,p.model_overrides);p.undo();self.assertEqual(p.read_model_replacement(identifier,p.model_overrides[identifier]),latest)
+    latest=p.read_model_replacement(identifier,p.model_overrides[identifier]);restore={**request,'effective_sha256':sha256(latest).hexdigest(),'content_base64':base64.b64encode(original).decode()};receipt=review(p,restore);apply(p,restore,receipt['review_key']);self.assertNotIn(identifier,p.model_overrides);self.assertNotIn(identifier,ProjectService.open(p.save()).model_overrides);p.undo();self.assertEqual(p.read_model_replacement(identifier,p.model_overrides[identifier]),latest)
     p.mode='live'
     with self.assertRaises(ProjectError):review(p,current)
