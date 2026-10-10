@@ -37,3 +37,29 @@ class CurrentWorldTextureTests(TestCase):
    p=ProjectService(Path(root));geometry=dict(scene='map01',source_record=dict(disc_sha256='a'*64),scene_graph=dict(metrics=dict(texture_output_bytes=0)))
    with patch('sdk.worldmap_current_textures.context',side_effect=AssertionError('no native reread needed')):compose(p,geometry)
    self.assertEqual(geometry['texture_authoring']['edits'],[])
+
+ def test_face_growth_reassociates_native_crop_without_texture_override(self):
+  tim,_,_=fixture()
+  raw=struct.pack('<II',16,8)+struct.pack('<IHHHH',12+len(tim.clut.data),0,1,32,1)+tim.clut.data+struct.pack('<IHHHH',14,0,0,1,1)+tim.image.data
+  tim=parse_tim(raw)
+  identifier='texture://map01/kingdom/0000'
+  catalog=TextureCatalog('map01','a'*64)
+  catalog.textures=[(tim,dict(semantic_id=identifier))]
+  preview=dict(triangle_materials=[0],triangle_uvs=[[[0,0],[3,0],[0,0]]],
+   materials=[dict(textured=True,tpage=0,clut=64)],
+   textures=[dict(status='address_match',material_index=0,rgba=b'stale',stp=b'0')],
+   texture_catalog=dict(textures=[dict(semantic_id=identifier)]))
+  geometry=dict(scene='map01',source_record=dict(disc_sha256='a'*64),preview=preview,
+   metrics={},model_authoring=dict(schema_version='legaia.worldmap-current-models.v4'),
+   scene_graph=dict(assets=[dict(asset_id='model',preview=deepcopy(preview))],metrics={}))
+  ctx=SimpleNamespace(_digest='a'*64,_catalog=catalog)
+  with TemporaryDirectory() as root:
+   p=ProjectService(Path(root));held=deepcopy(p._document())
+   with patch('sdk.worldmap_current_textures.context',return_value=ctx) as context:
+    result=compose(p,geometry)
+   context.assert_called_once_with(p,identifier)
+   for value in [result['preview'],result['scene_graph']['assets'][0]['preview']]:
+    self.assertEqual(value['textures'][0]['rgba'],bytes([0,0,0,0,255,0,0,255,0,255,0,255,0,0,255,255]))
+    self.assertEqual(value['triangle_uvs'],preview['triangle_uvs'])
+   self.assertEqual(result['texture_authoring']['edits'],[])
+   self.assertEqual(p._document(),held)
