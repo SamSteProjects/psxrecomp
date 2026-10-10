@@ -14,7 +14,7 @@ from importer.model_authoring import preview_model_shape
 from importer.assets import decode_tmd
 from sdk.project import ProjectService, ProjectError
 from sdk.worldmap_authoring import state_key
-from sdk.worldmap_model_objects import source, review, apply
+from sdk.worldmap_model_objects import source, review, apply, preview
 from test_model_pack_growth import pack_source, container_for
 from test_model_primitive_workflow import http_server
 
@@ -79,6 +79,10 @@ class WorldObjectReviewTests(TestCase):
                     self.assertEqual(post('/api/worldmap-model-object-apply',dict(request=proposal,review_key='0'*64))[0],400)
                     self.assertEqual(post('/api/worldmap-model-object-apply',dict(request=proposal,review_key=receipt['review_key'],extra=True))[0],400)
                 self.assertEqual(p._document(),held);self.assertEqual((p.undo_stack,p.redo_stack),history)
+                with patch('sdk.worldmap_geometry.inspect',side_effect=AssertionError('stale preview must not inspect geometry')):
+                    with self.assertRaises(ProjectError):preview(p,proposal,'0'*64)
+                with http_server(p) as (_,post):
+                    self.assertEqual(post('/api/worldmap-model-object-preview',dict(request=proposal,review_key=receipt['review_key'],extra=True))[0],400)
                 with self.assertRaises(ProjectError):apply(p,proposal,'0'*64)
                 with http_server(p) as (_,post):
                     status,body=post('/api/worldmap-model-object-apply',dict(request=proposal,review_key=receipt['review_key']))

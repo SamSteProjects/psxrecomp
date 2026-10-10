@@ -1133,6 +1133,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-model-restoration.js": ("worldmap-model-restoration.js", "text/javascript"),
                  "/worldmap-model-allocation.js": ("worldmap-model-allocation.js", "text/javascript"),
                  "/worldmap-model-faces.js": ("worldmap-model-faces.js", "text/javascript"),
+                 "/worldmap-model-objects.js": ("worldmap-model-objects.js", "text/javascript"),
                  "/worldmap-model-object-replay.js": ("worldmap-model-object-replay.js", "text/javascript"),
                  "/worldmap-model-group-replay.js": ("worldmap-model-group-replay.js", "text/javascript"),
                  "/worldmap-model-face-replay.js": ("worldmap-model-face-replay.js", "text/javascript"),
@@ -1372,6 +1373,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_model_groups import apply
                     apply(self.server.project,body['request'],body['review_key'])
                     self._json(200,self.server.state());return
+                if route=='/api/worldmap-model-object-preview':
+                    if set(body)!={'request','review_key'}:
+                        raise ProjectError('World object preview requires request and Review key')
+                    from .worldmap_model_objects import preview
+                    self._json(200,preview(self.server.project,body['request'],body['review_key']));return
                 if route=='/api/worldmap-model-object-apply':
                     if set(body)!={'request','review_key'}:
                         raise ProjectError('World object Apply requires request and Review key')
