@@ -80,12 +80,20 @@ def compose(project, geometry, *, transform_entries=None, allocation_binding=_DE
     return geometry['placement_authoring']
 
 
-def inspect(project, scene, key, allocation_proposal=None, allocation_edit_proposal=None, allocation_remove_proposal=None, allocation_cell_proposal=None, allocation_model_proposal=None):
+def inspect(project, scene, key, allocation_proposal=None, allocation_edit_proposal=None, allocation_remove_proposal=None, allocation_cell_proposal=None, allocation_model_proposal=None, allocation_group_proposal=None):
     if project.mode != 'edit' or key != state_key(project):
         raise ProjectError('Current World scene requires fresh Edit source inputs')
     binding=_DEFAULT
-    if sum(p is not None for p in (allocation_proposal,allocation_edit_proposal,allocation_remove_proposal,allocation_cell_proposal,allocation_model_proposal))>1:
+    if sum(p is not None for p in (allocation_proposal,allocation_edit_proposal,allocation_remove_proposal,allocation_cell_proposal,allocation_model_proposal,allocation_group_proposal))>1:
         raise ProjectError('Choose one proposed World allocation or decoration transform')
+    if allocation_group_proposal is not None:
+        if not isinstance(allocation_group_proposal,dict) or set(allocation_group_proposal) != {'placement_ids','delta','review_key'}:
+            raise ProjectError('Proposed group transform requires exact reviewed identities and delta')
+        from .worldmap_decoration_group import review
+        reviewed=review(project,scene,key,allocation_group_proposal['placement_ids'],allocation_group_proposal['delta'])
+        if reviewed['review_key'] != allocation_group_proposal['review_key']:
+            raise ProjectError('Proposed group transform Review is stale')
+        binding=reviewed['binding']
     if allocation_model_proposal is not None:
         if not isinstance(allocation_model_proposal,dict) or set(allocation_model_proposal) != {'placement_id','model_pool_index','review_key'}:
             raise ProjectError('Proposed model assignment requires exact reviewed identity and native model')
@@ -128,13 +136,14 @@ def inspect(project, scene, key, allocation_proposal=None, allocation_edit_propo
     from .worldmap_geometry import inspect as inspect_geometry
     geometry=inspect_geometry(project,scene,key,texture_layer='current',model_layer='current')
     compose(project,geometry,allocation_binding=binding)
-    geometry.update(representation='proposed-source' if allocation_proposal or allocation_edit_proposal or allocation_remove_proposal or allocation_cell_proposal or allocation_model_proposal else 'current-source',
+    geometry.update(representation='proposed-source' if allocation_proposal or allocation_edit_proposal or allocation_remove_proposal or allocation_cell_proposal or allocation_model_proposal or allocation_group_proposal else 'current-source',
         allocation_proposal=deepcopy(allocation_proposal))
     if allocation_edit_proposal is not None:
         geometry['allocation_edit_proposal']=deepcopy(allocation_edit_proposal)
     if allocation_remove_proposal is not None:geometry['allocation_remove_proposal']=deepcopy(allocation_remove_proposal)
     if allocation_cell_proposal is not None:geometry['allocation_cell_proposal']=deepcopy(allocation_cell_proposal)
     if allocation_model_proposal is not None:geometry['allocation_model_proposal']=deepcopy(allocation_model_proposal)
+    if allocation_group_proposal is not None:geometry['allocation_group_proposal']=deepcopy(allocation_group_proposal)
     if project.mode != 'edit' or key != state_key(project):
         raise ProjectError('Current World scene source changed during composition')
     import json

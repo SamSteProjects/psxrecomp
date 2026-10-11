@@ -71,6 +71,47 @@ export async function qualifyWorldDecorationReview(value, source, requests) {
   return structuredClone(value);
 }
 
+export async function transformWorldDecorationGroup(source, placementIds, delta) {
+  if (!Array.isArray(placementIds) || placementIds.length < 1 || placementIds.length > 32 ||
+      placementIds.some(i=>typeof i!=='string') || !same(placementIds,[...new Set(placementIds)].sort()) ||
+      !exact(delta,['x','y','z','yaw_units']) || ['x','y','z'].some(a=>!Number.isInteger(delta[a])||Math.abs(delta[a])>65535) ||
+      !Number.isInteger(delta.yaw_units) || Math.abs(delta.yaw_units)>4095 || !Object.values(delta).some(n=>n!==0))
+    fail('Choose 1–32 unique retained identities and bounded nonzero integer deltas.');
+  const binding=structuredClone(source.metadata.binding), changes=[];
+  const all=binding?.operations.flatMap(op=>op.requests)??[], literal=source.bytes.slice(), view=new DataView(literal.buffer);
+  for(const placementId of placementIds){
+    const matches=all.filter(r=>r.placement_id===placementId), before=source.metadata.authored_allocations.find(a=>a.placement_id===placementId);
+    if(matches.length!==1||!before)fail('Group contains an unavailable authored identity.');
+    const current=matches[0].values, values={offset:Object.fromEntries(['x','y','z'].map(a=>[a,current.offset[a]+delta[a]])),yaw_units:((current.yaw_units+delta.yaw_units)%4096+4096)%4096};
+    if(!validValues(values))fail('Group transform overflows a signed16 offset.');
+    matches[0].values=values;
+    const at=before.record_index*32,currentValues={offset:Object.fromEntries(['x','y','z'].map((a,i)=>[a,view.getInt16(at+i*2,true)])),yaw_units:view.getUint16(at+10,true)&4095};
+    for(const [i,a] of ['x','y','z'].entries())view.setInt16(at+i*2,currentValues.offset[a]+delta[a],true);
+    view.setUint16(at+10,(view.getUint16(at+10,true)&0xf000)|((currentValues.yaw_units+delta.yaw_units+4096)%4096),true);
+    changes.push({placement_id:placementId,before:structuredClone(before),current_values:currentValues,values:structuredClone(values)});
+  }
+  let canonical=source.retailBytes;
+  for(const op of binding.operations){const allocated=await allocateWorldPlacements(canonical,source.metadata.floor_lut,source.metadata.scene,op.requests);canonical=allocated.bytes;op.proposed_map_sha256=allocated.audit.proposed_sha256;}
+  const replayed=await replayWorldPlacementAllocations(source.retailBytes,source.metadata.floor_lut,source.metadata.scene,binding,source.metadata.source_record);
+  const bytes=await composeWorldPlacementTransforms(source.retailBytes,replayed.bytes,source.metadata.floor_lut,source.metadata.scene,source.authoredRecords);
+  if(!equalWorldPlacementBytes(bytes,literal))fail('Group changed unrelated native bytes or unselected decorations.');
+  for(const change of changes)change.after=replayed.allocations.find(a=>a.placement_id===change.placement_id);
+  return {binding,bytes,audit:{placements:changes,changed_bytes:Array.from(bytes.entries()).filter(([i,n])=>n!==source.bytes[i]).map(([i,n])=>({byte_offset:i,before_byte:source.bytes[i],after_byte:n})),scope:'authored-decoration-group-transform-only',gameplay_verified:false}};
+}
+
+export async function qualifyWorldDecorationGroupReview(value,source,placementIds,delta){
+  const before=source.metadata;
+  if(!exact(value,['schema_version','project_path','scene','source_key','source_record','placement_ids','delta','current_map_sha256','proposed_map_sha256','proposed_map_base64','before_binding','binding','audit','read_only','project_changed','gameplay_verified','build_ready','review_key']) ||
+      value.schema_version!=='legaia.worldmap-decoration-group-review.v1'||value.project_path!==before.project_path||value.scene!==before.scene||
+      value.source_key!==before.source_key||!same(value.source_record,before.source_record)||!same(value.placement_ids,placementIds)||!same(value.delta,delta)||
+      value.current_map_sha256!==before.current_map_sha256||!same(value.before_binding,before.binding)||value.read_only!==true||value.project_changed!==false||value.gameplay_verified!==false||value.build_ready!==false||!hash(value.review_key))
+    fail('Group Review changed its Current identities, delta or read-only scope.');
+  const revised=await transformWorldDecorationGroup(source,placementIds,delta);
+  if(!same(value.binding,revised.binding)||!same(value.audit,revised.audit)||!equalWorldPlacementBytes(decode(value.proposed_map_base64),revised.bytes)||value.proposed_map_sha256!==await placementDigest(revised.bytes))
+    fail('Group Review differs from independent recipe replay and complete literal patch.');
+  return structuredClone(value);
+}
+
 export async function reviseWorldDecoration(source, placementId, values) {
   if (!validValues(values)) fail('Decoration transform requires signed16 XYZ and yaw 0–4095.');
   const before = source.metadata.authored_allocations.find(a => a.placement_id === placementId), binding = structuredClone(source.metadata.binding);

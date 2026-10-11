@@ -2259,6 +2259,10 @@ class ProjectService:
             from .worldmap_placement_allocation import apply
             apply(self, command)
             return
+        if command.get('type') == 'transform_worldmap_authored_placements':
+            from .worldmap_decoration_group import apply
+            apply(self, command)
+            return
         if command.get('type') == 'set_worldmap_authored_placement':
             from .worldmap_placement_edit import apply
             apply(self, command)
