@@ -532,6 +532,7 @@ def inspector_schema():
     scripted['label']='Authored World scripted placement'
     scripted['actions']=[scripted['actions'][0]]
     scripted['actions'].append({'id':'inspect-scripted-world-bind','label':'Inspect shared scripted bind','capability':'worldmap_placements','requires_edit':True})
+    scripted['actions'].append({'id':'edit-scripted-world-transform','label':'Edit saved scripted transform','capability':'worldmap_placements','requires_edit':True})
     scripted['notes']=['This authored placement has no Retail instance transform. Native coordinates use Y-down; viewport Y reflection is separate.',
         'The retained placement shares its donor script. Runtime activation, script effects and resting positions remain unverified.']
     schema['components']['WorldAuthoredScriptedBind']={

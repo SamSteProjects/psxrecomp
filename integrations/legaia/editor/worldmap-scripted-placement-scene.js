@@ -4,6 +4,7 @@ import {decodeWorldPlacementSeeds, equalWorldPlacementBytes} from './worldmap-pl
 import {nativeWorldPlacementMatches} from './worldmap-current-placements.js';
 import {qualifyCurrentWorldModels, currentWorldModelView} from './worldmap-current-models.js';
 import {qualifyScriptedCreationReview} from './worldmap-scripted-creation-state.js';
+import {qualifyScriptedTransformReview} from './worldmap-scripted-transform-state.js';
 const fail=m=>{throw Error(m);};
 const canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
 const same=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
@@ -82,6 +83,16 @@ export async function qualifyProposedScriptedWorldScene(retail,proposed,review,c
   const mapWitness=structuredClone(creation.mapWitness),overrides=structuredClone(options.overrides);
   mapWitness.current_map_base64=review.proposed_map_base64;mapWitness.current_map_sha256=review.proposed_map_sha256;mapWitness.scripted_binding=structuredClone(review.binding);
   mapWitness.retained_base_map_base64=creation.source.binding?creation.mapWitness.retained_base_map_base64:creation.source.current_map_base64;
+  overrides[`worldmap://${retail.scene}/scripted-placement-allocations`]={WorldMapScriptedPlacementAllocations:structuredClone(review.binding)};
+  const view=await qualifyScriptedWorldScene(retail,normalized,{...options,mapWitness,overrides});
+  return {...view,entities:view.entities.map(e=>({...e,preview_layer:'Proposed authored seeds'}))};
+}
+export async function qualifyProposedScriptedTransformScene(retail,proposed,review,qualified,options){
+  await qualifyScriptedTransformReview(review,qualified,review.placement_id,review.values);
+  if(proposed?.schema_version!=='legaia.worldmap-scripted-placement-proposed-scene.v1'||proposed.representation!=='proposed-scripted-placement-source'||proposed.placement_layer!=='proposed'||!nativeWorldPlacementMatches(proposed.scripted_proposal,review))fail('Proposed scripted transform differs from native Review.');
+  const normalized=structuredClone(proposed);delete normalized.scripted_proposal;normalized.schema_version='legaia.worldmap-scripted-placement-scene.v1';normalized.representation='current-scripted-placement-source';normalized.placement_layer='current';
+  const mapWitness=structuredClone(qualified.mapWitness),overrides=structuredClone(options.overrides);
+  mapWitness.current_map_base64=review.proposed_map_base64;mapWitness.current_map_sha256=review.proposed_map_sha256;mapWitness.scripted_binding=structuredClone(review.binding);
   overrides[`worldmap://${retail.scene}/scripted-placement-allocations`]={WorldMapScriptedPlacementAllocations:structuredClone(review.binding)};
   const view=await qualifyScriptedWorldScene(retail,normalized,{...options,mapWitness,overrides});
   return {...view,entities:view.entities.map(e=>({...e,preview_layer:'Proposed authored seeds'}))};
