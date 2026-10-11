@@ -158,3 +158,5 @@ Selected supported Retail or saved Current clips now export through the shared r
 Edited exported clips can return through [World Animation GLB Round-Trip Authoring](legaia-worldmap-animation-glb.md), with fresh source binding, native Review, Preview and one-command Apply.
 
 See [World Animation Range Authoring](legaia-worldmap-animation-ranges.md) for frame, constant hold, motion-preserving offset and Retail restoration scopes.
+
+[World Native Animation Channel Inspector](legaia-worldmap-animation-channels.md) exposes Retail/Current native frames for all 38 supported World clips, including 35 clips without confirmed model bindings, without posed-preview or runtime claims.

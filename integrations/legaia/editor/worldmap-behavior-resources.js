@@ -1,3 +1,4 @@
+import {mountWorldAnimationChannels} from './worldmap-animation-channels.js';
 import {mountWorldScriptOperands} from './world-script-animation-operands.js';
 import {mountWorldScriptInspection} from './world-script-inspection.js';
 import {mountWorldScriptBranches} from './world-script-branches.js';
@@ -75,7 +76,7 @@ export function qualifyWorldmapBehaviorResource(record,index,state){
 }
 const node=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
 export function showWorldmapBehaviorResource({dialog,record,lookup,getReport,getState,busy,setBusy,api,onApplied,onFocus,onNavigate,onError}){
- const target=qualifyWorldmapBehaviorResource(record,getReport(),getState());let editing=null,inspecting=null,branching=null;
+ const target=qualifyWorldmapBehaviorResource(record,getReport(),getState());let editing=null,inspecting=null,branching=null,channels=null;
  const current=()=>{if(busy()||!dialog.open||!same(lookup().find(r=>r.id===record.id),record))fail('World behavior details are no longer current.');return qualifyWorldmapBehaviorResource(record,getReport(),getState());};
  dialog.replaceChildren();const heading=node('div');heading.className='dialog-heading';const close=node('button','Close');close.setAttribute('aria-label','Close asset details');close.onclick=()=>dialog.close();heading.append(node('h2',record.label),close);dialog.append(heading,node('p','Registered Retail source resource. Bindings describe source objects; Current edits and live activation are separate. Supported fixed instruction arguments use separate project overrides.'));
  if(record.type==='animation')dialog.append(node('p',`${target.record.frame_count} frames · ${target.record.channel_count} rigid object channels · ${target.record.bindings.length} compatible source instances. Timing, looping and runtime use are unknown. ${target.record.bindings.length?'Open a source object to inspect its Retail and Current poses.':'No source object association is recorded for this clip.'}`));
@@ -97,5 +98,9 @@ export function showWorldmapBehaviorResource({dialog,record,lookup,getReport,get
   editing=mountWorldScriptOperands({host:dialog,record:target.record,key:target.sourceKey,path:target.projectPath,current:valid,busy,setBusy:ownedBusy,api,onApplied,onError});
   branching=mountWorldScriptBranches({host:dialog,record:target.record,key:target.sourceKey,path:target.projectPath,current:valid,busy,setBusy:ownedBusy,api,onApplied,onError});
   dialog.addEventListener('close',()=>{editing.dispose();inspecting.dispose();branching.dispose();},{once:true});editing.update();inspecting.update();branching.update();
- }const metadata=node('details');metadata.open=record.type==='script';metadata.append(node('summary','SDK Source and Provenance'));const pre=node('pre',JSON.stringify(target.record,null,2));pre.id='asset-source-data';pre.className='diagnostic-detail';Object.assign(pre.style,{whiteSpace:'pre-wrap',overflowWrap:'anywhere'});metadata.append(pre);dialog.append(metadata);dialog.showModal();editing?.update();inspecting?.update();branching?.update();
+ }else if(record.type==='animation'){
+  const valid=()=>{try{return dialog.open&&same(lookup().find(r=>r.id===record.id),record)&&!!qualifyWorldmapBehaviorResource(record,getReport(),getState());}catch{return false;}};
+  channels=mountWorldAnimationChannels({host:dialog,record:target.record,key:target.sourceKey,path:target.projectPath,getBinding:()=>getState().worldmap_edit_bindings?.[`worldmap://${target.record.source_scene}/animation-channels`]?.WorldAnimationChannels??null,current:valid,busy,setBusy,onError});
+  dialog.addEventListener('close',()=>channels.dispose(),{once:true});
+ }const metadata=node('details');metadata.open=record.type==='script';metadata.append(node('summary','SDK Source and Provenance'));const pre=node('pre',JSON.stringify(target.record,null,2));pre.id='asset-source-data';pre.className='diagnostic-detail';Object.assign(pre.style,{whiteSpace:'pre-wrap',overflowWrap:'anywhere'});metadata.append(pre);dialog.append(metadata);dialog.showModal();editing?.update();inspecting?.update();branching?.update();channels?.update();
 }

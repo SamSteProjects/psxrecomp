@@ -1141,6 +1141,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-animation-assets.js": ("worldmap-animation-assets.js", "text/javascript"),
                  "/worldmap-animation-build-navigation.js": ("worldmap-animation-build-navigation.js", "text/javascript"),
                  "/worldmap-animation-export.js": ("worldmap-animation-export.js", "text/javascript"),
+                 "/worldmap-animation-channels.js": ("worldmap-animation-channels.js", "text/javascript"),
                  "/worldmap-animation-glb.js": ("worldmap-animation-glb.js", "text/javascript"),
                  "/worldmap-object-script.js": ("worldmap-object-script.js", "text/javascript"),
                  "/worldmap-resources.js": ("worldmap-resources.js", "text/javascript"),
@@ -1434,6 +1435,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     else:
                         apply(self.server.project,review_key=body['review_key'],**args)
                         self._json(200,self.server.state())
+                    return
+                if route == '/api/worldmap-animation-channels':
+                    if set(body)!={'animation_id','source_key'}:raise ProjectError('World channel inspection requires exact source fields')
+                    from .worldmap_animation_channels import inspect
+                    self._json(200,inspect(self.server.project,**body))
                     return
                 if route == '/api/worldmap-animation-scene':
                     if set(body)!={'scene','source_key'}:raise ProjectError('World scene animation requires exact kingdom and source fields')

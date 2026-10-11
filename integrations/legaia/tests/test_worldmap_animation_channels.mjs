@@ -1,0 +1,12 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+import {qualifyWorldAnimationChannels,worldAnimationChannelsCsv} from '../editor/worldmap-animation-channels.js';
+import {placementDigest} from '../editor/worldmap-placement-replay.js';
+const input=JSON.parse(fs.readFileSync(process.argv[2],'utf8')),rows=Array.isArray(input)?input:[{response:input}];let frames=0,refusals=0;
+for(const row of rows){const v=row.response,r=v.record,before=JSON.stringify(v),plan=await qualifyWorldAnimationChannels(v,r,v.project_path,v.source_key,v.binding);
+ for(let f=0;f<r.frame_count;f++){const values=plan.frame(f);assert.equal(values.length,r.channel_count);if(row.retail_frames)for(const value of values)for(const layer of ['retail','current']){const native=row[layer+'_frames'][f].object_transforms[value.object_index];assert.deepEqual(value[layer].translation,native.translation);assert.deepEqual(value[layer].rotation_psx,native.rotation_psx);assert.equal(value[layer].opaque_nibble,native.opaque_nibble);}frames++;}
+ assert.equal(JSON.stringify(v),before);assert.throws(()=>plan.frame(-1));assert.throws(()=>plan.frame(r.frame_count));assert.throws(()=>plan.frame(.5));
+ const csv=worldAnimationChannelsCsv(plan).trim().split('\n');assert.equal(csv.length,1+r.frame_count*r.channel_count*2);assert(csv[1].startsWith(r.id+','+r.source_record.sha256+','));assert(csv[2].startsWith(r.id+','+v.current_record_sha256+','));
+ for(const mutate of [v=>v.project_path+='foreign',v=>v.source_key='stale',v=>v.animation_id='foreign',v=>v.record.frame_count++,v=>v.retail_bank_sha256='0'.repeat(64),v=>v.current_record_sha256='0'.repeat(64),v=>v.project_changed=true,v=>v.read_only=false,v=>v.runtime_state='observed',v=>v.timing='30fps',v=>v.binding={}]){const bad=structuredClone(v);mutate(bad);await assert.rejects(qualifyWorldAnimationChannels(bad,r,v.project_path,v.source_key,v.binding));refusals++;}
+ const altered=structuredClone(v),bytes=Uint8Array.from(Buffer.from(v.current_bank_base64,'base64'));bytes[bytes.length-1]^=1;altered.current_bank_base64=Buffer.from(bytes).toString('base64');altered.current_bank_sha256=await placementDigest(bytes);await assert.rejects(qualifyWorldAnimationChannels(altered,r,v.project_path,v.source_key,v.binding));refusals++;
+}
+console.log(`${rows.length} native World clip inspections, ${frames} frames, exact CSV identity/layers and ${refusals} changed context/source/bank refusals passed`);
