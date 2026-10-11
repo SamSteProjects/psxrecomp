@@ -16,13 +16,13 @@ export function sampledWorldFrame(start,count,fps,elapsed){
   return Math.min(count-1,start+Math.floor(elapsed*fps/1000));
 }
 
-export function mountWorldAnimationPlayback({host,current,busy,onFrame,onError,update:outerUpdate}){
-  const node=(tag,text)=>{const e=document.createElement(tag);if(text)e.textContent=text;return e;},panel=node('div'),scrub=node('input'),fps=node('input'),play=node('button','Play sampled frames'),note=node('p','Local one-pass display sampling only. Display fps does not establish native timing or looping.');
-  panel.dataset.worldAnimationPlayback='';scrub.type='range';scrub.min='0';scrub.max='0';scrub.step='1';scrub.value='0';scrub.setAttribute('aria-label','World animation frame scrubber');Object.assign(scrub.style,{width:'100%',boxSizing:'border-box'});
-  fps.type='number';fps.min='1';fps.max='60';fps.step='1';fps.value='12';fps.setAttribute('aria-label','World animation display fps');const label=node('label','Display fps (1–60)');label.append(fps);play.type='button';panel.append(scrub,label,play,note);host.append(panel);
+export function mountWorldAnimationPlayback({host,current,busy,onFrame,onError,update:outerUpdate,labelPrefix='World animation',playLabel='Play sampled frames'}){
+  const node=(tag,text)=>{const e=document.createElement(tag);if(text)e.textContent=text;return e;},panel=node('div'),scrub=node('input'),fps=node('input'),play=node('button',playLabel),note=node('p','Local one-pass display sampling only. Display fps does not establish native timing or looping.');
+  panel.dataset.worldAnimationPlayback='';scrub.type='range';scrub.min='0';scrub.max='0';scrub.step='1';scrub.value='0';scrub.setAttribute('aria-label',`${labelPrefix} frame scrubber`);Object.assign(scrub.style,{width:'100%',boxSizing:'border-box'});
+  fps.type='number';fps.min='1';fps.max='60';fps.step='1';fps.value='12';fps.setAttribute('aria-label',`${labelPrefix} display fps`);const label=node('label','Display fps (1–60)');label.append(fps);play.type='button';panel.append(scrub,label,play,note);host.append(panel);
   let sampler=null,index=0,start=0,rate=12,time=null,request=null,playing=false,disposed=false;
   const valid=()=>!disposed&&current()&&!busy(),number=()=>fps.value.trim()===''?NaN:Number(fps.value),validRate=()=>Number.isSafeInteger(number())&&number()>=1&&number()<=60;
-  function refresh(){if(playing&&!valid())pause();scrub.disabled=!valid()||!sampler;fps.disabled=!valid()||!sampler;play.disabled=!valid()||!sampler||!validRate();play.textContent=playing?'Pause sampled frames':'Play sampled frames';panel.dataset.playing=String(playing);panel.dataset.frame=String(index);}
+  function refresh(){if(playing&&!valid())pause();scrub.disabled=!valid()||!sampler;fps.disabled=!valid()||!sampler;play.disabled=!valid()||!sampler||!validRate();play.textContent=playing?'Pause sampled frames':playLabel;panel.dataset.playing=String(playing);panel.dataset.frame=String(index);}
   function pause(){playing=false;if(request!==null)cancelAnimationFrame(request);request=null;time=null;refresh();}
   function display(frame){if(!valid()||!sampler)return false;const value=sampler.sample(frame);onFrame(value);index=frame;scrub.value=String(frame);refresh();return true;}
   function tick(now){request=null;if(!playing||!valid()){pause();return;}try{if(time===null)time=now;const frame=sampledWorldFrame(start,sampler.frameCount,rate,now-time);if(frame!==index)display(frame);if(frame===sampler.frameCount-1){pause();note.textContent='Last frame reached; one-pass sampling stopped. Native timing and looping remain unknown.';return;}request=requestAnimationFrame(tick);}catch(e){pause();note.textContent=e.message;onError(e);}}
