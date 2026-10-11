@@ -1,4 +1,4 @@
-import {qualifyWorldDecorationSource, qualifyWorldDecorationReview, worldDecorationDraft,
+import {worldDecorationGroupSelection,qualifyWorldDecorationSource, qualifyWorldDecorationReview, worldDecorationDraft,
   worldDecorationDonorValues,qualifyWorldDecorationTransformReview,qualifyWorldDecorationRemovalReview,qualifyWorldDecorationCellReview,qualifyWorldDecorationModelReview,qualifyWorldDecorationGroupReview,transformWorldDecorationGroup} from './worldmap-decoration-state.js';
 import {validValues} from './worldmap-placement-state.js';
 import {mountAuthoredWorldSelectionSets} from './worldmap-authored-selection-sets.js';
@@ -23,7 +23,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   const destination=node('input');destination.type='number';destination.min='0';destination.max='16383';destination.step='1';addField('World decoration new native cell',destination);
   const model=node('select');addField('World decoration replacement model',model);
   const group=node('details'),groupList=node('div'),groupFields=node('div'),groupDelta={},groupReview=node('button','Review decoration group'),groupAll=node('button','Select all decorations'),groupNone=node('button','Clear decoration group');
-  group.dataset.worldDecorationGroup='';group.append(node('summary','Transform Authored Decoration Group'),node('p','Inspect decoration donors, select up to 32 retained decorations, then review a relative native XYZ/yaw delta. Use Preview, Apply and Discard above. Yaw rotates each orientation; positions do not orbit. Apply creates one history command. Select All is unavailable when there are more than 32 decorations.'),groupList,groupFields,groupAll,groupNone,groupReview);
+  group.dataset.worldDecorationGroup='';group.append(node('summary','Transform Authored Decoration Group'),node('p','Inspect decoration donors, select up to 32 retained decorations, then review a relative native XYZ/yaw delta. Use Preview, Apply and Discard above. Yaw rotates each orientation; positions do not orbit. Apply creates one history command. Select All is unavailable when there are more than 32 decorations. In the Current viewport, Ctrl/Command-click toggles a decoration and Shift-click adds one. The first pick inspects native decoration sources automatically.'),groupList,groupFields,groupAll,groupNone,groupReview);
   Object.assign(groupList.style,{maxHeight:'200px',overflow:'auto',overflowWrap:'anywhere'});
   Object.assign(groupFields.style,{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:'8px'});
   for(const axis of ['x','y','z','yaw_units']){const input=node('input');input.type='number';input.min=axis==='yaw_units'?'-4095':'-65535';input.max=axis==='yaw_units'?'4095':'65535';input.step='1';input.value='0';input.setAttribute('aria-label','Decoration group delta '+(axis==='yaw_units'?'yaw':axis.toUpperCase()));const label=node('label',axis==='yaw_units'?'Yaw delta':'Native '+axis.toUpperCase()+' delta');Object.assign(input.style,{display:'block',width:'100%',boxSizing:'border-box'});label.append(input);groupFields.append(label);groupDelta[axis]=input;}
@@ -279,7 +279,14 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     const available=[...groupList.querySelectorAll('input')];if(!sourceReady()||ids.some(id=>!available.some(i=>i.value===id)))throw Error('Saved group is unavailable in this Current source.');
     groupMove.checked=groupRotate.checked=false;onGroupTransformDraft(null);for(const input of available)input.checked=ids.includes(input.value);for(const input of Object.values(groupDelta))input.value='0';move.checked=rotate.checked=false;groupChanged();
   }});
-  update(); return {update,cancel,panel,getGroupIds:()=>sourceReady()&&groupIds().length<=32?groupIds():[],getGroupTransformDraft:groupTransformDraft,setGroupTransformDraft,getTransformDraft:()=>!pendingKind&&!busy()?transformDraft():null,setTransformDraft,editSelected:()=>{update();panel.open=true;return inspectDonors(true);},reviewRemoval:async()=>{
+  async function pickGroupEntity(entity,mode){
+    const context=getContext();if(!context||busy()||pendingKind||displayed)return false;
+    if(!sourceReady()&&await inspectDonors(false)!==true)return false;
+    if(!contextMatches(context)||!sourceReady()||busy()||pendingKind||displayed)return false;
+    try{const ids=worldDecorationGroupSelection(source,groupIds(),entity,mode);if(JSON.stringify(ids)===JSON.stringify(groupIds()))return true;for(const input of groupList.querySelectorAll('input'))input.checked=ids.includes(input.value);panel.open=group.open=true;groupChanged();status.textContent=`${ids.length} authored decorations selected from the viewport; native project unchanged.`;return true;}
+    catch(error){status.textContent=error.message;onError(error);return false;}
+  }
+  update(); return {update,cancel,panel,pickGroupEntity,getGroupIds:()=>sourceReady()&&groupIds().length<=32?groupIds():[],getGroupTransformDraft:groupTransformDraft,setGroupTransformDraft,getTransformDraft:()=>!pendingKind&&!busy()?transformDraft():null,setTransformDraft,editSelected:()=>{update();panel.open=true;return inspectDonors(true);},reviewRemoval:async()=>{
     update();panel.open=true;const selectedId=getContext()?.selectedId;
     if(await inspectDonors(true)!==true||held?.selectedId!==selectedId||getContext()?.selectedId!==selectedId)return;
     return removeReview.onclick();

@@ -281,3 +281,12 @@ export async function qualifyWorldDecorationModelReview(value,source,placementId
       value.proposed_map_sha256!==await placementDigest(assigned.bytes))fail('Model Review differs from independent child retention and literal native replay.');
   return structuredClone(value);
 }
+export function worldDecorationGroupSelection(source,ids,entity,mode='toggle'){
+  const rows=source?.metadata?.authored_allocations;
+  if(!Array.isArray(rows)||!Array.isArray(ids)||ids.length>32||new Set(ids).size!==ids.length||!['toggle','add'].includes(mode)||entity?.placement_scope!=='authored_spawn_seed')throw Error('Viewport groups require retained Current decorations and up to 32 unique members.');
+  const id=entity.authored_placement?.placement_id,owned=rows.filter(r=>r.placement_id===id);
+  if(owned.length!==1||entity.entity_id!==`scene://${source.metadata.scene}/worldmap/authored-placements/${id?.split('/').pop()}`||owned[0].record_index!==entity.authored_placement.record_index||owned[0].target_cell!==entity.authored_placement.target_cell||ids.some(member=>rows.filter(r=>r.placement_id===member).length!==1))throw Error('Viewport decoration membership does not match the qualified Current source.');
+  const result=new Set(ids);if(mode==='toggle'&&result.has(id))result.delete(id);else result.add(id);
+  if(result.size>32)throw Error('A decoration group supports at most 32 members; selection was unchanged.');
+  return [...result].sort();
+}
