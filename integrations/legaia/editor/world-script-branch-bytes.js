@@ -26,3 +26,31 @@ export function applyQualifiedWorldBranchBytes(source,retail,fixed){
  }
  return result;
 }
+
+export function updateWorldBranchGraph(source,retail,current,graph){
+ for(const edit of source.branch_changes){
+  const row=graph.instructions.find(r=>r.pc===edit.pc),decoded=layout(row,retail),at=decoded.at,args=row.operands;
+  const before=retail[at]+256*retail[at+1],after=current[at]+256*current[at+1],signed=n=>n>=32768?n-65536:n;
+  const fields=['ACTOR_RECT_BRANCH','ACTOR_LOOKUP_BRANCH'].includes(row.mnemonic)?{target_word:[before,after],target_word_pc:[at,at],target_pc:[decoded.target,edit.authored_target_pc]}:row.mnemonic==='VALUE_COMPARE_BRANCH'?{delta_u16:[before,after],encoded_target:[decoded.target,edit.authored_target_pc]}:{delta:[signed(before),signed(after)]};
+  if(['FLAG_WORD_BRANCH','FIELD_68_BRANCH','ACTOR_SEARCH_BRANCH'].includes(row.mnemonic))fields.target=[decoded.target,edit.authored_target_pc];
+  for(const [field,[original,value]] of Object.entries(fields)){if(args[field]!==original)fail('World branch graph analysis differs from its source word.');args[field]=value;}
+  row.successors.find(e=>e.condition===edit.condition).pc=edit.authored_target_pc;
+  const header=row.target_context===null?1:2;row.raw_hex=Array.from(current.slice(row.pc,row.pc+row.length),n=>n.toString(16).padStart(2,'0')).join('');args.encoded_hex=row.raw_hex.slice(header*2);
+ }
+}
+
+export function reachedWorldBranchGraph(graph,data,source){
+ const instructions=new Map(graph.instructions.map(r=>[r.pc,r])),dialogues=new Map(graph.dialogues.map(r=>[r.pc,r])),reached=new Set(),queue=[graph.entry_pc];
+ while(queue.length){
+  const pc=queue.shift();if(reached.has(pc)||pc===data.length)continue;
+  const instruction=instructions.get(pc),dialogue=dialogues.get(pc);if(!instruction&&!dialogue)fail('World Current path leaves original source boundaries.');
+  reached.add(pc);if(reached.size>8192)fail('World Current graph exceeds its traversal budget.');
+  queue.push(...(instruction?instruction.successors.map(e=>e.pc):[pc+dialogue.length]));
+ }
+ const result={status:'decoded_supported_paths',entry_pc:graph.entry_pc,instructions:graph.instructions.filter(r=>reached.has(r.pc)),dialogues:graph.dialogues.filter(r=>reached.has(r.pc)),opaque_regions:[],stops:[]},owned=new Uint8Array(data.length);
+ for(const row of [...result.instructions,...result.dialogues])owned.fill(1,row.pc,row.pc+row.length);
+ for(let pc=graph.entry_pc;pc<data.length;){if(owned[pc]){pc++;continue;}const start=pc;while(pc<data.length&&!owned[pc])pc++;result.opaque_regions.push({pc:start,byte_offset:source.source_record.byte_offset+start,length:pc-start,raw_hex:Array.from(data.slice(start,pc),n=>n.toString(16).padStart(2,'0')).join(''),reason:'Unsupported, unvisited or ambiguous bytes; no instruction width inferred.'});}
+ if(result.opaque_regions.length)result.status='partial';
+ const dormantInstructions=graph.instructions.filter(r=>!reached.has(r.pc)),dormantDialogues=graph.dialogues.filter(r=>!reached.has(r.pc));result.unreachable_source_pcs=[...dormantInstructions,...dormantDialogues].map(r=>r.pc).sort((a,b)=>a-b);result.unvisited_instructions=dormantInstructions;result.unvisited_dialogues=dormantDialogues;
+ return result;
+}

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {qualifyWorldScriptOperands} from '../editor/world-script-animation-operands.js';
+import {qualifyWorldScriptInspection,locateWorldScriptPc} from '../editor/world-script-inspection.js';
 const data=Buffer.from('00002602002126fbff','hex'),current=Buffer.from('000026ffff2126fbff','hex');
 const sourceRecord={byte_offset:64,byte_length:data.length,sha256:Buffer.from(await crypto.subtle.digest('SHA-256',data)).toString('hex')};
 const record={id:'script://map01/worldmap/man-p0/0000',kind:'script',entry_pc:2,source_record:sourceRecord,source_instance_ids:[]};
@@ -11,3 +12,13 @@ for(const mutate of [a=>a.branch_changes[0].authored_target_pc=3,a=>a.branch_cha
  const bad=structuredClone(value);mutate(bad);await assert.rejects(()=>qualifyWorldScriptOperands(bad,record,'key','private'));
 }
 console.log('World branch Current byte reconstruction and altered source/word/boundary checks passed');
+const inspectionSource=structuredClone(value);inspectionSource.branch_source_graph.instructions[0].operands.delta=2;inspectionSource.branch_source_graph.instructions[2].operands.delta=-5;
+const retailGraph=structuredClone(inspectionSource.branch_source_graph),loop=structuredClone(retailGraph.instructions[0]);loop.operands={encoded_hex:'ffff',delta:-1};loop.raw_hex='26ffff';loop.successors=[{pc:2,condition:'unconditional'}];
+const currentGraph={status:'partial',entry_pc:2,instructions:[loop],dialogues:[],opaque_regions:[{pc:5,byte_offset:69,length:4,raw_hex:'2126fbff',reason:'Unsupported, unvisited or ambiguous bytes; no instruction width inferred.'}],stops:[],unreachable_source_pcs:[5,6],unvisited_instructions:retailGraph.instructions.slice(1),unvisited_dialogues:[]};
+const snapshot=JSON.parse(JSON.stringify({schema_version:'legaia.world-script-inspection.v2',source:inspectionSource,retail_graph:retailGraph,current_graph:currentGraph,read_only:true,project_changed:false,gameplay_verified:false}));
+await qualifyWorldScriptInspection(snapshot,record,'key','private');
+assert.deepEqual(locateWorldScriptPc(currentGraph,7,9),{kind:'unvisited_instructions',pc:6,offset:1});
+for(const mutate of [a=>a.current_graph.unreachable_source_pcs=[],a=>a.current_graph.unvisited_instructions.pop(),a=>a.current_graph.unvisited_instructions[0].mnemonic='INVENTED',a=>a.current_graph.instructions[0].operands.delta=2,a=>a.current_graph.instructions[0].successors[0].pc=5,a=>a.current_graph.unvisited_instructions[1].byte_offset=6,a=>a.schema_version='legaia.world-script-inspection.v1']){
+ const bad=structuredClone(snapshot);mutate(bad);await assert.rejects(()=>qualifyWorldScriptInspection(bad,record,'key','private'));
+}
+console.log('Current branch reachability, dormant ownership and seven altered graph refusals passed');

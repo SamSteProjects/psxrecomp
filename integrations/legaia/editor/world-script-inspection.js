@@ -1,5 +1,6 @@
 import {qualifyWorldScriptGraph as qualifyGraph} from './world-script-graph.js';
 import {qualifyWorldScriptOperands} from './world-script-animation-operands.js';
+import {updateWorldBranchGraph,reachedWorldBranchGraph} from './world-script-branch-bytes.js';
 const fail=message=>{throw Error(message);};
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
@@ -9,16 +10,21 @@ export function locateWorldScriptPc(graph,pc,recordLength){
  if(!Number.isSafeInteger(pc)||pc<0||pc>65535)fail('Enter a script PC from 0000 to ffff.');
  if(pc>=recordLength)return {kind:pc===recordLength?'record_end':'outside_record',pc};
  if(pc<graph.entry_pc)return {kind:'header',pc};
- for(const kind of ['instructions','dialogues','opaque_regions']){
-  const row=graph[kind].find(r=>pc>=r.pc&&pc<r.pc+r.length);
+ for(const kind of ['instructions','dialogues','unvisited_instructions','unvisited_dialogues','opaque_regions']){
+  const row=(graph[kind]||[]).find(r=>pc>=r.pc&&pc<r.pc+r.length);
   if(row)return {kind,pc:row.pc,offset:pc-row.pc};
  }
  fail('Script PC has no qualified record ownership.');
 }
 export async function qualifyWorldScriptInspection(value,record,key,path){
- if(!exact(value,['schema_version','source','retail_graph','current_graph','read_only','project_changed','gameplay_verified'])||value.schema_version!=='legaia.world-script-inspection.v1'||value.read_only!==true||value.project_changed!==false||value.gameplay_verified!==false)fail('World script inspection is invalid or writable.');
+ if(!exact(value,['schema_version','source','retail_graph','current_graph','read_only','project_changed','gameplay_verified'])||!['legaia.world-script-inspection.v1','legaia.world-script-inspection.v2'].includes(value.schema_version)||value.read_only!==true||value.project_changed!==false||value.gameplay_verified!==false)fail('World script inspection is invalid or writable.');
  const source=await qualifyWorldScriptOperands(value.source,record,key,path),retail=bytes(source.record_base64),current=bytes(source.current_record_base64);
- qualifyGraph(value.retail_graph,retail,source);qualifyGraph(value.current_graph,current,source);
+ const branched=source.schema_version==='legaia.world-script-operands.v2';if(branched!==(value.schema_version==='legaia.world-script-inspection.v2'))fail('World graph and argument witness versions differ.');
+ qualifyGraph(value.retail_graph,retail,source);
+ if(branched){
+  const keys=['status','entry_pc','instructions','dialogues','opaque_regions','stops'];if(!exact(value.current_graph,[...keys,'unreachable_source_pcs','unvisited_instructions','unvisited_dialogues']))fail('World branch graph has invalid retained source fields.');
+  qualifyGraph(Object.fromEntries(keys.map(k=>[k,value.current_graph[k]])),current,source);
+ }else qualifyGraph(value.current_graph,current,source);
  const expected=structuredClone(value.retail_graph),targets=new Map(source.targets.map(t=>[t.pc,t]));
  for(const row of expected.instructions){
   const target=targets.get(row.pc);if(!target)continue;
@@ -36,7 +42,9 @@ export async function qualifyWorldScriptInspection(value,record,key,path){
   }
   row.opcode=current[row.pc]&127;row.raw_hex=hex(current.slice(row.pc,row.pc+row.length));args.encoded_hex=hex(current.slice(row.pc+header,row.pc+row.length));
  }
- if(!same(expected,value.current_graph))fail('Current graph changed unrelated instructions, analysis or branch edges.');
+ if(branched)updateWorldBranchGraph(source,retail,current,expected);
+ const expectedCurrent=branched?reachedWorldBranchGraph(expected,current,source):expected;
+ if(!same(expectedCurrent,value.current_graph))fail('Current graph changed unrelated instructions, analysis, branch edges or dormant source ownership.');
  return structuredClone(value);
 }
 const node=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
@@ -59,26 +67,29 @@ export function mountWorldScriptInspection({host,record,key,path,current,busy,se
      if(highlighted){highlighted.style.outline='';highlighted.removeAttribute('data-world-pc-focused');highlighted=null;}
      pcInput.value=pc.toString(16).padStart(4,'0');
      const element=locations.get(found.kind+':'+found.pc);
-     location.textContent=found.kind==='header'?'PC belongs to the source record header.':found.kind==='record_end'?'PC is the end of this record; no instruction exists here.':found.kind==='outside_record'?'PC is outside this source record; no target is inferred.':`${found.kind==='instructions'?'Instruction':found.kind==='dialogues'?'Dialogue record':'Opaque region'} at ${found.pc.toString(16).padStart(4,'0')} · byte offset within row ${found.offset}. Static source ownership only.`;
+     location.textContent=found.kind==='header'?'PC belongs to the source record header.':found.kind==='record_end'?'PC is the end of this record; no instruction exists here.':found.kind==='outside_record'?'PC is outside this source record; no target is inferred.':`${found.kind==='instructions'?'Instruction':found.kind==='dialogues'?'Dialogue record':found.kind==='unvisited_instructions'?'Dormant source instruction':found.kind==='unvisited_dialogues'?'Dormant source dialogue':'Opaque region'} at ${found.pc.toString(16).padStart(4,'0')} · byte offset within row ${found.offset}. Static source ownership only.`;
      if(element){highlighted=element;const details=element.closest('details');if(details)details.open=true;element.style.outline='2px solid currentColor';element.dataset.worldPcFocused='';element.focus({preventScroll:true});element.scrollIntoView({block:'center'});}
     }catch(error){location.textContent=error.message;}
    };
    locate.onclick=()=>{if(!/^[0-9a-fA-F]{1,4}$/.test(pcInput.value)){location.textContent='Enter one to four hexadecimal digits.';return;}navigate(parseInt(pcInput.value,16));};pcInput.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();locate.click();}};
    const table=node('table');table.dataset.worldCurrentInstructions='';Object.assign(table.style,{width:'100%',tableLayout:'fixed'});const heading=node('tr');for(const label of ['PC / Instruction','Retail / Current Bytes','Arguments / Branches'])heading.append(node('th',label));table.append(heading);
    const targets=new Map(value.source.targets.map(t=>[t.pc,t]));
+   const currentInstructions=new Map([...value.current_graph.instructions,...(value.current_graph.unvisited_instructions||[])].map(r=>[r.pc,r])),reached=new Set(value.current_graph.instructions.map(r=>r.pc)),branchEdits=new Map((value.source.branch_changes||[]).map(r=>[r.pc,r]));
    for(let i=0;i<value.retail_graph.instructions.length;i++){
-    const retail=value.retail_graph.instructions[i],now=value.current_graph.instructions[i],target=targets.get(now.pc),row=node('tr');row.dataset.worldInstructionPc=String(now.pc);row.dataset.authored=String(retail.raw_hex!==now.raw_hex);
+    const retail=value.retail_graph.instructions[i],now=currentInstructions.get(retail.pc),target=targets.get(now.pc),row=node('tr');row.dataset.worldInstructionPc=String(now.pc);row.dataset.authored=String(retail.raw_hex!==now.raw_hex);row.dataset.worldStaticReached=String(reached.has(now.pc));
     const identity=node('td',now.pc.toString(16).padStart(4,'0')+' · '+now.mnemonic),encoded=node('td',`Retail ${retail.raw_hex}\nCurrent ${now.raw_hex}`),detail=node('td');
+    if(value.schema_version==='legaia.world-script-inspection.v2')identity.append(node('p',reached.has(now.pc)?'Reached by Current static graph':'Dormant source instruction · retained Current bytes'));
+    const branchEdit=branchEdits.get(now.pc);if(branchEdit)detail.append(node('p',`Branch ${branchEdit.condition}\nRetail destination ${branchEdit.retail_target_pc.toString(16).padStart(4,'0')}\nAuthored / Current destination ${branchEdit.authored_target_pc.toString(16).padStart(4,'0')}`));
     if(target){detail.append(node('p',`Retail ${JSON.stringify(target.retail_values)}\nAuthored ${target.authored_values===null?'None':JSON.stringify(target.authored_values)}\nCurrent ${JSON.stringify(target.current_values)}`));const edit=node('button','Edit Arguments');edit.dataset.worldInstructionEdit=String(now.pc);Object.assign(edit.style,{whiteSpace:'normal',maxWidth:'100%',overflowWrap:'anywhere'});edit.onclick=()=>{if(valid()&&!busy())onEdit(now.pc);};detail.append(edit);}
     else detail.append(node('p',`Read-only SDK operands ${JSON.stringify(now.operands)}`));
     for(const edge of now.successors){const jump=node('button',`${edge.condition} → ${edge.pc.toString(16).padStart(4,'0')}`);jump.dataset.worldBranchPc=String(edge.pc);Object.assign(jump.style,{whiteSpace:'normal',maxWidth:'100%',overflowWrap:'anywhere'});jump.onclick=()=>navigate(edge.pc);detail.append(jump);}
-    row.tabIndex=-1;locations.set('instructions:'+now.pc,row);
+    row.tabIndex=-1;locations.set((reached.has(now.pc)?'instructions:':'unvisited_instructions:')+now.pc,row);
     for(const cell of [identity,encoded,detail])Object.assign(cell.style,{overflowWrap:'anywhere',whiteSpace:'pre-wrap',verticalAlign:'top'});row.append(identity,encoded,detail);table.append(row);
    }
-   output.append(table);status.textContent=`${value.current_graph.instructions.length} Current instructions · ${value.current_graph.instructions.filter((r,i)=>r.raw_hex!==value.retail_graph.instructions[i].raw_hex).length} authored instructions · ${value.current_graph.opaque_regions.length} opaque regions · ${value.current_graph.stops.length} decoder stops. No script executed or project changed.`;
-   for(const family of ['dialogues','opaque_regions','stops']){
-    if(!value.current_graph[family].length)continue;
-    const details=node('details'),summary=node('summary',`${family==='opaque_regions'?'Opaque Regions':family==='stops'?'Decoder Stops':'Dialogue Records'} (${value.current_graph[family].length})`);details.append(summary);
+   output.append(table);status.textContent=`${value.current_graph.instructions.length} Current static instructions · ${(value.current_graph.unvisited_instructions||[]).length} dormant source instructions · ${value.retail_graph.instructions.filter(r=>currentInstructions.get(r.pc).raw_hex!==r.raw_hex).length} authored instructions · ${value.current_graph.opaque_regions.length} unvisited or opaque regions · ${value.current_graph.stops.length} decoder stops. No script executed or project changed.`;
+   for(const family of ['dialogues','unvisited_dialogues','opaque_regions','stops']){
+    if(!value.current_graph[family]?.length)continue;
+    const details=node('details'),summary=node('summary',`${family==='opaque_regions'?'Unvisited or Opaque Regions':family==='stops'?'Decoder Stops':family==='unvisited_dialogues'?'Dormant Source Dialogue Records':'Dialogue Records'} (${value.current_graph[family].length})`);details.append(summary);
     for(const row of value.current_graph[family]){const body=node('pre',JSON.stringify(row,null,2));Object.assign(body.style,{whiteSpace:'pre-wrap',overflowWrap:'anywhere'});body.tabIndex=-1;body.addEventListener('focus',()=>{details.open=true;});details.append(body);if(family!=='stops')locations.set(family+':'+row.pc,body);}
     output.append(details);
    }

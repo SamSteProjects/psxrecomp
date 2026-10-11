@@ -188,6 +188,21 @@ def inspection(project,script,key):
         retail_graph=inspect_record(man[at:end],row['entry_pc'],semantic_id=script,base_offset=at),
         current_graph=inspect_record(current[at:end],row['entry_pc'],semantic_id=script,base_offset=at),
         read_only=True,project_changed=False,gameplay_verified=False)
+    if source_report['schema_version']=='legaia.world-script-operands.v2':
+        from importer.worldmap_branch_authoring import patch_branch_record
+        from importer.script_inspection import decode_inline_message
+        fixed,_=compose(man,rows,inputs[7])
+        edits={edit['pc']:{'target_pc':edit['authored_target_pc']} for edit in source_report['branch_changes']}
+        candidate,_,report=patch_branch_record(man[at:end],row['entry_pc'],edits,operand_record=fixed[at:end])
+        if candidate!=current[at:end]:raise ProjectError('World branch inspection differs from its qualified Current record')
+        dormant=deepcopy(report['unvisited_instructions'])
+        for node in dormant:node['byte_offset']+=at
+        messages=[]
+        for node in report['unvisited_dialogues']:
+            message=decode_inline_message(candidate,node['pc'],at)
+            message['semantic_id']=f'{script}/dialogue/{node["pc"]:04x}';messages.append(message)
+        result['schema_version']='legaia.world-script-inspection.v2'
+        result['current_graph'].update(unreachable_source_pcs=report['unreachable_source_pcs'],unvisited_instructions=dormant,unvisited_dialogues=messages)
     if len(json.dumps(result,allow_nan=False).encode('utf-8'))>32*1024*1024:raise ProjectError('World script inspection exceeds its private response budget')
     _fresh(project,key);return result
 

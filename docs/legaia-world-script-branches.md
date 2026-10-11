@@ -26,7 +26,7 @@ This is a backend project/API checkpoint. No branch-editing editor controls or b
 
 ## Remaining Integration
 
-The backend foundation is not yet a published World branch editor workflow. Editor destination controls and branch-aware Current graph qualification remain unfinished. Fixed-argument editing now qualifies branch-aware source/Current bytes as described below. Prototype branch destination edits still use the backend API. Retail/Current graph inspection must represent reached and retained dormant source anchors after intentional edge changes; its present fixed-operand shape guard must not simply be disabled.
+The backend foundation is not yet a published World branch authoring workflow. Editor destination controls remain unfinished. Fixed-argument editing and reached/dormant Current graph qualification now support branch-edited records as described below. Prototype branch destination edits still use the backend API. The graph byte, analysis and ownership guards remain enforced.
 
 The existing World instruction inspector continues to offer read-only static branch navigation. It does not yet apply branch edits. The earlier record-only checkpoint did not run a Build; the project/API checkpoint above does. Gameplay remains deferred and the full SDK goal stays active, with implementation continuing solo.
 
@@ -41,3 +41,17 @@ Thirty-four focused Python checks pass with retail input and no skips. Node chec
 Two actual editor workflows pass Review withdrawal, Apply, Current reopening, Save/Open and Undo/Redo/Undo: branch-edited Map01 script0008 edits its dormant MOVE_TO, while branch-free script0009 retains the v1 workflow. Exactly two argument commands occur, no page errors occur, and document/history/saved baselines are restored. Wide and 400-pixel captures were inspected. Private evidence: `local-output/sdk-20260909/world-script-branch-witness-20261011/`.
 
 No new package Build or native compile ran in this checkpoint. The preceding package evidence above remains the Build checkpoint. Branch destination controls and reached/dormant Current graph rendering are still unfinished. No game, runtime attachment, installation or disc export ran; gameplay remains deferred and the full SDK goal remains active.
+
+## Reached and Dormant Current Inspector — 2026-10-11
+
+Branch-edited instruction snapshots now use `legaia.world-script-inspection.v2`. The original Retail graph remains separate; the Current graph contains reached-path rows, unvisited byte ranges, and independently redecoded dormant source instructions and dialogue. Dormant dialogue retains global MAN token offsets and its script-scoped semantic identity. Branch-free inspection retains v1. The response is read-only, source-bound and size-bounded.
+
+The browser first qualifies the complete Current byte witness, then reconstructs fixed arguments and branch-derived analysis fields on every original instruction. It follows those exact Current successor PCs from the original entry, including atomic dialogue continuation, and requires complete equality of reached rows, dormant rows, sorted unreachable source PCs, opaque coverage, analysis and offsets. An intentional edge change no longer fails the old fixed-shape comparison, while altered metadata, unrelated edges and omitted dormant ownership still refuse.
+
+The table retains all original instructions, labels each as reached by the Current static graph or dormant with retained Current bytes, and separates Retail and Authored/Current branch destinations. Both reached and dormant argument links use the existing qualified editor. PC lookup prioritizes known dormant source ownership over an unvisited byte region. Dormant dialogue has its own details section. These are static graph possibilities, not a runtime execution trace.
+
+Thirty-five focused Python checks pass with retail input and no skips, including dormant argument and dialogue offset/identity preservation. Literal loop Node checks pass with seven altered graph refusals; all 19 normal/extended synthetic snapshots across ten supported branch families qualify (extended SYSFLAG remains excluded). Three saved real kingdom branch graphs and one branch-free graph qualify with 16 altered-response refusals. Real Current reachability is Map01 seven reached/three dormant instructions, Map02 seven/four, and Map03 eight/zero; changing a branch need not create dormant instructions.
+
+Four actual editor graph workflows pass branch navigation, dormant PC lookup, argument navigation and out-of-record refusal. The Map01 case also proves Review withdrawal on argument navigation. Zero commands or page errors occur; complete project document/history and saved baselines remain unchanged. Wide and 400-pixel captures were inspected without horizontal overflow. Private evidence: `local-output/sdk-20260909/world-script-branch-inspection-20261011/`. Earlier test harness assumptions about universal dormancy and an aliased synthetic graph were corrected before these successful runs.
+
+Branch destination authoring controls remain unfinished. No new Build, native compile, game, runtime attachment, installation or disc export ran; gameplay remains deferred and the full SDK goal stays active, with solo development continuing.

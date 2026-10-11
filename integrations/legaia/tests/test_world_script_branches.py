@@ -41,6 +41,10 @@ class WorldBranchProjectTests(TestCase):
                 from sdk.worldmap_script_operands import options as argument_options
                 witness=argument_options(p,script,state_key(p));self.assertEqual(witness['schema_version'],'legaia.world-script-operands.v2')
                 self.assertEqual(witness['branch_changes'][0]['authored_target_pc'],2);self.assertEqual(witness['branch_source_graph']['instructions'][0]['byte_offset'],66)
+                from sdk.worldmap_script_operands import inspection
+                graph=inspection(p,script,state_key(p));self.assertEqual(graph['schema_version'],'legaia.world-script-inspection.v2')
+                dormant=next(n for n in graph['current_graph']['unvisited_instructions'] if n['pc']==40)
+                self.assertEqual(dormant['byte_offset'],104);self.assertEqual(dormant['operands']['target_position'],{'x':64,'y':None,'z':16384})
                 rows=p.authored_assets();self.assertEqual(len(rows),1);self.assertEqual(set(rows[0]['authored']),{'WorldScriptOperands',COMPONENT})
                 p.save();self.assertEqual(ProjectService.open(Path(root))._document(),p._document());p.undo();self.assertEqual(p._document(),baseline);p.redo()
                 # Fixed arguments can still be reviewed against immutable source
@@ -82,6 +86,22 @@ class WorldBranchProjectTests(TestCase):
                 self.assertEqual(v['schema_version'],'legaia.world-script-animation-operands.v1')
                 self.assertEqual(v['record_base64'],v['current_record_base64'])
                 self.assertNotIn('branch_changes',v);self.assertEqual(p._document(),held)
+
+    def test_dormant_message_global_offsets_and_identity_are_retained(self):
+        from sdk.worldmap_script_operands import inspection
+        with tempfile.TemporaryDirectory() as root:
+            p=self.project(root);script,source=jump_fixture(p)
+            _,rows,provenance,index,offset,slot,_=deepcopy(source)
+            record=bytes.fromhex('00002602001f410026f9ff');man=bytes(64)+record
+            rows[script]['source_record'].update(sha256=sha256(record).hexdigest(),byte_length=len(record));provenance['source_man_sha256']=sha256(man).hexdigest()
+            carrier=b''.join(bytes([(1<<len(man[i:i+8]))-1])+man[i:i+8] for i in range(0,len(man),8));slot['compressed_bytes_consumed']=len(carrier)
+            with patch('sdk.worldmap_script_operands.source',return_value=(man,rows,provenance,index,offset,slot,carrier)):
+                r,_=review(p,script,state_key(p),2,{'target_pc':2},True)
+                p.command(dict(type='set_world_script_branches',script_id=script,source_key=state_key(p),pc=2,values={'target_pc':2},shared=True,review_key=r['review_key']))
+                held=deepcopy(p._document());g=inspection(p,script,state_key(p))['current_graph']
+                self.assertEqual(g['unreachable_source_pcs'],[5,8]);message=g['unvisited_dialogues'][0]
+                self.assertEqual(message['semantic_id'],script+'/dialogue/0005');self.assertEqual(message['byte_offset'],69)
+                self.assertEqual(message['tokens'][0]['byte_offset'],70);self.assertEqual(p._document(),held)
 
     def test_branch_only_owner_is_not_omitted_from_world_build(self):
         from sdk.worldmap_script_operands import build
