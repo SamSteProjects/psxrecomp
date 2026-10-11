@@ -92,3 +92,9 @@ export async function qualifyWorldAnimationEdit(v,held,current,id,path,frame,edi
   await qualifyWorldAnimationPreview(v.proposed_preview,geometry,proposed.bank,frame);
   return structuredClone(v);
 }
+
+export function qualifyWorldAnimationAsset(v,record){
+  const p=v?.source?.before?.preview,s=record?.source_record,b=v?.source?.before?.binding?.man_source;
+  if(!p||!s||record.kind!=='animation'||record.source_scene!==v.scene||record.id!==`animation://${v.scene}/worldmap/scene-anm/${String(p.record_index).padStart(4,'0')}`||(record.authored_animation_id??`animation://${v.scene}/worldmap/anm/${String(p.record_index).padStart(4,'0')}`)!==v.animation_id||p.record_sha256!==s.sha256||p.byte_offset!==s.byte_offset||p.byte_length!==s.byte_length||!same(v.source.before.animation_source,s.animation_slot)||p.frame_count!==record.frame_count||p.channel_count!==record.channel_count||b.disc_sha256!==s.disc_sha256||b.entry_index!==s.prot_entry_index||b.table_offset!==s.table_offset)fail();
+  return structuredClone(record);
+}

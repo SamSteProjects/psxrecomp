@@ -17,7 +17,7 @@ class WorldBehaviorResourcesTests(TestCase):
             p=ProjectService(Path(root));p.disc_path='verified-local-disc'
             held=deepcopy(p._document());caches=deepcopy(vars(p.assets));history=deepcopy((p.undo_stack,p.redo_stack));key=state_key(p)
             def catalog(disc,scene):
-                return dict(assets=[dict(semantic_id='script://'+scene+'/worldmap/man-p0/0000',asset_kind='script',kind='script')],limitations=['Bounded source only'],consumer={},unbound=[],unsupported_animation_bindings=[])
+                return dict(assets=[dict(semantic_id='script://'+scene+'/worldmap/man-p0/0000',asset_kind='script',kind='script')],limitations=['Bounded source only'],consumer={},unbound=[],unsupported_animation_bindings=[],unsupported_animation_records=[],animation_bank={})
             with patch('sdk.worldmap_behavior_resources._disc_context',return_value=nullcontext()),patch('sdk.worldmap_behavior_resources.load_worldmap_behavior_catalog',side_effect=catalog):
                 value=inspect(p,key)
             self.assertEqual(len(value['assets']),3)

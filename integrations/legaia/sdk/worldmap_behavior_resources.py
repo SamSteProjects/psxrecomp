@@ -22,10 +22,11 @@ def inspect(project,key):
                 row.update(scene_id=None,asset_registration='verified_world_behavior_catalog');assets.append(row)
             kingdoms.append(dict(scene=scene,consumer=catalog['consumer'],unbound=catalog['unbound'],
                 unsupported_animation_bindings=catalog['unsupported_animation_bindings'],
+                unsupported_animation_records=deepcopy(catalog['unsupported_animation_records']),animation_bank=deepcopy(catalog['animation_bank']),
                 script_asset_count=sum(r['kind']=='script' for r in catalog['assets']),
                 animation_asset_count=sum(r['kind']=='animation' for r in catalog['assets'])))
     if len({r['id'] for r in assets})!=len(assets):raise ProjectError('World behavior resource identities conflict')
-    result=dict(schema_version='legaia.worldmap-behavior-resources.v1',project_path=str(project.root),source_key=key,
+    result=dict(schema_version='legaia.worldmap-behavior-resources.v2',project_path=str(project.root),source_key=key,
         assets=sorted(assets,key=lambda r:r['id']),kingdoms=kingdoms,metadata_only=True,read_only=True,
         project_changed=False,gameplay_verified=False,limitations=list(LIMITATIONS))
     _metadata(result);_budget(result)

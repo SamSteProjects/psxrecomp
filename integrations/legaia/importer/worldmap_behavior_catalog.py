@@ -15,7 +15,7 @@ LIMITATIONS = [
     'Retail World source resources only; Current transforms and replacement meshes do not overwrite source associations.',
     'Object bindings and decoded script paths do not prove activation, story branches or gameplay reachability.',
     'Animation selectors resolve only supported source clips with exact native object/channel counts; zero IDs are not guessed.',
-    'Playback timing, looping, live PC, runtime residency and general World script/clip authoring remain unresolved; supported fixed source argument overrides use their separate service.',
+    'Playback timing, looping, live PC, runtime residency and general World script authoring remain unresolved; fixed source arguments and shared rigid ANM channels use separate reviewed project overrides.',
 ]
 
 
@@ -34,7 +34,27 @@ def load_worldmap_behavior_catalog(disc,scene):
         consumer=next(w for w in proof['functions'] if w['address']=='0x8003A55C')
         ranges=animation_record_ranges(bank)
         graph=geometry['scene_graph'];models={a['asset_id']:a for a in graph['assets']}
-        scripts,animations={},{};unbound=[];unsupported=[]
+        scripts,animations={},{};unbound=[];unsupported=[];unsupported_records=[]
+        for clip_index,(at,end) in enumerate(ranges):
+            payload=bank[at:end]
+            try:
+                clip=decode_animation_record(payload)
+                if not 1<=clip['frame_count']<=512 or not 1<=clip['bone_count']<=64:
+                    raise ImportError('World rigid channel layout exceeds supported bounds')
+            except ImportError as error:
+                unsupported_records.append(dict(record_index=clip_index,byte_offset=at,byte_length=end-at,sha256=sha256(payload).hexdigest(),reason=str(error)))
+                continue
+            aid=f'animation://{scene}/worldmap/scene-anm/{clip_index:04d}'
+            animations[aid]=dict(semantic_id=aid,asset_kind='animation',kind='animation',
+                name=f'{scene} Object Animation {clip_index:04d}',source_scene=scene,
+                authored_animation_id=f'animation://{scene}/worldmap/anm/{clip_index:04d}',
+                source_record=dict(disc_sha256=digest,iso_file='PROT.DAT',prot_entry_index=index,
+                    table_offset=offset,animation_slot=deepcopy(bank_source),record_index=clip_index,
+                    byte_offset=at,byte_length=end-at,sha256=sha256(payload).hexdigest()),
+                frame_count=clip['frame_count'],channel_count=clip['bone_count'],
+                timing='unresolved',looping='unresolved',bindings=[],source_instance_ids=[],
+                model_asset_ids=[],script_asset_ids=[])
+
         for entity in graph['entities']:
             if entity.get('source_layer')!='placed':continue
             anchor=entity['source_anchor'];bind=resolve_object_bind(fields,man,anchor['col'],anchor['row'])
@@ -67,18 +87,11 @@ def load_worldmap_behavior_catalog(disc,scene):
                     if clip['bone_count']!=len(models[entity['asset_id']]['preview']['objects']):
                         raise ImportError('Source animation channels differ from native model objects')
                     aid=f'animation://{scene}/worldmap/scene-anm/{clip_index:04d}'
-                    if aid not in animations:
-                        animations[aid]=dict(semantic_id=aid,asset_kind='animation',kind='animation',
-                            name=f'{scene} Object Animation {clip_index:04d}',source_scene=scene,
-                            source_record=dict(disc_sha256=digest,iso_file='PROT.DAT',prot_entry_index=index,
-                                table_offset=offset,animation_slot=deepcopy(bank_source),record_index=clip_index,
-                                byte_offset=at,byte_length=end-at,sha256=sha256(payload).hexdigest()),
-                            frame_count=clip['frame_count'],channel_count=clip['bone_count'],
-                            timing='unresolved',looping='unresolved',bindings=[],source_instance_ids=[],
-                            model_asset_ids=[],script_asset_ids=[])
+                    if aid not in animations:raise ImportError('Source animation record is outside the supported catalog')
                     animations[aid]['bindings'].append(dict(entity_id=entity['entity_id'],model_asset_id=entity['asset_id'],script_asset_id=sid,encoded_selector=selector))
                     animation_status='resolved_source_clip'
                 except ImportError as error:
+                    aid=None
                     unsupported.append(dict(entity_id=entity['entity_id'],encoded_selector=selector,reason=str(error)))
                     animation_status='unsupported_source_clip'
             scripts[sid]['bindings'].append(dict(entity_id=entity['entity_id'],model_asset_id=entity['asset_id'],
@@ -94,10 +107,11 @@ def load_worldmap_behavior_catalog(disc,scene):
             field='animation_asset_id' if row['kind']=='script' else 'script_asset_id'
             row[key]=sorted({b[field] for b in row['bindings'] if b[field] is not None})
             row.update(scope='global-worldmap-behavior-resources',runtime_state='not_observed',
-                       reference_commit=REFERENCE_COMMIT,read_only=True,authoring='fixed_instruction_operands' if row['kind']=='script' else 'unsupported')
+                       reference_commit=REFERENCE_COMMIT,read_only=True,authoring='fixed_instruction_operands' if row['kind']=='script' else 'shared_rigid_channels' if row['bindings'] else 'source_metadata_only')
             assets.append(row)
         result=dict(scene=scene,assets=sorted(assets,key=lambda r:r['semantic_id']),
             consumer=dict(executable_sha256=proof['executable_sha256'],function=consumer),
-            unbound=unbound,unsupported_animation_bindings=unsupported,limitations=list(LIMITATIONS))
+            unbound=unbound,unsupported_animation_bindings=unsupported,unsupported_animation_records=unsupported_records,
+            animation_bank=dict(record_count=len(ranges),source=deepcopy(bank_source)),limitations=list(LIMITATIONS))
         validate_metadata_only(result)
         return result
