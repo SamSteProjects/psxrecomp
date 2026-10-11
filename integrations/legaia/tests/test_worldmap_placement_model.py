@@ -10,6 +10,7 @@ from sdk.worldmap_authoring import state_key
 from sdk.worldmap_placement_allocation_binding import COMPONENT,SCHEMA,MODEL_SCHEMA,owner,validate,replay
 from sdk.worldmap_placement_allocation import build,review as create_review
 from sdk.worldmap_placement_model import review,reassigned_binding
+from sdk.worldmap_placement_remove import review as remove_review
 from test_worldmap_placement_allocation import fixture,request
 from test_project_workflow import synthetic_scene
 from test_model_primitive_workflow import http_server
@@ -50,8 +51,18 @@ class WorldDecorationModelTests(TestCase):
     applied=deepcopy(p._document());p.save();self.assertEqual(ProjectService.open(Path(root))._document(),applied)
     overlays=[];build(p,overlays);self.assertEqual(overlays[0]['payload'],bytes(expected))
     # Creation after model assignment retains v2 and remains donor-derived.
-    created=create_review(p,'map01',state_key(p),[request(7,203,4)])
+    new_child={**request(7,203,4),'donor_cell':200}
+    created=create_review(p,'map01',state_key(p),[new_child])
     self.assertEqual(created['binding']['schema_version'],MODEL_SCHEMA)
+    p.command(dict(type='allocate_worldmap_placements',scene='map01',source_key=state_key(p),requests=[new_child],review_key=created['review_key']))
+    with patch('sdk.worldmap_placement_remove.context',return_value=context):
+     removed=remove_review(p,'map01',state_key(p),first['placement_id'])
+    new_request=next(r for op in removed['binding']['operations'] for r in op['requests'] if r['placement_id']==new_child['placement_id'])
+    self.assertEqual(new_request['model_pool_index'],2);self.assertEqual(new_request['donor_cell'],100)
+    surviving=bytearray(base64.b64decode(created['proposed_map_base64']));surviving[128:160]=bytes(32)
+    surviving[0x8000+400:0x8000+402]=raw[0x8000+400:0x8000+402]
+    self.assertEqual(base64.b64decode(removed['proposed_map_base64']),bytes(surviving))
+    p.undo();self.assertEqual(p._document(),applied)
     with self.assertRaises(ProjectError):create_review(p,'map01',state_key(p),[{**request(7,203,4),'model_pool_index':2}])
     bad=deepcopy(value['binding']);bad['schema_version']=SCHEMA
     with self.assertRaises(ProjectError):validate(p,owner('map01'),bad)

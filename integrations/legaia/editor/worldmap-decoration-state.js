@@ -121,6 +121,7 @@ export async function removeWorldDecoration(source,placementId){
   for(const op of binding.operations){
     for(const request of op.requests)if(request.placement_id!==placementId&&request.donor_cell===selected.target_cell){
       rebases.push({placement_id:request.placement_id,before_donor_cell:request.donor_cell,after_donor_cell:selected.donor_cell});request.donor_cell=selected.donor_cell;
+      if(binding.schema_version==='legaia.worldmap-placement-allocation-ledger.v2')request.model_pool_index=source.metadata.authored_allocations.find(a=>a.placement_id===request.placement_id).model_pool_index;
     }
     op.requests=op.requests.filter(r=>r.placement_id!==placementId);
   }

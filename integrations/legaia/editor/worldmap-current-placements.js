@@ -193,7 +193,10 @@ export async function qualifyProposedWorldPlacementRemoval(retail,current,propos
   if(matches.length!==1)fail('Proposed removal has no unique retained Current owner.');
   const selected=matches[0];
   for(const op of expected.operations){
-    for(const request of op.requests)if(request.placement_id!==selected.placement_id&&request.donor_cell===selected.target_cell)request.donor_cell=selected.donor_cell;
+    for(const request of op.requests)if(request.placement_id!==selected.placement_id&&request.donor_cell===selected.target_cell){
+      request.donor_cell=selected.donor_cell;
+      if(expected.schema_version==='legaia.worldmap-placement-allocation-ledger.v2')request.model_pool_index=before.authored_allocations.find(a=>a.placement_id===request.placement_id).model_pool_index;
+    }
     op.requests=op.requests.filter(r=>r.placement_id!==selected.placement_id);
   }
   expected.operations=expected.operations.filter(op=>op.requests.length);
@@ -234,6 +237,42 @@ export async function qualifyProposedWorldPlacementCell(retail,current,proposed,
   literal.set(selectors,selected.record_index*32+20);
   if(!equalWorldPlacementBytes(literal,mapBytes(after.exported_map_base64)))fail('Proposed cell move changed unrelated native bytes.');
   const normalized=structuredClone(proposed);delete normalized.allocation_cell_proposal;normalized.representation='current-source';
+  normalized.placement_authoring.current_map_base64=after.exported_map_base64;normalized.placement_authoring.current_map_sha256=after.exported_map_sha256;
+  const view=await qualifyCurrentWorldPlacements(retail,normalized,options);
+  return {...view,entities:view.entities.map(entity=>({...entity,preview_layer:'Proposed authored seeds'}))};
+}
+
+export async function qualifyProposedWorldPlacementModel(retail,current,proposed,review,options){
+  await qualifyCurrentWorldPlacements(retail,current,options);
+  const before=current.placement_authoring,after=proposed?.placement_authoring;
+  const asset=current.scene_graph.assets.find(a=>a.asset_id===review?.asset_id);
+  if(review?.schema_version!=='legaia.worldmap-decoration-model-review.v1'||proposed?.representation!=='proposed-source'||proposed.allocation_proposal!==null||
+      !same(proposed.allocation_model_proposal,{placement_id:review.placement_id,model_pool_index:review.model_pool_index,review_key:review.review_key})||
+      review.source_key!==current.project_source_key||review.current_map_sha256!==before.current_map_sha256||!same(review.before_binding,before.allocation_binding)||!after||
+      after.current_map_base64!==before.current_map_base64||after.current_map_sha256!==before.current_map_sha256||
+      after.exported_map_base64!==review.proposed_map_base64||after.exported_map_sha256!==review.proposed_map_sha256||
+      !same(after.authored_records,before.authored_records)||!same(after.allocation_binding,review.binding)||
+      !same(proposed.scene_graph?.assets,current.scene_graph.assets)||!same(proposed.model_authoring,current.model_authoring)||
+      !same(proposed.texture_authoring,current.texture_authoring)||!asset?.preview.vertices.length||!asset.preview.triangles.length||
+      !same(asset.source_record,review.model_source_record)||review.asset_id!==`asset://${current.scene}/worldmap/models/${String(review.model_pool_index).padStart(4,'0')}`)
+    fail('Proposed model assignment differs from qualified Current and reviewed native/model sources.');
+  const expected=structuredClone(before.allocation_binding),requests=expected?.operations.flatMap(op=>op.requests)??[];
+  const matches=requests.filter(r=>r.placement_id===review.placement_id),selected=before.authored_allocations.find(a=>a.placement_id===review.placement_id);
+  if(matches.length!==1||!selected||!Number.isInteger(review.model_pool_index)||review.model_pool_index<1||review.model_pool_index>511||review.model_pool_index===selected.model_pool_index)
+    fail('Model assignment requires a retained owner and changed native model.');
+  const models=new Map(before.authored_allocations.map(a=>[a.placement_id,a.model_pool_index])),pinned=[];
+  for(const request of requests)if(request.placement_id!==review.placement_id&&request.donor_cell===selected.target_cell){
+    request.model_pool_index=models.get(request.placement_id);pinned.push({placement_id:request.placement_id,model_pool_index:request.model_pool_index});
+  }
+  matches[0].model_pool_index=review.model_pool_index;expected.schema_version='legaia.worldmap-placement-allocation-ledger.v2';
+  for(let i=0;i<expected.operations.length;i++)expected.operations[i].proposed_map_sha256=review.binding?.operations?.[i]?.proposed_map_sha256;
+  if(!same(expected,review.binding)||!nativeWorldPlacementMatches(review.audit?.before,selected)||!same(review.audit?.retained_child_models,pinned)||
+      !nativeWorldPlacementMatches(review.audit?.after,after.authored_allocations.find(a=>a.placement_id===review.placement_id)))
+    fail('Model assignment changed child models, ownership or unrelated recipe requests.');
+  const original=mapBytes(before.current_map_base64),literal=original.slice();new DataView(literal.buffer).setUint16(selected.record_index*32+16,review.model_pool_index,true);
+  const changed=Array.from(literal.entries()).filter(([i,n])=>n!==original[i]).map(([i,n])=>({byte_offset:i,before_byte:original[i],after_byte:n}));
+  if(!equalWorldPlacementBytes(literal,mapBytes(after.exported_map_base64))||!same(changed,review.audit.changed_bytes))fail('Proposed model assignment changed unrelated native bytes.');
+  const normalized=structuredClone(proposed);delete normalized.allocation_model_proposal;normalized.representation='current-source';
   normalized.placement_authoring.current_map_base64=after.exported_map_base64;normalized.placement_authoring.current_map_sha256=after.exported_map_sha256;
   const view=await qualifyCurrentWorldPlacements(retail,normalized,options);
   return {...view,entities:view.entities.map(entity=>({...entity,preview_layer:'Proposed authored seeds'}))};

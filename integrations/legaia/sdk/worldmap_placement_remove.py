@@ -9,11 +9,12 @@ from importer.worldmap_placements import decode_worldmap_placements
 from .project import ProjectError, digest
 from .worldmap_placements import context
 from .worldmap_placement_allocation import _context, _fresh
-from .worldmap_placement_allocation_binding import COMPONENT, owner, validate, compose
+from .worldmap_placement_allocation_binding import COMPONENT, MODEL_SCHEMA, owner, validate, compose, replay
 
 
 def removed_binding(raw, floor, binding, placement_id):
     result=deepcopy(binding)
+    retained_models={a['placement_id']:a['model_pool_index'] for a in replay(raw,floor,binding)[1]} if binding['schema_version']==MODEL_SCHEMA else {}
     matches=[r for op in result['operations'] for r in op['requests'] if r['placement_id']==placement_id]
     if len(matches)!=1:raise ProjectError('Choose one retained authored decoration to remove')
     selected=matches[0];rebases=[]
@@ -22,6 +23,7 @@ def removed_binding(raw, floor, binding, placement_id):
             if request['placement_id']!=placement_id and request['donor_cell']==selected['target_cell']:
                 rebases.append(dict(placement_id=request['placement_id'],before_donor_cell=request['donor_cell'],after_donor_cell=selected['donor_cell']))
                 request['donor_cell']=selected['donor_cell']
+                if retained_models:request['model_pool_index']=retained_models[request['placement_id']]
         op['requests']=[r for r in op['requests'] if r['placement_id']!=placement_id]
     result['operations']=[op for op in result['operations'] if op['requests']]
     if not result['operations']:return None,rebases
