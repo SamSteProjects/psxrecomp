@@ -121,7 +121,8 @@ def source(project,scene,key):
         limitations=['Script records remain shared; creation requires explicit shared-script scope.',
             'Target cells are preliminary empty candidates; donor footprints and binds are checked during Review.',
             'Runtime actor demand, script effects and opaque zero relocation-space ownership remain unverified.',
-            'Editor controls and package Build are not implemented for this proposal.'])
+            'Editor creation controls and Current viewport integration remain unfinished.',
+            'Package delivery requires a saved reviewed binding and qualified drawable Current models; a read-only proposal is not a built package.'])
     binding=project.overrides.get(owner(scene),{}).get(COMPONENT)
     result['binding']=deepcopy(binding)
     result['remaining_creation_capacity']=32-sum(len(op['requests']) for op in (binding or {}).get('operations',[]))
@@ -198,3 +199,44 @@ def apply(project,command):
     project.overrides[identifier]=after
     project.undo_stack.append(dict(entity_id=identifier,before=before,after=deepcopy(after)))
     project.redo_stack.clear()
+
+
+def build(project,overlays):
+    changes=[]
+    for scene in ('map01','map02','map03'):
+        binding=project.overrides.get(owner(scene),{}).get(COMPONENT)
+        if binding is None:continue
+        from .worldmap_authoring import state_key
+        from .worldmap_placements import source as placement_source
+        key=state_key(project)
+        raw,provenance,floor,normal,_,fallback,man,current_man,_,_=_inputs(project,scene,key,include_scripted=False)
+        _,_,_,offset,_=placement_source(project,scene)
+        candidate,allocations=compose(project,scene,provenance,normal,fallback,man,current_man,floor)
+        from .worldmap_geometry import inspect
+        geometry=inspect(project,scene,key,texture_layer='current',model_layer='current')
+        drawable={int(a['asset_id'].rsplit('/',1)[1]) for a in geometry['scene_graph']['assets']
+            if '/models/' in a['asset_id'] and a['preview'].get('vertices') and a['preview'].get('triangles')}
+        if any(a['native_seed']['model_pool_index'] not in drawable for a in allocations):
+            raise ProjectError('Scripted placement has no qualified drawable Current kingdom model')
+        _fresh(project,key)
+        overlaps=[o for o in overlays if o['offset']<offset+len(raw) and offset<o['offset']+o['size']]
+        if overlaps:
+            if len(overlaps)!=1 or overlaps[0]['offset']!=offset or overlaps[0]['size']!=len(raw):
+                raise ProjectError('Scripted placement MAP overlay ownership is ambiguous')
+            target=overlaps[0]
+            if target['expected_sha256']!=sha256(raw).hexdigest() or target.get('payload')!=normal:
+                raise ProjectError('Scripted placement MAP delivery differs from complete Current coauthor composition')
+            target.update(payload=candidate,sha256=sha256(candidate).hexdigest())
+        else:
+            if normal!=raw:
+                raise ProjectError('Scripted placement Build is missing its Current MAP coauthors')
+            overlays.append(dict(scene=scene,offset=offset,size=len(raw),payload=candidate,
+                file=f'assets/{scene}-scripted-placements.map',expected_sha256=sha256(raw).hexdigest(),
+                sha256=sha256(candidate).hexdigest()))
+        seeds={p['source_cell']:p for p in decode_worldmap_placements(candidate,floor,scene=scene)['placements']}
+        for allocation in allocations:
+            allocation['native_seed']=deepcopy(seeds[allocation['target_cell']])
+            changes.append(dict(scene=scene,semantic_id=allocation['placement_id'],field='world_scripted_placement_allocation',
+                before_value=None,after_value=allocation,record_index=allocation['record_index'],
+                scope='scripted-world-placement-allocation',affected_source_entities=[allocation['native_seed']['entity_id']]))
+    return changes

@@ -163,6 +163,7 @@ def package_change_kinds(edits) -> list[str]:
         'source-man-donor-append-candidate': 'source NPC candidates',
         'source-man-draft-composed-overrides': 'NPC scene operand composition',
         'worldmap-source-record-transform-only': 'world source placement transforms',
+        'scripted-world-placement-allocation': 'scripted World placements',
         'controller-tile-rect-operands-only': 'controller tile request operands',
         'controller-fade-operands-only': 'controller fade operands',
         'controller-table-copy-operands-only': 'controller table-copy operands',
@@ -601,7 +602,10 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             component=next(iter(components));validate(project,identifier,components[component],component)
             continue
         if isinstance(components,dict) and 'WorldMapScriptedPlacementAllocations' in components:
-            raise BuildError('Scripted World placement package delivery is not implemented yet')
+            from .worldmap_scripted_placement_binding import validate,read_base,COMPONENT
+            if set(components)!={COMPONENT}:raise BuildError('Scripted World owner accepts only its dedicated component')
+            validate(project,identifier,components[COMPONENT]);read_base(project,components[COMPONENT])
+            continue
         if isinstance(components, dict) and 'WorldMapPlacementAllocations' in components:
             from .worldmap_placement_allocation_binding import validate
             if set(components) != {'WorldMapPlacementAllocations'}:
@@ -873,6 +877,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         from .worldmap_script_operands import build as build_world_script_operands
         world_script_overlays,world_script_changes=build_world_script_operands(project,archive)
         overlays.extend(world_script_overlays);audit_edits.extend(world_script_changes)
+        # Kingdom MAN heights and P0 scripts share one compressed slot. Its
+        # dedicated writer composes both; do not emit a second generic MAN.
+        for world_scene in ('map01','map02','map03'):
+            if project.overrides.get('scene://'+world_scene,{}).get('FloorHeights'):
+                height_edits.pop('scene://'+world_scene,None)
         growth_requests, growth_audit = [], None
         if getattr(project, 'model_overrides', {}):
             from .model_growth import prepare_model_growth
@@ -1400,6 +1409,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     audit_edits.extend(build_world_placements(project,overlays))
     from .worldmap_placement_allocation import build as build_world_allocations
     audit_edits.extend(build_world_allocations(project,overlays))
+    from .worldmap_scripted_placement_allocation import build as build_scripted_world_allocations
+    audit_edits.extend(build_scripted_world_allocations(project,overlays))
     relocation, relocation_audit = None, None
     if growth_requests:
         from .build_relocation import prepare_build_relocation

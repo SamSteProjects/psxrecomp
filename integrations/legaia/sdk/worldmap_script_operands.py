@@ -241,8 +241,13 @@ def build(project,archive):
     overlays=[];changes=[]
     from .worldmap_script_branches import owner as branch_owner,COMPONENT as BRANCH_COMPONENT
     for scene in KINGDOM_BASES:
-        if not COMPONENTS.intersection(project.overrides.get(owner(scene),{})) and BRANCH_COMPONENT not in project.overrides.get(branch_owner(scene),{}):continue
+        floor_binding=project.overrides.get('scene://'+scene,{}).get('FloorHeights')
+        if not COMPONENTS.intersection(project.overrides.get(owner(scene),{})) and BRANCH_COMPONENT not in project.overrides.get(branch_owner(scene),{}) and not floor_binding:continue
         man,rows,_,index,offset,slot,carrier,_,current,audit=context(project,scene)
+        if floor_binding:
+            from .floor_heights import compose as compose_floor_heights
+            current,floor_audit=compose_floor_heights(project,'scene://'+scene,man,current)
+            audit.extend(dict(change,scene=scene) for change in floor_audit)
         if not audit:continue
         entry=archive.entry(index);start=slot['compressed_stream_offset'];consumed=slot['compressed_bytes_consumed'];before=carrier[start:start+consumed]
         replacement,compression=serialize_lzs_decoded(before,len(man),current,scene+' World script MAN')
