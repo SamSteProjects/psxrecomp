@@ -1,4 +1,4 @@
-import {worldDecorationNativePosition,worldDecorationValuesAtPosition,worldDecorationGroupBoxSelection,worldDecorationGroupSelection,qualifyWorldDecorationSource, qualifyWorldDecorationReview, worldDecorationDraft,
+import {worldDecorationGroupCloneDraft,worldDecorationNativePosition,worldDecorationValuesAtPosition,worldDecorationGroupBoxSelection,worldDecorationGroupSelection,qualifyWorldDecorationSource, qualifyWorldDecorationReview, worldDecorationDraft,
   worldDecorationDonorValues,qualifyWorldDecorationTransformReview,qualifyWorldDecorationRemovalReview,qualifyWorldDecorationCellReview,qualifyWorldDecorationModelReview,qualifyWorldDecorationGroupReview,transformWorldDecorationGroup} from './worldmap-decoration-state.js';
 import {validValues} from './worldmap-placement-state.js';
 import {mountAuthoredWorldSelectionSets} from './worldmap-authored-selection-sets.js';
@@ -23,11 +23,12 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   const destination=node('input');destination.type='number';destination.min='0';destination.max='16383';destination.step='1';addField('World decoration new native cell',destination);
   const model=node('select');addField('World decoration replacement model',model);
   const group=node('details'),groupList=node('div'),groupFields=node('div'),groupDelta={},groupReview=node('button','Review decoration group'),groupAll=node('button','Select all decorations'),groupNone=node('button','Clear decoration group');
-  group.dataset.worldDecorationGroup='';group.append(node('summary','Transform Authored Decoration Group'),node('p','Inspect decoration donors, select up to 32 retained decorations, then review a relative native XYZ/yaw delta. Use Preview, Apply and Discard above. Yaw rotates each orientation; positions do not orbit. Apply creates one history command. Select All is unavailable when there are more than 32 decorations. In the Current viewport, Ctrl/Command-click toggles a decoration and Shift-click adds one. The first pick inspects native decoration sources automatically.'),groupList,groupFields,groupAll,groupNone,groupReview);
+  group.dataset.worldDecorationGroup='';group.append(node('summary','Authored Decoration Group'),node('p','Inspect decoration donors, select up to 32 retained decorations, then review a relative native XYZ/yaw delta. Use Preview, Apply and Discard above. Yaw rotates each orientation; positions do not orbit. Apply creates one history command. Select All is unavailable when there are more than 32 decorations. In the Current viewport, Ctrl/Command-click toggles a decoration and Shift-click adds one. The first pick inspects native decoration sources automatically.'),groupList,groupFields,groupAll,groupNone,groupReview);
   Object.assign(groupList.style,{maxHeight:'200px',overflow:'auto',overflowWrap:'anywhere'});
   Object.assign(groupFields.style,{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:'8px'});
   for(const axis of ['x','y','z','yaw_units']){const input=node('input');input.type='number';input.min=axis==='yaw_units'?'-4095':'-65535';input.max=axis==='yaw_units'?'4095':'65535';input.step='1';input.value='0';input.setAttribute('aria-label','Decoration group delta '+(axis==='yaw_units'?'yaw':axis.toUpperCase()));const label=node('label',axis==='yaw_units'?'Yaw delta':'Native '+axis.toUpperCase()+' delta');Object.assign(input.style,{display:'block',width:'100%',boxSizing:'border-box'});label.append(input);groupFields.append(label);groupDelta[axis]=input;}
   for(const button of [groupReview,groupAll,groupNone])button.type='button';
+  const groupCloneAnchor=node('input'),groupClone=node('button','Review decoration group duplication');groupCloneAnchor.type='number';groupCloneAnchor.min='0';groupCloneAnchor.max='16383';groupCloneAnchor.step='1';groupCloneAnchor.setAttribute('aria-label','Decoration duplicate anchor cell');const cloneLabel=node('label','Duplicate anchor cell ');cloneLabel.append(groupCloneAnchor);groupClone.type='button';Object.assign(groupCloneAnchor.style,{display:'block',width:'100%',boxSizing:'border-box'});group.append(cloneLabel,groupClone,node('p','Duplicate up to 32 selected decorations. The first UUID is the source cell anchor; copies keep relative cell spacing and shift to the destination anchor. Group offset XYZ/yaw deltas also apply; positive Z delta moves world Z backward. Native world height is preserved across floor changes. Every target must be available. Review lists all copies; Apply creates one history command.'));
   const groupFrame=node('button','Frame decoration group');groupFrame.type='button';group.append(groupFrame);
   const groupMove=node('input');groupMove.type='checkbox';groupMove.id='world-decoration-group-translate';const groupMoveLabel=node('label','Translate decoration group ');groupMoveLabel.append(groupMove);const groupSnap=node('select');groupSnap.setAttribute('aria-label','Decoration group translation snap');for(const step of [1,16,64,128]){const option=node('option',step+' native delta units');option.value=String(step);groupSnap.append(option);}group.append(groupMoveLabel,groupSnap,node('p','Handles edit a snapped native delta draft for every selected UUID. Review and Proposed preview are required before Apply.'));
   const groupRotate=node('input');groupRotate.type='checkbox';groupRotate.id='world-decoration-group-rotate';const groupRotateLabel=node('label','Rotate decoration group yaw delta ');groupRotateLabel.append(groupRotate);const groupYawSnap=node('select');groupYawSnap.setAttribute('aria-label','Decoration group yaw snap');for(const step of [1,16,64,256,512,1024]){const option=node('option',`${step} yaw delta units (${step*360/4096}°)`);option.value=String(step);groupYawSnap.append(option);}group.append(groupRotateLabel,groupYawSnap,node('p','The yaw ring edits a relative delta of −4095..4095 units. Each orientation wraps in 4096 units; positions do not orbit the group pivot.'));
@@ -61,6 +62,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   for(const input of Object.values(groupDelta))input.oninput=groupChanged;
   groupAll.onclick=()=>{if(groupAll.disabled)return;for(const input of groupList.querySelectorAll('input'))input.checked=true;groupChanged();};
   groupNone.onclick=()=>{if(groupNone.disabled)return;for(const input of groupList.querySelectorAll('input'))input.checked=false;groupChanged();};
+  groupCloneAnchor.oninput=groupChanged;
   groupFrame.onclick=()=>{if(!groupFrame.disabled)onFrameGroup(groupIds());};
   const contextMatches = context => {
     const now = getContext(); return !!now && !!context && now.path === context.path && now.key === context.key &&
@@ -126,6 +128,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     for(const input of [...groupList.querySelectorAll('input'),...Object.values(groupDelta)])input.disabled=locked||!sourceReady();
     groupAll.disabled=locked||!sourceReady()||count<1||count>32;groupNone.disabled=locked||!sourceReady()||!ids.length;
     groupFrame.disabled=locked||!sourceReady()||ids.length<1||ids.length>32;
+    groupCloneAnchor.disabled=locked||!sourceReady();groupClone.disabled=locked||!sourceReady()||ids.length<1||ids.length>32||source.inventory.free_record_indices.length<ids.length||source.inventory.current_placements.length+ids.length>511||groupCloneAnchor.value===''||!source.inventory.target_cells.includes(Number(groupCloneAnchor.value))||Object.values(delta).some(n=>!Number.isInteger(n))||['x','y','z'].some(a=>Math.abs(delta[a])>65535)||Math.abs(delta.yaw_units)>4095||(editing&&JSON.stringify(fieldValues())!==JSON.stringify(worldDecorationDonorValues(source,Number(donor.value))));
     groupMove.disabled=locked||!groupTransformDraft();groupRotate.disabled=groupMove.disabled;groupSnap.disabled=groupYawSnap.disabled=groupMove.disabled;
     groupReview.disabled=locked||!sourceReady()||ids.length<1||ids.length>32||Object.values(delta).some(n=>!Number.isInteger(n))||
       ['x','y','z'].some(a=>Math.abs(delta[a])>65535)||Math.abs(delta.yaw_units)>4095||!Object.values(delta).some(n=>n!==0)||
@@ -177,7 +180,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
       const selected = context.current.scene_graph.entities.find(e => e.entity_id === selectedId);
       if(edit&&selected?.placement_scope!=='authored_spawn_seed')throw Error('Select a retained Current authored decoration first.');
       source = qualified; held = {...context,selectedId}; editing=edit;placementId = edit?selected.authored_placement.placement_id:`placement://authored/${crypto.randomUUID()}`; donor.replaceChildren();
-      for(const input of Object.values(groupDelta))input.value='0';
+      groupCloneAnchor.value=String(source.inventory.target_cells[0]??'');for(const input of Object.values(groupDelta))input.value='0';
       groupList.replaceChildren();for(const row of source.metadata.authored_allocations){const input=node('input');input.type='checkbox';input.value=row.placement_id;input.setAttribute('aria-label','Group decoration '+row.placement_id);input.onchange=groupChanged;const label=node('label'),text=node('span',`Cell ${row.target_cell} · record ${row.record_index} · model ${row.model_pool_index} · ${row.placement_id.split('/').pop()}`);Object.assign(label.style,{display:'flex',alignItems:'flex-start',gap:'8px',padding:'4px 0'});Object.assign(input.style,{width:'auto',flex:'0 0 auto',margin:'4px 0'});text.style.minWidth='0';label.append(input,text);groupList.append(label);}
       const assets = new Set(context.current.scene_graph.assets.map(a => a.asset_id));
       for (const seed of source.inventory.donors) if (assets.has(`asset://${value.scene}/worldmap/models/${String(seed.model_pool_index).padStart(4,'0')}`)) {
@@ -204,6 +207,15 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
       const qualified=await qualifyWorldDecorationGroupReview(value,source,ids,delta);if(!valid())return;
       review=qualified;evidence.textContent=JSON.stringify({delta,placements:review.audit.placements.map(a=>({placement_id:a.placement_id,cell:a.after.target_cell,record:a.after.record_index,before:a.before.native_seed.source_position,after:a.after.native_seed.source_position})),proposed_map_sha256:review.proposed_map_sha256,review_key:review.review_key},null,2);
       status.textContent=`Group Review matches independent complete native replay for ${ids.length} decorations. Preview before Apply.`;
+    });
+  };
+  groupClone.onclick=()=>{
+    if(groupClone.disabled)return;groupMove.checked=groupRotate.checked=move.checked=rotate.checked=false;withdrawReview();
+    return run('group-clone-review',async(context,signal,valid)=>{
+      const requests=worldDecorationGroupCloneDraft(source,groupIds(),Number(groupCloneAnchor.value),groupValues());status.textContent='Checking complete native group duplication and preserving existing seeds…';
+      const value=await read('/api/worldmap-placement-allocation-review',{scene:context.current.scene,source_key:context.key,requests},signal);
+      const qualified=await qualifyWorldDecorationReview(value,source,requests);if(!valid())return;review=qualified;
+      evidence.textContent=JSON.stringify({copies:review.audit.allocations.map(a=>({placement_id:a.placement_id,donor_cell:a.donor_cell,target_cell:a.target_cell,record_index:a.record_index,model_pool_index:a.model_pool_index,native_position:a.native_seed.source_position})),proposed_map_sha256:review.proposed_map_sha256,review_key:review.review_key},null,2);status.textContent=`Native Review matches independent complete replay for ${requests.length} duplicates. Preview before Apply.`;
     });
   };
   modelReview.onclick=()=>{
@@ -265,7 +277,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     return run('preview', async (context, signal, valid) => {
       const captured = review; status.textContent = 'Qualifying the Proposed native scene and Current model/texture assets…';
       const shown = await onPreview(context, captured, signal, valid); if (!valid() || review !== captured || shown !== true) return;
-      displayed = true; status.textContent = captured.schema_version==='legaia.worldmap-decoration-group-review.v1'?`Proposed group displayed for ${captured.placement_ids.length} decorations; project unchanged. Apply creates one history command.`:captured.schema_version==='legaia.worldmap-decoration-removal-review.v1'?'Proposed removal displayed; project unchanged. Apply removes this decoration as one shared history command.':'Proposed decoration displayed; project unchanged. Apply keeps this placement as one shared history command.';
+      displayed = true; status.textContent = captured.schema_version==='legaia.worldmap-decoration-group-review.v1'?`Proposed group displayed for ${captured.placement_ids.length} decorations; project unchanged. Apply creates one history command.`:captured.schema_version==='legaia.worldmap-decoration-removal-review.v1'?'Proposed removal displayed; project unchanged. Apply removes this decoration as one shared history command.':captured.requests?`Proposed creation displayed for ${captured.requests.length} decorations; project unchanged. Apply allocates the copies as one history command.`:'Proposed decoration displayed; project unchanged. Apply keeps this placement as one shared history command.';
     });
   };
   apply.onclick = async () => {

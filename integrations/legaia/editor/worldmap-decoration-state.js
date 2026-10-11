@@ -321,3 +321,19 @@ export function worldDecorationValuesAtPosition(source,placementId,position,yaw)
   if(!validValues(values))fail('Native position exceeds the retained cell’s signed16 offset range. Move Cell is a separate reviewed edit.');
   return values;
 }
+
+export function worldDecorationGroupCloneDraft(source,ids,anchorCell,delta,newUuid=()=>crypto.randomUUID()){
+  const rows=source?.metadata?.authored_allocations,inventory=source?.inventory;
+  if(!Array.isArray(rows)||!Array.isArray(ids)||!ids.length||ids.length>32||!same(ids,[...new Set(ids)].sort())||!Number.isInteger(anchorCell)||anchorCell<0||anchorCell>16383||!exact(delta,['x','y','z','yaw_units'])||['x','y','z'].some(a=>!Number.isInteger(delta[a])||Math.abs(delta[a])>65535)||!Number.isInteger(delta.yaw_units)||Math.abs(delta.yaw_units)>4095||typeof newUuid!=='function'||!Array.isArray(inventory?.free_record_indices)||inventory.free_record_indices.length<ids.length||!Array.isArray(inventory.target_cells)||!Array.isArray(inventory.donors)||!Array.isArray(inventory.current_placements)||inventory.current_placements.length+ids.length>511)fail('Choose 1–32 retained decorations, an available anchor cell and bounded integer deltas with enough native records.');
+  const selected=ids.map(id=>{const matches=rows.filter(r=>r.placement_id===id);if(matches.length!==1)fail('Clone group contains an unavailable retained UUID.');return matches[0];});
+  const anchor=selected[0].target_cell,dx=anchorCell%128-anchor%128,dz=Math.floor(anchorCell/128)-Math.floor(anchor/128),targets=new Set(inventory.target_cells),claimed=new Set(),used=new Set(rows.map(r=>r.placement_id)),records=[...inventory.free_record_indices].sort((a,b)=>a-b);
+  if(new Set(records).size!==records.length)fail('Duplicate free native records are not a qualified inventory.');
+  return selected.map((row,index)=>{
+    const values=worldDecorationDonorValues(source,row.target_cell),position=worldDecorationNativePosition(source,row.placement_id,values),col=row.target_cell%128+dx,line=Math.floor(row.target_cell/128)+dz,cell=line*128+col;
+    if(col<0||col>127||line<0||line>127||!targets.has(cell)||claimed.has(cell)||!inventory.donors.some(d=>d.source_cell===row.target_cell&&d.object_record_index===row.record_index&&d.model_pool_index===row.model_pool_index))fail('Every duplicate cell must remain inside the grid and be an available native target.');
+    const floor=source.metadata.floor_lut[source.bytes[0x4000+cell]&15],next={offset:{x:position.x+dx*128+delta.x-col*128-64,y:position.y+delta.y+floor,z:line*128+64-position.z-dz*128+delta.z},yaw_units:((values.yaw_units+delta.yaw_units)%4096+4096)%4096};
+    if(!validValues(next))fail('A duplicate transform exceeds a signed16 offset; no group was allocated.');
+    const id='placement://authored/'+newUuid();if(!/^placement:\/\/authored\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id)||used.has(id))fail('Group duplicates require fresh distinct canonical UUIDs.');
+    used.add(id);claimed.add(cell);return {placement_id:id,donor_cell:row.target_cell,target_cell:cell,record_index:records[index],values:next};
+  });
+}
