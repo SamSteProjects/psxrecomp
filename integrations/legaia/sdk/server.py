@@ -1344,16 +1344,22 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_placement_edit import review
                     self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_id'],body['values']))
                     return
+                if route == '/api/worldmap-decoration-cell-review':
+                    if set(body) != {'scene','source_key','placement_id','target_cell'}:
+                        raise ProjectError('Decoration cell Review requires exact current identity and destination')
+                    from .worldmap_placement_relocate import review
+                    self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_id'],body['target_cell']))
+                    return
                 if route == '/api/worldmap-decoration-removal-review':
                     if set(body)!={'scene','source_key','placement_id'}:raise ProjectError('Removal Review requires exact current authored identity')
                     from .worldmap_placement_remove import review
                     self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_id']))
                     return
                 if route == '/api/worldmap-placement-scene':
-                    if set(body) not in ({'scene','source_key'},{'scene','source_key','allocation_proposal'},{'scene','source_key','allocation_edit_proposal'},{'scene','source_key','allocation_remove_proposal'}):
+                    if set(body) not in ({'scene','source_key'},{'scene','source_key','allocation_proposal'},{'scene','source_key','allocation_edit_proposal'},{'scene','source_key','allocation_remove_proposal'},{'scene','source_key','allocation_cell_proposal'}):
                         raise ProjectError('Current World scene requires exact source and optional reviewed allocation')
                     from .worldmap_current_placements import inspect
-                    self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body.get('allocation_proposal'),body.get('allocation_edit_proposal'),body.get('allocation_remove_proposal')))
+                    self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body.get('allocation_proposal'),body.get('allocation_edit_proposal'),body.get('allocation_remove_proposal'),body.get('allocation_cell_proposal')))
                     return
                 if route == '/api/worldmap-placement-reset-review':
                     if set(body) != {'scene', 'source_key'}:

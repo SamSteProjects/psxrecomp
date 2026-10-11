@@ -2263,6 +2263,10 @@ class ProjectService:
             from .worldmap_placement_edit import apply
             apply(self, command)
             return
+        if command.get('type') == 'relocate_worldmap_authored_placement':
+            from .worldmap_placement_relocate import apply
+            apply(self, command)
+            return
         if command.get('type') == 'remove_worldmap_authored_placement':
             from .worldmap_placement_remove import apply
             apply(self, command)

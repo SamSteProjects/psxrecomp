@@ -1,5 +1,5 @@
 import {worldPlacementInventory, allocateWorldPlacements, equalWorldPlacementBytes, placementDigest,
-  replayWorldPlacementAllocations, composeWorldPlacementTransforms} from './worldmap-placement-replay.js';
+  replayWorldPlacementAllocations, composeWorldPlacementTransforms, decodeWorldPlacementSeeds} from './worldmap-placement-replay.js';
 import {nativeWorldPlacementMatches} from './worldmap-current-placements.js';
 import {validValues} from './worldmap-placement-state.js';
 const fail = message => { throw Error(message); };
@@ -150,5 +150,54 @@ export async function qualifyWorldDecorationRemovalReview(value,source,placement
   const removed=await removeWorldDecoration(source,placementId);
   if(!same(value.binding,removed.binding)||!same(value.audit,removed.audit)||!equalWorldPlacementBytes(decode(value.proposed_map_base64),removed.bytes)||
       value.proposed_map_sha256!==await placementDigest(removed.bytes))fail('Removal Review differs from complete independent donor rebase and literal byte replay.');
+  return structuredClone(value);
+}
+
+export async function relocateWorldDecoration(source,placementId,targetCell){
+  const binding=structuredClone(source.metadata.binding),floor=source.metadata.floor_lut,scene=source.metadata.scene;
+  const matches=binding?.operations.flatMap(op=>op.requests).filter(r=>r.placement_id===placementId)??[];
+  const before=source.metadata.authored_allocations.find(a=>a.placement_id===placementId);
+  if(matches.length!==1||!before||!Number.isInteger(targetCell)||!source.inventory.target_cells.includes(targetCell))
+    fail('Choose a retained decoration and an unoccupied native walk cell.');
+  const selected=matches[0],previous=selected.target_cell,rebases=[];
+  for(const op of binding.operations)for(const request of op.requests)
+    if(request.placement_id!==placementId&&request.donor_cell===previous){
+      rebases.push({placement_id:request.placement_id,before_donor_cell:previous,after_donor_cell:targetCell});request.donor_cell=targetCell;
+    }
+  selected.target_cell=targetCell;
+  let canonical=source.retailBytes;
+  for(const op of binding.operations){const allocated=await allocateWorldPlacements(canonical,floor,scene,op.requests);canonical=allocated.bytes;op.proposed_map_sha256=allocated.audit.proposed_sha256;}
+  const replayed=await replayWorldPlacementAllocations(source.retailBytes,floor,scene,binding,source.metadata.source_record);
+  const bytes=await composeWorldPlacementTransforms(source.retailBytes,replayed.bytes,floor,scene,source.authoredRecords);
+  const literal=source.bytes.slice(),oldAt=0x8000+previous*2,newAt=0x8000+targetCell*2,recordAt=selected.record_index*32;
+  const view=new DataView(source.bytes.buffer,source.bytes.byteOffset,source.bytes.byteLength),word=view.getUint16(newAt,true),terrainAt=(word&511)*32+20;
+  literal.set(source.retailBytes.subarray(oldAt,oldAt+2),oldAt);
+  new DataView(literal.buffer).setUint16(newAt,(word&~511)|selected.record_index,true);
+  literal.set(source.bytes.subarray(terrainAt,terrainAt+4),recordAt+20);
+  if(!equalWorldPlacementBytes(bytes,literal))fail('Cell relocation changed offsets or unrelated native bytes.');
+  const old=await decodeWorldPlacementSeeds(source.bytes,floor,scene),next=await decodeWorldPlacementSeeds(bytes,floor,scene);
+  const destinationId=`scene://${scene}/worldmap/placements/${targetCell.toString(16).padStart(4,'0')}`;
+  const survivors=old.placements.filter(p=>p.entity_id!==before.native_seed.entity_id);
+  if(next.placements.length!==old.placements.length||!same(old.unresolved,next.unresolved)||!same(old.coverage.excluded,next.coverage.excluded)||
+      survivors.some(p=>!same(p,next.placements.find(n=>n.entity_id===p.entity_id))))fail('Cell relocation changed another native seed or footprint binding.');
+  const after=replayed.allocations.find(a=>a.placement_id===placementId);
+  if(!same(after?.native_seed,next.placements.find(p=>p.entity_id===destinationId)))fail('Cell relocation has no complete final native seed.');
+  return {binding,bytes,audit:{before:structuredClone(before),after,rebased_donors:rebases,
+    changed_bytes:Array.from(bytes.entries()).filter(([i,n])=>n!==source.bytes[i]).map(([i,n])=>({byte_offset:i,before_byte:source.bytes[i],after_byte:n})),
+    scope:'authored-decoration-native-cell-only',gameplay_verified:false}};
+}
+
+export async function qualifyWorldDecorationCellReview(value,source,placementId,targetCell){
+  const before=source.metadata;
+  if(!exact(value,['schema_version','project_path','scene','source_key','source_record','placement_id','target_cell','current_map_sha256',
+      'proposed_map_sha256','proposed_map_base64','before_binding','binding','audit','read_only','project_changed','gameplay_verified','build_ready','review_key'])||
+      value.schema_version!=='legaia.worldmap-decoration-cell-review.v1'||value.project_path!==before.project_path||value.scene!==before.scene||
+      value.source_key!==before.source_key||!same(value.source_record,before.source_record)||value.placement_id!==placementId||value.target_cell!==targetCell||
+      value.current_map_sha256!==before.current_map_sha256||!same(value.before_binding,before.binding)||
+      value.read_only!==true||value.project_changed!==false||value.gameplay_verified!==false||value.build_ready!==false||!hash(value.review_key))
+    fail('Cell Review changed its Current owner, destination or read-only scope.');
+  const moved=await relocateWorldDecoration(source,placementId,targetCell);
+  if(!same(value.binding,moved.binding)||!same(value.audit,moved.audit)||!equalWorldPlacementBytes(decode(value.proposed_map_base64),moved.bytes)||
+      value.proposed_map_sha256!==await placementDigest(moved.bytes))fail('Cell Review differs from independent lineage replay and literal native patch.');
   return structuredClone(value);
 }
