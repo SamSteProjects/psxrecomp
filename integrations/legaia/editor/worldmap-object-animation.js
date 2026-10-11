@@ -1,3 +1,4 @@
+import {mountWorldAnimationEditor} from './worldmap-animation-editor.js';
 import {qualifyWorldObjectBind} from './worldmap-object-bind.js';
 import {placementDigest} from './worldmap-placement-replay.js';
 import {rigidFrameNormals} from './source-normal-view.js';
@@ -42,7 +43,7 @@ export async function qualifyWorldAnimationPreview(p,source,expected,frame){
   return structuredClone(p);
 }
 
-export function mountWorldObjectAnimation({host,binding,currentReport,entityId,path,current,busy,setBusy,onPose,onReturn,onError,update}){
+export function mountWorldObjectAnimation({host,binding,currentReport,entityId,path,current,busy,setBusy,onPose,onReturn,onError,update,api,onApplied,getBinding}){
   const box=document.createElement('div');box.dataset.worldObjectAnimation='';host.append(box);
   const title=document.createElement('h4');title.textContent='World Animation Preview';box.append(title);
   const frame=document.createElement('input');frame.type='number';frame.min='0';frame.max='511';frame.step='1';frame.value='0';frame.setAttribute('aria-label','World source animation frame');box.append(frame);
@@ -50,15 +51,16 @@ export function mountWorldObjectAnimation({host,binding,currentReport,entityId,p
   const currentPreview=document.createElement('button');currentPreview.type='button';currentPreview.textContent='Preview Current animation frame';box.append(currentPreview);
   const restore=document.createElement('button');restore.type='button';restore.textContent='Return to Current geometry';box.append(restore);
   const status=document.createElement('p');status.textContent='Compare Retail or saved Current animation with the Current model. ANM records may be shared; timing and live state are unknown.';box.append(status);
-  let disposed=false,pending=null,shown=false;
-  const refresh=()=>{frame.disabled=preview.disabled=currentPreview.disabled=disposed||!current()||busy();restore.disabled=disposed||!current()||busy()||!shown;};
-  const show=async(authored)=>{if(disposed||!current()||busy())return;const n=Number(frame.value);if(frame.value.trim()===''||!Number.isInteger(n)||n<0||n>511){status.textContent='Choose a whole source frame 0..511.';return;}const controller=new AbortController();pending=controller;setBusy(true);refresh();update();
+  let disposed=false,pending=null,shown=false,editTool=null;
+  const refresh=()=>{frame.disabled=preview.disabled=currentPreview.disabled=disposed||!current()||busy();restore.disabled=disposed||!current()||busy()||!shown;editTool?.update();};
+  const show=async(authored)=>{if(disposed||!current()||busy())return;editTool?.cancel();const n=Number(frame.value);if(frame.value.trim()===''||!Number.isInteger(n)||n<0||n>511){status.textContent='Choose a whole source frame 0..511.';return;}const controller=new AbortController();pending=controller;setBusy(true);refresh();update();
     const valid=()=>!disposed&&current()&&pending===controller;
-    try{const response=await fetch(authored?'/api/worldmap-object-animation-current':'/api/worldmap-object-animation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scene:currentReport.scene,source_key:binding.source_key,entity_id:entityId,frame_index:n}),signal:controller.signal}),text=await response.text();if(!valid())return;if(new TextEncoder().encode(text).length>(authored?160:40)*1024*1024)fail();const v=JSON.parse(text);if(!response.ok)throw Error(v.error||'Source animation preview failed.');const qualified=authored?await (await import('./worldmap-animation-current.js')).qualifyWorldAnimationCurrent(v,currentReport,entityId,path,n):await qualifyWorldObjectAnimation(v,currentReport,entityId,path,n);if(!valid())return;onPose(qualified.preview.geometry);shown=true;frame.max=String(v.preview.frame_count-1);status.textContent=`${authored?'Current':'Retail'} frame ${n} / ${v.preview.frame_count-1} · ${v.preview.channel_count} rigid channels. Current placement retained; no project change or live animation.`;
+    try{const response=await fetch(authored?'/api/worldmap-object-animation-current':'/api/worldmap-object-animation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scene:currentReport.scene,source_key:binding.source_key,entity_id:entityId,frame_index:n}),signal:controller.signal}),text=await response.text();if(!valid())return;if(new TextEncoder().encode(text).length>(authored?160:40)*1024*1024)fail();const v=JSON.parse(text);if(!response.ok)throw Error(v.error||'Source animation preview failed.');const qualified=authored?await (await import('./worldmap-animation-current.js')).qualifyWorldAnimationCurrent(v,currentReport,entityId,path,n,getBinding()):await qualifyWorldObjectAnimation(v,currentReport,entityId,path,n);if(!valid())return;onPose(qualified.preview.geometry);shown=true;frame.max=String(v.preview.frame_count-1);status.textContent=`${authored?'Current':'Retail'} frame ${n} / ${v.preview.frame_count-1} · ${v.preview.channel_count} rigid channels. Current placement retained; no project change or live animation.`;
     }catch(error){if(error.name!=='AbortError'&&valid()){status.textContent=error.message;onError(error);}}
     finally{if(pending===controller){pending=null;setBusy(false);refresh();update();}}
   };
   preview.onclick=()=>show(false);currentPreview.onclick=()=>show(true);
-  restore.onclick=()=>{if(restore.disabled)return;onReturn();shown=false;status.textContent='Current geometry restored; no project change.';refresh();update();};
-  refresh();return {dispose(){disposed=true;pending?.abort();if(pending){pending=null;setBusy(false);}if(shown)onReturn();box.remove();},update:refresh};
+  restore.onclick=()=>{if(restore.disabled)return;editTool?.cancel();onReturn();shown=false;status.textContent='Current geometry restored; no project change.';refresh();update();};
+  editTool=mountWorldAnimationEditor({host:box,currentReport,entityId,path,current,busy,setBusy,api,onApplied,getBinding,onError,update,onPose:geometry=>{onPose(geometry);shown=true;},onReturn:()=>{onReturn();shown=false;},onInspect:()=>{if(shown){onReturn();shown=false;}}});
+  refresh();return {dispose(){disposed=true;editTool?.dispose();pending?.abort();if(pending){pending=null;setBusy(false);}if(shown)onReturn();box.remove();},update:refresh};
 }

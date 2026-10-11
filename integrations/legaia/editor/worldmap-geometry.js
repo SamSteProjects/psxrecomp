@@ -210,7 +210,13 @@ export function mountWorldmapGeometry({after,getState,busy,setBusy,api=null,onPr
       scriptTool?.dispose();scriptTool=null;
       if(qualified.bind.status==='resolved_source_header')scriptTool=mountWorldObjectScript({host:inspectorComponent,binding:qualified,currentReport:captured,entityId,path:binding.path,current:()=>current()&&session===binding&&currentReport===captured&&renderedLayer==='current'&&hierarchy.value===entityId&&!allocationPreview,busy,setBusy,onError,update:updateState,onOpenScript,getSchema:()=>getState().inspector_schema});
       animationTool?.dispose();animationTool=null;
-      if(qualified.bind.status==='resolved_source_header'&&qualified.bind.encoded_animation_selector>0)animationTool=mountWorldObjectAnimation({host:inspectorComponent,binding:qualified,currentReport:captured,entityId,path:binding.path,current:()=>current()&&session===binding&&currentReport===captured&&renderedLayer==='current'&&hierarchy.value===entityId&&!allocationPreview,busy,setBusy,onError,update:updateState,
+      if(qualified.bind.status==='resolved_source_header'&&qualified.bind.encoded_animation_selector>0)animationTool=mountWorldObjectAnimation({host:inspectorComponent,binding:qualified,currentReport:captured,entityId,path:binding.path,current:()=>current()&&session===binding&&currentReport===captured&&renderedLayer==='current'&&hierarchy.value===entityId&&!allocationPreview,busy,setBusy,onError,update:updateState,api,getBinding:()=>structuredClone(getState().worldmap_edit_bindings?.[`worldmap://${captured.scene}/animation-channels`]?.WorldAnimationChannels??null),onApplied:async target=>{
+        if(!dialog.open)return;await new Promise(resolve=>{dialog.addEventListener('close',resolve,{once:true});dialog.close();});
+        const sourceKey=getState().worldmap_authoring_state_key;
+        if(!await openCurrentScene({...target,sourceKey}))fail('World animation applied, but fresh Current geometry could not be opened.');
+        await inspectObjectBind(target.entityId,currentReport);
+        status.textContent='World animation applied as one history command. Fresh Current source selected; preview its saved channels in the Inspector.';
+      },
         onPose:geometry=>{const next=structuredClone(sceneView),entity=next.entities.find(e=>e.entity_id===entityId),asset=next.assets.find(a=>a.geometry_key===entity.geometry_key),key=entity.geometry_key+'#source-animation-preview';entity.geometry_key=key;next.assets.push({...asset,geometry_key:key,preview:geometry});const failures=renderer.load(next);if(failures.length){renderer.load(sceneView);fail(failures.join('; '));}animationPreview=true;draw();},
         onReturn:()=>{animationPreview=false;if(sceneView&&renderer){renderer.load(sceneView);draw();}}});
       status.textContent='Retail object-bind source qualified; animation clip, interaction script and runtime activation remain unresolved.';

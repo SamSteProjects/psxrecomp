@@ -5,7 +5,7 @@ SCENES = ('map01', 'map02', 'map03')
 SCENE_COMPONENTS = ('Environment', 'Collision', 'FloorTiers', 'FloorHeights',
                     'RegionBounds', 'TriggerCells', 'TriggerScripts')
 WORLD_OWNERS = ('placements', 'placement-allocations', 'scripted-placement-allocations',
-                'script-operands', 'script-branches')
+                'script-operands', 'script-branches', 'animation-channels')
 
 
 def snapshot(project):

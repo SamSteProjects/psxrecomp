@@ -40,22 +40,23 @@ export async function replayWorldAnimationChannels(bank,index,recordHash,edits){
   return {bank:candidate,normalized,audit:{scope:'world-animation-channel-content-only',record_index:index,byte_offset:start,byte_length:end-start,source_bank_sha256:await placementDigest(bank),proposed_bank_sha256:await placementDigest(candidate),source_record_sha256:recordHash,proposed_record_sha256:await placementDigest(candidate.slice(start,end)),channels,changed_bytes:changed,gameplay_verified:false}};
 }
 
-export async function qualifyWorldAnimationCurrent(v,current,id,path,frame){
-  if(!exact(v,['schema_version','project_path','scene','source_key','entity_id','frame_index','animation_id','source','binding','preview','audits','representation','read_only','project_changed','gameplay_verified'])||v.schema_version!=='legaia.world-animation-current.v1'||v.project_path!==path||v.scene!==current.scene||v.source_key!==current.project_source_key||v.entity_id!==id||v.frame_index!==frame||v.representation!=='current-model-current-world-animation'||v.read_only!==true||v.project_changed!==false||v.gameplay_verified!==false)fail();
-  const native=v.source,before=native?.before;
+export async function qualifyNativeWorldAnimation(native,current,id,path,frame,edits){
   if(!exact(native,['schema_version','project_path','scene','source_key','entity_id','frame_index','edits','animation_id','before','current_model_geometry','proposed_preview','audit','read_only','project_changed','gameplay_verified','build_ready','limitations','review_key']))fail();
-  await qualifyWorldObjectAnimation(before,current,id,path,frame);
+  const before=native.before;await qualifyWorldObjectAnimation(before,current,id,path,frame);
   const entity=current.scene_graph.entities.find(e=>e.entity_id===id),geometry=current.scene_graph.assets.find(a=>a.asset_id===entity.asset_id).preview;
   const animationId=`animation://${current.scene}/worldmap/anm/${String(before.preview.record_index).padStart(4,'0')}`;
-  if(native.schema_version!=='legaia.worldmap-animation-review.v1'||native.project_path!==path||native.scene!==current.scene||native.source_key!==current.project_source_key||native.entity_id!==id||native.frame_index!==frame||native.animation_id!==animationId||v.animation_id!==animationId||!same(native.edits,[])||!same(native.current_model_geometry,geometry)||!same(native.proposed_preview,before.preview)||native.read_only!==true||native.project_changed!==false||native.gameplay_verified!==false||native.build_ready!==false)fail();
-  let bank=bytes(before.preview.bank_base64);
-  const noop=await replayWorldAnimationChannels(bank,before.preview.record_index,before.preview.record_sha256,[]);
-  if(!same(native.audit,noop.audit))fail();
-  const audits=[];
-  if(v.binding!==null){
-    const b=v.binding;
-    if(!exact(b,['schema_version','scene','source_disc_sha256','source_bank_sha256','entries'])||b.schema_version!=='legaia.world-animation-channels.v1'||b.scene!==current.scene||b.source_bank_sha256!==before.preview.bank_sha256||!exact(b.entries,Object.keys(b.entries??{}))||!integer(Object.keys(b.entries).length,1,4096))fail();
-    if(b.source_disc_sha256!==current.source_record.disc_sha256)fail();
+  if(native.schema_version!=='legaia.worldmap-animation-review.v1'||native.project_path!==path||native.scene!==current.scene||native.source_key!==current.project_source_key||native.entity_id!==id||native.frame_index!==frame||native.animation_id!==animationId||!same(native.edits,edits)||!same(native.current_model_geometry,geometry)||native.read_only!==true||native.project_changed!==false||native.gameplay_verified!==false||native.build_ready!==false||typeof native.review_key!=='string'||!/^[0-9a-f]{64}$/.test(native.review_key)||!Array.isArray(native.limitations)||native.limitations.some(s=>typeof s!=='string'||s.length>4096))fail();
+  const bank=bytes(before.preview.bank_base64),replay=await replayWorldAnimationChannels(bank,before.preview.record_index,before.preview.record_sha256,edits);
+  if(!same(native.audit,replay.audit)||native.proposed_preview.encoded_selector!==before.preview.encoded_selector)fail();
+  await qualifyWorldAnimationPreview(native.proposed_preview,geometry,replay.bank,frame);
+  return {before,bank,geometry,replay,animationId};
+}
+
+export async function composeWorldAnimationBinding(binding,before,current){
+  let bank=bytes(before.preview.bank_base64);const audits=[];
+  if(binding!==null){
+    const b=binding;
+    if(!exact(b,['schema_version','scene','source_disc_sha256','source_bank_sha256','entries'])||b.schema_version!=='legaia.world-animation-channels.v1'||b.scene!==current.scene||b.source_bank_sha256!==before.preview.bank_sha256||!exact(b.entries,Object.keys(b.entries??{}))||!integer(Object.keys(b.entries).length,1,4096)||b.source_disc_sha256!==current.source_record.disc_sha256)fail();
     let total=0;
     for(const index of Object.keys(b.entries).sort()){
       const entry=b.entries[index];if(!/^\d{4}$/.test(index)||Number(index)>4095||!exact(entry,['source_record_sha256','edits'])||!Array.isArray(entry.edits)||!entry.edits.length||(total+=entry.edits.length)>4096)fail();
@@ -63,7 +64,31 @@ export async function qualifyWorldAnimationCurrent(v,current,id,path,frame){
       if(!same(replay.normalized,entry.edits))fail();bank=replay.bank;audits.push(replay.audit);
     }
   }
-  if(!same(v.audits,audits)||v.preview.encoded_selector!==before.preview.encoded_selector)fail();
+  return {bank,audits};
+}
+
+export async function qualifyWorldAnimationCurrent(v,current,id,path,frame,expectedBinding=undefined){
+  if(!exact(v,['schema_version','project_path','scene','source_key','entity_id','frame_index','animation_id','source','binding','preview','audits','representation','read_only','project_changed','gameplay_verified'])||v.schema_version!=='legaia.world-animation-current.v1'||v.project_path!==path||v.scene!==current.scene||v.source_key!==current.project_source_key||v.entity_id!==id||v.frame_index!==frame||v.representation!=='current-model-current-world-animation'||v.read_only!==true||v.project_changed!==false||v.gameplay_verified!==false)fail();
+  if(expectedBinding!==undefined&&!same(v.binding,expectedBinding))fail();
+  const {before,geometry,animationId}=await qualifyNativeWorldAnimation(v.source,current,id,path,frame,[]);
+  const {bank,audits}=await composeWorldAnimationBinding(v.binding,before,current);
+  if(v.animation_id!==animationId||!same(v.audits,audits)||v.preview.encoded_selector!==before.preview.encoded_selector)fail();
   await qualifyWorldAnimationPreview(v.preview,geometry,bank,frame);
+  return structuredClone(v);
+}
+
+export async function qualifyWorldAnimationEdit(v,held,current,id,path,frame,edits){
+  if(!exact(v,['schema_version','project_path','scene','source_key','entity_id','frame_index','animation_id','edits','shared_record','source','before_binding','binding','current_preview','proposed_preview','current_bank_sha256','proposed_bank_sha256','changed_bytes','project_change','read_only','project_changed','gameplay_verified','build_ready','review_key'])||v.schema_version!=='legaia.world-animation-edit-review.v1'||v.project_path!==path||v.scene!==current.scene||v.source_key!==current.project_source_key||v.entity_id!==id||v.frame_index!==frame||!same(v.edits,edits)||v.shared_record!==true||v.read_only!==true||v.project_changed!==false||v.gameplay_verified!==false||v.build_ready!==false||typeof v.review_key!=='string'||!/^[0-9a-f]{64}$/.test(v.review_key))fail();
+  await qualifyWorldAnimationCurrent(held,current,id,path,frame);
+  const {before,geometry,replay,animationId}=await qualifyNativeWorldAnimation(v.source,current,id,path,frame,edits);
+  if(v.animation_id!==animationId||!same(before,held.source.before)||!same(v.before_binding,held.binding)||!same(v.current_preview,held.preview))fail();
+  let binding=structuredClone(held.binding)??{schema_version:'legaia.world-animation-channels.v1',scene:current.scene,source_disc_sha256:current.source_record.disc_sha256,source_bank_sha256:before.preview.bank_sha256,entries:{}};
+  const index=String(before.preview.record_index).padStart(4,'0');
+  if(replay.normalized.length)binding.entries[index]={source_record_sha256:before.preview.record_sha256,edits:replay.normalized};else delete binding.entries[index];
+  if(!Object.keys(binding.entries).length)binding=null;
+  const proposed=await composeWorldAnimationBinding(binding,before,current),old=bytes(held.preview.bank_base64),changed=[];
+  for(let i=0;i<old.length;i++)if(old[i]!==proposed.bank[i])changed.push({byte_offset:i,before_byte:old[i],after_byte:proposed.bank[i]});
+  if(!same(v.binding,binding)||v.project_change!==!same(held.binding,binding)||v.current_bank_sha256!==held.preview.bank_sha256||v.proposed_bank_sha256!==await placementDigest(proposed.bank)||!same(v.changed_bytes,changed)||v.proposed_preview.encoded_selector!==before.preview.encoded_selector)fail();
+  await qualifyWorldAnimationPreview(v.proposed_preview,geometry,proposed.bank,frame);
   return structuredClone(v);
 }
