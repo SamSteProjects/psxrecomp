@@ -1140,6 +1140,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-animation-scene.js": ("worldmap-animation-scene.js", "text/javascript"),
                  "/worldmap-animation-assets.js": ("worldmap-animation-assets.js", "text/javascript"),
                  "/worldmap-animation-build-navigation.js": ("worldmap-animation-build-navigation.js", "text/javascript"),
+                 "/worldmap-animation-export.js": ("worldmap-animation-export.js", "text/javascript"),
                  "/worldmap-object-script.js": ("worldmap-object-script.js", "text/javascript"),
                  "/worldmap-resources.js": ("worldmap-resources.js", "text/javascript"),
                  "/world-script-animation-operands.js": ("world-script-animation-operands.js", "text/javascript"),
@@ -1413,6 +1414,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'scene','source_key','entity_id','frame_index','edits','shared_record'}:raise ProjectError('Saved World animation Review requires exact source, channels and shared consent')
                     from .worldmap_animation_edit import review
                     self._json(200,review(self.server.project,body['scene'],body['source_key'],body['entity_id'],body['frame_index'],body['edits'],body['shared_record']))
+                    return
+                if route == '/api/worldmap-animation-export':
+                    from .worldmap_animation_export import inspect
+                    self._json(200,inspect(self.server.project,body))
                     return
                 if route == '/api/worldmap-animation-scene':
                     if set(body)!={'scene','source_key'}:raise ProjectError('World scene animation requires exact kingdom and source fields')
