@@ -2267,6 +2267,10 @@ class ProjectService:
             from .worldmap_placement_allocation import apply
             apply(self, command)
             return
+        if command.get('type') == 'set_worldmap_scripted_placement':
+            from .worldmap_scripted_placement_edit import apply
+            apply(self,command)
+            return
         if command.get('type') == 'allocate_scripted_worldmap_placements':
             from .worldmap_scripted_placement_allocation import apply
             apply(self,command)

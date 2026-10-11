@@ -1,7 +1,7 @@
 """Bounded retained scripted-placement replay and Current ownership merge.
 
 The caller qualifies and retains the base MAP; no files or project state are
-written here. This is not yet a registered project component or Build route.
+written here. The registered project component is composed by the package Build route.
 """
 from copy import deepcopy
 from hashlib import sha256

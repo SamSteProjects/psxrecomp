@@ -1175,6 +1175,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-current-man.js": ("worldmap-current-man.js", "text/javascript"),
                  "/worldmap-current-map.js": ("worldmap-current-map.js", "text/javascript"),
                  "/worldmap-scripted-placement-scene.js": ("worldmap-scripted-placement-scene.js", "text/javascript"),
+                 "/worldmap-scripted-transform-state.js": ("worldmap-scripted-transform-state.js", "text/javascript"),
                  "/worldmap-scripted-creation-state.js": ("worldmap-scripted-creation-state.js", "text/javascript"),
                  "/worldmap-scripted-creation-editor.js": ("worldmap-scripted-creation-editor.js", "text/javascript"),
                  "/worldmap-scripted-bind.js": ("worldmap-scripted-bind.js", "text/javascript"),
@@ -1437,8 +1438,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route == '/api/worldmap-scripted-placement-scene':
                     if set(body) not in ({'scene','source_key'},{'scene','source_key','scripted_proposal'}):
                         raise ProjectError('Scripted World scene requires exact scene and source key')
-                    if 'scripted_proposal' in body and (not isinstance(body['scripted_proposal'],dict) or set(body['scripted_proposal'])!={'requests','review_key'}):
-                        raise ProjectError('Scripted scene proposal requires exact reviewed requests and key')
+                    if 'scripted_proposal' in body and (not isinstance(body['scripted_proposal'],dict) or set(body['scripted_proposal']) not in ({'requests','review_key'},{'placement_id','values','review_key'})):
+                        raise ProjectError('Scripted scene proposal requires exact reviewed creation or transform')
                     from .worldmap_scripted_placement_scene import inspect
                     self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body.get('scripted_proposal')))
                     return
@@ -1713,6 +1714,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_export import export
                     self._json(200, export(self.server.project, body['scene'], body['source_key'],
                                            body['scope'], body.get('entity_id')))
+                    return
+                if route == '/api/worldmap-scripted-transform-review':
+                    if set(body)!={'scene','source_key','placement_id','values'}:raise ProjectError('Scripted transform Review requires exact source, UUID and values')
+                    from .worldmap_scripted_placement_edit import review
+                    self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_id'],body['values']))
                     return
                 if route == '/api/export/worldmap-scripted':
                     expected={'scene','source_key','scope'}|({'entity_id'} if body.get('scope')=='selected' else set())

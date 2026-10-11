@@ -121,7 +121,7 @@ def source(project,scene,key):
         limitations=['Script records remain shared; creation requires explicit shared-script scope.',
             'Target cells are preliminary empty candidates; donor footprints and binds are checked during Review.',
             'Runtime actor demand, script effects and opaque zero relocation-space ownership remain unverified.',
-            'Viewport export and saved-view integration for scripted placements remain unfinished.',
+            'Ground remains Retail; Current placement/model/texture geometry does not establish runtime poses.',
             'Package delivery requires a saved reviewed binding and qualified drawable Current models; a read-only proposal is not a built package.'])
     binding=project.overrides.get(owner(scene),{}).get(COMPONENT)
     result['binding']=deepcopy(binding)
