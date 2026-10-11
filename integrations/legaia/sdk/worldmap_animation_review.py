@@ -25,7 +25,7 @@ def review(project,scene,key,entity_id,frame_index,edits):
     result=dict(schema_version='legaia.worldmap-animation-review.v1',project_path=str(project.root),scene=scene,
         source_key=key,entity_id=entity_id,frame_index=frame_index,edits=deepcopy(edits),
         animation_id=f"animation://{scene}/worldmap/anm/{preview['record_index']:04d}",
-        before=before,proposed_preview=posed,audit=audit,read_only=True,project_changed=False,
+        before=before,current_model_geometry=deepcopy(asset['preview']),proposed_preview=posed,audit=audit,read_only=True,project_changed=False,
         gameplay_verified=False,build_ready=False,
         limitations=['This Review does not save an authored binding or produce native Build output.',
             'The selected ANM record is shared by every source selector pointing to it.',

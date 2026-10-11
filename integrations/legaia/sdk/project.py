@@ -2259,6 +2259,10 @@ class ProjectService:
             from .worldmap_script_branches import apply
             apply(self,command)
             return
+        if command.get('type') == 'set_world_animation_channels':
+            from .worldmap_animation_edit import apply
+            apply(self,command)
+            return
         if command.get('type') == 'set_worldmap_menu':
             from .worldmap_authoring import apply
             apply(self, command)
@@ -3575,8 +3579,15 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - ({"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptAnimationOperands", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements", "WorldMapPlacementAllocations", "WorldMapScriptedPlacementAllocations", "WorldScriptAnimationOperands", "WorldScriptOperands", "WorldScriptBranches"} | CONTROLLER_COMPONENTS):
+            if not isinstance(components, dict) or not components or set(components) - ({"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptAnimationOperands", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements", "WorldMapPlacementAllocations", "WorldMapScriptedPlacementAllocations", "WorldAnimationChannels", "WorldScriptAnimationOperands", "WorldScriptOperands", "WorldScriptBranches"} | CONTROLLER_COMPONENTS):
                 raise ProjectError("Unsupported authored component")
+            if 'WorldAnimationChannels' in components:
+                from .worldmap_animation_binding import validate,verify,COMPONENT
+                if set(components)!={COMPONENT}:raise ProjectError('World animation owner accepts only its dedicated component')
+                validate(result,identifier,components[COMPONENT])
+                result.overrides[identifier]=deepcopy(components)
+                verify(result,components[COMPONENT]['scene'])
+                continue
             if 'WorldMapScriptedPlacementAllocations' in components:
                 from .worldmap_scripted_placement_binding import validate,read_base
                 if set(components)!={'WorldMapScriptedPlacementAllocations'}:
@@ -4055,6 +4066,10 @@ class ProjectService:
                         name=script.split('/')[2]+' Object Script '+script.rsplit('/',1)[1],
                         changes=[f'{label}: {count} authored entries'],
                         authored={component:deepcopy(entry)}))
+            if 'WorldAnimationChannels' in components:
+                binding=components['WorldAnimationChannels']
+                for index,entry in sorted(binding['entries'].items()):
+                    records.append(dict(id=f"animation://{binding['scene']}/worldmap/anm/{index}",kind='animation',scene_id=None,source_scene=binding['scene'],name=f"{binding['scene']} World ANM Record {index}",source_record=dict(source_disc_sha256=binding['source_disc_sha256'],source_bank_sha256=binding['source_bank_sha256'],source_record_sha256=entry['source_record_sha256'],record_index=int(index)),changes=[f"Authored channels: {len(entry['edits'])}"],authored={'WorldAnimationChannels':deepcopy(entry)}))
             if 'WorldMapPlacementAllocations' in components:
                 binding=components['WorldMapPlacementAllocations']
                 count=sum(len(op['requests']) for op in binding['operations'])
