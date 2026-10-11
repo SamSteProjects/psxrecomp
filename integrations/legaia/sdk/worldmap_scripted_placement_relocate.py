@@ -35,7 +35,7 @@ def review(project,scene,key,placement_id,target_cell):
         if any(r['placement_id']==placement_id for r in operation['requests']):
             record=struct.unpack_from('<H',canonical,0x8000+target_cell*2)[0]&511
             destination_environment=canonical[record*32+20:record*32+24]
-        canonical,audit=allocate_scripted_placements(canonical,fallback,man,floor,scene,operation['requests'],relocation_offset=operation['relocation_offset'])
+        canonical,audit=allocate_scripted_placements(canonical,fallback,man,floor,scene,operation['requests'],relocation_offset=operation['relocation_offset'],allow_model_override=binding['schema_version']=='legaia.worldmap-scripted-placement-ledger.v2')
         operation['proposed_map_sha256']=sha256(canonical).hexdigest();audits.append(audit)
     validate(project,owner(scene),binding)
     normal=_inputs(project,scene,key,include_scripted=False)[3]

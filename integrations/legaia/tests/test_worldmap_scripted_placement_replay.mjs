@@ -25,6 +25,15 @@ for(const c of cases){
   const checksum=structuredClone(c.binding);checksum.operations[0].proposed_map_sha256='0'.repeat(64);
   await assert.rejects(()=>replay(base,fallback,man,c.floor,checksum,c.provenance));refusals++;
   const operation=c.binding.operations[0],request=operation.requests[0];
+  if(c.binding.schema_version==='legaia.worldmap-scripted-placement-ledger.v2'){
+    const v1=structuredClone(c.binding);v1.schema_version='legaia.worldmap-scripted-placement-ledger.v1';
+    await assert.rejects(()=>replay(base,fallback,man,c.floor,v1,c.provenance));refusals++;
+    for(const model_pool_index of [0,512,true,1.5]){
+      const requests=structuredClone(operation.requests);requests[0].model_pool_index=model_pool_index;
+      await assert.rejects(()=>allocate(base,fallback,man,c.floor,scene,requests,operation.relocation_offset,true));refusals++;
+    }
+  }
+
   for(const patch of [{shared_script:false},{shared_script:1},{record_index:true},{record_index:request.record_index+512},{target_cell:true},{donor_cell:-1},{extra:1}]){
     const requests=structuredClone(operation.requests);Object.assign(requests[0],patch);
     await assert.rejects(()=>allocate(base,fallback,man,c.floor,scene,requests,operation.relocation_offset));refusals++;

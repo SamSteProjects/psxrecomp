@@ -16,7 +16,7 @@ from .worldmap_object_bind_allocation import allocate_object_bind_rows, _catalog
 from .worldmap_object_binds import resolve_object_bind
 
 
-def allocate_scripted_placements(data,fallback,man,floor,scene,requests,*,relocation_offset=None):
+def allocate_scripted_placements(data,fallback,man,floor,scene,requests,*,relocation_offset=None,allow_model_override=False):
     if not isinstance(fallback,bytes) or len(fallback)!=0x2000 or not isinstance(man,bytes) or not 0x2b<=len(man)<=4*1024*1024:
         raise ImportError('Scripted World allocation requires immutable bounded fallback and MAN inputs')
     source=inventory(data,floor,scene)
@@ -30,7 +30,7 @@ def allocate_scripted_placements(data,fallback,man,floor,scene,requests,*,reloca
     free=set(source['free_record_indices']);targets=set(source['target_cells'])
     ids=set();records=set();cells=set();result=bytearray(data);allocations=[];binds=[]
     for request in requests:
-        if not isinstance(request,dict) or set(request)!={'placement_id','donor_cell','target_cell','record_index','values','shared_script'} or request['shared_script'] is not True:
+        if not isinstance(request,dict) or set(request) not in ({'placement_id','donor_cell','target_cell','record_index','values','shared_script'}, {'placement_id','donor_cell','target_cell','record_index','values','shared_script','model_pool_index'} if allow_model_override else set()) or request['shared_script'] is not True:
             raise ImportError('Scripted World clone requires exact ownership and explicit shared-script scope')
         identifier=request['placement_id']
         if not isinstance(identifier,str) or not re.fullmatch(r'placement://authored/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}',identifier) or identifier in ids:
@@ -41,6 +41,8 @@ def allocate_scripted_placements(data,fallback,man,floor,scene,requests,*,reloca
         value=request['values']
         if not isinstance(value,dict) or set(value)!={'offset','yaw_units'} or not isinstance(value['offset'],dict) or set(value['offset'])!={'x','y','z'} or any(type(v) is not int or not -32768<=v<=32767 for v in value['offset'].values()) or type(value['yaw_units']) is not int or not 0<=value['yaw_units']<4096:
             raise ImportError('Scripted World clone requires signed16 offsets and yaw0..4095')
+        if 'model_pool_index' in request and (type(request['model_pool_index']) is not int or not 1<=request['model_pool_index']<512):
+            raise ImportError('Scripted model override requires a nonzero native pool index')
         donor=donors[donor_cell];donor_at=donor['object_record_index']*32
         dc,dr=struct.unpack_from('<2b',data,donor_at+6)
         col,row=cell%128+dc,cell//128+dr
@@ -66,6 +68,7 @@ def allocate_scripted_placements(data,fallback,man,floor,scene,requests,*,reloca
         struct.pack_into('<3h',payload,0,*(value['offset'][axis] for axis in ('x','y','z')))
         yaw=struct.unpack_from('<H',payload,10)[0]
         struct.pack_into('<H',payload,10,(yaw&0xf000)|value['yaw_units'])
+        if 'model_pool_index' in request:struct.pack_into('<H',payload,16,request['model_pool_index'])
         result[at:at+32]=payload
         struct.pack_into('<H',result,cell_at,(word&~511)|record)
         anchor_at=0x8000+anchor*2

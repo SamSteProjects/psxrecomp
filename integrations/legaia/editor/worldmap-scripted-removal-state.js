@@ -21,8 +21,8 @@ export async function qualifyScriptedRemovalReview(value,qualified,placementId,c
  let binding=structuredClone(source.binding);binding.operations=binding.operations.map(o=>({...o,requests:o.requests.filter(r=>!removedSet.has(r.placement_id))})).filter(o=>o.requests.length);
  const base=bytes(source.retained_base_map_base64),fallback=bytes(source.fallback_base64),oldAudits=[],audits=[];
  let oldCanonical=base,canonical=base;
- for(const operation of source.binding.operations){const result=await allocateScriptedWorldPlacements(oldCanonical,fallback,man.current,man.floor,source.scene,operation.requests,operation.relocation_offset);oldCanonical=result.bytes;oldAudits.push(result.audit);}
- for(const operation of binding.operations){const result=await allocateScriptedWorldPlacements(canonical,fallback,man.current,man.floor,source.scene,operation.requests,operation.relocation_offset);canonical=result.bytes;operation.proposed_map_sha256=await placementDigest(canonical);audits.push(result.audit);}
+ for(const operation of source.binding.operations){const result=await allocateScriptedWorldPlacements(oldCanonical,fallback,man.current,man.floor,source.scene,operation.requests,operation.relocation_offset,source.binding.schema_version==='legaia.worldmap-scripted-placement-ledger.v2');oldCanonical=result.bytes;oldAudits.push(result.audit);}
+ for(const operation of binding.operations){const result=await allocateScriptedWorldPlacements(canonical,fallback,man.current,man.floor,source.scene,operation.requests,operation.relocation_offset,binding.schema_version==='legaia.worldmap-scripted-placement-ledger.v2');canonical=result.bytes;operation.proposed_map_sha256=await placementDigest(canonical);audits.push(result.audit);}
  if(!binding.operations.length)binding=null;
  const candidate=audits.length?await mergeScriptedWorldCurrent(base,canonical,map.normal,man.floor,source.scene,audits):map.normal.slice();
  const expectedBytes=map.current.slice(),view=new DataView(expectedBytes.buffer),deleted=source.authored_scripted_placements.filter(a=>removedSet.has(a.placement_id));

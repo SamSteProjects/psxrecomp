@@ -14,7 +14,7 @@ export async function qualifyScriptedGroupReview(value,qualified,requested){
  const binding=structuredClone(source.binding),fallback=bytes(source.fallback_base64);let canonical=bytes(source.retained_base_map_base64);const found=[],audits=[];
  for(const operation of binding.operations){
   for(const request of operation.requests)if(edits.has(request.placement_id)){request.values=structuredClone(edits.get(request.placement_id));found.push(request.placement_id);}
-  const result=await allocateScriptedWorldPlacements(canonical,fallback,man.current,man.floor,source.scene,operation.requests,operation.relocation_offset);
+  const result=await allocateScriptedWorldPlacements(canonical,fallback,man.current,man.floor,source.scene,operation.requests,operation.relocation_offset,binding.schema_version==='legaia.worldmap-scripted-placement-ledger.v2');
   canonical=result.bytes;operation.proposed_map_sha256=await placementDigest(canonical);audits.push(result.audit);
  }
  if(found.length!==ids.size||new Set(found).size!==ids.size)fail();

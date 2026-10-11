@@ -1737,6 +1737,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_scripted_placement_relocate import review
                     self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_id'],body['target_cell']))
                     return
+                if route == '/api/worldmap-scripted-model-review':
+                    if set(body)!={'scene','source_key','placement_ids','model_pool_index'}:raise ProjectError('Scripted model Review requires exact source, UUIDs and model')
+                    from .worldmap_scripted_placement_model import review
+                    self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_ids'],body['model_pool_index']))
+                    return
                 if route == '/api/worldmap-scripted-group-transform-review':
                     if set(body)!={'scene','source_key','entries'}:raise ProjectError('Scripted group Review requires exact source and UUID transforms')
                     from .worldmap_scripted_placement_group import review

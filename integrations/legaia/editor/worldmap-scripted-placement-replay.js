@@ -69,7 +69,7 @@ async function coverage(before, after, floor, scene, newCells) {
   return {indexed, count: a.placements.length};
 }
 
-export async function allocateScriptedWorldPlacements(data, fallback, man, floor, scene, requests, relocationOffset) {
+export async function allocateScriptedWorldPlacements(data, fallback, man, floor, scene, requests, relocationOffset, allowModelOverride=false) {
   const inv = await worldPlacementInventory(data, floor, scene), l = layout(man);
   if (!Array.isArray(requests) || !integer(requests.length, 1, 32) || inv.current_placements.length + requests.length > 511 ||
       !integer(relocationOffset, 18, 8191) || relocationOffset % 2) fail('Scripted replay exceeds its operation or relocation budget.');
@@ -78,8 +78,8 @@ export async function allocateScriptedWorldPlacements(data, fallback, man, floor
   const targets = new Set(inv.target_cells), free = new Set(inv.free_record_indices), ids = new Set(), records = new Set(), cells = new Set(), newCells = new Set();
   const result = data.slice(), v = view(result), source = view(data), allocations = [], bindRequests = [];
   for (const r of requests) {
-    if (!exact(r, ['placement_id', 'donor_cell', 'target_cell', 'record_index', 'values', 'shared_script']) || r.shared_script !== true ||
-        !uuid(r.placement_id) || ids.has(r.placement_id) || !integer(r.donor_cell, 0, 16383) || !integer(r.target_cell, 0, 16383) || !integer(r.record_index, 4, 511) ||
+    if (!exact(r, ['placement_id', 'donor_cell', 'target_cell', 'record_index', 'values', 'shared_script', ...(allowModelOverride&&Object.hasOwn(r??{},'model_pool_index')?['model_pool_index']:[])]) || r.shared_script !== true ||
+        (Object.hasOwn(r,'model_pool_index')&&!integer(r.model_pool_index,1,511))||!uuid(r.placement_id) || ids.has(r.placement_id) || !integer(r.donor_cell, 0, 16383) || !integer(r.target_cell, 0, 16383) || !integer(r.record_index, 4, 511) ||
         !donors.has(r.donor_cell) || !targets.has(r.target_cell) || !free.has(r.record_index) || records.has(r.record_index) ||
         !exact(r.values, ['offset', 'yaw_units']) || !exact(r.values.offset, ['x', 'y', 'z']) || Object.values(r.values.offset).some(n => !integer(n, -32768, 32767)) || !integer(r.values.yaw_units, 0, 4095)) fail('Scripted request ownership or values differ.');
     const donor = donors.get(r.donor_cell), donorAt = donor.object_record_index * 32, at = r.record_index * 32;
@@ -92,6 +92,7 @@ export async function allocateScriptedWorldPlacements(data, fallback, man, floor
     result.set(data.slice(donorAt, donorAt + 32), at); result.set(data.slice(previousAt + 20, previousAt + 24), at + 20);
     ['x', 'y', 'z'].forEach((axis, i) => v.setInt16(at + 2 * i, r.values.offset[axis], true));
     v.setUint16(at + 10, (source.getUint16(donorAt + 10, true) & 61440) | r.values.yaw_units, true);
+    if(Object.hasOwn(r,'model_pool_index'))v.setUint16(at+16,r.model_pool_index,true);
     v.setUint16(cellAt, (word & ~511) | r.record_index, true); v.setUint16(32768 + 2 * anchor, v.getUint16(32768 + 2 * anchor, true) | 1024, true);
     allocations.push({placement_id: r.placement_id, bind_id: bindId, donor_cell: r.donor_cell, target_cell: r.target_cell, anchor_cell: anchor, record_index: r.record_index,
       donor_record_sha256: await digest(data.slice(donorAt, donorAt + 32)), allocated_record_sha256: await digest(result.slice(at, at + 32)), shared_script: true, script_id: scriptId(scene, h.index)});
@@ -131,14 +132,14 @@ export async function allocateScriptedWorldPlacements(data, fallback, man, floor
 
 export async function replayScriptedWorldPlacements(base, fallback, man, floor, binding, provenance) {
   const keys = ['scene', 'source_disc_sha256', 'source_map_sha256', 'source_floor_lut_sha256', 'source_man_sha256', 'fallback_sha256'];
-  if (!exact(binding, [...keys, 'schema_version', 'base_map_sha256', 'operations']) || binding.schema_version !== 'legaia.worldmap-scripted-placement-ledger.v1' ||
+  if (!exact(binding, [...keys, 'schema_version', 'base_map_sha256', 'operations']) || !['legaia.worldmap-scripted-placement-ledger.v1','legaia.worldmap-scripted-placement-ledger.v2'].includes(binding.schema_version) ||
       !keys.every(k => k === 'scene' ? binding[k] === provenance?.[k] : hash(binding[k]) && binding[k] === provenance?.[k]) ||
       !hash(binding.base_map_sha256) || await digest(base) !== binding.base_map_sha256 || await digest(fallback) !== binding.fallback_sha256 ||
       !Array.isArray(binding.operations) || !integer(binding.operations.length, 1, 32)) fail('Scripted retained lineage source identity differs.');
   let bytes = base.slice(); const audits = [], ids = new Set(), records = new Set();
   for (const operation of binding.operations) {
     if (!exact(operation, ['requests', 'relocation_offset', 'proposed_map_sha256']) || !hash(operation.proposed_map_sha256)) fail('Scripted operation schema differs.');
-    const result = await allocateScriptedWorldPlacements(bytes, fallback, man, floor, binding.scene, operation.requests, operation.relocation_offset);
+    const result = await allocateScriptedWorldPlacements(bytes, fallback, man, floor, binding.scene, operation.requests, operation.relocation_offset,binding.schema_version==='legaia.worldmap-scripted-placement-ledger.v2');
     if (result.audit.proposed_sha256 !== operation.proposed_map_sha256) fail('Scripted retained operation checksum differs.');
     for (const a of result.audit.allocations) {
       if (ids.has(a.placement_id) || records.has(a.record_index) || ids.size >= 32) fail('Scripted retained lineage repeats identity or exceeds its budget.');

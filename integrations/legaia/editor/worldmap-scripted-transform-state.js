@@ -11,7 +11,7 @@ export async function qualifyScriptedTransformReview(value,qualified,placementId
  const binding=structuredClone(source.binding),fallback=bytes(source.fallback_base64);let canonical=bytes(source.retained_base_map_base64),found=0;const audits=[];
  for(const operation of binding.operations){
   for(const request of operation.requests)if(request.placement_id===placementId){request.values=structuredClone(values);found++;}
-  const result=await allocateScriptedWorldPlacements(canonical,fallback,man.current,man.floor,source.scene,operation.requests,operation.relocation_offset);
+  const result=await allocateScriptedWorldPlacements(canonical,fallback,man.current,man.floor,source.scene,operation.requests,operation.relocation_offset,binding.schema_version==='legaia.worldmap-scripted-placement-ledger.v2');
   canonical=result.bytes;operation.proposed_map_sha256=await placementDigest(canonical);audits.push(result.audit);
  }
  if(found!==1)fail();

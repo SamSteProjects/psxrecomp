@@ -2275,6 +2275,10 @@ class ProjectService:
             from .worldmap_scripted_placement_relocate import apply
             apply(self,command)
             return
+        if command.get('type') == 'assign_worldmap_scripted_models':
+            from .worldmap_scripted_placement_model import apply
+            apply(self,command)
+            return
         if command.get('type') == 'transform_worldmap_scripted_placements':
             from .worldmap_scripted_placement_group import apply
             apply(self,command)

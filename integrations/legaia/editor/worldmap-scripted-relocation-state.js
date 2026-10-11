@@ -16,9 +16,9 @@ export async function qualifyScriptedRelocationReview(value,qualified,placementI
  if(found!==1)fail();
  const audits=[],oldAudits=[];let canonical=base,oldCanonical=base,environment;
  for(const [index,operation] of binding.operations.entries()){
-  const old=source.binding.operations[index];const oldResult=await allocateScriptedWorldPlacements(oldCanonical,fallback,man.current,man.floor,source.scene,old.requests,old.relocation_offset);oldCanonical=oldResult.bytes;oldAudits.push(oldResult.audit);
+  const old=source.binding.operations[index];const oldResult=await allocateScriptedWorldPlacements(oldCanonical,fallback,man.current,man.floor,source.scene,old.requests,old.relocation_offset,source.binding.schema_version==='legaia.worldmap-scripted-placement-ledger.v2');oldCanonical=oldResult.bytes;oldAudits.push(oldResult.audit);
   if(operation.requests.some(r=>r.placement_id===placementId)){const v=new DataView(canonical.buffer,canonical.byteOffset,canonical.byteLength),record=v.getUint16(32768+2*targetCell,true)&511;environment=canonical.slice(record*32+20,record*32+24);}
-  const result=await allocateScriptedWorldPlacements(canonical,fallback,man.current,man.floor,source.scene,operation.requests,operation.relocation_offset);canonical=result.bytes;operation.proposed_map_sha256=await placementDigest(canonical);audits.push(result.audit);
+  const result=await allocateScriptedWorldPlacements(canonical,fallback,man.current,man.floor,source.scene,operation.requests,operation.relocation_offset,binding.schema_version==='legaia.worldmap-scripted-placement-ledger.v2');canonical=result.bytes;operation.proposed_map_sha256=await placementDigest(canonical);audits.push(result.audit);
  }
  const candidate=await mergeScriptedWorldCurrent(base,canonical,map.normal,man.floor,source.scene,audits),allocations=audits.flatMap(a=>a.allocations),after=allocations.find(a=>a.placement_id===placementId);
  if(after.script_id!==before.script_id||after.record_index!==before.record_index)fail();

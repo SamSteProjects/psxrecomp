@@ -25,7 +25,7 @@ def review(project,scene,key,placement_id,value):
     fallback=b64decode(receipt['fallback_base64']);man=b64decode(receipt['current_man_base64']);floor=receipt['floor_lut']
     canonical=base;audits=[]
     for operation in binding['operations']:
-        canonical,audit=allocate_scripted_placements(canonical,fallback,man,floor,scene,operation['requests'],relocation_offset=operation['relocation_offset'])
+        canonical,audit=allocate_scripted_placements(canonical,fallback,man,floor,scene,operation['requests'],relocation_offset=operation['relocation_offset'],allow_model_override=binding['schema_version']=='legaia.worldmap-scripted-placement-ledger.v2')
         operation['proposed_map_sha256']=sha256(canonical).hexdigest();audits.append(audit)
     validate(project,owner(scene),binding)
     normal=_inputs(project,scene,key,include_scripted=False)[3]

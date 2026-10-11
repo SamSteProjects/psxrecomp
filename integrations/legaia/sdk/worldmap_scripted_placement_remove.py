@@ -41,7 +41,7 @@ def review(project,scene,key,placement_id,cascade):
     _,old_audits=replay(base,fallback,man,floor,before)
     canonical=base;audits=[]
     for operation in binding['operations']:
-        canonical,audit=allocate_scripted_placements(canonical,fallback,man,floor,scene,operation['requests'],relocation_offset=operation['relocation_offset'])
+        canonical,audit=allocate_scripted_placements(canonical,fallback,man,floor,scene,operation['requests'],relocation_offset=operation['relocation_offset'],allow_model_override=binding['schema_version']=='legaia.worldmap-scripted-placement-ledger.v2')
         operation['proposed_map_sha256']=sha256(canonical).hexdigest();audits.append(audit)
     if binding['operations']:validate(project,owner(scene),binding)
     else:binding=None

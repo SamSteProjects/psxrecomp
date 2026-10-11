@@ -14,6 +14,7 @@ from .project import ProjectError
 
 COMPONENT='WorldMapScriptedPlacementAllocations'
 SCHEMA='legaia.worldmap-scripted-placement-ledger.v1'
+MODEL_SCHEMA='legaia.worldmap-scripted-placement-ledger.v2'
 HASH=re.compile('[0-9a-f]{64}')
 PROVENANCE={'scene','source_disc_sha256','source_map_sha256','source_floor_lut_sha256','source_man_sha256','fallback_sha256'}
 
@@ -63,7 +64,7 @@ def compose(project,scene,provenance,normal,fallback,original_man,current_man,fl
 
 
 def validate(project,identifier,binding):
-    if not isinstance(binding,dict) or set(binding)!=PROVENANCE|{'schema_version','base_map_sha256','operations'} or binding['schema_version']!=SCHEMA:
+    if not isinstance(binding,dict) or set(binding)!=PROVENANCE|{'schema_version','base_map_sha256','operations'} or binding['schema_version'] not in (SCHEMA,MODEL_SCHEMA):
         raise ProjectError('Scripted placement ledger requires exact source and retained-base identity')
     if identifier!=owner(binding['scene']) or any(not isinstance(binding[k],str) or not HASH.fullmatch(binding[k]) for k in (PROVENANCE-{'scene'})|{'base_map_sha256'}):
         raise ProjectError('Scripted placement ledger source identity is malformed')
@@ -84,8 +85,10 @@ def validate(project,identifier,binding):
             raise ProjectError('Scripted placement operation has invalid request capacity')
         total+=len(requests)
         for request in requests:
-            if not isinstance(request,dict) or set(request)!={'placement_id','donor_cell','target_cell','record_index','values','shared_script'} or request['shared_script'] is not True:
+            if not isinstance(request,dict) or set(request) not in ({'placement_id','donor_cell','target_cell','record_index','values','shared_script'}, {'placement_id','donor_cell','target_cell','record_index','values','shared_script','model_pool_index'} if binding['schema_version']==MODEL_SCHEMA else set()) or request['shared_script'] is not True:
                 raise ProjectError('Scripted placement operation requires exact requests and shared-script scope')
+            if 'model_pool_index' in request and (type(request['model_pool_index']) is not int or not 1<=request['model_pool_index']<512):
+                raise ProjectError('Scripted model request requires a bounded nonzero native pool')
             identifier=request['placement_id'];record=request['record_index']
             if not isinstance(identifier,str) or not re.fullmatch(r'placement://authored/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}',identifier) or identifier in ids or type(record) is not int or not 4<=record<512 or record in records:
                 raise ProjectError('Scripted placement ledger repeats or loses native authored identity')
@@ -104,7 +107,7 @@ def replay(base,fallback,man,floor,binding):
         raise ProjectError('Scripted placement fallback source changed')
     current=base;audits=[]
     for operation in binding['operations']:
-        current,audit=allocate_scripted_placements(current,fallback,man,floor,binding['scene'],operation['requests'],relocation_offset=operation['relocation_offset'])
+        current,audit=allocate_scripted_placements(current,fallback,man,floor,binding['scene'],operation['requests'],relocation_offset=operation['relocation_offset'],allow_model_override=binding['schema_version']==MODEL_SCHEMA)
         if sha256(current).hexdigest()!=operation['proposed_map_sha256']:
             raise ProjectError('Scripted placement operation differs from complete retained replay')
         audits.append(audit)
