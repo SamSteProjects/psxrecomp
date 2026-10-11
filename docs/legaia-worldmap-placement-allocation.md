@@ -1,5 +1,17 @@
 # World Placement Allocation
 
+## Authored Decoration Group Removal — 2026-10-10
+
+Select 1–32 retained authored decorations and use **Review decoration group removal**. The existing Review, Preview, Discard and Apply workflow removes the complete selection as one shared history command. Unapplied group deltas or single-decoration edits disable removal until cleared. Proposed display does not mutate the project; Discard restores Current, and Apply refreshes the qualified Current scene. Removing the last decoration clears its allocation owner.
+
+The v2 removal receipt carries sorted unique UUIDs; the v1 single-removal receipt and command remain compatible. Native and independent editor replay rebase surviving donor descendants, preserving their effective model indices, transforms, cells, records and opaque bytes across both allocation ledger versions. Complete literal MAP comparison permits only each removed record and cell to return to its original unused retail state. Wrong membership, scope, stale source keys or changed receipts refuse before mutation. The editor also qualifies the complete Proposed scene and unchanged model/texture coauthors.
+
+Offline checks passed: five focused Python tests include four v1/v2 ancestor-chain/last-owner cases and legacy removal/group-transform regressions; independent Node replay covers three real kingdoms, four ancestor-chain cases and 57 altered/domain refusals. The existing six single-removal/last-owner cases and 93 altered Review/Proposed refusals still pass. Four Python AST and four JS syntax checks pass. Private data-package Build `3055efff161abe28` passes complete map01/map02/map03 directory/ZIP relocation readback; package SHA-256 `4ff7f2320dc000ce523a09403b9fda68bb4adeb6e55eb20e4b54955b83c35991`. Review/Proposed are immutable; native Apply, Save/Open and Undo/Redo restore the private baseline. Evidence: `local-output/sdk-20260909/worldmap-decoration-group-removal-20261010/`.
+
+Three actual kingdom editor workflows pass selected-group Review, Preview, unchanged survivor matrices, Discard restoration, fresh Current Apply, Save/Open and Undo/Redo/Undo with document/history baselines restored. Exactly three plural removal commands occur, with no page errors. Wide and 400-pixel captures were inspected without horizontal overflow. The retained harness note records an early wrapper sequencing error; it required no feature correction.
+
+Gameplay visibility, collision and transitions remain unverified. No native recomp compile, game launch, runtime attachment, installation or disc export occurred. Full SDK goal remains active; solo implementation continues.
+
 ## Pivoted Decoration Group Rotation — 2026-10-10
 
 Authored decoration groups now have an optional native seed pivot. With **Rotate positions around pivot** enabled, numeric yaw and the viewport yaw ring rotate both native X/Z positions and orientations around a selected retained UUID. Native cells, floor selectors and Y remain unchanged before the existing XYZ deltas. Default yaw still changes each orientation independently. Group duplication is unavailable while pivot rotation is enabled.

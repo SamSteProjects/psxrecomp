@@ -1366,9 +1366,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_id'],body['target_cell']))
                     return
                 if route == '/api/worldmap-decoration-removal-review':
-                    if set(body)!={'scene','source_key','placement_id'}:raise ProjectError('Removal Review requires exact current authored identity')
+                    if set(body) not in ({'scene','source_key','placement_id'},{'scene','source_key','placement_ids'}):raise ProjectError('Removal Review requires exact current authored identities')
+                    if ('placement_ids' in body and not isinstance(body['placement_ids'],list)
+                            or 'placement_id' in body and not isinstance(body['placement_id'],str)):
+                        raise ProjectError('Removal identity shape differs from the selected scope')
                     from .worldmap_placement_remove import review
-                    self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_id']))
+                    self._json(200,review(self.server.project,body['scene'],body['source_key'],body.get('placement_ids',body.get('placement_id'))))
                     return
                 if route == '/api/worldmap-placement-scene':
                     if set(body) not in ({'scene','source_key'},{'scene','source_key','allocation_proposal'},{'scene','source_key','allocation_edit_proposal'},{'scene','source_key','allocation_remove_proposal'},{'scene','source_key','allocation_cell_proposal'},{'scene','source_key','allocation_model_proposal'},{'scene','source_key','allocation_group_proposal'}):

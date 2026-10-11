@@ -183,6 +183,18 @@ export async function qualifyWorldDecorationTransformReview(value, source, place
 }
 
 export async function removeWorldDecoration(source,placementId){
+  if(Array.isArray(placementId)){
+    if(!placementId.length||placementId.length>32||placementId.some(i=>typeof i!=='string')||!same(placementId,[...new Set(placementId)].sort()))fail('Choose 1–32 sorted unique retained decorations to remove.');
+    const removed=placementId.map(id=>source.metadata.authored_allocations.find(a=>a.placement_id===id));
+    if(removed.some(a=>!a))fail('Removal group contains an unavailable authored identity.');
+    let stage=source,result;const rebases=[];
+    for(const id of placementId){
+      result=await removeWorldDecoration(stage,id);rebases.push(...result.audit.rebased_donors);
+      stage={...stage,bytes:result.bytes,metadata:{...stage.metadata,binding:result.binding,authored_allocations:result.audit.remaining_allocations}};
+    }
+    return {...result,audit:{...result.audit,removed:structuredClone(removed),rebased_donors:rebases,
+      changed_bytes:Array.from(result.bytes.entries()).filter(([i,n])=>n!==source.bytes[i]).map(([i,n])=>({byte_offset:i,before_byte:source.bytes[i],after_byte:n})),scope:'authored-decoration-group-removal-only'}};
+  }
   let binding=structuredClone(source.metadata.binding);
   const requests=binding?.operations.flatMap(op=>op.requests)??[],matches=requests.filter(r=>r.placement_id===placementId);
   const removed=source.metadata.authored_allocations.find(a=>a.placement_id===placementId);
@@ -210,11 +222,11 @@ export async function removeWorldDecoration(source,placementId){
 }
 
 export async function qualifyWorldDecorationRemovalReview(value,source,placementId){
-  const before=source.metadata;
-  if(!exact(value,['schema_version','project_path','scene','source_key','source_record','placement_id','current_map_sha256',
+  const before=source.metadata,grouped=Array.isArray(placementId),identity=grouped?'placement_ids':'placement_id';
+  if(!exact(value,['schema_version','project_path','scene','source_key','source_record',identity,'current_map_sha256',
       'proposed_map_sha256','proposed_map_base64','before_binding','binding','audit','read_only','project_changed','gameplay_verified','build_ready','review_key'])||
-      value.schema_version!=='legaia.worldmap-decoration-removal-review.v1'||value.project_path!==before.project_path||value.scene!==before.scene||
-      value.source_key!==before.source_key||!same(value.source_record,before.source_record)||value.placement_id!==placementId||
+      value.schema_version!==(grouped?'legaia.worldmap-decoration-removal-review.v2':'legaia.worldmap-decoration-removal-review.v1')||value.project_path!==before.project_path||value.scene!==before.scene||
+      value.source_key!==before.source_key||!same(value.source_record,before.source_record)||!same(value[identity],placementId)||
       value.current_map_sha256!==before.current_map_sha256||!same(value.before_binding,before.binding)||
       value.read_only!==true||value.project_changed!==false||value.gameplay_verified!==false||value.build_ready!==false||!hash(value.review_key))
     fail('Removal Review changed its Current identity or read-only scope.');

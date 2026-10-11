@@ -111,10 +111,13 @@ def inspect(project, scene, key, allocation_proposal=None, allocation_edit_propo
             raise ProjectError('Proposed cell relocation Review is stale')
         binding=reviewed['binding']
     if allocation_remove_proposal is not None:
-        if not isinstance(allocation_remove_proposal,dict) or set(allocation_remove_proposal)!={'placement_id','review_key'}:
+        if not isinstance(allocation_remove_proposal,dict) or set(allocation_remove_proposal) not in ({'placement_id','review_key'},{'placement_ids','review_key'}):
             raise ProjectError('Proposed removal requires exact reviewed authored identity')
+        if ('placement_ids' in allocation_remove_proposal and not isinstance(allocation_remove_proposal['placement_ids'],list)
+                or 'placement_id' in allocation_remove_proposal and not isinstance(allocation_remove_proposal['placement_id'],str)):
+            raise ProjectError('Proposed removal identity shape differs from its scope')
         from .worldmap_placement_remove import review
-        reviewed=review(project,scene,key,allocation_remove_proposal['placement_id'])
+        reviewed=review(project,scene,key,allocation_remove_proposal.get('placement_ids',allocation_remove_proposal.get('placement_id')))
         if reviewed['review_key']!=allocation_remove_proposal['review_key']:raise ProjectError('Proposed removal Review is stale')
         binding=reviewed['binding']
     if allocation_edit_proposal is not None:

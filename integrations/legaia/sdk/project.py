@@ -2275,7 +2275,7 @@ class ProjectService:
             from .worldmap_placement_relocate import apply
             apply(self, command)
             return
-        if command.get('type') == 'remove_worldmap_authored_placement':
+        if command.get('type') in ('remove_worldmap_authored_placement','remove_worldmap_authored_placements'):
             from .worldmap_placement_remove import apply
             apply(self, command)
             return

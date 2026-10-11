@@ -180,32 +180,18 @@ export async function qualifyProposedWorldPlacementEdit(retail, current, propose
 export async function qualifyProposedWorldPlacementRemoval(retail,current,proposed,review,options){
   await qualifyCurrentWorldPlacements(retail,current,options);
   const before=current.placement_authoring,after=proposed?.placement_authoring;
-  if(review?.schema_version!=='legaia.worldmap-decoration-removal-review.v1'||proposed?.representation!=='proposed-source'||proposed.allocation_proposal!==null||
-      !same(proposed.allocation_remove_proposal,{placement_id:review.placement_id,review_key:review.review_key})||review.source_key!==current.project_source_key||
+  const grouped=review?.schema_version==='legaia.worldmap-decoration-removal-review.v2';
+  if(!['legaia.worldmap-decoration-removal-review.v1','legaia.worldmap-decoration-removal-review.v2'].includes(review?.schema_version)||proposed?.representation!=='proposed-source'||proposed.allocation_proposal!==null||
+      !same(proposed.allocation_remove_proposal,{...(grouped?{placement_ids:review.placement_ids}:{placement_id:review.placement_id}),review_key:review.review_key})||review.source_key!==current.project_source_key||
       review.current_map_sha256!==before.current_map_sha256||!same(review.before_binding,before.allocation_binding)||!after||
       after.current_map_base64!==before.current_map_base64||after.current_map_sha256!==before.current_map_sha256||
       after.exported_map_base64!==review.proposed_map_base64||after.exported_map_sha256!==review.proposed_map_sha256||
       !same(after.authored_records,before.authored_records)||!same(after.allocation_binding,review.binding)||
       !same(after.authored_allocations,review.audit.remaining_allocations)||!same(proposed.scene_graph?.assets,current.scene_graph.assets)||
       !same(proposed.model_authoring,current.model_authoring)||!same(proposed.texture_authoring,current.texture_authoring))fail('Proposed removal differs from qualified Current and reviewed native receipt.');
-  let expected=structuredClone(before.allocation_binding);
-  const matches=expected?.operations.flatMap(op=>op.requests).filter(r=>r.placement_id===review.placement_id)??[];
-  if(matches.length!==1)fail('Proposed removal has no unique retained Current owner.');
-  const selected=matches[0];
-  for(const op of expected.operations){
-    for(const request of op.requests)if(request.placement_id!==selected.placement_id&&request.donor_cell===selected.target_cell){
-      request.donor_cell=selected.donor_cell;
-      if(expected.schema_version==='legaia.worldmap-placement-allocation-ledger.v2')request.model_pool_index=before.authored_allocations.find(a=>a.placement_id===request.placement_id).model_pool_index;
-    }
-    op.requests=op.requests.filter(r=>r.placement_id!==selected.placement_id);
-  }
-  expected.operations=expected.operations.filter(op=>op.requests.length);
-  if(!expected.operations.length)expected=null;
-  else for(let i=0;i<expected.operations.length;i++)expected.operations[i].proposed_map_sha256=review.binding?.operations?.[i]?.proposed_map_sha256;
-  if(!same(expected,review.binding))fail('Proposed removal changed unrelated requests or donor lineage.');
-  const literal=mapBytes(before.current_map_base64),retailBytes=mapBytes(before.retail_map_base64),at=selected.record_index*32,cellAt=0x8000+selected.target_cell*2;
-  literal.set(retailBytes.subarray(at,at+32),at);literal.set(retailBytes.subarray(cellAt,cellAt+2),cellAt);
-  if(!equalWorldPlacementBytes(literal,mapBytes(after.exported_map_base64)))fail('Proposed removal changed surviving native bytes.');
+  const {qualifyWorldDecorationRemovalReview}=await import('./worldmap-decoration-state.js');
+  await qualifyWorldDecorationRemovalReview(review,{metadata:{...before,project_path:options.path,source_key:current.project_source_key,binding:before.allocation_binding},
+    retailBytes:mapBytes(before.retail_map_base64),bytes:mapBytes(before.current_map_base64),authoredRecords:before.authored_records},grouped?review.placement_ids:review.placement_id);
   const normalized=structuredClone(proposed);delete normalized.allocation_remove_proposal;normalized.representation='current-source';
   normalized.placement_authoring.current_map_base64=after.exported_map_base64;normalized.placement_authoring.current_map_sha256=after.exported_map_sha256;
   const view=await qualifyCurrentWorldPlacements(retail,normalized,options);
