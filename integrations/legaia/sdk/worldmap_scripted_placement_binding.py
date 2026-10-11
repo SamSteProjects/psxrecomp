@@ -23,6 +23,45 @@ def owner(scene):
     return f'worldmap://{scene}/scripted-placement-allocations'
 
 
+def base_path(project,binding):
+    digest=binding.get('base_map_sha256')
+    if not isinstance(digest,str) or not HASH.fullmatch(digest):
+        raise ProjectError('Scripted placement retained base has no valid content identity')
+    path=project.root/'Authored'/'WorldMapBases'/(digest+'.map')
+    if not path.resolve().is_relative_to(project.root.resolve()):
+        raise ProjectError('Scripted placement retained base escapes the project')
+    return path
+
+
+def read_base(project,binding):
+    path=base_path(project,binding)
+    try:
+        if not path.is_file() or path.stat().st_size!=0x12000:
+            raise ProjectError('Scripted placement retained base is missing or has an invalid size')
+        data=path.read_bytes()
+    except OSError as error:
+        raise ProjectError('Scripted placement retained base cannot be read') from error
+    if len(data)!=0x12000 or sha256(data).hexdigest()!=binding['base_map_sha256']:
+        raise ProjectError('Scripted placement retained base changed')
+    return data
+
+
+def compose(project,scene,provenance,normal,fallback,original_man,current_man,floor):
+    components=project.overrides.get(owner(scene),{})
+    if components and set(components)!={COMPONENT}:
+        raise ProjectError('Scripted placement owner accepts only its dedicated component')
+    binding=components.get(COMPONENT)
+    if binding is None:return normal,[]
+    validate(project,owner(scene),binding)
+    expected=dict(provenance,source_man_sha256=sha256(original_man).hexdigest(),fallback_sha256=sha256(fallback).hexdigest())
+    if any(binding[k]!=v for k,v in expected.items()):
+        raise ProjectError('Scripted placement immutable source changed')
+    base=read_base(project,binding)
+    allocated,audits=replay(base,fallback,current_man,floor,binding)
+    merged=merge_current(base,allocated,normal,floor,scene,audits)
+    return merged,[deepcopy(a) for audit in audits for a in audit['allocations']]
+
+
 def validate(project,identifier,binding):
     if not isinstance(binding,dict) or set(binding)!=PROVENANCE|{'schema_version','base_map_sha256','operations'} or binding['schema_version']!=SCHEMA:
         raise ProjectError('Scripted placement ledger requires exact source and retained-base identity')

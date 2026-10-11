@@ -2267,6 +2267,10 @@ class ProjectService:
             from .worldmap_placement_allocation import apply
             apply(self, command)
             return
+        if command.get('type') == 'allocate_scripted_worldmap_placements':
+            from .worldmap_scripted_placement_allocation import apply
+            apply(self,command)
+            return
         if command.get('type') == 'transform_worldmap_authored_placements':
             from .worldmap_decoration_group import apply
             apply(self, command)
@@ -3547,8 +3551,16 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - ({"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptAnimationOperands", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements", "WorldMapPlacementAllocations", "WorldScriptAnimationOperands", "WorldScriptOperands", "WorldScriptBranches"} | CONTROLLER_COMPONENTS):
+            if not isinstance(components, dict) or not components or set(components) - ({"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptAnimationOperands", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements", "WorldMapPlacementAllocations", "WorldMapScriptedPlacementAllocations", "WorldScriptAnimationOperands", "WorldScriptOperands", "WorldScriptBranches"} | CONTROLLER_COMPONENTS):
                 raise ProjectError("Unsupported authored component")
+            if 'WorldMapScriptedPlacementAllocations' in components:
+                from .worldmap_scripted_placement_binding import validate,read_base
+                if set(components)!={'WorldMapScriptedPlacementAllocations'}:
+                    raise ProjectError('Scripted World owner accepts only its dedicated component')
+                binding=components['WorldMapScriptedPlacementAllocations']
+                validate(result,identifier,binding);read_base(result,binding)
+                result.overrides[identifier]=deepcopy(components)
+                continue
             if CONTROLLER_COMPONENTS & set(components):
                 from .controller_system_flags import validate_components
                 validate_components(result,identifier,components)
@@ -4026,6 +4038,13 @@ class ProjectService:
                     name=f"{binding['scene']} authored decoration placements",placement_record_count=count,
                     changes=[f"New decoration placements: {count}"],
                     authored={'WorldMapPlacementAllocations':deepcopy(binding)}))
+            if 'WorldMapScriptedPlacementAllocations' in components:
+                binding=components['WorldMapScriptedPlacementAllocations']
+                count=sum(len(op['requests']) for op in binding['operations'])
+                records.append(dict(id=identifier,kind='worldmap',scene_id=None,source_scene=binding['scene'],
+                    name=f"{binding['scene']} Scripted Placements",placement_record_count=count,
+                    changes=[f"New scripted placements: {count}"],
+                    authored={'WorldMapScriptedPlacementAllocations':deepcopy(binding)}))
             if 'WorldMapPlacements' in components:
                 binding=components['WorldMapPlacements']
                 records.append(dict(id=identifier,kind='worldmap',scene_id=None,source_scene=binding['scene'],

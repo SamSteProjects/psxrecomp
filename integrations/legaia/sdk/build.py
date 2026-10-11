@@ -600,6 +600,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 raise BuildError('World script owner accepts only its dedicated operand component')
             component=next(iter(components));validate(project,identifier,components[component],component)
             continue
+        if isinstance(components,dict) and 'WorldMapScriptedPlacementAllocations' in components:
+            raise BuildError('Scripted World placement package delivery is not implemented yet')
         if isinstance(components, dict) and 'WorldMapPlacementAllocations' in components:
             from .worldmap_placement_allocation_binding import validate
             if set(components) != {'WorldMapPlacementAllocations'}:

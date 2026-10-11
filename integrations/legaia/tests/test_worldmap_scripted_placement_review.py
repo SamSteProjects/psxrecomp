@@ -27,7 +27,7 @@ class ScriptedWorldReviewTests(TestCase):
     def test_http_review_is_reproducible_readonly_and_source_bound(self):
         raw,fallback,man,floor,requests=fixture()
         with tempfile.TemporaryDirectory() as root:
-            project=ProjectService(Path(root));project.import_metadata(synthetic_scene())
+            project=ProjectService(Path(root));document=synthetic_scene();document['source']['disc_identity']='sha256:'+'b'*64;project.import_metadata(document)
             key=state_key(project);held=deepcopy(project._document());history=deepcopy((project.undo_stack,project.redo_stack))
             provenance=dict(scene='map01',source_disc_sha256='b'*64,source_map_sha256=sha256(raw).hexdigest(),source_floor_lut_sha256=sha256(man[2:34]).hexdigest())
             inputs=(raw,provenance,floor,raw,[],fallback,man,man,{},[])
