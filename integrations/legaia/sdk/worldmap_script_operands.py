@@ -8,6 +8,7 @@ from importer.worldmap_geometry import KINGDOM_BASES, _kingdom_table, _slot
 from importer.worldmap_behavior_catalog import load_worldmap_behavior_catalog
 from importer.animation_operand_authoring import SPECS, validate_animation_operand_values, patch_animation_operands_target
 from importer.script_inspection import inspect_record
+from importer.script_operand_composition import compose_script_operands
 from importer.serialization import serialize_lzs_decoded
 from .project import ProjectError, digest
 from .worldmap_authoring import state_key
@@ -71,18 +72,11 @@ def compose(man,rows,binding):
         if row is None or row['source_record']['sha256']!=edit['source_record_sha256']:raise ProjectError('World script authored source identity is unavailable')
         if len(row['source_instance_ids'])>1 and edit['shared_record'] is not True:raise ProjectError('Shared World script operands lack consent for every source object')
         at=row['source_record']['byte_offset'];end=at+row['source_record']['byte_length'];record=man[at:end]
-        patches={}
-        for pc,values in sorted(edit['operands'].items()):
-            changed,changes=patch_animation_operands_target(record,row['entry_pc'],int(pc,16),values,base_offset=at)
-            for n,(a,b) in enumerate(zip(record,changed)):
-                if a!=b:
-                    if n in patches and patches[n]!=b:raise ProjectError('World script operands overlap')
-                    patches[n]=b
-            audit.extend(dict(change,semantic_id=script,scene=row['source_scene'],scope='world-script-animation-operands-only',affected_source_entities=row['source_instance_ids']) for change in changes)
-        for n,b in patches.items():result[at+n]=b
-        candidate=bytes(result[at:end]);before=inspect_record(record,row['entry_pc']);after=inspect_record(candidate,row['entry_pc'])
-        shape=lambda g:[(n['pc'],n['mnemonic'],n['length'],n['target_context'],n['successors']) for n in g['instructions']]
-        if before['stops']!=after['stops'] or shape(before)!=shape(after):raise ProjectError('Composed World operands changed source control flow')
+        candidate,changes=compose_script_operands(record,row['entry_pc'],[
+            (patch_animation_operands_target,int(pc,16),values)
+            for pc,values in sorted(edit['operands'].items())],base_offset=at)
+        result[at:end]=candidate
+        audit.extend(dict(change,semantic_id=script,scene=row['source_scene'],scope='world-script-animation-operands-only',affected_source_entities=row['source_instance_ids']) for change in changes)
     return bytes(result),audit
 
 def context(project,scene):

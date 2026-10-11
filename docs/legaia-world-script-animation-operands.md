@@ -23,3 +23,10 @@ Offline evidence from 2026-10-10 is in `local-output/sdk-20260909/world-script-a
 The private native harness initially called Undo/Redo as authoring commands instead of their dedicated methods; the corrected harness passed. Synthetic fixture provenance and path setup were also corrected before the passing run. These were harness corrections, not relaxed source validation. Final native checks retain shared consent in the saved component; the final Build was regenerated after that addition.
 
 No native recomp compile, game launch, runtime attachment, package installation or disc export occurred. Gameplay remains deferred. General World script editing, branch/flag/dialogue authoring and animation clip authoring remain separate unfinished work; the full SDK goal stays active.
+## Shared Instruction Composition — 2026-10-10
+
+World animation authoring now uses `importer/script_operand_composition.py` to compose fixed instruction writers against immutable Retail records. Every changed byte must have an exact source-bound audit; edited operand spans must be disjoint even when overlapping proposals agree. The combined result is decoded again to preserve instruction layout, dispatch context and continuations. Existing project components, commands and editor/API contracts remain unchanged.
+
+Thirteen focused Python checks pass with the retail disc supplied, including literal mixed animation/effect-color bytes, request-order independence, extended actor context, no-op input, duplicate ownership, forged audits, unreported writes and an audited opcode change. The real Map02 animation Review/Apply, Current values, Save/Open and Undo/Redo workflow also passes after integration. Source inspection found six reached effect-color instructions across Map01 scripts `0000`, `0006` and `0010`, with no decoder stops in those records.
+
+This is shared infrastructure for the next World effect-color workflow. World effect-color controls, persistence and package integration are still unfinished; mixed-family checks use a synthetic record. No new package Build, native compile or gameplay validation occurred.

@@ -11613,3 +11613,4 @@ local-output/sdk-20260909/sdk-regression-20260930-scene-proposals.log and matchi
 .json metadata/hash. This supersedes the383-test checkpoint and historical
 predates notes for current Python services. Browser workflows remain separate;
 no game launched, runtime parity/gameplay acceptance still deferred.
+Offline checks passed — 2026-10-10: [Shared Instruction Composition](legaia-world-script-animation-operands.md#shared-instruction-composition--2026-10-10) adds exact byte/audit ownership and combined graph checks for fixed instruction writers, integrated into World animation authoring. Thirteen targeted checks pass with retail input, plus the real Map02 history/persistence workflow. Six Map01 effect-color targets are available for the next editor workflow; World effect-color authoring is still unfinished. No new Build or gameplay validation ran. Full goal active; solo work continues.
