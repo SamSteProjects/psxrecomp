@@ -1177,6 +1177,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-scripted-placement-scene.js": ("worldmap-scripted-placement-scene.js", "text/javascript"),
                  "/worldmap-scripted-creation-state.js": ("worldmap-scripted-creation-state.js", "text/javascript"),
                  "/worldmap-scripted-creation-editor.js": ("worldmap-scripted-creation-editor.js", "text/javascript"),
+                 "/worldmap-scripted-bind.js": ("worldmap-scripted-bind.js", "text/javascript"),
                  "/worldmap-current-placements.js": ("worldmap-current-placements.js", "text/javascript"),
                  "/worldmap-decoration-state.js": ("worldmap-decoration-state.js", "text/javascript"),
                  "/worldmap-authored-selection-state.js": ("worldmap-authored-selection-state.js", "text/javascript"),
@@ -1440,6 +1441,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Scripted scene proposal requires exact reviewed requests and key')
                     from .worldmap_scripted_placement_scene import inspect
                     self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body.get('scripted_proposal')))
+                    return
+                if route == '/api/worldmap-scripted-bind':
+                    if set(body)!={'scene','source_key','entity_id'}:
+                        raise ProjectError('Scripted bind inspection requires exact scene, source key and entity')
+                    from .worldmap_scripted_bind import inspect
+                    self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body['entity_id']))
                     return
                 if route == '/api/worldmap-placement-scene':
                     if set(body) not in ({'scene','source_key'},{'scene','source_key','allocation_proposal'},{'scene','source_key','allocation_edit_proposal'},{'scene','source_key','allocation_remove_proposal'},{'scene','source_key','allocation_cell_proposal'},{'scene','source_key','allocation_model_proposal'},{'scene','source_key','allocation_group_proposal'}):

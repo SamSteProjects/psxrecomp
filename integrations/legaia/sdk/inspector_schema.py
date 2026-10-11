@@ -531,8 +531,23 @@ def inspector_schema():
     scripted=schema['components']['WorldAuthoredScriptedPlacement']
     scripted['label']='Authored World scripted placement'
     scripted['actions']=[scripted['actions'][0]]
+    scripted['actions'].append({'id':'inspect-scripted-world-bind','label':'Inspect shared scripted bind','capability':'worldmap_placements','requires_edit':True})
     scripted['notes']=['This authored placement has no Retail instance transform. Native coordinates use Y-down; viewport Y reflection is separate.',
         'The retained placement shares its donor script. Runtime activation, script effects and resting positions remain unverified.']
+    schema['components']['WorldAuthoredScriptedBind']={
+        'label':'Shared Scripted World Bind','layout':'read-only-properties',
+        'properties':[
+            {'id':'trigger','label':'Current native trigger','path':['trigger','id'],'type':'string','state':'derived'},
+            {'id':'script','label':'Shared MAN script owner','path':['script','id'],'type':'string','state':'derived'},
+            {'id':'retail-hash','label':'Retail script hash','path':['script','retail_sha256'],'type':'string','state':'read-only-retail'},
+            {'id':'current-hash','label':'Current script hash','path':['script','current_sha256'],'type':'string','state':'read-only-project'},
+            {'id':'entry','label':'Native header / entry PC','path':['script','entry_pc'],'type':'integer','state':'derived'},
+            {'id':'selector','label':'Encoded animation selector','path':['script','encoded_animation_selector'],'type':'integer','state':'derived'},
+            {'id':'clip','label':'Animation clip identity','path':['animation_clip'],'type':'string','state':'unresolved'},
+            {'id':'activation','label':'Runtime activation','path':['runtime_activation'],'type':'string','state':'unresolved'}],
+        'notes':['This is a shared native P0 record owner, not proof of executed script behavior or a resolved animation clip.'],
+        'details':[{'label':'Current trigger and shared script provenance','path':[]}],
+    }
     schema['components']['AssetWorldPlacements']={
         'label':'World placement overrides','layout':'read-only-properties',
         'properties':[
