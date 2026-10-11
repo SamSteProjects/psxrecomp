@@ -1,5 +1,7 @@
 # Architecture
 
+Offline checks passed — World Animation Request Capacity: placed-object channel Review and Apply share a bounded 1 MiB envelope. Dedicated Apply dispatches the existing canonical project command; generic command requests remain bounded to 32 KiB. [Scope and evidence](legaia-worldmap-animation-ranges.md#channel-request-capacity).
+
 Offline checks passed — World Native Clip Frame Ranges uses immutable qualified native channel snapshots to generate hold, offset and scoped Retail-restoration drafts without a model dependency. The existing typed Review/Apply command owns mutation and history. Local preview frame navigation samples the reviewed bank independently of the edit frame; invalid display frames withdraw Apply. [Workflow](legaia-worldmap-clip-channel-authoring.md).
 
 Offline checks passed — World Native Clip Channel Authoring extends registered clip Asset Details with a typed `set_world_clip_channels` project command. Dedicated bounded Review/Apply routes reconstruct and independently qualify the complete native bank, preserve neighboring clips, and require explicit shared-record consent plus editor data Preview. Source-only clips remain without inferred model or runtime bindings. The shared World resource callback preserves editor state when the root API returns a success boolean. [Workflow and evidence](legaia-worldmap-clip-channel-authoring.md).

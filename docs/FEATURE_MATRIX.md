@@ -1,5 +1,7 @@
 # Legaia SDK Feature Matrix
 
+Offline checks passed — [World Animation Request Capacity](legaia-worldmap-animation-ranges.md#channel-request-capacity): declared 4,096-row channel requests pass synthetic HTTP/native byte checks; exact Apply dispatch and envelope refusals pass. Actual Map02 dedicated-route Review/Preview/Apply and history/persistence pass; wide/400-pixel captures were inspected with no page errors.
+
 Offline checks passed — [World Native Clip Frame Ranges](legaia-worldmap-clip-channel-authoring.md): pose holds, motion-preserving offsets and scoped Retail restoration for registered clips without model bindings. Native bank, refusal and history/persistence checks pass; actual source-only editor offset Apply, restoration Review, independent preview frames, history/persistence and complete data-package readback pass. Gameplay deferred.
 
 Offline checks passed — [World Native Clip Channel Authoring](legaia-worldmap-clip-channel-authoring.md): single-frame numeric native channels for registered World clips, including clips without known models; shared consent, Review, data Preview, one-step history and Save/Open. Native transaction and data-package Build checks pass. Actual editor Apply/history/persistence and wide/400-pixel containment pass; gameplay is deferred.

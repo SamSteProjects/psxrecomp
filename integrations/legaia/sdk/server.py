@@ -1275,7 +1275,7 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/worldmap-replacement-review", "/api/worldmap-replacement-apply", "/api/text-json-preview", "/api/text-json-import") else 32768
-            if urlsplit(self.path).path in ('/api/worldmap-clip-channel-review','/api/worldmap-clip-channel-apply'):
+            if urlsplit(self.path).path in ('/api/worldmap-clip-channel-review','/api/worldmap-clip-channel-apply','/api/worldmap-animation-edit-review','/api/worldmap-animation-edit-apply'):
                 request_limit = 1024 * 1024
             if urlsplit(self.path).path in ('/api/worldmap-model-glb-review','/api/worldmap-model-glb-apply','/api/worldmap-animation-glb-review','/api/worldmap-animation-glb-apply'):
                 request_limit = 48 * 1024 * 1024
@@ -1415,10 +1415,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_object_bind import inspect
                     self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body['entity_id']))
                     return
-                if route == '/api/worldmap-animation-edit-review':
-                    if set(body)!={'scene','source_key','entity_id','frame_index','edits','shared_record'}:raise ProjectError('Saved World animation Review requires exact source, channels and shared consent')
-                    from .worldmap_animation_edit import review
-                    self._json(200,review(self.server.project,body['scene'],body['source_key'],body['entity_id'],body['frame_index'],body['edits'],body['shared_record']))
+                if route in ('/api/worldmap-animation-edit-review','/api/worldmap-animation-edit-apply'):
+                    fields={'scene','source_key','entity_id','frame_index','edits','shared_record'}
+                    if route.endswith('-apply'):fields=fields|{'review_key'}
+                    if set(body)!=fields:raise ProjectError('Saved World animation requires exact reviewed source, channels and shared consent')
+                    if route.endswith('-review'):
+                        from .worldmap_animation_edit import review
+                        self._json(200,review(self.server.project,body['scene'],body['source_key'],body['entity_id'],body['frame_index'],body['edits'],body['shared_record']))
+                    else:
+                        self.server.project.command(dict(type='set_world_animation_channels',**body))
+                        self._json(200,self.server.state())
                     return
                 if route == '/api/worldmap-animation-export':
                     from .worldmap_animation_export import inspect
