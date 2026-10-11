@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {qualifyWorldAnimationChannels} from '../editor/worldmap-animation-channels.js';
+import {worldClipChannelRangeDraft,worldClipChannelRetailDraft,qualifyWorldClipChannelReview} from '../editor/worldmap-clip-channels.js';
+const cases=JSON.parse(fs.readFileSync(process.argv[2],'utf8')),source=cases.current,plan=await qualifyWorldAnimationChannels(source,source.record,source.project_path,source.source_key,source.binding),frame=1,object=1,anchor=plan.frame(frame)[object].current;
+const values=Object.fromEntries(['translation','rotation_psx'].map(field=>[field,Object.fromEntries([...'xyz'].map((axis,i)=>[axis,anchor[field][i]+(field==='translation'&&axis==='x'?16:field==='rotation_psx'&&axis==='z'?-4064:0)]))]));
+const held=JSON.stringify(source),offset=worldClipChannelRangeDraft(plan,source.binding,frame,object,values,0,29,'offset'),hold=worldClipChannelRangeDraft(plan,source.binding,frame,object,values,0,29,'hold');
+assert.equal(offset.length,30);assert.equal(hold.length,30);
+for(let f=0;f<30;f++){const before=plan.frame(f)[object].current,row=offset[f];assert.equal(row.frame_index,f);assert.equal(row.translation.x,before.translation[0]+16);assert.equal(row.translation.y,before.translation[1]);assert.equal(row.rotation_psx.z,((before.rotation_psx[2]-4064)%4096+4096)%4096);assert.deepEqual(hold[f].translation,values.translation);assert.deepEqual(hold[f].rotation_psx,values.rotation_psx);}
+const index=String(source.record.source_record.record_index).padStart(4,'0'),binding=structuredClone(source.binding);binding.entries[index].edits=offset.concat({frame_index:0,object_index:0,translation:{x:123}});const restored=worldClipChannelRetailDraft(plan,binding,frame,object,1,4);assert.equal(restored.length,27);assert(restored.some(r=>r.object_index===0&&r.translation.x===123));assert(!restored.some(r=>r.object_index===object&&r.frame_index>=1&&r.frame_index<=4));assert.equal(JSON.stringify(source),held);
+let refusals=0;for(const [lo,hi] of [[-1,4],[0,30],[2,4],[1,0],[0,1.5],[NaN,4]]){assert.throws(()=>worldClipChannelRangeDraft(plan,source.binding,frame,object,values,lo,hi,'offset'));refusals++;}
+assert.throws(()=>worldClipChannelRangeDraft(plan,source.binding,frame,2,values,0,29,'offset'));assert.throws(()=>worldClipChannelRangeDraft(plan,source.binding,frame,object,values,0,29,'unknown'));refusals+=2;
+const overflowing={...plan,frame(f){const result=structuredClone(plan.frame(f));if(f===29)result[object].current.translation[0]=2047;return result;}};assert.throws(()=>worldClipChannelRangeDraft(overflowing,source.binding,frame,object,values,0,29,'offset'),/frame 29/);refusals++;
+if(process.argv[3])fs.writeFileSync(process.argv[3],JSON.stringify({offset,hold,values}));
+if(process.argv[4]){const reviews=JSON.parse(fs.readFileSync(process.argv[4],'utf8'));for(const item of reviews){const fresh=await qualifyWorldAnimationChannels(item.source,item.source.record,item.source.project_path,item.source.source_key,item.source.binding);await qualifyWorldClipChannelReview(item.review,item.source,fresh,item.review.edits);}}
+console.log(`Native source-only hold/offset/restoration, 30 Current motion comparisons, sibling retention, immutable input and ${refusals} refusals passed`);
