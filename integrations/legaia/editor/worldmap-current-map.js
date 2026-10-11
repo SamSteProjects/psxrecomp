@@ -103,6 +103,10 @@ export async function qualifyCurrentWorldMap(value,retail,man,{path,key,override
   if(await digest(raw)!==p.source_map_sha256||await digest(normal)!==value.normal_map_sha256||await digest(current)!==value.current_map_sha256||await digest(man.retail)!==value.source_man_sha256||await digest(man.current)!==value.current_man_sha256||await digest(man.retail.slice(2,34))!==p.source_floor_lut_sha256)fail('Current MAP complete byte hashes or MAN inputs differ.');
   if(!same(man.floor,Array.from({length:16},(_,i)=>view(man.current).getInt16(2+i*2,true))))fail('Current MAP floor coordinates differ from qualified MAN bytes.');
   const transform=overrides?.[`worldmap://${scene}/placements`]?.WorldMapPlacements??null,decoration=overrides?.[`worldmap://${scene}/placement-allocations`]?.WorldMapPlacementAllocations??null,scripted=overrides?.[`worldmap://${scene}/scripted-placement-allocations`]?.WorldMapScriptedPlacementAllocations??null;
+  for(const [suffix,component] of [['placements','WorldMapPlacements'],['placement-allocations','WorldMapPlacementAllocations'],['scripted-placement-allocations','WorldMapScriptedPlacementAllocations']]){
+    const owned=overrides?.[`worldmap://${scene}/${suffix}`]??{};
+    if(!owned||Array.isArray(owned)||Object.keys(owned).some(k=>k!==component))fail('Current MAP dedicated owner has an unsupported authored component.');
+  }
   const components=Object.fromEntries(Object.entries(overrides?.[`scene://${scene}`]??{}).filter(([k])=>families.includes(k)));
   if(!same(value.transform_binding,transform)||!same(value.decoration_binding,decoration)||!same(value.scripted_binding,scripted)||!same(value.scene_components,components))fail('Current MAP witness differs from project bindings.');
   if(transform&&(!exact(transform,[...Object.keys(p),'entries'])||!Object.keys(p).every(k=>transform[k]===p[k])))fail('Current MAP source transform provenance differs.');

@@ -56,6 +56,7 @@ class CurrentWorldMapTests(TestCase):
                     status,actual=post('/api/worldmap-current-map',dict(scene='map01',source_key=key));self.assertEqual(status,200,actual);self.assertEqual(actual,value)
                     self.assertEqual(post('/api/worldmap-current-map',dict(scene='map01',source_key=key,extra=True))[0],400)
                     with urlopen(f'http://127.0.0.1:{server.server_port}/worldmap-current-map.js') as response:self.assertIn(b'qualifyCurrentWorldMap',response.read())
+                    with urlopen(f'http://127.0.0.1:{server.server_port}/worldmap-scripted-placement-scene.js') as response:self.assertIn(b'qualifyScriptedWorldScene',response.read())
             with patch('sdk.worldmap_current_map._inputs',side_effect=AssertionError('stale must refuse before reading')):
                 with self.assertRaises(ProjectError):inspect(p,'map01','0'*64)
             self.assertEqual(p._document(),held)

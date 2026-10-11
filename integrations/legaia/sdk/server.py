@@ -1174,6 +1174,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-scripted-placement-replay.js": ("worldmap-scripted-placement-replay.js", "text/javascript"),
                  "/worldmap-current-man.js": ("worldmap-current-man.js", "text/javascript"),
                  "/worldmap-current-map.js": ("worldmap-current-map.js", "text/javascript"),
+                 "/worldmap-scripted-placement-scene.js": ("worldmap-scripted-placement-scene.js", "text/javascript"),
                  "/worldmap-current-placements.js": ("worldmap-current-placements.js", "text/javascript"),
                  "/worldmap-decoration-state.js": ("worldmap-decoration-state.js", "text/javascript"),
                  "/worldmap-authored-selection-state.js": ("worldmap-authored-selection-state.js", "text/javascript"),
