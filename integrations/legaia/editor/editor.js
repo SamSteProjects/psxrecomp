@@ -1,4 +1,5 @@
 import {qualifyWorldmapBehaviorResource,showWorldmapBehaviorResource} from '/worldmap-behavior-resources.js';
+import {mergeWorldAnimationAuthoredAssets} from '/worldmap-animation-assets.js';
 import {qualifyWorldmapProjectResource,showWorldmapProjectResource} from '/worldmap-project-resources.js';
 import {worldmapAssetTarget,worldmapBatchAssetTarget} from '/worldmap-assets.js';
 import {worldPlacementBuildTarget} from '/worldmap-placement-state.js';
@@ -2009,7 +2010,7 @@ function assetRecords(activeOnly=false){
     records.set(assetId,{...(existing ?? {id:assetId,type:authored.kind,label:authored.name ?? authored.id,source:authored.source_scene ?? authored.scene_id ?? 'Project library',data:{source_record:authored.source_record}}),sceneId:existing?.sceneId??authored.scene_id,authored:authored.authored ?? {},changes:authored.changes ?? [],authoredRecord:authored});
   }
   for(const record of records.values())if(record.data?.scope==='authored-retained')record.label=state.animation_labels?.[record.id]?.name??'Retained clip '+record.data.retained_record.record_id;
-  return [...records.values()];
+  return mergeWorldAnimationAuthoredAssets([...records.values()],state.authored_assets,state.worldmap_edit_bindings);
 }
 function initialAssetUsage(record,projectState){return ((record.type==='model'?projectState.model_references:record.type==='animation'?projectState.animation_references:[])??[]).filter(ref=>ref.target_id===record.id);}
 const initialAssetUsageContext=projectState=>JSON.stringify([modelUsageContext(projectState),projectState.animation_references]);

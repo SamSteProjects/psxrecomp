@@ -1,6 +1,7 @@
 import {mountWorldScriptOperands} from './world-script-animation-operands.js';
 import {mountWorldScriptInspection} from './world-script-inspection.js';
 import {mountWorldScriptBranches} from './world-script-branches.js';
+import {qualifyWorldAnimationAuthoredAsset} from './worldmap-animation-assets.js';
 // SDK metadata projections; source byte decoding remains in the importer.
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const exact=(v,keys)=>object(v)&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
@@ -78,6 +79,11 @@ export function showWorldmapBehaviorResource({dialog,record,lookup,getReport,get
  const current=()=>{if(busy()||!dialog.open||!same(lookup().find(r=>r.id===record.id),record))fail('World behavior details are no longer current.');return qualifyWorldmapBehaviorResource(record,getReport(),getState());};
  dialog.replaceChildren();const heading=node('div');heading.className='dialog-heading';const close=node('button','Close');close.setAttribute('aria-label','Close asset details');close.onclick=()=>dialog.close();heading.append(node('h2',record.label),close);dialog.append(heading,node('p','Registered Retail source resource. Bindings describe source objects; Current edits and live activation are separate. Supported fixed instruction arguments use separate project overrides.'));
  if(record.type==='animation')dialog.append(node('p',`${target.record.frame_count} frames · ${target.record.channel_count} rigid object channels · ${target.record.bindings.length} compatible source instances. Timing, looping and runtime use are unknown. ${target.record.bindings.length?'Open a source object to inspect its Retail and Current poses.':'No source object association is recorded for this clip.'}`));
+ if(record.authoredRecord?.authored?.WorldAnimationChannels){
+  const entry=qualifyWorldAnimationAuthoredAsset(record,getState().worldmap_edit_bindings?.[`worldmap://${target.record.source_scene}/animation-channels`]?.WorldAnimationChannels),saved=node('section');saved.dataset.worldAnimationAuthored='';saved.append(node('h3','Saved Current Channels'),node('p',`${entry.edits.length} saved frame/object channel rows affect this shared native record. Retail bytes remain immutable. ${target.record.bindings.length?'Open a source object to inspect Current poses or edit/reset the saved channels.':'No compatible source object is recorded; this panel shows saved channel metadata without a posed preview.'}`),node('p','Authored alias: '+record.authoredRecord.id));
+  for(const edit of entry.edits.slice(0,64)){const axes=['translation','rotation_psx'].flatMap(field=>Object.entries(edit[field]??{}).map(([axis,value])=>`${field==='translation'?'Translation':'Rotation'} ${axis.toUpperCase()} ${value}`));saved.append(node('p',`Frame ${edit.frame_index} · Object ${edit.object_index} · ${axes.join(' · ')}`));}
+  if(entry.edits.length>64)saved.append(node('p',`${entry.edits.length-64} additional saved rows; inspect the Current clip for complete frame coverage.`));for(const e of saved.children)Object.assign(e.style,{whiteSpace:'normal',overflowWrap:'anywhere'});dialog.append(saved);
+ }
  const links=node('section');links.dataset.worldBehaviorRelationships='';links.append(node('h3','Related Resources'));
  for(const id of [...target.record.model_asset_ids,...(record.type==='script'?target.record.animation_asset_ids:target.record.script_asset_ids)]){
   const related=lookup().find(r=>r.id===id);if(!related)fail('Related World resource is absent from Project resources.');const button=node('button',related.label);button.dataset.worldBehaviorResourceId=id;Object.assign(button.style,{display:'block',whiteSpace:'normal',overflowWrap:'anywhere',maxWidth:'100%'});button.onclick=()=>{try{current();dialog.close();onNavigate(related);}catch(e){onError(e);}};links.append(button);
