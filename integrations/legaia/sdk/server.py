@@ -1133,6 +1133,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-object-script.js": ("worldmap-object-script.js", "text/javascript"),
                  "/worldmap-resources.js": ("worldmap-resources.js", "text/javascript"),
                  "/world-script-animation-operands.js": ("world-script-animation-operands.js", "text/javascript"),
+                 "/world-script-inspection.js": ("world-script-inspection.js", "text/javascript"),
                  "/worldmap-behavior-resources.js": ("worldmap-behavior-resources.js", "text/javascript"),
                  "/worldmap-project-resources.js": ("worldmap-project-resources.js", "text/javascript"),
                  "/worldmap-model-replacement.js": ("worldmap-model-replacement.js", "text/javascript"),
@@ -1604,6 +1605,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'script_id','source_key'}:raise ProjectError('World script operand options require the exact source scope')
                     from .worldmap_script_operands import options
                     self._json(200,options(self.server.project,body['script_id'],body['source_key']))
+                    return
+                if route == '/api/world-script-inspection':
+                    if set(body)!={'script_id','source_key'}:raise ProjectError('World script inspection requires the exact source scope')
+                    from .worldmap_script_operands import inspection
+                    self._json(200,inspection(self.server.project,body['script_id'],body['source_key']))
                     return
                 if route == '/api/world-script-animation-review':
                     if set(body)!={'script_id','source_key','pc','values','shared'}:raise ProjectError('World script review requires the exact source scope and values')

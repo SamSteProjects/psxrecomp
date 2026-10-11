@@ -8,7 +8,7 @@ from urllib.request import urlopen
 from sdk.project import ProjectService,ProjectError
 from importer.core import ImportError
 from sdk.worldmap_authoring import state_key
-from sdk.worldmap_script_operands import options,review,compose,owner,COMPONENT,LEGACY_COMPONENT,validate,FLAGS
+from sdk.worldmap_script_operands import options,review,compose,inspection,owner,COMPONENT,LEGACY_COMPONENT,validate,FLAGS
 from test_project_workflow import synthetic_scene
 from test_effect_color_authoring import END
 from test_model_primitive_workflow import http_server
@@ -25,6 +25,22 @@ def fixture(project):
 
 
 class WorldAnimationArgumentsTests(TestCase):
+    def test_current_graph_snapshot_is_read_only_and_source_bound(self):
+        with tempfile.TemporaryDirectory() as root:
+            p=ProjectService(Path(root));document=synthetic_scene();document['source']['disc_identity']='sha256:'+'a'*64;p.import_metadata(document);script,source=fixture(p)
+            with patch('sdk.worldmap_script_operands.source',return_value=source):
+                report,_=review(p,script,state_key(p),33,{'index':4095},True)
+                p.command(dict(type='set_world_script_animation_operands',script_id=script,source_key=state_key(p),pc=33,values={'index':4095},shared=True,review_key=report['review_key']))
+                held=deepcopy(p._document());history=deepcopy(p.undo_stack);key=state_key(p)
+                snapshot=inspection(p,script,key);self.assertEqual(snapshot['source']['source_key'],key)
+                before=next(n for n in snapshot['retail_graph']['instructions'] if n['pc']==33);after=next(n for n in snapshot['current_graph']['instructions'] if n['pc']==33)
+                self.assertEqual(before['operands']['index'],258);self.assertEqual(after['operands']['index'],4095)
+                self.assertEqual(before['successors'],after['successors']);self.assertEqual(after['byte_offset'],97)
+                self.assertEqual(snapshot['retail_graph']['opaque_regions'],snapshot['current_graph']['opaque_regions'])
+                self.assertEqual(p._document(),held);self.assertEqual(p.undo_stack,history)
+                with self.assertRaises(ProjectError):inspection(p,script,'0'*64)
+                p.mode='live'
+                with self.assertRaises(ProjectError):inspection(p,script,key)
     def test_system_selectors_preserve_operation_and_test_delta(self):
         with tempfile.TemporaryDirectory() as root:
             p=ProjectService(Path(root));document=synthetic_scene();document['source']['disc_identity']='sha256:'+'a'*64;p.import_metadata(document);script,source=fixture(p);held=deepcopy(p._document())
@@ -139,6 +155,7 @@ class WorldAnimationArgumentsTests(TestCase):
             p=ProjectService(Path(root));held=deepcopy(p._document())
             with http_server(p) as (server,post):
                 with urlopen(f'http://127.0.0.1:{server.server_port}/world-script-animation-operands.js') as response:self.assertIn(b'qualifyWorldScriptOperands',response.read())
-                for route in ('/api/world-script-animation-operands','/api/world-script-animation-review'):
+                with urlopen(f'http://127.0.0.1:{server.server_port}/world-script-inspection.js') as response:self.assertIn(b'qualifyWorldScriptInspection',response.read())
+                for route in ('/api/world-script-animation-operands','/api/world-script-animation-review','/api/world-script-inspection'):
                     for body in ({},{'script_id':'foreign','source_key':'0'*64},{'script_id':'foreign','source_key':'0'*64,'extra':True}):self.assertEqual(post(route,body)[0],400)
             self.assertEqual(p._document(),held)

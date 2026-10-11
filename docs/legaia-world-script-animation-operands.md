@@ -1,5 +1,17 @@
 # World Script Instruction Arguments
 
+## Retail / Current Instruction Inspector — 2026-10-11
+
+Project Resources script details now offer **Inspect Retail / Current Instructions**. One source-qualified MAN context supplies the immutable Retail graph, composed Current graph and existing argument byte witness. The table shows instruction PCs, mnemonics, exact Retail/Current bytes and separate Retail/Authored/Current supported arguments. Read-only operands remain SDK static analysis. Branches describe decoded possibilities, not an execution trace. Dialogue records, opaque regions and decoder stops remain inspectable and explicitly unknown where decoding stops.
+
+**Edit Arguments** opens the existing argument editor at that exact instruction PC. Navigation uses the existing Review/Apply path and withdraws an earlier reviewed draft when the selected instruction changes. Inspection and navigation themselves issue no authoring command. The source-object viewport inspector remains a Retail source view.
+
+The browser qualifies complete source/Current bytes, record coverage, non-overlapping row ownership, global offsets, context and encoded operands. It independently reconstructs the supported Current argument changes from the Retail graph and refuses unrelated graph, analysis or branch changes. Unsupported semantic labels remain SDK analysis; this is not an independent emulator or proof of native execution. No new authored component, serializer or package format is introduced.
+
+Seven focused Python checks and JavaScript syntax checks pass. Four real coauthored scripts cover animation, effect color, signed model selection, masked flags and system selectors; the browser contract accepts those snapshots and refuses 48 altered graph responses. Snapshot creation preserves the document, history and Save/Open baseline. Private evidence: `local-output/sdk-20260909/world-script-current-inspection-20261011/`. Gameplay verification remains deferred.
+
+Four actual private editor workflows pass Current byte/argument display and exact-PC navigation. The Map01 workflow also proves withdrawal of an earlier Review when navigation changes the selected instruction. Wide and 400-pixel captures were inspected; narrow content wraps without horizontal overflow. Zero authoring commands or page errors occurred. Complete document/history and saved baselines remain unchanged. No Build, native compile, game, runtime attachment, install or disc export ran for this read-only feature.
+
 ## Normal System-Flag Selectors — 2026-10-11
 
 **Edit World Instruction Arguments** now offers supported normal `SYSFLAG_SET`, `SYSFLAG_CLEAR` and `SYSFLAG_TEST` selectors. **System Flag Selector Argument** separates Retail/Authored/Current and uses the existing Review/Apply, consent, history, persistence and Build workflow. The encoded index is 0–4095. It spans the opcode's low nibble and the following byte, rather than an ordinary little-endian operand. The operation/high nibble, normal dispatch context, TEST delta, record/header lengths and graph continuations stay fixed. Extended system addressing remains unavailable.

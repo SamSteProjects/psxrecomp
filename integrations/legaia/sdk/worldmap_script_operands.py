@@ -3,6 +3,7 @@ from base64 import b64encode
 from copy import deepcopy
 from hashlib import sha256
 import re
+import json
 from importer.pipeline import _disc_context
 from importer.worldmap_geometry import KINGDOM_BASES, _kingdom_table, _slot
 from importer.worldmap_behavior_catalog import load_worldmap_behavior_catalog
@@ -131,7 +132,10 @@ def _fresh(project,key):
 
 def options(project,script,key):
     _fresh(project,key);scene=_scene(script)
-    man,rows,_,_,_,_,_,binding,current,_=context(project,scene);row=rows.get(script)
+    return _options(project,script,key,context(project,scene))
+
+def _options(project,script,key,inputs):
+    man,rows,_,_,_,_,_,binding,current,_=inputs;row=rows.get(script)
     if row is None:raise ProjectError('World script has no registered source binding')
     at=row['source_record']['byte_offset'];end=at+row['source_record']['byte_length'];record=man[at:end];graph=inspect_record(record,row['entry_pc']);targets=[]
     authored=(binding or {}).get('entries',{}).get(script,{}).get('operands',{})
@@ -145,6 +149,17 @@ def options(project,script,key):
                 raise
             targets.append(dict(pc=node['pc'],mnemonic=node['mnemonic'],target_context=node['target_context'],retail_values=values,authored_values=deepcopy(authored.get(f'{node["pc"]:04x}')),current_values=deepcopy(authored.get(f'{node["pc"]:04x}',values))))
     result=dict(schema_version='legaia.world-script-animation-operands.v1',project_path=str(project.root),source_key=key,script_id=script,source_record=deepcopy(row['source_record']),entry_pc=row['entry_pc'],source_instance_ids=deepcopy(row['source_instance_ids']),record_base64=b64encode(record).decode(),current_record_base64=b64encode(current[at:end]).decode(),targets=targets,limitations=list(LIMITATIONS),project_changed=False,gameplay_verified=False)
+    _fresh(project,key);return result
+
+def inspection(project,script,key):
+    """Read-only static Retail/Current analysis from one qualified MAN context."""
+    _fresh(project,key);inputs=context(project,_scene(script));source_report=_options(project,script,key,inputs)
+    man,rows,_,_,_,_,_,_,current,_=inputs;row=rows[script];at=row['source_record']['byte_offset'];end=at+row['source_record']['byte_length']
+    result=dict(schema_version='legaia.world-script-inspection.v1',source=source_report,
+        retail_graph=inspect_record(man[at:end],row['entry_pc'],semantic_id=script,base_offset=at),
+        current_graph=inspect_record(current[at:end],row['entry_pc'],semantic_id=script,base_offset=at),
+        read_only=True,project_changed=False,gameplay_verified=False)
+    if len(json.dumps(result,allow_nan=False).encode('utf-8'))>32*1024*1024:raise ProjectError('World script inspection exceeds its private response budget')
     _fresh(project,key);return result
 
 def review(project,script,key,pc,values,shared):
