@@ -1,5 +1,15 @@
 # World Placed-Object Animation Preview
 
+In progress — 2026-10-11: World ANM Channel Review Foundation adds an equal-layout kingdom animation-bank writer and source-bound read-only HTTP Review using the existing packed-channel encoder. Exact signed12 translations and quantized rotations preserve offset tables, padding, neighboring records, headers, trailers and opaque channel nibbles. Fresh Current model/native bind/type-5 carrier evidence produces separate before/proposed frame witnesses, complete bank/record hashes and typed byte/channel audits. Seven focused Python tests, four Python AST checks and whitespace pass. All five evidenced retail users across Map01/Map02/Map03 match independently constructed complete ANM edits and proposed poses; the three Map02 users retain the same structural record reference and proposed bank. One actual HTTP Review and four malformed/stale refusals pass with unchanged full project/history. Structural animation references are not yet Asset Database registrations. Authored persistence, shared-record consent, commands, independent browser Review admission, editing controls and native package Build integration remain pending; build_ready is false. No editor authoring workflow, game, runtime attachment, native recomp compile, installation or disc export ran for this foundation. Gameplay stays deferred; full SDK goal active, solo work continues. Evidence: local-output/sdk-20260909/worldmap-animation-authoring-20261011/verify.py and proof.json; docs/legaia-worldmap-object-animation.md.
+
+## World ANM Channel Review Foundation — 2026-10-11
+
+The source animation path now has an equal-layout native writer and read-only Review service. `worldmap_animation_authoring.py` reuses the existing packed-channel encoder for exact signed twelve-bit translation and eight-bit rotation axes in a selected kingdom ANM record. The bank and record hashes bind immutable inputs. Offset tables, padding, neighboring records, headers, trailers and channel opaque nibbles must remain unchanged. No selector, timing, looping or runtime semantics are inferred.
+
+`POST /api/worldmap-object-animation-review` accepts exactly `scene`, `source_key`, `entity_id`, `frame_index` and `edits`. Fresh Edit-mode ownership, Current model identity, native placed-object bind, same type-5 carrier and exact object/channel compatibility are checked through the existing source loader. The result contains separate before and proposed frame witnesses, complete source/proposed bank bytes, typed channel and absolute byte audits, and a deterministic Review key. Its `animation_id` is a structural scene/ANM record reference, not a registered Asset Database entry.
+
+This is In progress: the Review is read-only and `build_ready` is false. It does not persist an authored ANM binding, add project commands, expose editing controls or deliver a package change. Those integrations remain required before this is an authoring workflow. Shared-record users can be affected together; runtime activation and analytic-versus-GTE rounding remain deferred.
+
 The SDK resolves nonzero placed-object MAN header
 selectors to kingdom type-5 ANM record `selector-1`, decodes a bounded frame,
 and poses the corresponding Current model's vertices. This is a retail source
@@ -16,7 +26,7 @@ The endpoint has a 40 MiB private response limit and changes no project state.
 The preview preserves model topology and materials. Vertex poses use the
 existing analytic rigid transform decoder, without claiming bit-exact GTE
 rounding. Source triangle normals receive rotation only, independently qualified with the shared rigid-normal viewer contract and reported as `normal_pose=rigid_rotation_only`. This is a source-vector diagnostic; retail GTE lighting is not simulated. Playback timing, looping and runtime activation are unresolved.
-No registered animation asset identity or authored World ANM edit is invented.
+The source-preview workflow does not register an animation asset or persist authored World ANM edits.
 
 ## Evidence — 2026-10-10
 

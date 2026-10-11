@@ -1403,6 +1403,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_object_bind import inspect
                     self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body['entity_id']))
                     return
+                if route == '/api/worldmap-object-animation-review':
+                    if set(body)!={'scene','source_key','entity_id','frame_index','edits'}:raise ProjectError('World animation Review requires exact source, entity, frame and channel edits')
+                    from .worldmap_animation_review import review
+                    self._json(200,review(self.server.project,body['scene'],body['source_key'],body['entity_id'],body['frame_index'],body['edits']))
+                    return
                 if route == '/api/worldmap-object-animation':
                     if set(body)!={'scene','source_key','entity_id','frame_index'}:raise ProjectError('World object animation requires exact source, entity and frame fields')
                     from .worldmap_object_animation import inspect
