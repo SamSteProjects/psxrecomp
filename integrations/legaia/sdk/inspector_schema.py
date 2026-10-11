@@ -470,6 +470,19 @@ def inspector_schema():
         'notes':['Source coordinates are decoded spawn seeds in the retail Y-down coordinate system. Display Y reflection is separate.', 'Runtime visibility and resting transforms are unverified; no authoring or runtime-write capability is inferred.'],
     }
     schema['components']['WorldSourcePlacement']['actions'].append({'id':'inspect-world-footprint','label':'Inspect source footprint offset','capability':'worldmap_placements','requires_edit':True})
+    schema['components']['WorldSourcePlacement']['actions'].append({'id':'inspect-world-object-bind','label':'Inspect source object bind','capability':'worldmap_placements','requires_edit':True})
+    schema['components']['WorldSourceObjectBind']={
+        'label':'Source Object Bind','layout':'read-only-properties',
+        'properties':[
+            {'id':'status','label':'Source bind status','path':['bind','status'],'type':'string','state':'derived'},
+            {'id':'flat-index','label':'Flat MAN index','path':['bind','man_record','flat_record_index'],'type':'number','state':'read-only-retail'},
+            {'id':'partition','label':'MAN partition','path':['bind','man_record','partition'],'type':'number','state':'read-only-retail'},
+            {'id':'selector','label':'Encoded animation selector','path':['bind','encoded_animation_selector'],'type':'number','state':'read-only-retail'},
+            *[{'id':kind,'label':label,'path':['bind',kind],'type':'string','state':'unresolved'} for kind,label in [('animation_clip','Animation clip'),('interaction_script','Interaction script'),('runtime_activation','Runtime activation')]],
+        ],
+        'details':[{'label':'Retail bind provenance','path':['bind']},{'label':'MAN carrier provenance','path':['man_source']}],
+        'notes':['Retail MAN bind at the Current source anchor; no authored bind or live activation is inferred.','An encoded animation selector does not establish a resolved animation asset.'],
+    }
     schema['components']['WorldSourceFootprint']={
         'label':'Source footprint calculation','layout':'read-only-properties',
         'properties':[

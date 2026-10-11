@@ -1,3 +1,4 @@
+import {qualifyWorldObjectBind} from './worldmap-object-bind.js';
 import {qualifyWorldFootprint} from './worldmap-footprint.js';
 import {selectionBounds} from './scene-selection-bounds.js';
 import {mountWorldDecorationGroupGizmo,worldDecorationGroupDisplay,mountWorldDecorationGizmo,worldDecorationDraftPosition,worldDecorationDraftTransform} from './worldmap-decoration-gizmo.js';
@@ -125,6 +126,7 @@ export function mountWorldmapGeometry({after,getState,busy,setBusy,api=null,onPr
     if(selected?.placement_scope==='authored_spawn_seed')registry['remove-world-decoration']={canRun:()=>!!decorations&&currentReport?.scene_graph.entities.some(e=>e.entity_id===entityId&&e.placement_scope==='authored_spawn_seed'),run:()=>decorations.reviewRemoval()};
     if(selected?.placement_scope==='source_spawn_seed'&&Number.isSafeInteger(selected.object_record_index)&&hash(selected.source_record_sha256)&&typeof onInspectPlacement==='function')Object.assign(registry,{'inspect-world-placement-record':{canRun:()=>getState().capabilities?.worldmap_placements===true,run:async()=>{const target={scene:capturedReport.scene,entityId,recordIndex:selected.object_record_index,sourceRecordHash:selected.source_record_sha256,sourceKey:session.key,projectPath:session.path};dialog.close();await onInspectPlacement(target);}},'edit-world-asset-owners':{canRun:()=>getState().capabilities?.worldmap_placements===true,run:()=>openAssetOwners(entityId,capturedReport)}});
     if(selected?.source_layer==='placed'&&renderedLayer==='current'&&currentReport&&!allocationPreview)registry['inspect-world-footprint']={run:()=>inspectFootprint(entityId,currentReport)};
+    if(selected?.source_layer==='placed'&&renderedLayer==='current'&&currentReport&&!allocationPreview)registry['inspect-world-object-bind']={run:()=>inspectObjectBind(entityId,currentReport)};
     const component=selected?.placement_scope==='authored_spawn_seed'?'WorldAuthoredPlacement':'WorldSourcePlacement';inspectorComponent.innerHTML=selected&&schema?.components?.[component]?renderComponentSection(schema,component,selected,{registry,capabilities:getState().capabilities,editable:getState().project?.mode==='edit'}):'';
     if(registry['edit-world-asset-owners'])inspectorComponent.append(node('p','Opens complete native owners for every source instance of this asset. Shared records can affect additional cells; Review and shared-record consent remain required.'));
     const actionButton=inspectorComponent.querySelector('[data-inspector-action]');
@@ -141,6 +143,21 @@ export function mountWorldmapGeometry({after,getState,busy,setBusy,api=null,onPr
       inspectorComponent.querySelector('[data-inspector-component-section="WorldSourceFootprint"]')?.remove();
       const section=node('div');section.innerHTML=renderComponentSection(getState().inspector_schema,'WorldSourceFootprint',qualified);inspectorComponent.append(section.firstElementChild);
       status.textContent='Source footprint calculation qualified; collision extents, live activation and MAN binds remain unresolved.';
+    }catch(error){if(error.name!=='AbortError'&&valid()){status.textContent=error.message;throw error;}}
+    finally{if(pending===controller){pending=null;pendingKind=null;setBusy(false);updateState();}}
+  }
+  async function inspectObjectBind(entityId,captured){
+    if(!current()||busy()||currentReport!==captured||renderedLayer!=='current'||hierarchy.value!==entityId||allocationPreview)return;
+    const binding=session,controller=new AbortController(),token=++generation;pending=controller;pendingKind='object-bind';setBusy(true);updateState();
+    const valid=()=>current()&&session===binding&&currentReport===captured&&renderedLayer==='current'&&hierarchy.value===entityId&&pending===controller&&generation===token&&!allocationPreview;
+    try{
+      status.textContent='Qualifying the retail object-bind record and encoded animation selector…';
+      const response=await fetch('/api/worldmap-object-bind',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scene:captured.scene,source_key:binding.key,entity_id:entityId}),signal:controller.signal});
+      const text=await response.text();if(!valid())return;if(new TextEncoder().encode(text).length>6000000)fail('Object bind report exceeds its response budget.');
+      const value=JSON.parse(text);if(!response.ok)fail(value.error||'Object bind inspection failed.');const qualified=await qualifyWorldObjectBind(value,captured,entityId,binding.path);if(!valid())return;
+      inspectorComponent.querySelector('[data-inspector-component-section="WorldSourceObjectBind"]')?.remove();
+      const section=node('div');section.innerHTML=renderComponentSection(getState().inspector_schema,'WorldSourceObjectBind',qualified);inspectorComponent.append(section.firstElementChild);
+      status.textContent='Retail object-bind source qualified; animation clip, interaction script and runtime activation remain unresolved.';
     }catch(error){if(error.name!=='AbortError'&&valid()){status.textContent=error.message;throw error;}}
     finally{if(pending===controller){pending=null;pendingKind=null;setBusy(false);updateState();}}
   }
