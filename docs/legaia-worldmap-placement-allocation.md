@@ -1,5 +1,14 @@
 # World Placement Allocation
 
+## Authored Decoration Group Edit Continuity — 2026-10-10
+
+Group transform Apply now carries its retained UUID set into the same fresh Current handoff used by duplication. Complete native membership qualifies before group checkboxes are restored. Deltas reset to zero, while the working camera is retained for the next edit; no additional project command or camera save is created. Duplication still uses its optional framing policy. Ordinary single edits retain their existing refresh behavior.
+
+Camera restoration occurs only after source/session, scene/layer, primary selection, camera, visibility/scope, viewport dimensions and group-membership guards pass. A changed viewport suppresses both late selection and camera restoration; it does not reverse the already applied native edit. Fresh manual selection/framing remains available.
+
+Offline checks passed: three actual kingdom workflows duplicate two decorations and then Apply consecutive X and Y group transforms without manual reselection. Every refresh retains the exact selected UUIDs and working camera, resets deltas, and preserves all original root matrices. Save/Open and complete three-step Undo/Redo/Undo restore private document/Undo-stack baselines. Nine expected native commands cover three duplications and six transforms; selection/camera restoration adds none. A separate held post-group-Apply native-source response plus viewport resize suppresses late selection and old-camera restoration, and fresh manual retry succeeds; its two native commands also restore the baseline. No page errors occurred. Evidence: `local-output/sdk-20260909/worldmap-decoration-group-continuity-20261010/`. Two JS syntax and whitespace checks pass. Native serialization remains unchanged; no additional Build, native compile, game launch, runtime attachment, install or disc export ran. Gameplay remains deferred; full SDK goal active, solo work continues.
+
+
 ## Duplicated Decoration Group Handoff — 2026-10-10
 
 Applying a reviewed decoration-group duplication now reopens the fresh Current scene, independently qualifies its native allocation source and selects every newly created UUID as a replacement group. The first copy remains the primary Hierarchy/Inspector entity; original donors are excluded. Deltas reset to zero. **Frame duplicated group after Apply** defaults on and uses the complete selected model-bounds union; turning it off keeps the fresh Current camera while still selecting the copies. Selection and framing add no project command. The next group transform therefore edits the copies through the existing native Review/Preview/Apply workflow.

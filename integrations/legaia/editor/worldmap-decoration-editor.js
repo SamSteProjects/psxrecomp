@@ -297,7 +297,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
       controller = null; pendingKind = null; source = held = review = placementId = null; displayed = editing = duplicationReview = false; setBusy(false); update();
     }
     if (applied && getState().project?.path === context.path && getState().project?.mode === 'edit') {
-      try { await onApplied({scene: context.current.scene, placementId: captured.placement_id??captured.placement_ids?.[0]??captured.requests[0].placement_id, projectPath: context.path,...(duplicating?{createdPlacementIds:captured.requests.map(r=>r.placement_id),frameCreated}:{})}); }
+      try { await onApplied({scene: context.current.scene, placementId: captured.placement_id??captured.placement_ids?.[0]??captured.requests[0].placement_id, projectPath: context.path,...(duplicating?{selectedPlacementIds:captured.requests.map(r=>r.placement_id),frameCreated}:grouping?{selectedPlacementIds:[...captured.placement_ids],preserveCamera:true}:{})}); }
       catch (error) { status.textContent = 'Decoration applied, but scene refresh failed: ' + error.message; onError(error); }
     }
   };
