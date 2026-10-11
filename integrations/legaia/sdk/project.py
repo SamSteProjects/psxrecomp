@@ -2259,6 +2259,10 @@ class ProjectService:
             from .worldmap_script_branches import apply
             apply(self,command)
             return
+        if command.get('type') == 'set_world_clip_channels':
+            from .worldmap_clip_channels import apply
+            apply(self,command)
+            return
         if command.get('type') == 'set_world_animation_channels':
             from .worldmap_animation_edit import apply
             apply(self,command)

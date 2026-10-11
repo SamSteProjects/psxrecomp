@@ -107,7 +107,7 @@ def load_worldmap_behavior_catalog(disc,scene):
             field='animation_asset_id' if row['kind']=='script' else 'script_asset_id'
             row[key]=sorted({b[field] for b in row['bindings'] if b[field] is not None})
             row.update(scope='global-worldmap-behavior-resources',runtime_state='not_observed',
-                       reference_commit=REFERENCE_COMMIT,read_only=True,authoring='fixed_instruction_operands' if row['kind']=='script' else 'shared_rigid_channels' if row['bindings'] else 'source_metadata_only')
+                       reference_commit=REFERENCE_COMMIT,read_only=True,authoring='fixed_instruction_operands' if row['kind']=='script' else 'shared_rigid_channels' if row['bindings'] else 'native_channel_content')
             assets.append(row)
         result=dict(scene=scene,assets=sorted(assets,key=lambda r:r['semantic_id']),
             consumer=dict(executable_sha256=proof['executable_sha256'],function=consumer),

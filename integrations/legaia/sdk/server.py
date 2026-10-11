@@ -1141,6 +1141,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-animation-assets.js": ("worldmap-animation-assets.js", "text/javascript"),
                  "/worldmap-animation-build-navigation.js": ("worldmap-animation-build-navigation.js", "text/javascript"),
                  "/worldmap-animation-export.js": ("worldmap-animation-export.js", "text/javascript"),
+                 "/worldmap-clip-channels.js": ("worldmap-clip-channels.js", "text/javascript"),
                  "/worldmap-animation-channels.js": ("worldmap-animation-channels.js", "text/javascript"),
                  "/worldmap-animation-glb.js": ("worldmap-animation-glb.js", "text/javascript"),
                  "/worldmap-object-script.js": ("worldmap-object-script.js", "text/javascript"),
@@ -1274,6 +1275,8 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/worldmap-replacement-review", "/api/worldmap-replacement-apply", "/api/text-json-preview", "/api/text-json-import") else 32768
+            if urlsplit(self.path).path in ('/api/worldmap-clip-channel-review','/api/worldmap-clip-channel-apply'):
+                request_limit = 1024 * 1024
             if urlsplit(self.path).path in ('/api/worldmap-model-glb-review','/api/worldmap-model-glb-apply','/api/worldmap-animation-glb-review','/api/worldmap-animation-glb-apply'):
                 request_limit = 48 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/worldmap-model-replacement-review','/api/worldmap-model-replacement-apply','/api/worldmap-model-replacement-preview','/api/worldmap-model-replacement-material-preview'):
@@ -1434,6 +1437,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if route.endswith('-review'):self._json(200,inspect(self.server.project,**args))
                     else:
                         apply(self.server.project,review_key=body['review_key'],**args)
+                        self._json(200,self.server.state())
+                    return
+                if route in ('/api/worldmap-clip-channel-review','/api/worldmap-clip-channel-apply'):
+                    fields={'animation_id','source_key','edits','shared_record'}
+                    if route.endswith('-apply'):fields=fields|{'review_key'}
+                    if set(body)!=fields:raise ProjectError('Native clip channels require exact reviewed source fields')
+                    if route.endswith('-review'):
+                        from .worldmap_clip_channels import review
+                        self._json(200,review(self.server.project,**body))
+                    else:
+                        self.server.project.command(dict(type='set_world_clip_channels',**body))
                         self._json(200,self.server.state())
                     return
                 if route == '/api/worldmap-animation-channels':
