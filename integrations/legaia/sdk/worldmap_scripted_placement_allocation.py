@@ -9,6 +9,7 @@ from importer.pipeline import _disc_context,_bounded_scene_range
 from importer.worldmap_object_bind_allocation import _tables,_catalog
 from importer.worldmap_object_binds import resolve_object_bind
 from importer.worldmap_placement_allocation import inventory
+from importer.worldmap_placements import decode_worldmap_placements
 from importer.worldmap_scripted_placement_allocation import allocate_scripted_placements
 from .project import ProjectError,digest
 from .worldmap_placement_allocation import _context,_fresh
@@ -44,7 +45,10 @@ def _inputs(project,scene,key):
         fallback=archive.image.read_user(archive.node.extent_lba,following.start_lba*archive.SECTOR,0x2000,archive.node.size)
     components=project.overrides.get('scene://'+scene,{})
     if components.get('FloorHeights'):
-        raise ProjectError('Scripted World floor-height coauthor composition remains unsupported')
+        identifier='scene://'+scene
+        project._validate_floor_heights(identifier,components['FloorHeights'])
+        from .floor_heights import compose as compose_floor_heights
+        current_man,_=compose_floor_heights(project,identifier,man,current_man)
     # Compose each existing scene MAP family against its immutable source.
     # Declared masks permit independent floor/wall fields in the same byte;
     # coordinate and record fields must never become a hybrid of two edits.
@@ -67,6 +71,11 @@ def _inputs(project,scene,key):
         patched,audit=writer(components[name])
         current=_merge_map(raw,current,patched,name,audit);coauthors.append(name)
     floor=list(struct.unpack_from('<16h',current_man,2))
+    if current_man[2:34]!=man[2:34]:
+        seeds={p['source_cell']:p for p in decode_worldmap_placements(current,floor,scene=scene)['placements']}
+        allocations=deepcopy(allocations)
+        for allocation in allocations:
+            allocation['native_seed']=deepcopy(seeds[allocation['target_cell']])
     _fresh(project,key)
     return raw,provenance,floor,current,allocations,fallback,man,current_man,man_provenance,coauthors
 
@@ -101,7 +110,9 @@ def source(project,scene,key):
         source_man_sha256=sha256(man).hexdigest(),current_man_sha256=sha256(current_man).hexdigest(),
         current_man_base64=b64encode(current_man).decode('ascii'),fallback_sha256=sha256(fallback).hexdigest(),
         fallback_base64=b64encode(fallback).decode('ascii'),floor_lut=floor,authored_decorations=allocations,
-        scene_map_coauthors=coauthors,**_options(current,fallback,current_man,floor,scene),
+        scene_map_coauthors=coauthors,
+        scene_man_coauthors=['FloorHeights'] if project.overrides.get('scene://'+scene,{}).get('FloorHeights') else [],
+        **_options(current,fallback,current_man,floor,scene),
         read_only=True,project_changed=False,build_ready=False,gameplay_verified=False,
         limitations=['Script records remain shared; creation requires explicit shared-script scope.',
             'Target cells are preliminary empty candidates; donor footprints and binds are checked during Review.',
@@ -125,6 +136,7 @@ def review(project,scene,key,requests):
         fallback_sha256=sha256(fallback).hexdigest(),requests=deepcopy(requests),
         relocation_offset=options['relocation_offset'],proposed_map_sha256=sha256(candidate).hexdigest(),
         proposed_map_base64=b64encode(candidate).decode('ascii'),audit=audit,scene_map_coauthors=coauthors,
+        scene_man_coauthors=['FloorHeights'] if project.overrides.get('scene://'+scene,{}).get('FloorHeights') else [],
         read_only=True,project_changed=False,build_ready=False,gameplay_verified=False)
     result['review_key']=digest(result)
     _fresh(project,key)
