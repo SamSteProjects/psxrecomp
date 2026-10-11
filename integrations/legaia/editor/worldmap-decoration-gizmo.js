@@ -20,25 +20,25 @@ export function worldDecorationGroupDisplay(entities,draft){
   return {positions,transforms,pivot:pivotEntity?(positions.get(pivotEntity.entity_id)??{x:pivotEntity.model_to_scene[3],y:pivotEntity.model_to_scene[7],z:pivotEntity.model_to_scene[11]}):selectionBounds(points).target};
 }
 
-export function mountWorldDecorationGroupGizmo({host,getDraft,getEntities,getView,getContext,allowed,renderer,setDraft,onError}){
+export function mountWorldDecorationGroupGizmo({host,getDraft,getEntities,getView,getContext,allowed,renderer,setDraft,onError,display=worldDecorationGroupDisplay,idPrefix='world-decoration-group'}){
   let before=null;
   const available=()=>allowed()&&getDraft()?.enabled===true;
   function axes(){
     if(!available()||getDraft().mode!=='translate')return {};
-    let pivot;try{pivot=worldDecorationGroupDisplay(getEntities(),getDraft()).pivot;}catch{return {};}
+    let pivot;try{pivot=display(getEntities(),getDraft()).pivot;}catch{return {};}
     const view=getView(),start=renderer().projectPoint(pivot,view),units=Math.max(64,view.camera.distance*.22),result={};if(!start)return result;
     for(const [axis,direction] of Object.entries(sourceOffsetDirections)){
       const end=renderer().projectPoint({x:pivot.x+direction.x*units,y:pivot.y+direction.y*units,z:pivot.z+direction.z*units},view);
       if(end&&Math.hypot(end.x-start.x,end.y-start.y)>=4)result[axis]={start,end,units};
     }return result;
   }
-  const options={host,idPrefix:'world-decoration-group',range:'world-delta',
+  const options={host,idPrefix,range:'world-delta',
     getContext:()=>JSON.stringify([getContext(),getDraft()?.ids,getDraft()?.sourceKey,getDraft()?.enabled,getDraft()?.mode,getDraft()?.step,getDraft()?.yawStep,getDraft()?.delta.orbit_pivot]),
-    onBegin:()=>{before=structuredClone(getDraft().delta);},onPreview:values=>{const delta={...values.offset,yaw_units:getDraft().mode==='yaw'?values.yaw_units:getDraft().delta.yaw_units,...(getDraft().delta.orbit_pivot?{orbit_pivot:getDraft().delta.orbit_pivot}:{})};worldDecorationGroupDisplay(getEntities(),{...getDraft(),delta});if(!setDraft(delta))throw Error('Decoration group source changed.');},
+    onBegin:()=>{before=structuredClone(getDraft().delta);},onPreview:values=>{const delta={...values.offset,yaw_units:getDraft().mode==='yaw'?values.yaw_units:getDraft().delta.yaw_units,...(getDraft().delta.orbit_pivot?{orbit_pivot:getDraft().delta.orbit_pivot}:{})};display(getEntities(),{...getDraft(),delta});if(!setDraft(delta))throw Error('Group source changed.');},
     onEnd:()=>{before=null;},onCancel:()=>{const prior=before;before=null;if(prior)setDraft(prior,true);},onError};
   function rotation(){
     if(!available()||getDraft().mode!=='yaw')return null;
-    let pivot;try{pivot=worldDecorationGroupDisplay(getEntities(),getDraft()).pivot;}catch{return null;}
+    let pivot;try{pivot=display(getEntities(),getDraft()).pivot;}catch{return null;}
     const view=getView(),radius=Math.max(64,view.camera.distance*.22),center=renderer().projectPoint(pivot,view),at=angle=>renderer().projectPoint({x:pivot.x+Math.cos(angle)*radius,y:pivot.y,z:pivot.z-Math.sin(angle)*radius},view);
     const points=Array.from({length:64},(_,i)=>at(i*Math.PI/32)),heading=at(getDraft().delta.yaw_units*Math.PI/2048);
     if(!center||!heading||points.some(p=>!p))return null;

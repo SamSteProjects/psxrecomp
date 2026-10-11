@@ -1,5 +1,18 @@
 # Scripted World Object Bind Allocation
 
+## Scripted World Group Gizmos — 2026-10-11
+
+Saved scripted Current groups now expose optional translation and yaw viewport handles. Translation uses native offsets, with editor Y and Z display directions accounted for; yaw adds to each original heading without orbiting positions. Translation and yaw snaps use the shared native gesture math. The group must contain at least two qualified saved UUIDs. Each display draft validates exact retained owners, native signed16 offset bounds and source yaw before drawing. Numeric fields and handles share one draft, and Escape restores the pre-gesture values.
+
+Unreviewed deltas remain transient and exclude export, saved camera views and competing scripted tools. Review and independently qualified complete proposed-scene Preview are still required before Apply. Membership or numeric changes withdraw Preview and invalidate Review. Apply invalidates the old session before clearing controls, avoiding refresh re-entry, then reopens fresh Current geometry with the saved UUID selected.
+
+The actual private Map01 browser check passes real translation drag, Escape rollback, real yaw drag, export exclusion, bounds refusal, required Preview, membership withdrawal, one atomic command, fresh Current coordinates, Undo/Redo and Save/Open. Complete native MAP output equals the independent proposal, the original project remains unchanged, and page errors are empty. Viewport and wide/400-pixel screenshots were inspected. The native display test compares translated positions and matrices with decoded native MAP records, including fourteen wrapped yaw matrices, heading-only position preservation, no-op and six owner/bounds refusals. Twenty-two focused Python checks and shared translation/yaw math pass.
+
+Evidence under `local-output/sdk-20260909/world-scripted-placement-build-20261011/`: `browser-scripted-group-gizmo.py`, `browser-scripted-group-gizmo.mjs`, `scripted-group-gizmo-browser-proof.json`, `scripted-group-gizmo-viewport.png`, `scripted-group-gizmo-wide.png` and `scripted-group-gizmo-narrow.png`. Native display test: `integrations/legaia/tests/test_worldmap_scripted_group_gizmo.mjs` against `scripted-group-scene-pairs.json`.
+
+No new package Build or native game work occurred. Saved group metadata remains unfinished, and runtime/gameplay is deferred. Full SDK goal remains active; solo development continues.
+
+
 ## Scripted Viewport Group Selection — 2026-10-11
 
 Offline checks passed for saved scripted Current objects. Ctrl/Command-click toggles group membership; Shift-click adds. **Box select scripted objects** replaces the group with visible scripted mesh hits; Ctrl/Command-box extends it, and an empty replacement clears it. Shift-drag continues to orbit. Scripted and decoration selection route through separate qualified inventories. Retail and proposed scripted layers cannot author viewport groups.
