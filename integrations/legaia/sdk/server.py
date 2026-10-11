@@ -1340,6 +1340,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_geometry import inspect
                     self._json(200, inspect(self.server.project, body['scene'], body['source_key'],body.get('texture_layer'),body.get('model_layer')))
                     return
+                if route in ('/api/worldmap-scripted-placement-source','/api/worldmap-scripted-placement-review'):
+                    from .worldmap_scripted_placement_allocation import source,review
+                    if route.endswith('-source'):
+                        if set(body)!={'scene','source_key'}:raise ProjectError('Scripted World source requires exact scene and source key')
+                        self._json(200,source(self.server.project,body['scene'],body['source_key']))
+                    else:
+                        if set(body)!={'scene','source_key','requests'}:raise ProjectError('Scripted World Review requires exact source and requests')
+                        self._json(200,review(self.server.project,body['scene'],body['source_key'],body['requests']))
+                    return
                 if route in ('/api/worldmap-placement-allocation-source', '/api/worldmap-placement-allocation-review'):
                     from .worldmap_placement_allocation import source, review
                     if route.endswith('-source'):
