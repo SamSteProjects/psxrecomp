@@ -286,32 +286,36 @@ export async function qualifyWorldDecorationCellReview(value,source,placementId,
 }
 
 export async function reassignWorldDecorationModel(source,placementId,model){
-  const binding=structuredClone(source.metadata.binding),before=source.metadata.authored_allocations.find(a=>a.placement_id===placementId);
-  const requests=binding?.operations.flatMap(op=>op.requests)??[],matches=requests.filter(r=>r.placement_id===placementId);
-  if(matches.length!==1||!before||!Number.isInteger(model)||model<1||model>511||model===before.model_pool_index)fail('Choose a changed native model for one retained decoration.');
-  const retained=new Map(source.metadata.authored_allocations.map(a=>[a.placement_id,a.model_pool_index])),pinned=[];
-  for(const request of requests)if(request.placement_id!==placementId&&request.donor_cell===before.target_cell){
-    request.model_pool_index=retained.get(request.placement_id);pinned.push({placement_id:request.placement_id,model_pool_index:request.model_pool_index});
+  const binding=structuredClone(source.metadata.binding),grouped=Array.isArray(placementId),ids=grouped?placementId:[placementId];
+  const requests=binding?.operations.flatMap(op=>op.requests)??[],rows=source.metadata.authored_allocations;
+  if(!ids.length||ids.length>32||ids.some(i=>typeof i!=='string')||!same(ids,[...new Set(ids)].sort())||!Number.isInteger(model)||model<1||model>511)fail('Choose 1–32 sorted unique retained decorations and a native model.');
+  const before=ids.map(id=>rows.find(a=>a.placement_id===id));
+  if(before.some(a=>!a)||ids.some(id=>requests.filter(r=>r.placement_id===id).length!==1))fail('Model assignment contains an unavailable owner.');
+  const changed=before.filter(a=>a.model_pool_index!==model);if(!changed.length)fail('Decoration models are unchanged.');
+  const cells=new Set(changed.map(a=>a.target_cell)),selected=new Set(ids),retained=new Map(rows.map(a=>[a.placement_id,a.model_pool_index])),pinned=[];
+  for(const request of requests){
+    if(selected.has(request.placement_id))request.model_pool_index=model;
+    else if(cells.has(request.donor_cell)){request.model_pool_index=retained.get(request.placement_id);pinned.push({placement_id:request.placement_id,model_pool_index:request.model_pool_index});}
   }
-  matches[0].model_pool_index=model;binding.schema_version='legaia.worldmap-placement-allocation-ledger.v2';
+  binding.schema_version='legaia.worldmap-placement-allocation-ledger.v2';
   let canonical=source.retailBytes;
   for(const op of binding.operations){const result=await allocateWorldPlacements(canonical,source.metadata.floor_lut,source.metadata.scene,op.requests);canonical=result.bytes;op.proposed_map_sha256=result.audit.proposed_sha256;}
   const replayed=await replayWorldPlacementAllocations(source.retailBytes,source.metadata.floor_lut,source.metadata.scene,binding,source.metadata.source_record);
   const bytes=await composeWorldPlacementTransforms(source.retailBytes,replayed.bytes,source.metadata.floor_lut,source.metadata.scene,source.authoredRecords);
-  const literal=source.bytes.slice();new DataView(literal.buffer).setUint16(before.record_index*32+16,model,true);
+  const literal=source.bytes.slice();for(const row of before)new DataView(literal.buffer).setUint16(row.record_index*32+16,model,true);
   if(!equalWorldPlacementBytes(bytes,literal))fail('Model assignment changed another model, transform or native byte.');
-  return {binding,bytes,audit:{before:structuredClone(before),after:replayed.allocations.find(a=>a.placement_id===placementId),retained_child_models:pinned,
+  return {binding,bytes,audit:{before:structuredClone(grouped?before:before[0]),after:grouped?ids.map(id=>replayed.allocations.find(a=>a.placement_id===id)):replayed.allocations.find(a=>a.placement_id===placementId),retained_child_models:pinned,
     changed_bytes:Array.from(bytes.entries()).filter(([i,n])=>n!==source.bytes[i]).map(([i,n])=>({byte_offset:i,before_byte:source.bytes[i],after_byte:n})),
-    scope:'authored-decoration-model-only',gameplay_verified:false}};
+    scope:grouped?'authored-decoration-group-model-only':'authored-decoration-model-only',gameplay_verified:false}};
 }
 
 export async function qualifyWorldDecorationModelReview(value,source,placementId,model,current){
-  const before=source.metadata,assetId=`asset://${before.scene}/worldmap/models/${String(model).padStart(4,'0')}`;
+  const before=source.metadata,grouped=Array.isArray(placementId),identity=grouped?'placement_ids':'placement_id',assetId=`asset://${before.scene}/worldmap/models/${String(model).padStart(4,'0')}`;
   const asset=current?.scene_graph?.assets.find(a=>a.asset_id===assetId);
-  if(!exact(value,['schema_version','project_path','scene','source_key','source_record','placement_id','model_pool_index','asset_id','model_source_record',
+  if(!exact(value,['schema_version','project_path','scene','source_key','source_record',identity,'model_pool_index','asset_id','model_source_record',
       'before_binding','binding','current_map_sha256','proposed_map_sha256','proposed_map_base64','audit','read_only','project_changed','gameplay_verified','build_ready','review_key'])||
-      value.schema_version!=='legaia.worldmap-decoration-model-review.v1'||value.project_path!==before.project_path||value.scene!==before.scene||
-      value.source_key!==before.source_key||!same(value.source_record,before.source_record)||value.placement_id!==placementId||value.model_pool_index!==model||
+      value.schema_version!==(grouped?'legaia.worldmap-decoration-model-review.v2':'legaia.worldmap-decoration-model-review.v1')||value.project_path!==before.project_path||value.scene!==before.scene||
+      value.source_key!==before.source_key||!same(value.source_record,before.source_record)||!same(value[identity],placementId)||value.model_pool_index!==model||
       value.asset_id!==assetId||!asset?.preview?.vertices?.length||!asset.preview.triangles?.length||!same(value.model_source_record,asset.source_record)||
       value.current_map_sha256!==before.current_map_sha256||!same(value.before_binding,before.binding)||current.project_source_key!==before.source_key||
       current.representation!=='current-source'||!same(current.placement_authoring?.allocation_binding,before.binding)||

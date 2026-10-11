@@ -15,16 +15,22 @@ def reassigned_binding(raw,floor,binding,allocations,placement_id,model_pool_ind
         raise ProjectError('Decoration model must be a nonzero native pool index')
     result=deepcopy(binding)
     requests=[r for op in result['operations'] for r in op['requests']]
-    matches=[r for r in requests if r['placement_id']==placement_id]
-    selected=next((a for a in allocations if a['placement_id']==placement_id),None)
-    if len(matches)!=1 or selected is None:raise ProjectError('Choose one retained decoration to assign a model')
-    if selected['model_pool_index']==model_pool_index:raise ProjectError('Decoration model is unchanged')
-    retained={a['placement_id']:a['model_pool_index'] for a in allocations};pinned=[]
+    grouped=isinstance(placement_id,list)
+    ids=placement_id if grouped else [placement_id]
+    if (not 1<=len(ids)<=32 or any(not isinstance(i,str) for i in ids)
+            or ids!=sorted(set(ids))):raise ProjectError('Model assignment requires 1..32 sorted unique retained decorations')
+    indexed={a['placement_id']:a for a in allocations}
+    if any(i not in indexed for i in ids) or any(sum(r['placement_id']==i for r in requests)!=1 for i in ids):
+        raise ProjectError('Choose retained decorations to assign a model')
+    changed={i for i in ids if indexed[i]['model_pool_index']!=model_pool_index}
+    if not changed:raise ProjectError('Decoration models are unchanged')
+    cells={indexed[i]['target_cell'] for i in changed};selected=set(ids);pinned=[]
     for request in requests:
-        if request['placement_id']!=placement_id and request['donor_cell']==selected['target_cell']:
-            request['model_pool_index']=retained[request['placement_id']]
+        if request['placement_id'] in selected:request['model_pool_index']=model_pool_index
+        elif request['donor_cell'] in cells:
+            request['model_pool_index']=indexed[request['placement_id']]['model_pool_index']
             pinned.append(dict(placement_id=request['placement_id'],model_pool_index=request['model_pool_index']))
-    matches[0]['model_pool_index']=model_pool_index;result['schema_version']=MODEL_SCHEMA
+    result['schema_version']=MODEL_SCHEMA
     current=raw
     for op in result['operations']:
         current,audit=allocate(current,floor,result['scene'],op['requests'])
@@ -43,28 +49,31 @@ def review(project,scene,key,placement_id,model_pool_index):
     if asset is None or not asset['preview'].get('vertices') or not asset['preview'].get('triangles'):
         raise ProjectError('Choose a qualified drawable Current kingdom model')
     before=deepcopy(project.overrides.get(owner(scene),{}).get(COMPONENT))
-    selected=next((a for a in allocations if a['placement_id']==placement_id),None)
-    if before is None or selected is None:raise ProjectError('Model assignment requires an existing authored decoration')
+    grouped=isinstance(placement_id,list);ids=placement_id if grouped else [placement_id]
+    indexed={a['placement_id']:a for a in allocations}
+    if before is None:raise ProjectError('Model assignment requires existing authored decorations')
     binding,pinned=reassigned_binding(raw,floor,before,allocations,placement_id,model_pool_index)
     validate(project,owner(scene),binding)
     transformed=context(project,scene)[6]
     candidate,after=compose(project,scene,raw,provenance,floor,transformed,binding)
-    expected=bytearray(current);struct.pack_into('<H',expected,selected['record_index']*32+16,model_pool_index)
+    selected=[indexed[i] for i in ids]
+    expected=bytearray(current)
+    for item in selected:struct.pack_into('<H',expected,item['record_index']*32+16,model_pool_index)
     if candidate!=bytes(expected):raise ProjectError('Model assignment changed another model, transform or native byte')
     old=decode_worldmap_placements(current,floor,scene=scene);new=decode_worldmap_placements(candidate,floor,scene=scene)
     old_seeds={s['entity_id']:s for s in old['placements']};new_seeds={s['entity_id']:s for s in new['placements']}
-    native_id=selected['native_seed']['entity_id']
+    native_ids={item['native_seed']['entity_id'] for item in selected}
     if (set(old_seeds)!=set(new_seeds) or old['coverage']!=new['coverage'] or old['unresolved']!=new['unresolved']
-            or any(seed!=new_seeds[i] for i,seed in old_seeds.items() if i!=native_id)):
+            or any(seed!=new_seeds[i] for i,seed in old_seeds.items() if i not in native_ids)):
         raise ProjectError('Model assignment changed native membership, coverage or another seed')
-    assigned=next(a for a in after if a['placement_id']==placement_id)
-    result=dict(schema_version='legaia.worldmap-decoration-model-review.v1',project_path=str(project.root),scene=scene,
-        source_key=key,source_record=provenance,placement_id=placement_id,model_pool_index=model_pool_index,
+    assigned=[next(a for a in after if a['placement_id']==i) for i in ids]
+    result=dict(schema_version='legaia.worldmap-decoration-model-review.v2' if grouped else 'legaia.worldmap-decoration-model-review.v1',project_path=str(project.root),scene=scene,
+        source_key=key,source_record=provenance,**({'placement_ids':ids} if grouped else {'placement_id':placement_id}),model_pool_index=model_pool_index,
         asset_id=asset_id,model_source_record=deepcopy(asset['source_record']),before_binding=before,binding=binding,
         current_map_sha256=sha256(current).hexdigest(),proposed_map_sha256=sha256(candidate).hexdigest(),
-        proposed_map_base64=base64.b64encode(candidate).decode('ascii'),audit=dict(before=selected,after=assigned,
+        proposed_map_base64=base64.b64encode(candidate).decode('ascii'),audit=dict(before=selected if grouped else selected[0],after=assigned if grouped else assigned[0],
             retained_child_models=pinned,changed_bytes=[dict(byte_offset=i,before_byte=a,after_byte=b) for i,(a,b) in enumerate(zip(current,candidate)) if a!=b],
-            scope='authored-decoration-model-only',gameplay_verified=False),read_only=True,project_changed=False,gameplay_verified=False,build_ready=False)
+            scope='authored-decoration-group-model-only' if grouped else 'authored-decoration-model-only',gameplay_verified=False),read_only=True,project_changed=False,gameplay_verified=False,build_ready=False)
     result['review_key']=digest(result)
     if len(json.dumps(result,allow_nan=False).encode('utf-8'))>2*1024*1024:raise ProjectError('Decoration model Review exceeds its response budget')
     _fresh(project,key)
@@ -72,9 +81,12 @@ def review(project,scene,key,placement_id,model_pool_index):
 
 
 def apply(project,command):
-    if not isinstance(command,dict) or set(command)!={'type','scene','source_key','placement_id','model_pool_index','review_key'} or command['type']!='assign_worldmap_authored_model':
-        raise ProjectError('Decoration model Apply requires exact reviewed identity and model')
-    result=review(project,command['scene'],command['source_key'],command['placement_id'],command['model_pool_index'])
+    grouped=isinstance(command,dict) and command.get('type')=='assign_worldmap_authored_models'
+    identity='placement_ids' if grouped else 'placement_id'
+    if not isinstance(command,dict) or set(command)!={'type','scene','source_key',identity,'model_pool_index','review_key'} or command['type']!=('assign_worldmap_authored_models' if grouped else 'assign_worldmap_authored_model'):
+        raise ProjectError('Decoration model Apply requires exact reviewed identities and model')
+    if grouped!=isinstance(command[identity],list):raise ProjectError('Model assignment identity shape differs from its scope')
+    result=review(project,command['scene'],command['source_key'],command[identity],command['model_pool_index'])
     if result['review_key']!=command['review_key']:raise ProjectError('Decoration model Review changed; review again')
     identifier=owner(command['scene']);before=deepcopy(project.overrides.get(identifier));after={COMPONENT:deepcopy(result['binding'])}
     project.overrides[identifier]=after

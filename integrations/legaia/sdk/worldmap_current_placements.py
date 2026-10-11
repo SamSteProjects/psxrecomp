@@ -95,10 +95,12 @@ def inspect(project, scene, key, allocation_proposal=None, allocation_edit_propo
             raise ProjectError('Proposed group transform Review is stale')
         binding=reviewed['binding']
     if allocation_model_proposal is not None:
-        if not isinstance(allocation_model_proposal,dict) or set(allocation_model_proposal) != {'placement_id','model_pool_index','review_key'}:
+        if not isinstance(allocation_model_proposal,dict) or set(allocation_model_proposal) not in ({'placement_id','model_pool_index','review_key'},{'placement_ids','model_pool_index','review_key'}):
             raise ProjectError('Proposed model assignment requires exact reviewed identity and native model')
+        identity='placement_ids' if 'placement_ids' in allocation_model_proposal else 'placement_id'
+        if not isinstance(allocation_model_proposal[identity],list if identity=='placement_ids' else str):raise ProjectError('Proposed model assignment identity shape differs from its scope')
         from .worldmap_placement_model import review
-        reviewed=review(project,scene,key,allocation_model_proposal['placement_id'],allocation_model_proposal['model_pool_index'])
+        reviewed=review(project,scene,key,allocation_model_proposal[identity],allocation_model_proposal['model_pool_index'])
         if reviewed['review_key'] != allocation_model_proposal['review_key']:
             raise ProjectError('Proposed model assignment Review is stale')
         binding=reviewed['binding']

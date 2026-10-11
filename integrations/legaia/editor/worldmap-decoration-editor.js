@@ -29,6 +29,9 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   for(const axis of ['x','y','z','yaw_units']){const input=node('input');input.type='number';input.min=axis==='yaw_units'?'-4095':'-65535';input.max=axis==='yaw_units'?'4095':'65535';input.step='1';input.value='0';input.setAttribute('aria-label','Decoration group delta '+(axis==='yaw_units'?'yaw':axis.toUpperCase()));const label=node('label',axis==='yaw_units'?'Yaw delta':'Native '+axis.toUpperCase()+' delta');Object.assign(input.style,{display:'block',width:'100%',boxSizing:'border-box'});label.append(input);groupFields.append(label);groupDelta[axis]=input;}
   for(const button of [groupReview,groupAll,groupNone])button.type='button';
   const groupRemove=node('button','Review decoration group removal');groupRemove.type='button';group.append(groupRemove,node('p','Remove the selected authored decorations as one history command. Review and Preview show the removed instances and any surviving donor descendants. Surviving models, positions and native bytes stay unchanged; Discard restores Current.'));
+  const groupModel=node('select'),groupModelReview=node('button','Review decoration group model');groupModel.setAttribute('aria-label','Decoration group replacement model');groupModelReview.type='button';
+  const groupModelLabel=node('label','Group replacement model');Object.assign(groupModel.style,{display:'block',width:'100%',boxSizing:'border-box'});groupModelLabel.append(groupModel);group.append(groupModelLabel,groupModelReview,node('p','Assign one Current kingdom model to the selected decorations. UUIDs, cells, positions and orientations stay unchanged. Unselected donor descendants retain their models.'));
+  groupModel.onchange=()=>groupChanged();
   const groupOrbit=node('input'),groupPivot=node('select');groupOrbit.type='checkbox';groupOrbit.setAttribute('aria-label','Orbit decoration group around pivot');groupPivot.setAttribute('aria-label','Decoration group orbit pivot');
   const orbitLabel=node('label','Rotate positions around pivot '),pivotLabel=node('label','Native seed pivot ');orbitLabel.append(groupOrbit);pivotLabel.append(groupPivot);Object.assign(groupPivot.style,{display:'block',width:'100%',maxWidth:'100%',boxSizing:'border-box'});
   Object.assign(orbitLabel.style,{display:'flex',flexDirection:'row',alignItems:'center',justifyContent:'flex-start',gap:'8px'});Object.assign(groupOrbit.style,{width:'auto',flex:'0 0 auto',margin:'0'});
@@ -125,7 +128,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   function cancel() {
     move.checked=rotate.checked=groupMove.checked=groupRotate.checked=false;generation++; controller?.abort(); source = held = review = placementId = null; displayed = editing = duplicationReview = false;onTransformDraft(null);onGroupTransformDraft(null);
     syncNativePosition();savedGroups?.cancel();
-    donor.replaceChildren();model.replaceChildren();groupList.replaceChildren(); evidence.textContent = ''; status.textContent = 'Switch to a qualified Current scene and inspect decoration donors.';
+    donor.replaceChildren();model.replaceChildren();groupModel.replaceChildren();groupList.replaceChildren(); evidence.textContent = ''; status.textContent = 'Switch to a qualified Current scene and inspect decoration donors.';
     if (pendingKind !== 'apply') { controller = null; if (pendingKind) setBusy(false); pendingKind = null; }
     update();
   }
@@ -139,6 +142,8 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     for(const input of [...groupList.querySelectorAll('input'),...Object.values(groupDelta)])input.disabled=locked||!sourceReady();
     groupAll.disabled=locked||!sourceReady()||count<1||count>32;groupNone.disabled=locked||!sourceReady()||!ids.length;
     groupFrame.disabled=locked||!sourceReady()||ids.length<1||ids.length>32;
+    groupModel.disabled=locked||!sourceReady();
+    groupModelReview.disabled=locked||!sourceReady()||ids.length<1||ids.length>32||groupModel.value===''||![...groupModel.options].some(o=>o.value===groupModel.value)||!source.metadata.authored_allocations.some(a=>ids.includes(a.placement_id)&&a.model_pool_index!==Number(groupModel.value))||Object.values(delta).some(n=>n!==0)||(editing&&JSON.stringify(fieldValues())!==JSON.stringify(worldDecorationDonorValues(source,Number(donor.value))));
     groupRemove.disabled=locked||!sourceReady()||ids.length<1||ids.length>32||Object.values(delta).some(n=>n!==0)||(editing&&JSON.stringify(fieldValues())!==JSON.stringify(worldDecorationDonorValues(source,Number(donor.value))));
     groupCloneFrame.disabled=locked||!sourceReady();groupCloneAnchor.disabled=locked||!sourceReady();groupClone.disabled=groupOrbit.checked||locked||!sourceReady()||ids.length<1||ids.length>32||source.inventory.free_record_indices.length<ids.length||source.inventory.current_placements.length+ids.length>511||groupCloneAnchor.value===''||!source.inventory.target_cells.includes(Number(groupCloneAnchor.value))||Object.values(delta).some(n=>!Number.isInteger(n))||['x','y','z'].some(a=>Math.abs(delta[a])>65535)||Math.abs(delta.yaw_units)>4095||(editing&&JSON.stringify(fieldValues())!==JSON.stringify(worldDecorationDonorValues(source,Number(donor.value))));
     groupMove.disabled=locked||!groupTransformDraft();groupRotate.disabled=groupMove.disabled;groupSnap.disabled=groupYawSnap.disabled=groupMove.disabled;
@@ -200,11 +205,11 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
         const option = node('option', `Cell ${seed.source_cell} · model ${seed.model_pool_index} · record ${seed.object_record_index}`); option.value = String(seed.source_cell); donor.append(option);
       }
       if (selected && [...donor.options].some(o => o.value === String(selected.source_cell))) donor.value = String(selected.source_cell);
-      model.replaceChildren();
+      model.replaceChildren();groupModel.replaceChildren();
       for(const asset of context.current.scene_graph.assets){
         const index=Number(asset.asset_id.split('/').pop());
         if(!asset.asset_id.startsWith(`asset://${value.scene}/worldmap/models/`)||!Number.isInteger(index)||index<1||index>511||!asset.preview.vertices.length||!asset.preview.triangles.length)continue;
-        const option=node('option',`Model ${index} · ${asset.preview.vertices.length} vertices · ${asset.preview.triangles.length} triangles`);option.value=String(index);model.append(option);
+        const option=node('option',`Model ${index} · ${asset.preview.vertices.length} vertices · ${asset.preview.triangles.length} triangles`);option.value=String(index);model.append(option);groupModel.append(option.cloneNode(true));
       }
       donorValues(); status.textContent = edit?`Editing retained decoration ${placementId}. Change offsets/yaw, or review a separate native cell move with unchanged encoded values.`:`${donor.options.length} drawable donors · ${value.target_cells.length} available target cells · ${value.free_record_indices.length} unused native records. Draft identity ${placementId}.`;
       return true;
@@ -239,6 +244,16 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
       const value=await read('/api/worldmap-placement-allocation-review',{scene:context.current.scene,source_key:context.key,requests},signal);
       const qualified=await qualifyWorldDecorationReview(value,source,requests);if(!valid())return;review=qualified;duplicationReview=true;
       evidence.textContent=JSON.stringify({copies:review.audit.allocations.map(a=>({placement_id:a.placement_id,donor_cell:a.donor_cell,target_cell:a.target_cell,record_index:a.record_index,model_pool_index:a.model_pool_index,native_position:a.native_seed.source_position})),proposed_map_sha256:review.proposed_map_sha256,review_key:review.review_key},null,2);status.textContent=`Native Review matches independent complete replay for ${requests.length} duplicates. Preview before Apply.`;
+    });
+  };
+  groupModelReview.onclick=()=>{
+    if(groupModelReview.disabled)return;groupMove.checked=groupRotate.checked=move.checked=rotate.checked=false;withdrawReview();
+    return run('group-model-review',async(context,signal,valid)=>{
+      const ids=groupIds(),index=Number(groupModel.value);status.textContent='Checking selected models and preserving unselected donor descendants…';
+      const value=await read('/api/worldmap-decoration-model-review',{scene:context.current.scene,source_key:context.key,placement_ids:ids,model_pool_index:index},signal);
+      const qualified=await qualifyWorldDecorationModelReview(value,source,ids,index,context.current);if(!valid())return;review=qualified;
+      evidence.textContent=JSON.stringify({assignments:review.audit.after.map((a,i)=>({placement_id:a.placement_id,before_model:review.audit.before[i].model_pool_index,after_model:a.model_pool_index,cell:a.target_cell,record:a.record_index})),retained_child_models:review.audit.retained_child_models,proposed_map_sha256:review.proposed_map_sha256,review_key:review.review_key},null,2);
+      status.textContent=`Group model Review matches complete independent native replay for ${ids.length} decorations. Preview before Apply.`;
     });
   };
   modelReview.onclick=()=>{
@@ -300,7 +315,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     return run('preview', async (context, signal, valid) => {
       const captured = review; status.textContent = 'Qualifying the Proposed native scene and Current model/texture assets…';
       const shown = await onPreview(context, captured, signal, valid); if (!valid() || review !== captured || shown !== true) return;
-      displayed = true; status.textContent = ['legaia.worldmap-decoration-group-review.v1','legaia.worldmap-decoration-group-review.v2'].includes(captured.schema_version)?`Proposed group displayed for ${captured.placement_ids.length} decorations; project unchanged. Apply creates one history command.`:['legaia.worldmap-decoration-removal-review.v1','legaia.worldmap-decoration-removal-review.v2'].includes(captured.schema_version)?'Proposed removal displayed; project unchanged. Apply removes the reviewed decorations as one shared history command.':captured.requests?`Proposed creation displayed for ${captured.requests.length} decorations; project unchanged. Apply allocates the copies as one history command.`:'Proposed decoration displayed; project unchanged. Apply keeps this placement as one shared history command.';
+      displayed = true; status.textContent = ['legaia.worldmap-decoration-group-review.v1','legaia.worldmap-decoration-group-review.v2'].includes(captured.schema_version)?`Proposed group displayed for ${captured.placement_ids.length} decorations; project unchanged. Apply creates one history command.`:['legaia.worldmap-decoration-removal-review.v1','legaia.worldmap-decoration-removal-review.v2'].includes(captured.schema_version)?'Proposed removal displayed; project unchanged. Apply removes the reviewed decorations as one shared history command.':captured.schema_version==='legaia.worldmap-decoration-model-review.v2'?`Proposed model assignment displayed for ${captured.placement_ids.length} decorations; project unchanged. Apply creates one shared history command.`:captured.requests?`Proposed creation displayed for ${captured.requests.length} decorations; project unchanged. Apply allocates the copies as one history command.`:'Proposed decoration displayed; project unchanged. Apply keeps this placement as one shared history command.';
     });
   };
   apply.onclick = async () => {
@@ -309,9 +324,9 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     // The shared API owns the global busy lock; taking it here would refuse
     // our own command before it reaches the server.
     controller = request; pendingKind = 'apply'; update(); status.textContent = 'Applying the exact reviewed native decoration…';
-    const grouping=['legaia.worldmap-decoration-group-review.v1','legaia.worldmap-decoration-group-review.v2'].includes(captured.schema_version),removing=['legaia.worldmap-decoration-removal-review.v1','legaia.worldmap-decoration-removal-review.v2'].includes(captured.schema_version),relocating=captured.schema_version==='legaia.worldmap-decoration-cell-review.v1',assigning=captured.schema_version==='legaia.worldmap-decoration-model-review.v1';
-    try { applied = await api('/api/command', {type: grouping?'transform_worldmap_authored_placements':removing?(captured.placement_ids?'remove_worldmap_authored_placements':'remove_worldmap_authored_placement'):relocating?'relocate_worldmap_authored_placement':assigning?'assign_worldmap_authored_model':captured.placement_id?'set_worldmap_authored_placement':'allocate_worldmap_placements', scene: context.current.scene,
-      source_key: context.key,...(grouping?{placement_ids:captured.placement_ids,delta:captured.delta}:removing?(captured.placement_ids?{placement_ids:captured.placement_ids}:{placement_id:captured.placement_id}):relocating?{placement_id:captured.placement_id,target_cell:captured.target_cell}:assigning?{placement_id:captured.placement_id,model_pool_index:captured.model_pool_index}:captured.placement_id?{placement_id:captured.placement_id,values:captured.values}:{requests:captured.requests}),review_key: captured.review_key}) === true;
+    const grouping=['legaia.worldmap-decoration-group-review.v1','legaia.worldmap-decoration-group-review.v2'].includes(captured.schema_version),removing=['legaia.worldmap-decoration-removal-review.v1','legaia.worldmap-decoration-removal-review.v2'].includes(captured.schema_version),relocating=captured.schema_version==='legaia.worldmap-decoration-cell-review.v1',assigning=['legaia.worldmap-decoration-model-review.v1','legaia.worldmap-decoration-model-review.v2'].includes(captured.schema_version);
+    try { applied = await api('/api/command', {type: grouping?'transform_worldmap_authored_placements':removing?(captured.placement_ids?'remove_worldmap_authored_placements':'remove_worldmap_authored_placement'):relocating?'relocate_worldmap_authored_placement':assigning?(captured.placement_ids?'assign_worldmap_authored_models':'assign_worldmap_authored_model'):captured.placement_id?'set_worldmap_authored_placement':'allocate_worldmap_placements', scene: context.current.scene,
+      source_key: context.key,...(grouping?{placement_ids:captured.placement_ids,delta:captured.delta}:removing?(captured.placement_ids?{placement_ids:captured.placement_ids}:{placement_id:captured.placement_id}):relocating?{placement_id:captured.placement_id,target_cell:captured.target_cell}:assigning?{...(captured.placement_ids?{placement_ids:captured.placement_ids}:{placement_id:captured.placement_id}),model_pool_index:captured.model_pool_index}:captured.placement_id?{placement_id:captured.placement_id,values:captured.values}:{requests:captured.requests}),review_key: captured.review_key}) === true;
       if (!applied) throw Error('Decoration Apply failed. Inspect fresh Current sources before retrying.');
     } catch (error) { status.textContent = error.message; onError(error); }
     finally {
@@ -319,7 +334,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
       controller = null; pendingKind = null; source = held = review = placementId = null; displayed = editing = duplicationReview = false; setBusy(false); update();
     }
     if (applied && getState().project?.path === context.path && getState().project?.mode === 'edit') {
-      try { await onApplied({scene: context.current.scene, placementId: captured.placement_id??captured.placement_ids?.[0]??captured.requests[0].placement_id, projectPath: context.path,...(duplicating?{selectedPlacementIds:captured.requests.map(r=>r.placement_id),frameCreated}:grouping?{selectedPlacementIds:[...captured.placement_ids],preserveCamera:true}:{})}); }
+      try { await onApplied({scene: context.current.scene, placementId: captured.placement_id??captured.placement_ids?.[0]??captured.requests[0].placement_id, projectPath: context.path,...(duplicating?{selectedPlacementIds:captured.requests.map(r=>r.placement_id),frameCreated}:grouping||assigning&&captured.placement_ids?{selectedPlacementIds:[...captured.placement_ids],preserveCamera:true}:{})}); }
       catch (error) { status.textContent = 'Decoration applied, but scene refresh failed: ' + error.message; onError(error); }
     }
   };

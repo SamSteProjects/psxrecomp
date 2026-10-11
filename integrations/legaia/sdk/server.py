@@ -1354,10 +1354,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_id'],body['values']))
                     return
                 if route == '/api/worldmap-decoration-model-review':
-                    if set(body) != {'scene','source_key','placement_id','model_pool_index'}:
-                        raise ProjectError('Decoration model Review requires exact current identity and native model')
+                    if set(body) not in ({'scene','source_key','placement_id','model_pool_index'},{'scene','source_key','placement_ids','model_pool_index'}):raise ProjectError('Model Review requires exact current identities and model')
+                    identity='placement_ids' if 'placement_ids' in body else 'placement_id'
+                    if not isinstance(body[identity],list if identity=='placement_ids' else str):raise ProjectError('Model identity shape differs from its scope')
                     from .worldmap_placement_model import review
-                    self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_id'],body['model_pool_index']))
+                    self._json(200,review(self.server.project,body['scene'],body['source_key'],body[identity],body['model_pool_index']))
                     return
                 if route == '/api/worldmap-decoration-cell-review':
                     if set(body) != {'scene','source_key','placement_id','target_cell'}:

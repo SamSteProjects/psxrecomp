@@ -2267,7 +2267,7 @@ class ProjectService:
             from .worldmap_placement_edit import apply
             apply(self, command)
             return
-        if command.get('type') == 'assign_worldmap_authored_model':
+        if command.get('type') in ('assign_worldmap_authored_model','assign_worldmap_authored_models'):
             from .worldmap_placement_model import apply
             apply(self, command)
             return
