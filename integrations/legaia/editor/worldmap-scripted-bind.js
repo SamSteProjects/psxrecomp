@@ -22,3 +22,16 @@ export async function qualifyScriptedWorldBind(value,current,entity,path){
  const expected={schema_version:'legaia.worldmap-scripted-bind.v1',project_path:path,scene:current.scene,source_key:current.project_source_key,entity_id:entity.entity_id,native_entity_id:allocation.native_seed.entity_id,placement_id:allocation.placement_id,anchor,source_record:source.source_record,source_man_sha256:source.source_man_sha256,current_map_sha256:source.current_map_sha256,current_man_sha256:source.current_man_sha256,trigger:{id:`trigger://${current.scene}/field-map/primary/kind-1/${String(h.index).padStart(4,'0')}`,table_source:'primary',record_index:h.index,byte_offset:h.at,sha256:await placementDigest(h.row),encoded:{tile_x:h.row[0],tile_z:h.row[1],record_index:h.row[2],gate:h.row[3]}},script,shared_script:true,runtime_activation:'not_evaluated',animation_clip:'not_resolved',read_only:true,project_changed:false,gameplay_verified:false};
  if(!same(value,expected))fail();return structuredClone(expected);
 }
+
+export async function scriptedWorldScriptTarget(value,current,entity,path){
+ const qualified=await qualifyScriptedWorldBind(value,current,entity,path),retail=bytes(current.placement_source.source_man_base64);
+ if(2+2*retail[qualified.script.byte_offset]!==qualified.script.entry_pc)fail();
+ return {scriptId:qualified.script.id,sourceKey:qualified.source_key,projectPath:qualified.project_path,recordSha256:qualified.script.retail_sha256,entryPc:qualified.script.entry_pc};
+}
+
+export function mountScriptedBindNavigation({host,target,current,busy,onOpenScript,onError}){
+ const box=document.createElement('div'),button=document.createElement('button'),note=document.createElement('p');box.dataset.worldScriptedBindNavigation='';button.type='button';button.textContent='Open Registered Script Editor';button.dataset.worldScriptedBindResource=target.scriptId;note.textContent='This opens the shared script resource. Authored changes can affect the donor and other placements using that record.';box.append(note,button);host.append(box);let disposed=false,pending=false;
+ const update=()=>{button.disabled=disposed||pending||!current()||busy();};
+ button.onclick=async()=>{if(disposed||pending||!current()||busy()||button.disabled)return;pending=true;update();try{await onOpenScript(structuredClone(target),()=>!disposed&&current());}catch(e){if(!disposed&&current())onError(e);}finally{pending=false;update();}};
+ update();return {update,dispose(){disposed=true;box.remove();}};
+}

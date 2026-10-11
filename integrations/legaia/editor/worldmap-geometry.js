@@ -1,4 +1,4 @@
-import {qualifyScriptedWorldBind} from './worldmap-scripted-bind.js';
+import {qualifyScriptedWorldBind,scriptedWorldScriptTarget,mountScriptedBindNavigation} from './worldmap-scripted-bind.js';
 import {mountScriptedWorldCreation} from './worldmap-scripted-creation-editor.js';
 import {qualifyScriptedWorldScene,qualifyProposedScriptedWorldScene} from './worldmap-scripted-placement-scene.js';
 import {mountWorldObjectScript} from './worldmap-object-script.js';
@@ -142,7 +142,9 @@ export function mountWorldmapGeometry({after,getState,busy,setBusy,api=null,onPr
     const binding=session,controller=new AbortController(),token=++generation;pending=controller;pendingKind='scripted-bind';setBusy(true);updateState();
     const valid=()=>current()&&session===binding&&currentReport===captured&&renderedLayer==='current'&&hierarchy.value===entityId&&pending===controller&&generation===token;
     try{const response=await fetch('/api/worldmap-scripted-bind',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scene:captured.scene,source_key:binding.key,entity_id:entityId}),signal:controller.signal}),raw=await response.text();if(!valid())return;if(new TextEncoder().encode(raw).length>16384)fail('Scripted bind exceeds its response budget.');const value=JSON.parse(raw);if(!response.ok)fail(value.error||'Scripted bind inspection failed.');const entity=sceneView.entities.find(e=>e.entity_id===entityId),qualified=await qualifyScriptedWorldBind(value,captured,entity,binding.path);if(!valid())return;
-      inspectorComponent.querySelector('[data-inspector-component-section="WorldAuthoredScriptedBind"]')?.remove();const section=node('div');section.innerHTML=renderComponentSection(getState().inspector_schema,'WorldAuthoredScriptedBind',qualified);inspectorComponent.append(section.firstElementChild);status.textContent='Current native trigger and shared MAN header qualified; runtime activation and animation clip remain unverified.';
+      inspectorComponent.querySelector('[data-inspector-component-section="WorldAuthoredScriptedBind"]')?.remove();const section=node('div');section.innerHTML=renderComponentSection(getState().inspector_schema,'WorldAuthoredScriptedBind',qualified);inspectorComponent.append(section.firstElementChild);
+      if(onOpenScript){const target=await scriptedWorldScriptTarget(qualified,captured,entity,binding.path);if(!valid())return;scriptTool?.dispose();scriptTool=mountScriptedBindNavigation({host:inspectorComponent,target,current:()=>current()&&session===binding&&currentReport===captured&&renderedLayer==='current'&&hierarchy.value===entityId,busy,onOpenScript,onError});}
+      status.textContent='Current native trigger and shared MAN header qualified; runtime activation and animation clip remain unverified.';
     }catch(error){if(error.name!=='AbortError'&&valid()){status.textContent=error.message;onError(error);}}finally{if(pending===controller){pending=null;pendingKind=null;setBusy(false);updateState();}}
   }
   async function inspectFootprint(entityId,captured){
