@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {qualifyWorldScriptOperands} from '../editor/world-script-animation-operands.js';
+const data=Buffer.from('00002602002126fbff','hex'),current=Buffer.from('000026ffff2126fbff','hex');
+const sourceRecord={byte_offset:64,byte_length:data.length,sha256:Buffer.from(await crypto.subtle.digest('SHA-256',data)).toString('hex')};
+const record={id:'script://map01/worldmap/man-p0/0000',kind:'script',entry_pc:2,source_record:sourceRecord,source_instance_ids:[]};
+const row=(pc,raw,mnemonic,edges)=>({pc,length:raw.length/2,opcode:parseInt(raw.slice(0,2),16)&127,mnemonic,target_context:null,operands:{encoded_hex:raw.slice(2)},raw_hex:raw,byte_offset:64+pc,successors:edges});
+const graph={entry_pc:2,status:'decoded_supported_paths',instructions:[row(2,'260200','JMP_REL',[{pc:5,condition:'unconditional'}]),row(5,'21','NOP',[{pc:6,condition:'encoded_continuation'}]),row(6,'26fbff','JMP_REL',[{pc:2,condition:'unconditional'}])],dialogues:[],opaque_regions:[],stops:[]};
+const value={schema_version:'legaia.world-script-operands.v2',project_path:'private',source_key:'key',script_id:record.id,source_record:sourceRecord,entry_pc:2,source_instance_ids:[],record_base64:data.toString('base64'),current_record_base64:current.toString('base64'),targets:[],limitations:[],project_changed:false,gameplay_verified:false,branch_source_graph:graph,branch_destinations:[{pc:2,mnemonic:'JMP_REL'},{pc:5,mnemonic:'NOP'},{pc:6,mnemonic:'JMP_REL'}],branch_changes:[{pc:2,mnemonic:'JMP_REL',target_context:null,operand_pc:3,condition:'unconditional',retail_target_pc:5,authored_target_pc:2}]};
+await qualifyWorldScriptOperands(value,record,'key','private');
+for(const mutate of [a=>a.branch_changes[0].authored_target_pc=3,a=>a.branch_changes[0].operand_pc=4,a=>a.branch_changes[0].condition='invented',a=>a.branch_changes.push(a.branch_changes[0]),a=>a.branch_destinations.push({pc:3,mnemonic:'NOP'}),a=>a.branch_source_graph.instructions[0].raw_hex='260300',a=>a.branch_changes[0].authored_target_pc=5,a=>a.schema_version='legaia.world-script-animation-operands.v1']){
+ const bad=structuredClone(value);mutate(bad);await assert.rejects(()=>qualifyWorldScriptOperands(bad,record,'key','private'));
+}
+console.log('World branch Current byte reconstruction and altered source/word/boundary checks passed');

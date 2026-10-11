@@ -1134,6 +1134,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-resources.js": ("worldmap-resources.js", "text/javascript"),
                  "/world-script-animation-operands.js": ("world-script-animation-operands.js", "text/javascript"),
                  "/world-script-inspection.js": ("world-script-inspection.js", "text/javascript"),
+                 "/world-script-graph.js": ("world-script-graph.js", "text/javascript"),
+                 "/world-script-branch-bytes.js": ("world-script-branch-bytes.js", "text/javascript"),
                  "/worldmap-behavior-resources.js": ("worldmap-behavior-resources.js", "text/javascript"),
                  "/worldmap-project-resources.js": ("worldmap-project-resources.js", "text/javascript"),
                  "/worldmap-model-replacement.js": ("worldmap-model-replacement.js", "text/javascript"),

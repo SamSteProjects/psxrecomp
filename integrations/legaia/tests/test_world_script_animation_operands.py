@@ -179,6 +179,8 @@ class WorldAnimationArgumentsTests(TestCase):
             with http_server(p) as (server,post):
                 with urlopen(f'http://127.0.0.1:{server.server_port}/world-script-animation-operands.js') as response:self.assertIn(b'qualifyWorldScriptOperands',response.read())
                 with urlopen(f'http://127.0.0.1:{server.server_port}/world-script-inspection.js') as response:self.assertIn(b'qualifyWorldScriptInspection',response.read())
+                with urlopen(f'http://127.0.0.1:{server.server_port}/world-script-graph.js') as response:self.assertIn(b'qualifyWorldScriptGraph',response.read())
+                with urlopen(f'http://127.0.0.1:{server.server_port}/world-script-branch-bytes.js') as response:self.assertIn(b'applyQualifiedWorldBranchBytes',response.read())
                 for route in ('/api/world-script-animation-operands','/api/world-script-animation-review','/api/world-script-inspection'):
                     for body in ({},{'script_id':'foreign','source_key':'0'*64},{'script_id':'foreign','source_key':'0'*64,'extra':True}):self.assertEqual(post(route,body)[0],400)
             self.assertEqual(p._document(),held)

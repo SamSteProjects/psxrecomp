@@ -38,6 +38,9 @@ class WorldBranchProjectTests(TestCase):
                 self.assertEqual(p._document(),baseline);self.assertIn(40,r['candidate_graph']['unreachable_source_pcs'])
                 p.command(dict(type='set_world_script_branches',script_id=script,source_key=state_key(p),pc=2,values={'target_pc':2},shared=True,review_key=r['review_key']))
                 current=context(p,'map02')[8];self.assertEqual(current[67:69],b'\xff\xff');self.assertEqual(current[106:108],b'\0\xff')
+                from sdk.worldmap_script_operands import options as argument_options
+                witness=argument_options(p,script,state_key(p));self.assertEqual(witness['schema_version'],'legaia.world-script-operands.v2')
+                self.assertEqual(witness['branch_changes'][0]['authored_target_pc'],2);self.assertEqual(witness['branch_source_graph']['instructions'][0]['byte_offset'],66)
                 rows=p.authored_assets();self.assertEqual(len(rows),1);self.assertEqual(set(rows[0]['authored']),{'WorldScriptOperands',COMPONENT})
                 p.save();self.assertEqual(ProjectService.open(Path(root))._document(),p._document());p.undo();self.assertEqual(p._document(),baseline);p.redo()
                 # Fixed arguments can still be reviewed against immutable source
@@ -66,6 +69,19 @@ class WorldBranchProjectTests(TestCase):
                 self.assertEqual(post('/api/command',command)[0],400);p.undo();self.assertEqual(p._document(),held)
                 p.mode='live'
                 with self.assertRaises(ProjectError):options(p,script,state_key(p))
+
+    def test_saved_retail_branch_target_keeps_argument_v1_witness(self):
+        from sdk.worldmap_script_operands import options as argument_options
+        with tempfile.TemporaryDirectory() as root:
+            p=self.project(root);script,source=jump_fixture(p)
+            with patch('sdk.worldmap_script_operands.source',return_value=source):
+                _,binding=review(p,script,state_key(p),2,{'target_pc':2},True)
+                binding['entries'][script]['branches']['0002']['target_pc']=5
+                p.overrides[owner('map02')]={COMPONENT:binding}
+                held=deepcopy(p._document());v=argument_options(p,script,state_key(p))
+                self.assertEqual(v['schema_version'],'legaia.world-script-animation-operands.v1')
+                self.assertEqual(v['record_base64'],v['current_record_base64'])
+                self.assertNotIn('branch_changes',v);self.assertEqual(p._document(),held)
 
     def test_branch_only_owner_is_not_omitted_from_world_build(self):
         from sdk.worldmap_script_operands import build

@@ -170,6 +170,14 @@ def _options(project,script,key,inputs):
                 raise
             targets.append(dict(pc=node['pc'],mnemonic=node['mnemonic'],target_context=node['target_context'],retail_values=values,authored_values=deepcopy(authored.get(f'{node["pc"]:04x}')),current_values=deepcopy(authored.get(f'{node["pc"]:04x}',values))))
     result=dict(schema_version='legaia.world-script-animation-operands.v1',project_path=str(project.root),source_key=key,script_id=script,source_record=deepcopy(row['source_record']),entry_pc=row['entry_pc'],source_instance_ids=deepcopy(row['source_instance_ids']),record_base64=b64encode(record).decode(),current_record_base64=b64encode(current[at:end]).decode(),targets=targets,limitations=list(LIMITATIONS),project_changed=False,gameplay_verified=False)
+    from .worldmap_script_branches import owner as branch_owner,COMPONENT as BRANCH_COMPONENT
+    branch_edits=project.overrides.get(branch_owner(row['source_scene']),{}).get(BRANCH_COMPONENT,{}).get('entries',{}).get(script,{}).get('branches',{})
+    if branch_edits:
+        from importer.worldmap_branch_authoring import branch_record_options
+        branch_options=branch_record_options(record,row['entry_pc']);source_targets={t['pc']:t for t in branch_options['targets']}
+        changes=[dict(pc=int(pc,16),mnemonic=source_targets[int(pc,16)]['mnemonic'],target_context=source_targets[int(pc,16)]['target_context'],operand_pc=source_targets[int(pc,16)]['operand_pc'],condition=source_targets[int(pc,16)]['condition'],retail_target_pc=source_targets[int(pc,16)]['target_pc'],authored_target_pc=values['target_pc']) for pc,values in sorted(branch_edits.items()) if values['target_pc']!=source_targets[int(pc,16)]['target_pc']]
+        if changes:
+            result.update(schema_version='legaia.world-script-operands.v2',branch_source_graph=inspect_record(record,row['entry_pc'],base_offset=at),branch_destinations=branch_options['destinations'],branch_changes=changes)
     _fresh(project,key);return result
 
 def inspection(project,script,key):
