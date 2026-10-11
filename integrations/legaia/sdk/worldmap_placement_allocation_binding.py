@@ -9,6 +9,7 @@ from .worldmap_placements import SCENES, values
 
 COMPONENT = 'WorldMapPlacementAllocations'
 SCHEMA = 'legaia.worldmap-placement-allocation-ledger.v1'
+MODEL_SCHEMA = 'legaia.worldmap-placement-allocation-ledger.v2'
 
 
 def owner(scene):
@@ -19,7 +20,7 @@ def owner(scene):
 
 def validate(project, identifier, binding):
     keys = {'schema_version','scene','source_disc_sha256','source_map_sha256','source_floor_lut_sha256','operations'}
-    if (not isinstance(binding, dict) or set(binding) != keys or binding['schema_version'] != SCHEMA
+    if (not isinstance(binding, dict) or set(binding) != keys or binding['schema_version'] not in (SCHEMA,MODEL_SCHEMA)
             or identifier != owner(binding['scene']) or any(not isinstance(binding[k],str) or not re.fullmatch(
                 '[0-9a-f]{64}',binding[k]) for k in keys if k.startswith('source_'))
             or not isinstance(binding['operations'],list) or not 1 <= len(binding['operations']) <= 32):
@@ -34,13 +35,18 @@ def validate(project, identifier, binding):
                 or not isinstance(operation['requests'],list) or not 1 <= len(operation['requests']) <= 32):
             raise ProjectError('World placement allocation operation is malformed or unbounded')
         for request in operation['requests']:
-            if (not isinstance(request,dict) or set(request) != {'placement_id','donor_cell','target_cell','record_index','values'}
+            allowed = {'placement_id','donor_cell','target_cell','record_index','values'}
+            if binding['schema_version'] == MODEL_SCHEMA and isinstance(request,dict) and 'model_pool_index' in request:
+                allowed.add('model_pool_index')
+            if (not isinstance(request,dict) or set(request) != allowed
                     or not isinstance(request['placement_id'],str) or not re.fullmatch(
                         r'placement://authored/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}',request['placement_id'])
                     or request['placement_id'] in ids
                     or any(type(request[k]) is not int or not 0 <= request[k] < 16384 for k in ('donor_cell','target_cell'))
                     or type(request['record_index']) is not int or not 4 <= request['record_index'] < 512):
                 raise ProjectError('World placement allocation identity or native indices differ')
+            if 'model_pool_index' in request and (type(request['model_pool_index']) is not int or not 1 <= request['model_pool_index'] < 512):
+                raise ProjectError('World placement model override requires a nonzero native pool index')
             values(request['values']);ids.add(request['placement_id'])
     if len(ids) > 511:
         raise ProjectError('World placement allocation exceeds its stable identity budget')
@@ -48,6 +54,9 @@ def validate(project, identifier, binding):
 
 
 def replay(raw, floor, binding):
+    if binding['schema_version'] not in (SCHEMA,MODEL_SCHEMA) or (binding['schema_version'] == SCHEMA and
+            any('model_pool_index' in r for op in binding['operations'] for r in op['requests'])):
+        raise ProjectError('World model overrides require the version-two allocation ledger')
     if sha256(raw).hexdigest() != binding['source_map_sha256']:
         raise ProjectError('World placement allocation source MAP changed')
     current = raw

@@ -57,7 +57,7 @@ export async function qualifyWorldDecorationReview(value, source, requests) {
   if (value.proposed_map_sha256 !== allocated.audit.proposed_sha256 || !same(value.audit, allocated.audit) ||
       !equalWorldPlacementBytes(decode(value.proposed_map_base64), allocated.bytes)) fail('Decoration Review differs from complete independent allocation replay.');
   const binding = value.binding, prior = before.binding;
-  const provenance = {...before.source_record, schema_version: 'legaia.worldmap-placement-allocation-ledger.v1'};
+  const provenance = {...before.source_record, schema_version: prior?.schema_version??'legaia.worldmap-placement-allocation-ledger.v1'};
   if (!exact(binding, [...Object.keys(provenance), 'operations']) ||
       Object.entries(provenance).some(([k,v]) => binding[k] !== v) || !Array.isArray(binding.operations) ||
       binding.operations.length !== (prior?.operations.length ?? 0) + 1 || binding.operations.length > 32 ||
@@ -199,5 +199,43 @@ export async function qualifyWorldDecorationCellReview(value,source,placementId,
   const moved=await relocateWorldDecoration(source,placementId,targetCell);
   if(!same(value.binding,moved.binding)||!same(value.audit,moved.audit)||!equalWorldPlacementBytes(decode(value.proposed_map_base64),moved.bytes)||
       value.proposed_map_sha256!==await placementDigest(moved.bytes))fail('Cell Review differs from independent lineage replay and literal native patch.');
+  return structuredClone(value);
+}
+
+export async function reassignWorldDecorationModel(source,placementId,model){
+  const binding=structuredClone(source.metadata.binding),before=source.metadata.authored_allocations.find(a=>a.placement_id===placementId);
+  const requests=binding?.operations.flatMap(op=>op.requests)??[],matches=requests.filter(r=>r.placement_id===placementId);
+  if(matches.length!==1||!before||!Number.isInteger(model)||model<1||model>511||model===before.model_pool_index)fail('Choose a changed native model for one retained decoration.');
+  const retained=new Map(source.metadata.authored_allocations.map(a=>[a.placement_id,a.model_pool_index])),pinned=[];
+  for(const request of requests)if(request.placement_id!==placementId&&request.donor_cell===before.target_cell){
+    request.model_pool_index=retained.get(request.placement_id);pinned.push({placement_id:request.placement_id,model_pool_index:request.model_pool_index});
+  }
+  matches[0].model_pool_index=model;binding.schema_version='legaia.worldmap-placement-allocation-ledger.v2';
+  let canonical=source.retailBytes;
+  for(const op of binding.operations){const result=await allocateWorldPlacements(canonical,source.metadata.floor_lut,source.metadata.scene,op.requests);canonical=result.bytes;op.proposed_map_sha256=result.audit.proposed_sha256;}
+  const replayed=await replayWorldPlacementAllocations(source.retailBytes,source.metadata.floor_lut,source.metadata.scene,binding,source.metadata.source_record);
+  const bytes=await composeWorldPlacementTransforms(source.retailBytes,replayed.bytes,source.metadata.floor_lut,source.metadata.scene,source.authoredRecords);
+  const literal=source.bytes.slice();new DataView(literal.buffer).setUint16(before.record_index*32+16,model,true);
+  if(!equalWorldPlacementBytes(bytes,literal))fail('Model assignment changed another model, transform or native byte.');
+  return {binding,bytes,audit:{before:structuredClone(before),after:replayed.allocations.find(a=>a.placement_id===placementId),retained_child_models:pinned,
+    changed_bytes:Array.from(bytes.entries()).filter(([i,n])=>n!==source.bytes[i]).map(([i,n])=>({byte_offset:i,before_byte:source.bytes[i],after_byte:n})),
+    scope:'authored-decoration-model-only',gameplay_verified:false}};
+}
+
+export async function qualifyWorldDecorationModelReview(value,source,placementId,model,current){
+  const before=source.metadata,assetId=`asset://${before.scene}/worldmap/models/${String(model).padStart(4,'0')}`;
+  const asset=current?.scene_graph?.assets.find(a=>a.asset_id===assetId);
+  if(!exact(value,['schema_version','project_path','scene','source_key','source_record','placement_id','model_pool_index','asset_id','model_source_record',
+      'before_binding','binding','current_map_sha256','proposed_map_sha256','proposed_map_base64','audit','read_only','project_changed','gameplay_verified','build_ready','review_key'])||
+      value.schema_version!=='legaia.worldmap-decoration-model-review.v1'||value.project_path!==before.project_path||value.scene!==before.scene||
+      value.source_key!==before.source_key||!same(value.source_record,before.source_record)||value.placement_id!==placementId||value.model_pool_index!==model||
+      value.asset_id!==assetId||!asset?.preview?.vertices?.length||!asset.preview.triangles?.length||!same(value.model_source_record,asset.source_record)||
+      value.current_map_sha256!==before.current_map_sha256||!same(value.before_binding,before.binding)||current.project_source_key!==before.source_key||
+      current.representation!=='current-source'||!same(current.placement_authoring?.allocation_binding,before.binding)||
+      value.read_only!==true||value.project_changed!==false||value.gameplay_verified!==false||value.build_ready!==false||!hash(value.review_key))
+    fail('Model Review changed its Current identity, model asset or read-only scope.');
+  const assigned=await reassignWorldDecorationModel(source,placementId,model);
+  if(!same(value.binding,assigned.binding)||!same(value.audit,assigned.audit)||!equalWorldPlacementBytes(decode(value.proposed_map_base64),assigned.bytes)||
+      value.proposed_map_sha256!==await placementDigest(assigned.bytes))fail('Model Review differs from independent child retention and literal native replay.');
   return structuredClone(value);
 }

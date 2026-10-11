@@ -86,7 +86,8 @@ export async function allocateWorldPlacements(data, floor, scene, requests) {
   const targets = new Set(inventory.target_cells), ids = new Set(), records = new Set(), cells = new Set();
   const result = data.slice(), source = inputs(data, floor, scene), view = inputs(result, floor, scene), allocations = [];
   for (const request of requests) {
-    if (!exact(request, ['placement_id', 'donor_cell', 'target_cell', 'record_index', 'values']) ||
+    if (!exact(request, ['placement_id', 'donor_cell', 'target_cell', 'record_index', 'values',...(Object.hasOwn(request??{},'model_pool_index')?['model_pool_index']:[])]) ||
+        (Object.hasOwn(request,'model_pool_index')&&!integer(request.model_pool_index,1,511)) ||
         !uuid(request.placement_id) || ids.has(request.placement_id) || !values(request.values) ||
         !integer(request.donor_cell, 0, 16383) || !integer(request.target_cell, 0, 16383) || !integer(request.record_index, 4, 511) ||
         !donors.has(request.donor_cell) || !targets.has(request.target_cell) || cells.has(request.target_cell) ||
@@ -97,13 +98,14 @@ export async function allocateWorldPlacements(data, floor, scene, requests) {
     result.set(data.slice(previousAt + 20, previousAt + 24), at + 20);
     for (const [i, axis] of ['x', 'y', 'z'].entries()) view.setInt16(at + i * 2, request.values.offset[axis], true);
     view.setUint16(at + 10, (source.getUint16(donorAt + 10, true) & 0xf000) | request.values.yaw_units, true);
+    if(Object.hasOwn(request,'model_pool_index'))view.setUint16(at+16,request.model_pool_index,true);
     view.setUint16(cellAt, (cellWord & ~511) | request.record_index, true);
     ids.add(request.placement_id); records.add(request.record_index); cells.add(request.target_cell);
     allocations.push({placement_id: request.placement_id, donor_cell: request.donor_cell, target_cell: request.target_cell,
       record_index: request.record_index, donor_record_index: donor.object_record_index,
       donor_record_sha256: await placementDigest(data.slice(donorAt, donorAt + 32)),
       previous_cell_sha256: await placementDigest(data.slice(cellAt, cellAt + 2)),
-      allocated_record_sha256: await placementDigest(result.slice(at, at + 32)), model_pool_index: donor.model_pool_index,
+      allocated_record_sha256: await placementDigest(result.slice(at, at + 32)), model_pool_index: view.getUint16(at+16,true),
       preserved_terrain_hex: Array.from(result.slice(at + 20, at + 24), n => n.toString(16).padStart(2, '0')).join('')});
   }
   const decoded = await decodeWorldPlacementSeeds(result, floor, scene), byCell = new Map(decoded.placements.map(p => [p.source_cell, p]));
@@ -130,7 +132,7 @@ export async function replayWorldPlacementAllocations(raw, floor, scene, binding
   inputs(raw, floor, scene);
   if (binding === null) return {bytes: raw.slice(), allocations: []};
   if (!exact(binding, ['schema_version', 'scene', 'source_disc_sha256', 'source_map_sha256', 'source_floor_lut_sha256', 'operations']) ||
-      binding.schema_version !== 'legaia.worldmap-placement-allocation-ledger.v1' || binding.scene !== scene ||
+      !['legaia.worldmap-placement-allocation-ledger.v1','legaia.worldmap-placement-allocation-ledger.v2'].includes(binding.schema_version) || binding.scene !== scene ||
       !['source_disc_sha256', 'source_map_sha256', 'source_floor_lut_sha256'].every(k => hash(binding[k]) && binding[k] === provenance?.[k]) ||
       await placementDigest(raw) !== binding.source_map_sha256 || !Array.isArray(binding.operations) || !integer(binding.operations.length, 1, 32))
     fail('World placement lineage lacks exact source identity.');
@@ -140,6 +142,8 @@ export async function replayWorldPlacementAllocations(raw, floor, scene, binding
   let bytes = raw.slice(); const allocations = [], ids = new Set();
   for (const operation of binding.operations) {
     if (!exact(operation, ['requests', 'proposed_map_sha256']) || !hash(operation.proposed_map_sha256)) fail('World allocation operation differs.');
+    if(binding.schema_version==='legaia.worldmap-placement-allocation-ledger.v1'&&operation.requests?.some(r=>Object.hasOwn(r??{},'model_pool_index')))
+      fail('World model overrides require a version-two allocation ledger.');
     const result = await allocateWorldPlacements(bytes, floor, scene, operation.requests);
     if (result.audit.proposed_sha256 !== operation.proposed_map_sha256) fail('World allocation native replay hash differs.');
     for (const allocation of result.audit.allocations) {

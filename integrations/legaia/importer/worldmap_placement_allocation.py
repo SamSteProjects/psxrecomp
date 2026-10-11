@@ -43,9 +43,12 @@ def allocate(data, floor, scene, requests):
     result = bytearray(data)
     allocations = []
     for request in requests:
-        if not isinstance(request, dict) or set(request) != {
-                'placement_id', 'donor_cell', 'target_cell', 'record_index', 'values'}:
+        if not isinstance(request, dict) or set(request) not in ({
+                'placement_id', 'donor_cell', 'target_cell', 'record_index', 'values'}, {
+                'placement_id', 'donor_cell', 'target_cell', 'record_index', 'values', 'model_pool_index'}):
             raise ImportError('World placement clone requires exact native ownership and values')
+        if 'model_pool_index' in request and (type(request['model_pool_index']) is not int or not 1 <= request['model_pool_index'] < 512):
+            raise ImportError('World placement model override requires a nonzero native pool index')
         identifier = request['placement_id']
         if (not isinstance(identifier, str) or not re.fullmatch(
                 r'placement://authored/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}', identifier)
@@ -73,6 +76,8 @@ def allocate(data, floor, scene, requests):
         struct.pack_into('<3h', payload, 0, *(value['offset'][a] for a in ('x', 'y', 'z')))
         yaw = struct.unpack_from('<H', payload, 10)[0]
         struct.pack_into('<H', payload, 10, (yaw & 0xf000) | value['yaw_units'])
+        if 'model_pool_index' in request:
+            struct.pack_into('<H', payload, 16, request['model_pool_index'])
         result[target_at:target_at+32] = payload
         struct.pack_into('<H', result, cell_at, (cell_word & ~511) | record)
         ids.add(identifier); claimed_records.add(record); claimed_cells.add(cell)
@@ -80,7 +85,7 @@ def allocate(data, floor, scene, requests):
             record_index=record, donor_record_index=donor['object_record_index'],
             donor_record_sha256=sha256(data[donor_at:donor_at+32]).hexdigest(),
             previous_cell_sha256=sha256(data[cell_at:cell_at+2]).hexdigest(),
-            allocated_record_sha256=sha256(payload).hexdigest(), model_pool_index=donor['model_pool_index'],
+            allocated_record_sha256=sha256(payload).hexdigest(), model_pool_index=struct.unpack_from('<H',payload,16)[0],
             preserved_terrain_hex=payload[20:24].hex()))
     candidate = bytes(result)
     decoded = decode_worldmap_placements(candidate, floor, scene=scene)

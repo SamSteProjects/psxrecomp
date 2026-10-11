@@ -45,6 +45,8 @@ def source(project, scene, key):
 
 
 def review(project, scene, key, requests):
+    if not isinstance(requests,list) or any(not isinstance(r,dict) or set(r) != {'placement_id','donor_cell','target_cell','record_index','values'} for r in requests):
+        raise ProjectError('New decorations require exact donor-derived native requests; model reassignment uses its own Review')
     raw, provenance, floor, current, allocations = _context(project, scene, key)
     candidate, audit = allocate(current, floor, scene, requests)
     before = deepcopy(project.overrides.get(owner(scene),{}).get(COMPONENT))
@@ -92,6 +94,13 @@ def build(project, overlays):
         if COMPONENT not in project.overrides.get(owner(scene),{}): continue
         raw,provenance,_,offset,floor,_,transformed,_ = context(project,scene)
         candidate,allocations = compose(project,scene,raw,provenance,floor,transformed)
+        if any('model_pool_index' in r for op in project.overrides[owner(scene)][COMPONENT]['operations'] for r in op['requests']):
+            from .worldmap_geometry import inspect
+            geometry=inspect(project,scene,state_key(project),texture_layer='current',model_layer='current')
+            drawable={int(a['asset_id'].rsplit('/',1)[1]) for a in geometry['scene_graph']['assets']
+                if '/models/' in a['asset_id'] and a['preview'].get('vertices') and a['preview'].get('triangles')}
+            if any(a['model_pool_index'] not in drawable for a in allocations):
+                raise ProjectError('World allocation model override has no qualified drawable Current asset')
         matching = [o for o in overlays if o['offset']==offset and o['size']==len(raw)]
         if len(matching)>1: raise ProjectError('World allocation MAP overlay ownership is ambiguous')
         if matching:
