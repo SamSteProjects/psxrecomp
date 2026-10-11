@@ -16,12 +16,15 @@ def inspect(project,scene,key,proposal=None):
     receipt=source(project,scene,key)
     reviewed=None
     if proposal is not None:
-        if not isinstance(proposal,dict) or set(proposal) not in ({'requests','review_key'},{'placement_id','values','review_key'},{'placement_id','target_cell','review_key'},{'placement_id','cascade','review_key'}):
-            raise ProjectError('Scripted scene proposal requires exact reviewed creation, transform, relocation or removal')
-        transforming='placement_id' in proposal
+        if not isinstance(proposal,dict) or set(proposal) not in ({'requests','review_key'},{'placement_id','values','review_key'},{'placement_id','target_cell','review_key'},{'placement_id','cascade','review_key'},{'entries','review_key'}):
+            raise ProjectError('Scripted scene proposal requires exact reviewed creation, transform, group transform, relocation or removal')
+        transforming='placement_id' in proposal or 'entries' in proposal
         removing='cascade' in proposal
         if transforming:
-            if removing:
+            if 'entries' in proposal:
+                from .worldmap_scripted_placement_group import review
+                reviewed=review(project,scene,key,proposal['entries'])
+            elif removing:
                 from .worldmap_scripted_placement_remove import review
                 reviewed=review(project,scene,key,proposal['placement_id'],proposal['cascade'])
             elif 'target_cell' in proposal:

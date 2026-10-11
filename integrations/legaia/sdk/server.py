@@ -1179,6 +1179,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-scripted-removal-editor.js": ("worldmap-scripted-removal-editor.js", "text/javascript"),
                  "/worldmap-scripted-relocation-state.js": ("worldmap-scripted-relocation-state.js", "text/javascript"),
                  "/worldmap-scripted-relocation-editor.js": ("worldmap-scripted-relocation-editor.js", "text/javascript"),
+                 "/worldmap-scripted-group-state.js": ("worldmap-scripted-group-state.js", "text/javascript"),
                  "/worldmap-scripted-transform-state.js": ("worldmap-scripted-transform-state.js", "text/javascript"),
                  "/worldmap-scripted-transform-editor.js": ("worldmap-scripted-transform-editor.js", "text/javascript"),
                  "/worldmap-scripted-creation-state.js": ("worldmap-scripted-creation-state.js", "text/javascript"),
@@ -1443,8 +1444,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route == '/api/worldmap-scripted-placement-scene':
                     if set(body) not in ({'scene','source_key'},{'scene','source_key','scripted_proposal'}):
                         raise ProjectError('Scripted World scene requires exact scene and source key')
-                    if 'scripted_proposal' in body and (not isinstance(body['scripted_proposal'],dict) or set(body['scripted_proposal']) not in ({'requests','review_key'},{'placement_id','values','review_key'},{'placement_id','target_cell','review_key'},{'placement_id','cascade','review_key'})):
-                        raise ProjectError('Scripted scene proposal requires exact reviewed creation, transform, relocation or removal')
+                    if 'scripted_proposal' in body and (not isinstance(body['scripted_proposal'],dict) or set(body['scripted_proposal']) not in ({'requests','review_key'},{'placement_id','values','review_key'},{'placement_id','target_cell','review_key'},{'placement_id','cascade','review_key'},{'entries','review_key'})):
+                        raise ProjectError('Scripted scene proposal requires exact reviewed creation, transform, group transform, relocation or removal')
                     from .worldmap_scripted_placement_scene import inspect
                     self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body.get('scripted_proposal')))
                     return
@@ -1729,6 +1730,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'scene','source_key','placement_id','target_cell'}:raise ProjectError('Scripted relocation Review requires exact source, UUID and target cell')
                     from .worldmap_scripted_placement_relocate import review
                     self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_id'],body['target_cell']))
+                    return
+                if route == '/api/worldmap-scripted-group-transform-review':
+                    if set(body)!={'scene','source_key','entries'}:raise ProjectError('Scripted group Review requires exact source and UUID transforms')
+                    from .worldmap_scripted_placement_group import review
+                    self._json(200,review(self.server.project,body['scene'],body['source_key'],body['entries']))
                     return
                 if route == '/api/worldmap-scripted-transform-review':
                     if set(body)!={'scene','source_key','placement_id','values'}:raise ProjectError('Scripted transform Review requires exact source, UUID and values')
