@@ -67,6 +67,32 @@ export function validateActorRotationReport(report){
   if(report.changed_count!==changed)throw Error('Actor rotation change count differs from proposal');return report;
 }
 
+export function validateActorSpacingReport(report){
+  const layout=report?.layout,scale=layout?.kind==='scale';
+  const fields=scale?'anchor_entity_id,kind,percent':'anchor_entity_id,axis,kind';
+  if(!layout||!['scale','mirror'].includes(layout.kind)||Object.keys(layout).sort().join()!==fields||
+      (scale?(!Number.isSafeInteger(layout.percent)||layout.percent<1||layout.percent>1000):!['x','z'].includes(layout.axis))||
+      !Array.isArray(report.targets)||report.targets.length<2||report.targets.length>128||
+      new Set(report.targets.map(row=>row.entity_id)).size!==report.targets.length)throw Error('Invalid actor spacing scale or reflection report');
+  const anchor=report.targets.find(row=>row.entity_id===layout.anchor_entity_id);
+  if(!anchor)throw Error('Spacing anchor must belong to the reviewed group');
+  let changed=0;
+  for(const row of report.targets){
+    if(['x','z'].some(a=>!Number.isSafeInteger(row.effective?.[a])||row.effective[a]<64||row.effective[a]>16384||row.effective[a]%64))throw Error('Invalid Current actor coordinate');
+    let different=false;
+    for(const axis of ['x','z']){
+      const n=scale?anchor.effective[axis]*100+(row.effective[axis]-anchor.effective[axis])*layout.percent:null;
+      const expected=scale?Math.sign(n)*Math.floor((Math.abs(n)+3200)/6400)*64:axis===layout.axis?2*anchor.effective[axis]-row.effective[axis]:row.effective[axis];
+      if(expected<64||expected>16384||row.proposed?.[axis]!==expected)throw Error('Actor spacing proposal differs from native arithmetic or bounds');
+      different||=expected!==row.effective[axis];
+    }
+    if(row.proposed.y!==row.effective.y)throw Error('Actor spacing proposal changed source height');
+    changed+=different;
+  }
+  if(report.changed_count!==changed)throw Error('Actor spacing change count differs from proposal');
+  return report;
+}
+
 export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,setBusy,api,after,canInspectScene,onSceneInspection,frameGroup,notify,getSelection=()=>[]}){
   const button=document.createElement('button');button.id='actor-batch-button';button.textContent='Actor group placements';after.after(button);
   const dialog=document.createElement('dialog');dialog.id='actor-batch-dialog';document.body.append(dialog);
@@ -80,19 +106,21 @@ export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,se
     if(mode==='offset')return {actor_ids,delta:{x:Number(dialog.querySelector('[name="x"]').value),z:Number(dialog.querySelector('[name="z"]').value)}};
     if(mode.startsWith('snap_'))return {actor_ids,layout:{kind:'snap',axes:mode==='snap_xz'?['x','z']:[mode.split('_')[1]],spacing:Number(dialog.querySelector('[name="layout-spacing"]').value)}};
     if(mode==='rotate_angle')return {actor_ids,layout:{kind:'rotate_angle',anchor_entity_id:dialog.querySelector('[name="layout-anchor"]').value,angle_degrees:Number(dialog.querySelector('[name="layout-angle"]').value)}};
-    const [kind,axis]=mode.split('_'),layout={kind,axis};if(kind==='align')layout.anchor_entity_id=dialog.querySelector('[name="layout-anchor"]').value;
+    if(mode==='scale')return {actor_ids,layout:{kind:'scale',anchor_entity_id:dialog.querySelector('[name="layout-anchor"]').value,percent:Number(dialog.querySelector('[name="layout-percent"]').value)}};
+    const [kind,axis]=mode.split('_'),layout={kind,axis};if(['align','mirror'].includes(kind))layout.anchor_entity_id=dialog.querySelector('[name="layout-anchor"]').value;
     return {actor_ids,layout};
   };
   const clearInspection=()=>{inspection=null;bar.hidden=true;onSceneInspection(null);};
   const invalidate=()=>{generation++;preview=null;clearInspection();dialog.querySelector('.batch-result')?.replaceChildren();update();};
   function update(){
     if(!dialog.open)return;
-    const busy=isBusy(),request=payload(),layout=!!request.layout;let snapValid=true;if(request.layout?.kind==='snap'){try{actorGridSnapLayout(request.layout.axes,request.layout.spacing);}catch{snapValid=false;}}const angleValid=request.layout?.kind!=='rotate_angle'||dialog.querySelector('[name="layout-angle"]').value.trim()&&Number.isSafeInteger(request.layout.angle_degrees)&&Math.abs(request.layout.angle_degrees)<=359;const valid=snapValid&&angleValid&&(layout||dialog.querySelector('form').checkValidity())&&selected.size>=2&&selected.size<=128&&(!['align','rotate_angle'].includes(request.layout?.kind)||selected.has(request.layout.anchor_entity_id));
+    const busy=isBusy(),request=payload(),layout=!!request.layout;let snapValid=true;if(request.layout?.kind==='snap'){try{actorGridSnapLayout(request.layout.axes,request.layout.spacing);}catch{snapValid=false;}}const angleValid=request.layout?.kind!=='rotate_angle'||dialog.querySelector('[name="layout-angle"]').value.trim()&&Number.isSafeInteger(request.layout.angle_degrees)&&Math.abs(request.layout.angle_degrees)<=359;const scaleValid=request.layout?.kind!=='scale'||dialog.querySelector('[name="layout-percent"]').value.trim()&&Number.isSafeInteger(request.layout.percent)&&request.layout.percent>=1&&request.layout.percent<=1000;const valid=snapValid&&angleValid&&scaleValid&&(layout||dialog.querySelector('form').checkValidity())&&selected.size>=2&&selected.size<=128&&(!['align','rotate_angle','scale','mirror'].includes(request.layout?.kind)||selected.has(request.layout.anchor_entity_id));
     dialog.querySelectorAll('input,button,select').forEach(item=>{if(!item.matches('[data-close-batch]'))item.disabled=busy||!canEdit();});
     dialog.querySelector('[data-preview-batch]').disabled=busy||!canEdit()||!valid;
     for(const input of dialog.querySelectorAll('[name="x"],[name="z"]')){input.parentElement.hidden=layout;input.disabled=busy||!canEdit()||layout;}
-    const anchor=dialog.querySelector('[name="layout-anchor"]'),anchored=['align','rotate_angle'].includes(request.layout?.kind);anchor.parentElement.hidden=!anchored;anchor.disabled=busy||!canEdit()||!anchored;
+    const anchor=dialog.querySelector('[name="layout-anchor"]'),anchored=['align','rotate_angle','scale','mirror'].includes(request.layout?.kind);anchor.parentElement.hidden=!anchored;anchor.disabled=busy||!canEdit()||!anchored;
     const angle=dialog.querySelector('[name="layout-angle"]');angle.parentElement.hidden=request.layout?.kind!=='rotate_angle';angle.disabled=busy||!canEdit()||request.layout?.kind!=='rotate_angle';
+    const percent=dialog.querySelector('[name="layout-percent"]');percent.parentElement.hidden=request.layout?.kind!=='scale';percent.disabled=busy||!canEdit()||request.layout?.kind!=='scale';
     const spacing=dialog.querySelector('[name="layout-spacing"]');spacing.parentElement.hidden=request.layout?.kind!=='snap';spacing.disabled=busy||!canEdit()||request.layout?.kind!=='snap';
     dialog.querySelector('[data-preview-batch]').textContent=layout?'Preview group layout':'Preview group offset';dialog.querySelector('[data-apply-batch]').textContent=layout?'Apply group layout':'Apply group offset';
     const delta=request.delta??{};
@@ -124,9 +152,9 @@ export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,se
   button.onclick=()=>{
     if(isBusy()||!canEdit())return;
     clearInspection();selected=new Set(getSelection().filter(id=>getEntities().some(entity=>entity.id===id)));preview=null;context=contextKey();generation++;
-    dialog.innerHTML='<div class="dialog-heading"><h2>Actor group placements</h2><button type="button" data-close-batch aria-label="Close actor group">×</button></div><p>Select imported actors in this scene. Offset, align, distribute or snap their effective X/Z placements. Grid snap uses scene-origin spacing in multiples of 64 from 64 through 4096, with halfway positions rounded upward; invalid native results reject the entire group. Proposed coordinates must fit the exact retail 64-unit grid, from 64 through 16384. Position rotation uses whole degrees from -359 through 359 about the selected actor and rounds final X/Z to native precision. Source height, facing, scripts and scheduling stay unchanged.</p><form><label>Find actors<input name="search" type="search" aria-label="Find group actors"></label><div class="batch-actors"></div><p class="batch-count" role="status"></p><div class="dialog-actions"><label>X offset<input name="x" type="number" step="64" min="-16320" max="16320" value="0" required></label><label>Z offset<input name="z" type="number" step="64" min="-16320" max="16320" value="0" required></label></div><div class="dialog-actions"><button type="submit" data-preview-batch>Preview group offset</button><button type="button" data-apply-batch disabled>Apply group offset</button></div><p class="dialog-error" role="alert"></p><div class="batch-result"></div></form>';
-    const layoutControls=document.createElement('div');layoutControls.className='dialog-actions';layoutControls.innerHTML='<label>Placement operation<select name="layout-mode" aria-label="Group placement operation"><option value="offset">Offset X/Z together</option><option value="align_x">Align X to anchor</option><option value="align_z">Align Z to anchor</option><option value="distribute_x">Distribute along X</option><option value="distribute_z">Distribute along Z</option><option value="snap_x">Snap X to grid</option><option value="snap_z">Snap Z to grid</option><option value="snap_xz">Snap X/Z to grid</option><option value="rotate_angle">Rotate X/Z positions around anchor</option></select></label><label hidden>Grid spacing<input name="layout-spacing" type="number" min="64" max="4096" step="64" value="256" aria-label="Actor group grid spacing"></label><label hidden>Angle degrees<input name="layout-angle" type="number" min="-359" max="359" step="1" value="45" aria-label="Actor group angle degrees"></label><label hidden>Layout anchor<select name="layout-anchor" aria-label="Group alignment anchor"></select></label>';dialog.querySelector('form').prepend(layoutControls);
-    for(const control of layoutControls.querySelectorAll('select'))control.onchange=invalidate;layoutControls.querySelector('[name="layout-spacing"]').oninput=invalidate;layoutControls.querySelector('[name="layout-angle"]').oninput=invalidate;
+    dialog.innerHTML='<div class="dialog-heading"><h2>Actor group placements</h2><button type="button" data-close-batch aria-label="Close actor group">×</button></div><p>Select imported actors in this scene. Offset, align, distribute, snap, rotate, scale spacing or reflect their effective X/Z placements. Spacing scale accepts 1-1000 percent about a selected actor, rounds final coordinates to the nearest 64 units with ties away from zero, and may place actors together. Reflection changes positions on one axis; geometry stays unchanged. Grid snap uses scene-origin spacing in multiples of 64 from 64 through 4096, with halfway positions rounded upward; invalid native results reject the entire group. Proposed coordinates must fit the exact retail 64-unit grid, from 64 through 16384. Position rotation uses whole degrees from -359 through 359 about the selected actor and rounds final X/Z to native precision. Source height, facing, scripts and scheduling stay unchanged.</p><form><label>Find actors<input name="search" type="search" aria-label="Find group actors"></label><div class="batch-actors"></div><p class="batch-count" role="status"></p><div class="dialog-actions"><label>X offset<input name="x" type="number" step="64" min="-16320" max="16320" value="0" required></label><label>Z offset<input name="z" type="number" step="64" min="-16320" max="16320" value="0" required></label></div><div class="dialog-actions"><button type="submit" data-preview-batch>Preview group offset</button><button type="button" data-apply-batch disabled>Apply group offset</button></div><p class="dialog-error" role="alert"></p><div class="batch-result"></div></form>';
+    const layoutControls=document.createElement('div');layoutControls.className='dialog-actions';layoutControls.innerHTML='<label>Placement operation<select name="layout-mode" aria-label="Group placement operation"><option value="offset">Offset X/Z together</option><option value="align_x">Align X to anchor</option><option value="align_z">Align Z to anchor</option><option value="distribute_x">Distribute along X</option><option value="distribute_z">Distribute along Z</option><option value="snap_x">Snap X to grid</option><option value="snap_z">Snap Z to grid</option><option value="snap_xz">Snap X/Z to grid</option><option value="rotate_angle">Rotate X/Z positions around anchor</option><option value="scale">Scale X/Z spacing around anchor</option><option value="mirror_x">Reflect X positions about anchor</option><option value="mirror_z">Reflect Z positions about anchor</option></select></label><label hidden>Grid spacing<input name="layout-spacing" type="number" min="64" max="4096" step="64" value="256" aria-label="Actor group grid spacing"></label><label hidden>Spacing percent<input name="layout-percent" type="number" min="1" max="1000" step="1" value="100" aria-label="Actor group spacing percent"></label><label hidden>Angle degrees<input name="layout-angle" type="number" min="-359" max="359" step="1" value="45" aria-label="Actor group angle degrees"></label><label hidden>Layout anchor<select name="layout-anchor" aria-label="Group alignment anchor"></select></label>';dialog.querySelector('form').prepend(layoutControls);
+    for(const control of layoutControls.querySelectorAll('select'))control.onchange=invalidate;layoutControls.querySelector('[name="layout-spacing"]').oninput=invalidate;layoutControls.querySelector('[name="layout-angle"]').oninput=invalidate;layoutControls.querySelector('[name="layout-percent"]').oninput=invalidate;
     dialog.querySelector('[data-close-batch]').onclick=()=>dialog.close();
     dialog.querySelector('[name="search"]').oninput=renderActors;
     for(const input of dialog.querySelectorAll('[name="x"],[name="z"]'))input.oninput=invalidate;
@@ -144,6 +172,7 @@ export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,se
           typeof report.review_key!=='string'||!/^[0-9a-f]{64}$/.test(report.review_key))throw new Error('Invalid or stale group placement preview');
         if(request.layout?.kind==='snap')validateActorGridSnapReport(report);
         if(request.layout?.kind==='rotate_angle')validateActorRotationReport(report);
+        if(['scale','mirror'].includes(request.layout?.kind))validateActorSpacingReport(report);
         preview=report;
         renderPreviewTable(report);
       }catch(error){if(error.name!=='AbortError'&&dialog.open&&token===generation)dialog.querySelector('.dialog-error').textContent=error.message;}
