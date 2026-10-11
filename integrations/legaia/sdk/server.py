@@ -1217,6 +1217,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-scene.js": ("worldmap-scene.js", "text/javascript"),
                  "/project-assets.js": ("project-assets.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
+                 "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
                  "/worldmap-asset-references.js": ("worldmap-asset-references.js", "text/javascript"),
                  "/worldmap-reference-trace.js": ("worldmap-reference-trace.js", "text/javascript"),
@@ -1324,6 +1325,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body) != {'id'}:
                         raise ProjectError('Stability cancellation requires the current job identity')
                     self._json(200, {'job': self.server.stability_checks.cancel(body['id'])})
+                    return
+                if route in ('/api/battle-pack-animation-resources','/api/battle-pack-pose'):
+                    fields={'expected_project_path','expected_source_key'}
+                    if route.endswith('-pose'):fields|={'model_id','animation_id','model_source_key','animation_source_key','frame_index'}
+                    if set(body)!=fields:raise ProjectError('Pack animation inspection requires exact project, source and frame fields')
+                    from .battle_character_resources import animations,pose
+                    self._json(200,(pose if route.endswith('-pose') else animations)(self.server.project,**body))
                     return
                 if route in ('/api/battle-character-resources','/api/battle-character-preview'):
                     fields={'expected_project_path','expected_source_key'}

@@ -36,3 +36,21 @@ def preview(project,expected_project_path,expected_source_key,asset_id,catalog_s
         value.update(rgba_base64=b64encode(rgba).decode('ascii'),stp_base64=b64encode(stp).decode('ascii'))
         _fresh(project,expected_project_path,expected_source_key)
     return dict(schema_version='legaia.battle-character-preview.v1',project_path=str(project.root),project_source_key=expected_source_key,catalog_source_key=catalog_source_key,record=record,preview=value,layer='retail',palette_index=palette_index,read_only=True,project_changed=False,gameplay_verified=False)
+
+
+def animations(project,expected_project_path,expected_source_key):
+    from importer.battle_pack_animation import discover
+    _fresh(project,expected_project_path,expected_source_key)
+    try:catalog=discover(project.disc_path)
+    except RetailImportError as error:raise ProjectError(str(error)) from error
+    _disc(project,catalog);_fresh(project,expected_project_path,expected_source_key)
+    return dict(schema_version='legaia.battle-pack-animation-resources.v1',project_path=str(project.root),project_source_key=expected_source_key,catalog=catalog,layer='retail',read_only=True,project_changed=False,gameplay_verified=False)
+
+
+def pose(project,expected_project_path,expected_source_key,model_id,animation_id,model_source_key,animation_source_key,frame_index):
+    from importer.battle_pack_animation import pose as inspect
+    _fresh(project,expected_project_path,expected_source_key)
+    try:models,catalog,model,clip,geometry,transforms=inspect(project.disc_path,model_id,animation_id,model_source_key,animation_source_key,frame_index)
+    except RetailImportError as error:raise ProjectError(str(error)) from error
+    _disc(project,catalog);_fresh(project,expected_project_path,expected_source_key)
+    return dict(schema_version='legaia.battle-pack-pose.v1',project_path=str(project.root),project_source_key=expected_source_key,model_source_key=model_source_key,animation_source_key=animation_source_key,model=model,clip=clip,frame_index=frame_index,geometry=geometry,object_transforms=transforms,layer='retail',read_only=True,project_changed=False,gameplay_verified=False,timing='unresolved',runtime_state='not_observed')
