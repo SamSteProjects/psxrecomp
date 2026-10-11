@@ -45,6 +45,7 @@ export async function qualifyWorldScriptInspection(value,record,key,path){
   // Decode the authorable fields independently; preserve every other SDK
   // analysis field, including unresolved semantics and branch metadata.
   if(target.mnemonic==='EFFECT_COLOR_INTENSITY'){if(!same(args.rgb,[target.retail_values.red,target.retail_values.green,target.retail_values.blue])||args.intensity!==target.retail_values.intensity)fail('Retail color graph values differ from bytes.');args.rgb=[values.red,values.green,values.blue];args.intensity=values.intensity;}
+  else if(target.mnemonic==='MOVE_TO'){if(!same(args.world_xz,[target.retail_values.x,target.retail_values.z])||!same(args.encoded_xz,Array.from(retail.slice(row.pc+header,row.pc+header+2)))||!same(args.target_position,{x:target.retail_values.x,y:null,z:target.retail_values.z}))fail('Retail movement analysis differs from source bytes.');args.world_xz=[values.x,values.z];args.target_position={x:values.x,y:null,z:values.z};args.encoded_xz=Array.from(current.slice(row.pc+header,row.pc+header+2));}
   else {
    for(const [field,value] of Object.entries(target.retail_values))if(args[field]!==value)fail('Retail graph arguments differ from bytes.');
    Object.assign(args,values);

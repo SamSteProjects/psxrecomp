@@ -1,5 +1,19 @@
 # World Script Instruction Arguments
 
+## World MOVE_TO Destination Arguments — 2026-10-11
+
+**Edit World Instruction Arguments** now exposes **Script Grid X Argument** and **Script Grid Z Argument** for reached `MOVE_TO` instructions. Values are exactly representable multiples of 64 from 64 through 16384. They map to the two encoded grid bytes, with no quantization. Retail/Authored/Current values, Review/Apply, consent, one-step history, Save/Open and bounded native data-package Build use the existing shared workflow. Current graph inspection independently verifies the encoded bytes, derived X/Z and target-position analysis.
+
+These are script destination arguments. They do not establish a World actor identity, its current transform, Y, collision, pathfinding, live coordinates or actual branch execution. The pinned Andrew `step.rs` opcode `23` and `grid_to_world` interpretation were reread locally; the pin remains unchanged. This World integration deliberately exposes only `MOVE_TO`, although the underlying field writer supports other movement instructions. Hand-authored `NPC_RUN` entries refuse through the World adapter.
+
+Four reached source-writer-qualified targets occur in Map01 records `0008` (PC20), `0009` (PC13 and PC27) and `0011` (PC13). There are no reached World `WAIT_FRAMES` instructions in the 57-script census. Twenty focused Python checks pass, including native grid-byte round trips, extended actor-context preservation, unsupported domains, six instruction families in one record, history/persistence and reset. Four independent literal Current witnesses, two real Current graphs, Review qualification and 14 altered-response refusals pass, alongside PC/picker-header checks and JavaScript syntax validation.
+
+Build `0.1.0-bd2e9d5d1b4d1d74`, package SHA256 `9df7592e88d4ab166fc52fa9817dc921a4403510d518d0d816cdea150bc7a03d`, composes two movement edits with all five prior instruction families and prior model/texture/placement data. Independent directory/ZIP readback compares all 21 decoded kingdom slots with the prior system-selector package: only Map01 MAN offsets722/723/753/754 change (`60 19` → `00 ff`, `7f 7f` → `80 00`). All other decoded bytes match. Full native literal comparison, Undo/Redo, Save/Open and document restoration pass. Private evidence: `local-output/sdk-20260909/world-script-movement-20261011/`.
+
+Two actual Map01 editor workflows pass Review/Apply, changed-draft withdrawal, Current reopening, Save and Undo/Redo/Undo. Exactly two expected commands and zero page errors occur; final complete document/history/Save-Open baselines are restored. Wide and 400-pixel captures were inspected without horizontal overflow. The prior four-graph/48-altered-response contract also still passes. These are focused checks, not a fresh full regression campaign.
+
+No native recomp compile, game, runtime attachment, install or disc export ran. Gameplay and visible movement remain deferred; the full SDK goal stays active.
+
 ## Retail / Current Instruction Inspector — 2026-10-11
 
 ### PC Lookup and Static Branch Navigation

@@ -8,14 +8,14 @@ from urllib.request import urlopen
 from sdk.project import ProjectService,ProjectError
 from importer.core import ImportError
 from sdk.worldmap_authoring import state_key
-from sdk.worldmap_script_operands import options,review,compose,inspection,owner,COMPONENT,LEGACY_COMPONENT,validate,FLAGS
+from sdk.worldmap_script_operands import options,review,compose,inspection,owner,COMPONENT,LEGACY_COMPONENT,validate,FLAGS,patch_world_movement
 from test_project_workflow import synthetic_scene
 from test_effect_color_authoring import END
 from test_model_primitive_workflow import http_server
 
 
 def fixture(project):
-    record=b'\0\0\x4c\x81\1\2\3\4\5\6\7\x34\x0f\1\2\3\4\0\xcc\x07\x50\x1c\0\x31\xe2\x2b\x10\x31\x08\x32\x0a\x51\x02\x71\x02\x02\0'+END
+    record=b'\0\0\x4c\x81\1\2\3\4\5\6\7\x34\x0f\1\2\3\4\0\xcc\x07\x50\x1c\0\x31\xe2\x2b\x10\x31\x08\x32\x0a\x51\x02\x71\x02\x02\0\xa3\x07\x60\x19'+END
     man=bytes(64)+record;script='script://map02/worldmap/man-p0/0000'
     provenance=dict(source_disc_sha256=next(iter(project.imports.values()))['source']['disc_identity'].removeprefix('sha256:'),source_man_sha256=sha256(man).hexdigest())
     carrier=b''.join(bytes([(1<<len(man[i:i+8]))-1])+man[i:i+8] for i in range(0,len(man),8))
@@ -25,6 +25,26 @@ def fixture(project):
 
 
 class WorldAnimationArgumentsTests(TestCase):
+    def test_world_movement_does_not_expand_to_npc_run(self):
+        with self.assertRaisesRegex(ImportError,'MOVE_TO'):
+            patch_world_movement(b'\x4c\x51\x00\x80\xab\x09'+END,0,0,{'x':128,'z':64})
+    def test_movement_grid_review_history_and_graph_composition(self):
+        with tempfile.TemporaryDirectory() as root:
+            p=ProjectService(Path(root));document=synthetic_scene();document['source']['disc_identity']='sha256:'+'a'*64;p.import_metadata(document);script,source=fixture(p);held=deepcopy(p._document())
+            with patch('sdk.worldmap_script_operands.source',return_value=source):
+                target=next(t for t in options(p,script,state_key(p))['targets'] if t['mnemonic']=='MOVE_TO')
+                self.assertEqual(target['pc'],37);self.assertEqual(target['target_context'],7);self.assertEqual(target['retail_values'],{'x':12352,'z':3264})
+                for values in ({'x':0,'z':64},{'x':65,'z':64},{'x':16448,'z':64},{'x':True,'z':64},{'x':64},{'x':64,'z':64,'move_id':1}):
+                    with self.assertRaises((ProjectError,ImportError)):review(p,script,state_key(p),37,values,True)
+                r,binding=review(p,script,state_key(p),37,{'x':64,'z':16384},True);candidate,audit=compose(source[0],source[1],binding)
+                self.assertEqual(candidate,source[0][:103]+b'\0\xff'+source[0][105:]);self.assertEqual({a['scope'] for a in audit},{'world-script-movement-only'})
+                p.command(dict(type='set_world_script_animation_operands',script_id=script,source_key=state_key(p),pc=37,values={'x':64,'z':16384},shared=True,review_key=r['review_key']))
+                snapshot=inspection(p,script,state_key(p));node=next(n for n in snapshot['current_graph']['instructions'] if n['pc']==37)
+                self.assertEqual(node['operands']['target_position'],{'x':64,'y':None,'z':16384});self.assertEqual(node['target_context'],7)
+                p.save();self.assertEqual(ProjectService.open(Path(root))._document(),p._document());p.undo();self.assertEqual(p._document(),held);p.redo()
+                reset,_=review(p,script,state_key(p),37,target['retail_values'],True)
+                p.command(dict(type='set_world_script_animation_operands',script_id=script,source_key=state_key(p),pc=37,values=target['retail_values'],shared=True,review_key=reset['review_key']))
+                self.assertNotIn(owner('map02'),p.overrides)
     def test_current_graph_snapshot_is_read_only_and_source_bound(self):
         with tempfile.TemporaryDirectory() as root:
             p=ProjectService(Path(root));document=synthetic_scene();document['source']['disc_identity']='sha256:'+'a'*64;p.import_metadata(document);script,source=fixture(p)
@@ -56,7 +76,7 @@ class WorldAnimationArgumentsTests(TestCase):
                 self.assertEqual(candidate,source[0][:95]+b'\x5f\xff\x7f\xff'+source[0][99:]);self.assertEqual(candidate[99:101],b'\2\0')
                 self.assertEqual({c['scope'] for c in audit},{'world-script-system-flag-only'})
                 p.save();self.assertEqual(ProjectService.open(Path(root))._document(),p._document())
-                p.undo();p.redo();self.assertEqual(options(p,script,state_key(p))['targets'][-1]['current_values'],{'index':4095})
+                p.undo();p.redo();self.assertEqual(next(t for t in options(p,script,state_key(p))['targets'] if t['pc']==33)['current_values'],{'index':4095})
                 p.undo();p.undo();self.assertEqual(p._document(),held)
 
     def test_masked_flag_bits_and_unsupported_source_targets(self):
@@ -88,15 +108,18 @@ class WorldAnimationArgumentsTests(TestCase):
                 for target,wanted in zip(targets,values):
                     report,_=review(p,script,state_key(p),target['pc'],wanted,True)
                     p.command(dict(type='set_world_script_animation_operands',script_id=script,source_key=state_key(p),pc=target['pc'],values=wanted,shared=True,review_key=report['review_key']))
+                movement=next(t for t in targets if t['mnemonic']=='MOVE_TO');wanted={'x':128,'z':64}
+                report,_=review(p,script,state_key(p),movement['pc'],wanted,True)
+                p.command(dict(type='set_world_script_animation_operands',script_id=script,source_key=state_key(p),pc=movement['pc'],values=wanted,shared=True,review_key=report['review_key']))
                 binding=p.overrides[owner('map02')][COMPONENT];candidate,audit=compose(source[0],source[1],binding)
-                self.assertEqual(candidate,source[0][:73]+b'\1\0'+source[0][75:77]+b'\xff\0\1\0\x80'+source[0][82:85]+b'\xff\xff'+source[0][87:88]+b'\xe3'+source[0][89:95]+b'\x5f\xff'+source[0][97:])
-                self.assertEqual({c['scope'] for c in audit},{'world-script-animation-operands-only','world-script-effect-color-operands-only','world-script-model-selector-only','world-script-flag-bit-only','world-script-system-flag-only'})
+                self.assertEqual(candidate,source[0][:73]+b'\1\0'+source[0][75:77]+b'\xff\0\1\0\x80'+source[0][82:85]+b'\xff\xff'+source[0][87:88]+b'\xe3'+source[0][89:95]+b'\x5f\xff'+source[0][97:103]+b'\x80\0'+source[0][105:])
+                self.assertEqual({c['scope'] for c in audit},{'world-script-animation-operands-only','world-script-effect-color-operands-only','world-script-model-selector-only','world-script-flag-bit-only','world-script-system-flag-only','world-script-movement-only'})
                 with self.assertRaises(ProjectError):validate(p,owner('map02'),binding,LEGACY_COMPONENT)
                 for bad in (True,-32769,32768):
                     with self.assertRaises((ProjectError,ImportError)):review(p,script,state_key(p),targets[2]['pc'],dict(model_selector_signed=bad),True)
                 p.save();self.assertEqual(ProjectService.open(Path(root))._document(),p._document())
                 p.undo();p.redo();self.assertEqual(options(p,script,state_key(p))['targets'][2]['current_values'],values[2])
-                for _ in range(5):p.undo()
+                for _ in range(6):p.undo()
                 self.assertEqual(p._document(),held)
 
     def test_color_coauthor_legacy_migration_and_undo(self):

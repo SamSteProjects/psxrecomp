@@ -12,6 +12,7 @@ from importer.effect_color_authoring import validate_effect_color_values, patch_
 from importer.model_selector_authoring import validate_model_selector_values, patch_model_selector_target
 from importer.flag_authoring import validate_flag_values, patch_flag_bit
 from importer.system_flag_authoring import validate_system_flag_values, patch_system_flag_selector
+from importer.movement_authoring import validate_movement_values, patch_movement_target
 from importer.core import ImportError
 from importer.script_inspection import inspect_record
 from importer.script_operand_composition import compose_script_operands
@@ -26,6 +27,19 @@ COLOR='EFFECT_COLOR_INTENSITY'
 MODEL='SET_ACTOR_MODEL'
 FLAGS=tuple(f'{bank}_{operation}' for bank in ('LFLAG','GFLAG','CFLAG') for operation in ('SET','CLEAR','TEST'))
 SYSTEM_FLAGS=('SYSFLAG_SET','SYSFLAG_CLEAR','SYSFLAG_TEST')
+MOVEMENT='MOVE_TO'
+
+def validate_world_movement(values):
+    if not isinstance(values,dict) or set(values)!={'x','z'} or any(type(v) is not int for v in values.values()):
+        raise ImportError('World MOVE_TO requires integer source-grid X and Z arguments')
+    return validate_movement_values(values)
+
+def patch_world_movement(record,entry,pc,values,*,base_offset=0):
+    validate_world_movement(values)
+    if next((n['mnemonic'] for n in inspect_record(record,entry)['instructions'] if n['pc']==pc),None)!=MOVEMENT:
+        raise ImportError('World movement authoring requires a reached MOVE_TO instruction')
+    candidate,changes=patch_movement_target(record,entry,pc,values,base_offset=base_offset)
+    return candidate,[dict(change,byte_length=1,before_hex=bytes([change['before_byte']]).hex(),after_hex=bytes([change['after_byte']]).hex()) for change in changes]
 def patch_world_flag(record,entry,pc,values,*,base_offset=0):
     candidate,changes=patch_flag_bit(record,entry,pc,values,base_offset=base_offset)
     return candidate,[dict(change,byte_length=1,before_hex=bytes([change['before_byte']]).hex(),after_hex=bytes([change['after_byte']]).hex()) for change in changes]
@@ -35,6 +49,7 @@ ARGUMENTS[COLOR]=dict(fields=('red','green','blue','intensity'),writer=patch_eff
 ARGUMENTS[MODEL]=dict(fields=('model_selector_signed',),writer=patch_model_selector_target,validator=validate_model_selector_values,scope='world-script-model-selector-only')
 for mnemonic in FLAGS:ARGUMENTS[mnemonic]=dict(fields=('bit',),writer=patch_world_flag,validator=validate_flag_values,scope='world-script-flag-bit-only')
 for mnemonic in SYSTEM_FLAGS:ARGUMENTS[mnemonic]=dict(fields=('index',),writer=patch_system_flag_selector,validator=validate_system_flag_values,scope='world-script-system-flag-only')
+ARGUMENTS[MOVEMENT]=dict(fields=('x','z'),writer=patch_world_movement,validator=validate_world_movement,scope='world-script-movement-only')
 def mnemonic_for(values):
     return next((m for m,spec in ARGUMENTS.items() if isinstance(values,dict) and set(values)==set(spec['fields'])),None)
 def validate_values(mnemonic,values):
@@ -52,6 +67,7 @@ LIMITATIONS=[
     'Encoded system selector range0..4095 does not establish native bank capacity or valid runtime addressing.',
     'RGB are encoded bytes and intensity is signed16; visual color space and rendering remain unverified.',
     'Encoded model/effect IDs are arguments, not resolved model or animation asset references.',
+    'MOVE_TO X/Z are source-grid arguments, exactly representable multiples of64 from64 to16384; World actor binding, Y, collision and live destination coordinates remain unverified.',
     'Signed model selectors do not establish model-pool ownership, restaging or visible models.',
     'Operation, dispatch context, record length, header, branch topology and unrelated MAN bytes remain fixed; only system-selector opcode low bits are authored.',
     'All source objects sharing a script record receive the same authored operands; shared consent is required.',
@@ -142,7 +158,9 @@ def _options(project,script,key,inputs):
     if not graph['stops']:
         for node in graph['instructions']:
             if node['mnemonic'] not in ARGUMENTS:continue
-            values=dict(zip(('red','green','blue'),node['operands']['rgb']),intensity=node['operands']['intensity']) if node['mnemonic']==COLOR else {k:node['operands'][k] for k in ARGUMENTS[node['mnemonic']]['fields']}
+            if node['mnemonic']==COLOR:values=dict(zip(('red','green','blue'),node['operands']['rgb']),intensity=node['operands']['intensity'])
+            elif node['mnemonic']==MOVEMENT:values={k:node['operands']['target_position'][k] for k in ('x','z')}
+            else:values={k:node['operands'][k] for k in ARGUMENTS[node['mnemonic']]['fields']}
             try:writer_for(values)(record,row['entry_pc'],node['pc'],values)
             except ImportError:
                 if node['mnemonic'] in FLAGS or node['mnemonic'] in SYSTEM_FLAGS:continue
