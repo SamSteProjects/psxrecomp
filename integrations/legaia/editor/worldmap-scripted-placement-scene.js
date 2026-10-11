@@ -1,3 +1,4 @@
+import {qualifyScriptedRemovalReview} from './worldmap-scripted-removal-state.js';
 import {qualifyScriptedRelocationReview} from './worldmap-scripted-relocation-state.js';
 import {qualifyCurrentWorldMan} from './worldmap-current-man.js';
 import {qualifyCurrentWorldMap} from './worldmap-current-map.js';
@@ -88,6 +89,10 @@ export async function qualifyProposedScriptedWorldScene(retail,proposed,review,c
   const view=await qualifyScriptedWorldScene(retail,normalized,{...options,mapWitness,overrides});
   return {...view,entities:view.entities.map(e=>({...e,preview_layer:'Proposed authored seeds'}))};
 }
+export async function qualifyProposedScriptedRemovalScene(retail,proposed,review,qualified,options){
+  await qualifyScriptedRemovalReview(review,qualified,review.placement_id,review.cascade);
+  return proposedSavedScene(retail,proposed,review,qualified,options);
+}
 export async function qualifyProposedScriptedRelocationScene(retail,proposed,review,qualified,options){
   await qualifyScriptedRelocationReview(review,qualified,review.placement_id,review.target_cell);
   return proposedSavedScene(retail,proposed,review,qualified,options);
@@ -102,6 +107,7 @@ async function proposedSavedScene(retail,proposed,review,qualified,options){
   const mapWitness=structuredClone(qualified.mapWitness),overrides=structuredClone(options.overrides);
   mapWitness.current_map_base64=review.proposed_map_base64;mapWitness.current_map_sha256=review.proposed_map_sha256;mapWitness.scripted_binding=structuredClone(review.binding);
   overrides[`worldmap://${retail.scene}/scripted-placement-allocations`]={WorldMapScriptedPlacementAllocations:structuredClone(review.binding)};
+  if(review.binding===null){mapWitness.retained_base_map_base64=null;delete overrides[`worldmap://${retail.scene}/scripted-placement-allocations`];}
   const view=await qualifyScriptedWorldScene(retail,normalized,{...options,mapWitness,overrides});
   return {...view,entities:view.entities.map(e=>({...e,preview_layer:'Proposed authored seeds'}))};
 }
