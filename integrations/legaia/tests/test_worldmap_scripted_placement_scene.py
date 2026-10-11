@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 import tempfile
+from urllib.request import urlopen
 from importer.worldmap_placements import decode_worldmap_placements
 from sdk.project import ProjectService,ProjectError
 from sdk.worldmap_authoring import state_key
@@ -44,7 +45,9 @@ class ScriptedSceneTests(TestCase):
                 self.assertEqual(high['ground_layer'],'retail')
                 original_entity=next(e for e in high['scene_graph']['entities'] if e.get('retail_seed'))
                 self.assertEqual(original_entity['source_position']['y'],original_entity['retail_seed']['source_position']['y']-20)
-                with http_server(p) as (_,post):
+                with http_server(p) as (server,post):
+                    with urlopen(f'http://127.0.0.1:{server.server_port}/worldmap-scripted-placement-replay.js') as response:
+                        self.assertIn(b'export async function replayScriptedWorldPlacements',response.read())
                     status,actual=post('/api/worldmap-scripted-placement-scene',dict(scene='map01',source_key=key))
                     self.assertEqual(status,200,actual);self.assertEqual(actual,result)
                     self.assertEqual(post('/api/worldmap-scripted-placement-scene',dict(scene='map01',source_key=key,extra=True))[0],400)
