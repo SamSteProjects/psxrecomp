@@ -1,4 +1,5 @@
 """Editor property contracts; authoring validation still belongs to ProjectService."""
+from copy import deepcopy
 
 def inspector_schema():
     schema = {'schema_version':'legaia.inspector-schema.v1','components':{
@@ -526,6 +527,12 @@ def inspector_schema():
         'details':[{'label':'Native allocation provenance','path':['authored_placement']}],
     }
     schema['authored_asset_inspectors']['world_placements']='AssetWorldPlacements'
+    schema['components']['WorldAuthoredScriptedPlacement']=deepcopy(schema['components']['WorldAuthoredPlacement'])
+    scripted=schema['components']['WorldAuthoredScriptedPlacement']
+    scripted['label']='Authored World scripted placement'
+    scripted['actions']=[scripted['actions'][0]]
+    scripted['notes']=['This authored placement has no Retail instance transform. Native coordinates use Y-down; viewport Y reflection is separate.',
+        'The retained placement shares its donor script. Runtime activation, script effects and resting positions remain unverified.']
     schema['components']['AssetWorldPlacements']={
         'label':'World placement overrides','layout':'read-only-properties',
         'properties':[
