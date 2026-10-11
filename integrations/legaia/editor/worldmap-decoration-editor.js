@@ -1,4 +1,4 @@
-import {worldDecorationGroupBoxSelection,worldDecorationGroupSelection,qualifyWorldDecorationSource, qualifyWorldDecorationReview, worldDecorationDraft,
+import {worldDecorationNativePosition,worldDecorationValuesAtPosition,worldDecorationGroupBoxSelection,worldDecorationGroupSelection,qualifyWorldDecorationSource, qualifyWorldDecorationReview, worldDecorationDraft,
   worldDecorationDonorValues,qualifyWorldDecorationTransformReview,qualifyWorldDecorationRemovalReview,qualifyWorldDecorationCellReview,qualifyWorldDecorationModelReview,qualifyWorldDecorationGroupReview,transformWorldDecorationGroup} from './worldmap-decoration-state.js';
 import {validValues} from './worldmap-placement-state.js';
 import {mountAuthoredWorldSelectionSets} from './worldmap-authored-selection-sets.js';
@@ -35,9 +35,12 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   yaw.type = 'number'; yaw.min = '0'; yaw.max = '4095'; yaw.step = '1'; addField('World decoration yaw units', yaw);
   const move=node('input');move.type='checkbox';move.id='world-decoration-translate';const moveLabel=node('label','Translate selected decoration ');moveLabel.append(move);const snap=node('select');snap.setAttribute('aria-label','Decoration translation snap');for(const step of [1,16,64,128]){const option=node('option',step+' source units');option.value=String(step);snap.append(option);}
   const rotate=node('input');rotate.type='checkbox';rotate.id='world-decoration-rotate';const rotateLabel=node('label','Rotate selected decoration yaw ');rotateLabel.append(rotate);const yawSnap=node('select');yawSnap.setAttribute('aria-label','Decoration yaw snap');for(const step of [1,16,64,256,512,1024]){const option=node('option',`${step} yaw units (${step*360/4096}°)`);option.value=String(step);yawSnap.append(option);}
+  const nativeFields=node('div'),nativePosition={},nativeUse=node('button','Use native world position');nativeUse.type='button';
+  Object.assign(nativeFields.style,{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:'8px'});
+  for(const axis of ['x','y','z']){const input=node('input');input.type='number';input.step='1';input.setAttribute('aria-label','Decoration native world '+axis.toUpperCase());Object.assign(input.style,{display:'block',width:'100%',boxSizing:'border-box'});const label=node('label','Native world '+axis.toUpperCase());label.append(input);nativeFields.append(label);nativePosition[axis]=input;}
   const evidence = node('pre'); evidence.className = 'diagnostic-detail';
   Object.assign(evidence.style, {whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxHeight: '220px', overflow: 'auto'});
-  panel.append(summary, node('p', 'Create a walk decoration from a drawable Current donor, or edit the selected retained decoration’s signed offsets and yaw. Transform edits retain the same cell. Move Cell preserves UUID, record, model and encoded offsets while changing native position from the destination row, column and floor height. Review and preview leave the project unchanged. Apply uses shared Undo/Redo.'), fields,moveLabel,snap,rotateLabel,yawSnap,node('p','Choose Edit selected decoration, then translate with X/Y/Z handles or rotate with the yaw ring. This is an unreviewed display draft. Native Review and Proposed preview are required before Apply. Y and Z follow native offset directions, with one reflection into editor space. Cell moves and model assignments require unchanged offset/yaw fields; Apply those edits or restore Current offset/yaw values first. Model assignment preserves cell, record, XYZ/yaw and child models. Saved views bound to an old cell or model must be recreated.'), actions, status, evidence); host.append(panel);
+  panel.append(summary, node('p', 'Create a walk decoration from a drawable Current donor, or edit the selected retained decoration’s signed offsets and yaw. Transform edits retain the same cell. Move Cell preserves UUID, record, model and encoded offsets while changing native position from the destination row, column and floor height. Review and preview leave the project unchanged. Apply uses shared Undo/Redo.'), fields,moveLabel,snap,rotateLabel,yawSnap,node('p','Choose Edit selected decoration, then translate with X/Y/Z handles or rotate with the yaw ring. This is an unreviewed display draft. Native Review and Proposed preview are required before Apply. Y and Z follow native offset directions, with one reflection into editor space. Cell moves and model assignments require unchanged offset/yaw fields; Apply those edits or restore Current offset/yaw values first. Model assignment preserves cell, record, XYZ/yaw and child models. Saved views bound to an old cell or model must be recreated.'), nativeFields,nativeUse,node('p','Native world XYZ uses the game source axes, before the editor Y reflection. Choose Edit selected decoration to load its coordinates. Use native world position converts these fields into the offset draft above; the cell stays fixed. Review and Preview are required before Apply.'),actions, status, evidence); host.append(panel);
   fields.before(node('p','Removal Review restores the selected record and cell, lists donor reassignments and checks that surviving decorations stay unchanged. Preview the removal before Apply.'));
   panel.append(group);
   let source = null, held = null, review = null, placementId = null, editing = false,displayed = false, controller = null, pendingKind = null, generation = 0,savedGroups=null;
@@ -75,7 +78,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     onTransformDraft(null);onGroupTransformDraft(null);review = null; if (displayed) { displayed = false; onDiscard(); }
     evidence.textContent = ''; update();
   }
-  function change() { groupMove.checked=groupRotate.checked=false;withdrawReview();const draft=transformDraft();if(draft)onTransformDraft(draft);status.textContent = sourceReady() ? 'Draft changed. Review the current donor, target, offsets and yaw again.' : 'Inspect Current decoration donors first.'; }
+  function change() { syncNativePosition();groupMove.checked=groupRotate.checked=false;withdrawReview();const draft=transformDraft();if(draft)onTransformDraft(draft);status.textContent = sourceReady() ? 'Draft changed. Review the current donor, target, offsets and yaw again.' : 'Inspect Current decoration donors first.'; }
   function transformDraft(){
     if(!editing||!sourceReady()||getContext()?.selectedId!==held.selectedId||displayed||review||!validValues(fieldValues()))return null;
     const base=worldDecorationDonorValues(source,Number(donor.value)),values=fieldValues();
@@ -85,6 +88,14 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     if(!validValues(values)||(restoring?(!editing||!sourceReady()||pendingKind==='apply'):(pendingKind||busy()||!transformDraft())))return false;
     for(const axis of ['x','y','z'])offsets[axis].value=String(values.offset[axis]);yaw.value=String(values.yaw_units);change();return true;
   }
+  function syncNativePosition(){
+    let position=null;try{if(editing&&sourceReady())position=worldDecorationNativePosition(source,placementId,fieldValues());}catch{}
+    let limits=null;try{if(position){const yaw=fieldValues().yaw_units;limits=[-32768,32767].map(n=>worldDecorationNativePosition(source,placementId,{offset:{x:n,y:n,z:n},yaw_units:yaw}));}}catch{}
+    for(const axis of ['x','y','z']){const input=nativePosition[axis];input.value=position?String(position[axis]):'';if(limits){input.min=String(Math.min(...limits.map(p=>p[axis])));input.max=String(Math.max(...limits.map(p=>p[axis])));}else{input.removeAttribute('min');input.removeAttribute('max');}}
+  }
+  function nativePositionValues(){return worldDecorationValuesAtPosition(source,placementId,Object.fromEntries(['x','y','z'].map(a=>[a,nativePosition[a].value===''?NaN:Number(nativePosition[a].value)])),fieldValues().yaw_units);}
+  for(const input of Object.values(nativePosition))input.oninput=()=>{try{nativePositionValues();status.textContent='Native position fields are staged. Use native world position to update the offset draft.';}catch(error){status.textContent=error.message;}update();};
+  nativeUse.onclick=()=>{if(nativeUse.disabled)return;try{const values=nativePositionValues();if(!setTransformDraft(values))throw Error('Native position draft is stale. Inspect the selected Current decoration again.');status.textContent='Native world position converted to an offset draft. Review and Preview before Apply.';}catch(error){status.textContent=error.message;onError(error);}};
   function singleMode(control){const enabled=control.checked;groupMove.checked=groupRotate.checked=false;onGroupTransformDraft(null);move.checked=control===move&&enabled;rotate.checked=control===rotate&&enabled;onGroupTransformDraft(null);onTransformDraft(transformDraft());update();}
   move.onchange=()=>singleMode(move);rotate.onchange=()=>singleMode(rotate);snap.onchange=yawSnap.onchange=()=>{onTransformDraft(transformDraft());update();};
   function donorValues() {
@@ -103,7 +114,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   model.onchange=change;
   function cancel() {
     move.checked=rotate.checked=groupMove.checked=groupRotate.checked=false;generation++; controller?.abort(); source = held = review = placementId = null; displayed = editing = false;onTransformDraft(null);onGroupTransformDraft(null);
-    savedGroups?.cancel();
+    syncNativePosition();savedGroups?.cancel();
     donor.replaceChildren();model.replaceChildren();groupList.replaceChildren(); evidence.textContent = ''; status.textContent = 'Switch to a qualified Current scene and inspect decoration donors.';
     if (pendingKind !== 'apply') { controller = null; if (pendingKind) setBusy(false); pendingKind = null; }
     update();
@@ -123,6 +134,9 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     editSelected.disabled=locked||!available||!getContext()?.current.scene_graph.entities.some(e=>e.entity_id===getContext().selectedId&&e.placement_scope==='authored_spawn_seed');
     for (const field of [donor, target, yaw, ...Object.values(offsets)]) field.disabled = locked || !sourceReady();
     if(editing){donor.disabled=true;target.disabled=true;}
+    const nativeAvailable=!locked&&!!transformDraft();for(const input of Object.values(nativePosition))input.disabled=!nativeAvailable;
+    let nativeValid=false;try{nativeValid=nativeAvailable&&JSON.stringify(nativePositionValues())!==JSON.stringify(fieldValues());}catch{}
+    nativeUse.disabled=!nativeValid;
     destination.disabled=locked||!editing||!sourceReady();
     model.disabled=destination.disabled;
     let validDraft = false; if (sourceReady()) { try { draft(); validDraft = true; } catch {} }

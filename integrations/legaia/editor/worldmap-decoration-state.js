@@ -299,3 +299,25 @@ export function worldDecorationGroupBoxSelection(source,ids,entities,extend=fals
   for(const entity of entities)result=worldDecorationGroupSelection(source,result,entity,'add');
   return result.sort();
 }
+
+function decorationPositionOrigin(source,placementId){
+  const rows=source?.metadata?.authored_allocations?.filter(r=>r.placement_id===placementId),floor=source?.metadata?.floor_lut;
+  if(rows?.length!==1||!(source.bytes instanceof Uint8Array)||source.bytes.length!==0x12000||!Array.isArray(floor)||floor.length!==16||floor.some(n=>!Number.isInteger(n)||n< -32768||n>32767))fail('Native position requires one qualified retained decoration and its complete floor source.');
+  const row=rows[0],cell=row.target_cell,record=row.record_index;
+  if(!Number.isInteger(cell)||cell<0||cell>16383||!Number.isInteger(record)||record<4||record>511)fail('Native position owner is outside the MAP cell or record domain.');
+  const view=new DataView(source.bytes.buffer,source.bytes.byteOffset,source.bytes.byteLength),origin={x:(cell%128)*128+64,y:-floor[source.bytes[0x4000+cell]&15],z:Math.floor(cell/128)*128+64};
+  const current={x:origin.x+view.getInt16(record*32,true),y:origin.y+view.getInt16(record*32+2,true),z:origin.z-view.getInt16(record*32+4,true)};
+  if((view.getUint16(0x8000+cell*2,true)&511)!==record||row.native_seed?.source_cell!==cell||row.native_seed?.object_record_index!==record||!same(current,row.native_seed?.source_position))fail('Native position differs from the retained Current cell, record or floor.');
+  return origin;
+}
+export function worldDecorationNativePosition(source,placementId,values){
+  if(!validValues(values))fail('Native position requires signed16 offsets and native yaw.');
+  const origin=decorationPositionOrigin(source,placementId);
+  return {x:origin.x+values.offset.x,y:origin.y+values.offset.y,z:origin.z-values.offset.z};
+}
+export function worldDecorationValuesAtPosition(source,placementId,position,yaw){
+  if(!exact(position,['x','y','z'])||Object.values(position).some(n=>!Number.isSafeInteger(n)))fail('Enter complete integer native world XYZ coordinates.');
+  const origin=decorationPositionOrigin(source,placementId),values={offset:{x:position.x-origin.x,y:position.y-origin.y,z:origin.z-position.z},yaw_units:yaw};
+  if(!validValues(values))fail('Native position exceeds the retained cell’s signed16 offset range. Move Cell is a separate reviewed edit.');
+  return values;
+}
