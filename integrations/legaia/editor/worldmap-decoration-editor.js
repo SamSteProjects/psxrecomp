@@ -1,4 +1,4 @@
-import {worldDecorationGroupSelection,qualifyWorldDecorationSource, qualifyWorldDecorationReview, worldDecorationDraft,
+import {worldDecorationGroupBoxSelection,worldDecorationGroupSelection,qualifyWorldDecorationSource, qualifyWorldDecorationReview, worldDecorationDraft,
   worldDecorationDonorValues,qualifyWorldDecorationTransformReview,qualifyWorldDecorationRemovalReview,qualifyWorldDecorationCellReview,qualifyWorldDecorationModelReview,qualifyWorldDecorationGroupReview,transformWorldDecorationGroup} from './worldmap-decoration-state.js';
 import {validValues} from './worldmap-placement-state.js';
 import {mountAuthoredWorldSelectionSets} from './worldmap-authored-selection-sets.js';
@@ -279,6 +279,13 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     const available=[...groupList.querySelectorAll('input')];if(!sourceReady()||ids.some(id=>!available.some(i=>i.value===id)))throw Error('Saved group is unavailable in this Current source.');
     groupMove.checked=groupRotate.checked=false;onGroupTransformDraft(null);for(const input of available)input.checked=ids.includes(input.value);for(const input of Object.values(groupDelta))input.value='0';move.checked=rotate.checked=false;groupChanged();
   }});
+  async function pickGroupEntities(entities,extend,valid=()=>true){
+    const context=getContext();if(!context||busy()||pendingKind||displayed||!valid())return null;
+    if(!sourceReady()&&await inspectDonors(false)!==true)return null;
+    if(!contextMatches(context)||!sourceReady()||busy()||pendingKind||displayed||!valid())return null;
+    try{const ids=worldDecorationGroupBoxSelection(source,groupIds(),entities,extend);if(JSON.stringify(ids)!==JSON.stringify(groupIds())){for(const input of groupList.querySelectorAll('input'))input.checked=ids.includes(input.value);panel.open=group.open=true;groupChanged();}status.textContent=`${ids.length} authored decorations selected from visible mesh pixels; native project unchanged.`;return ids;}
+    catch(error){status.textContent=error.message;onError(error);return null;}
+  }
   async function pickGroupEntity(entity,mode){
     const context=getContext();if(!context||busy()||pendingKind||displayed)return false;
     if(!sourceReady()&&await inspectDonors(false)!==true)return false;
@@ -286,7 +293,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     try{const ids=worldDecorationGroupSelection(source,groupIds(),entity,mode);if(JSON.stringify(ids)===JSON.stringify(groupIds()))return true;for(const input of groupList.querySelectorAll('input'))input.checked=ids.includes(input.value);panel.open=group.open=true;groupChanged();status.textContent=`${ids.length} authored decorations selected from the viewport; native project unchanged.`;return true;}
     catch(error){status.textContent=error.message;onError(error);return false;}
   }
-  update(); return {update,cancel,panel,pickGroupEntity,getGroupIds:()=>sourceReady()&&groupIds().length<=32?groupIds():[],getGroupTransformDraft:groupTransformDraft,setGroupTransformDraft,getTransformDraft:()=>!pendingKind&&!busy()?transformDraft():null,setTransformDraft,editSelected:()=>{update();panel.open=true;return inspectDonors(true);},reviewRemoval:async()=>{
+  update(); return {update,cancel,panel,pickGroupEntity,pickGroupEntities,getGroupIds:()=>sourceReady()&&groupIds().length<=32?groupIds():[],getGroupTransformDraft:groupTransformDraft,setGroupTransformDraft,getTransformDraft:()=>!pendingKind&&!busy()?transformDraft():null,setTransformDraft,editSelected:()=>{update();panel.open=true;return inspectDonors(true);},reviewRemoval:async()=>{
     update();panel.open=true;const selectedId=getContext()?.selectedId;
     if(await inspectDonors(true)!==true||held?.selectedId!==selectedId||getContext()?.selectedId!==selectedId)return;
     return removeReview.onclick();

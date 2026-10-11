@@ -285,8 +285,17 @@ export function worldDecorationGroupSelection(source,ids,entity,mode='toggle'){
   const rows=source?.metadata?.authored_allocations;
   if(!Array.isArray(rows)||!Array.isArray(ids)||ids.length>32||new Set(ids).size!==ids.length||!['toggle','add'].includes(mode)||entity?.placement_scope!=='authored_spawn_seed')throw Error('Viewport groups require retained Current decorations and up to 32 unique members.');
   const id=entity.authored_placement?.placement_id,owned=rows.filter(r=>r.placement_id===id);
-  if(owned.length!==1||entity.entity_id!==`scene://${source.metadata.scene}/worldmap/authored-placements/${id?.split('/').pop()}`||owned[0].record_index!==entity.authored_placement.record_index||owned[0].target_cell!==entity.authored_placement.target_cell||ids.some(member=>rows.filter(r=>r.placement_id===member).length!==1))throw Error('Viewport decoration membership does not match the qualified Current source.');
+  if(owned.length!==1||entity.entity_id!==`scene://${source.metadata.scene}/worldmap/authored-placements/${id?.split('/').pop()}`||owned[0].record_index!==entity.authored_placement.record_index||owned[0].target_cell!==entity.authored_placement.target_cell||Array.from(ids).some(member=>rows.filter(r=>r.placement_id===member).length!==1))throw Error('Viewport decoration membership does not match the qualified Current source.');
   const result=new Set(ids);if(mode==='toggle'&&result.has(id))result.delete(id);else result.add(id);
   if(result.size>32)throw Error('A decoration group supports at most 32 members; selection was unchanged.');
   return [...result].sort();
+}
+
+export function worldDecorationGroupBoxSelection(source,ids,entities,extend=false){
+  if(!Array.isArray(source?.metadata?.authored_allocations)||!Array.isArray(entities)||entities.length>512||typeof extend!=='boolean')throw Error('Invalid bounded decoration box selection.');
+  // Validate existing members even when replacing or clearing the selection.
+  if(!Array.isArray(ids)||ids.length>32||new Set(ids).size!==ids.length||Array.from(ids).some(id=>source?.metadata?.authored_allocations?.filter(r=>r.placement_id===id).length!==1))throw Error('Existing decoration group is not qualified.');
+  let result=extend?[...ids]:[];
+  for(const entity of entities)result=worldDecorationGroupSelection(source,result,entity,'add');
+  return result.sort();
 }
