@@ -1452,7 +1452,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route == '/api/worldmap-scripted-placement-scene':
                     if set(body) not in ({'scene','source_key'},{'scene','source_key','scripted_proposal'}):
                         raise ProjectError('Scripted World scene requires exact scene and source key')
-                    if 'scripted_proposal' in body and (not isinstance(body['scripted_proposal'],dict) or set(body['scripted_proposal']) not in ({'requests','review_key'},{'placement_id','values','review_key'},{'placement_id','target_cell','review_key'},{'placement_id','cascade','review_key'},{'entries','review_key'},{'placement_ids','model_pool_index','review_key'})):
+                    if 'scripted_proposal' in body and (not isinstance(body['scripted_proposal'],dict) or set(body['scripted_proposal']) not in ({'requests','review_key'},{'placement_id','values','review_key'},{'placement_id','target_cell','review_key'},{'placement_id','cascade','review_key'},{'entries','review_key'},{'placement_ids','model_pool_index','review_key'},{'placement_ids','cascade','review_key'})):
                         raise ProjectError('Scripted scene proposal requires exact reviewed creation, transform, model assignment, group transform, relocation or removal')
                     from .worldmap_scripted_placement_scene import inspect
                     self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body.get('scripted_proposal')))
@@ -1729,8 +1729,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200, export(self.server.project, body['scene'], body['source_key'],
                                            body['scope'], body.get('entity_id')))
                     return
+                if route == '/api/worldmap-scripted-group-removal-review':
+                    if set(body)!={'scene','source_key','placement_ids','cascade'} or not isinstance(body['placement_ids'],list):raise ProjectError('Scripted group removal Review requires exact source, UUIDs and cascade scope')
+                    from .worldmap_scripted_placement_remove import review
+                    self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_ids'],body['cascade']))
+                    return
                 if route == '/api/worldmap-scripted-removal-review':
-                    if set(body)!={'scene','source_key','placement_id','cascade'}:raise ProjectError('Scripted removal Review requires exact source, UUID and cascade scope')
+                    if set(body)!={'scene','source_key','placement_id','cascade'} or not isinstance(body['placement_id'],str):raise ProjectError('Scripted removal Review requires exact source, UUID and cascade scope')
                     from .worldmap_scripted_placement_remove import review
                     self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_id'],body['cascade']))
                     return

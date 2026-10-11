@@ -4,20 +4,21 @@ import {nativeWorldPlacementMatches} from './worldmap-current-placements.js';
 const fail=()=>{throw Error('Scripted removal Review differs from native replay, donor scope or selected ownership.');};
 const bytes=v=>Uint8Array.from(atob(v),c=>c.charCodeAt(0));
 export function scriptedRemovalIds(binding,placementId){
+ const ids=Array.isArray(placementId)?placementId:[placementId];if(!ids.length||ids.length>32||ids.some(i=>typeof i!=='string')||new Set(ids).size!==ids.length||ids.some((id,i)=>i&&ids[i-1]>=id))fail();
  const prior=new Map(),children=new Map(),ordered=[];
  if(!Array.isArray(binding?.operations)||!binding.operations.length||binding.operations.length>32)fail();
  for(const operation of binding.operations){
   for(const request of operation.requests){const id=request.placement_id;ordered.push(id);const donor=prior.get(request.donor_cell);if(donor!==undefined){if(!children.has(donor))children.set(donor,[]);children.get(donor).push(id);}}
   for(const request of operation.requests)prior.set(request.target_cell,request.placement_id);
  }
- if(!ordered.includes(placementId))fail();
- const removed=new Set([placementId]),queue=[placementId];while(queue.length)for(const id of children.get(queue.pop())??[])if(!removed.has(id)){removed.add(id);queue.push(id);}
+ if(ids.some(id=>!ordered.includes(id)))fail();
+ const removed=new Set(ids),queue=ids.slice();while(queue.length)for(const id of children.get(queue.pop())??[])if(!removed.has(id)){removed.add(id);queue.push(id);}
  return ordered.filter(id=>removed.has(id));
 }
 export async function qualifyScriptedRemovalReview(value,qualified,placementId,cascade){
- const {source,man,map}=qualified;
- if(typeof cascade!=='boolean'||!source.binding||value?.schema_version!=='legaia.worldmap-scripted-removal-review.v1'||typeof value.review_key!=='string'||!/^[0-9a-f]{64}$/.test(value.review_key))fail();
- const removed=scriptedRemovalIds(source.binding,placementId),removedSet=new Set(removed);if(removed.length>1&&!cascade)fail();
+ const {source,man,map}=qualified,grouped=Array.isArray(placementId),ids=grouped?placementId:[placementId];
+ if(typeof cascade!=='boolean'||!source.binding||value?.schema_version!==(grouped?'legaia.worldmap-scripted-removal-review.v2':'legaia.worldmap-scripted-removal-review.v1')||typeof value.review_key!=='string'||!/^[0-9a-f]{64}$/.test(value.review_key))fail();
+ const removed=scriptedRemovalIds(source.binding,placementId),removedSet=new Set(removed);if(removed.some(id=>!ids.includes(id))&&!cascade)fail();
  let binding=structuredClone(source.binding);binding.operations=binding.operations.map(o=>({...o,requests:o.requests.filter(r=>!removedSet.has(r.placement_id))})).filter(o=>o.requests.length);
  const base=bytes(source.retained_base_map_base64),fallback=bytes(source.fallback_base64),oldAudits=[],audits=[];
  let oldCanonical=base,canonical=base;
@@ -36,6 +37,6 @@ export async function qualifyScriptedRemovalReview(value,qualified,placementId,c
  const original=await decodeWorldPlacementSeeds(map.current,man.floor,source.scene),decoded=await decodeWorldPlacementSeeds(candidate,man.floor,source.scene),seeds=new Map(decoded.placements.map(s=>[s.source_cell,s])),removedCells=new Set(deleted.map(a=>a.target_cell)),remaining=original.placements.filter(s=>!removedCells.has(s.source_cell));
  if(seeds.size!==remaining.length||!nativeWorldPlacementMatches(decoded.unresolved,original.unresolved)||remaining.some(s=>!nativeWorldPlacementMatches(seeds.get(s.source_cell),s)))fail();
  const allocations=audits.flatMap(a=>a.allocations).map(a=>({...a,native_seed:structuredClone(seeds.get(a.target_cell))}));
- const expected={schema_version:'legaia.worldmap-scripted-removal-review.v1',project_path:source.project_path,scene:source.scene,source_key:source.source_key,source_record:source.source_record,placement_id:placementId,cascade,current_map_sha256:source.current_map_sha256,current_man_sha256:source.current_man_sha256,proposed_map_sha256:await placementDigest(candidate),proposed_map_base64:value.proposed_map_base64,before_binding:source.binding,binding,audit:{removed_placement_ids:removed,removed_placements:deleted,authored_scripted_placements:allocations,scope:'authored-scripted-removal-only',changed_bytes:[...candidate].flatMap((n,i)=>n===map.current[i]?[]:[{byte_offset:i,before_byte:map.current[i],after_byte:n}]),gameplay_verified:false},read_only:true,project_changed:false,gameplay_verified:false,build_ready:false,review_key:value.review_key};
+ const expected={schema_version:grouped?'legaia.worldmap-scripted-removal-review.v2':'legaia.worldmap-scripted-removal-review.v1',project_path:source.project_path,scene:source.scene,source_key:source.source_key,source_record:source.source_record,...(grouped?{placement_ids:placementId}:{placement_id:placementId}),cascade,current_map_sha256:source.current_map_sha256,current_man_sha256:source.current_man_sha256,proposed_map_sha256:await placementDigest(candidate),proposed_map_base64:value.proposed_map_base64,before_binding:source.binding,binding,audit:{removed_placement_ids:removed,removed_placements:deleted,authored_scripted_placements:allocations,scope:grouped?'authored-scripted-group-removal-only':'authored-scripted-removal-only',changed_bytes:[...candidate].flatMap((n,i)=>n===map.current[i]?[]:[{byte_offset:i,before_byte:map.current[i],after_byte:n}]),gameplay_verified:false},read_only:true,project_changed:false,gameplay_verified:false,build_ready:false,review_key:value.review_key};
  if(!nativeWorldPlacementMatches(value,expected))fail();return structuredClone(value);
 }

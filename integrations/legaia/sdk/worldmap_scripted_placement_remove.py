@@ -13,6 +13,9 @@ from .worldmap_scripted_placement_binding import COMPONENT,owner,read_base,valid
 
 def removal_ids(binding,placement_id):
     """Resolve donor edges against each operation's input, then close descendants."""
+    grouped=isinstance(placement_id,list);ids=placement_id if grouped else [placement_id]
+    if (not 1<=len(ids)<=32 or any(not isinstance(i,str) for i in ids) or ids!=sorted(set(ids))):
+        raise ProjectError('Scripted removal requires 1..32 sorted unique saved UUIDs')
     prior={};children={};ordered=[]
     for operation in binding['operations']:
         for request in operation['requests']:
@@ -20,8 +23,8 @@ def removal_ids(binding,placement_id):
             donor=prior.get(request['donor_cell'])
             if donor is not None:children.setdefault(donor,[]).append(identifier)
         for request in operation['requests']:prior[request['target_cell']]=request['placement_id']
-    if placement_id not in ordered:raise ProjectError('Scripted removal requires a saved authored UUID')
-    removed={placement_id};queue=[placement_id]
+    if any(i not in ordered for i in ids):raise ProjectError('Scripted removal requires a saved authored UUID')
+    removed=set(ids);queue=list(ids)
     while queue:
         for identifier in children.get(queue.pop(),[]):
             if identifier not in removed:removed.add(identifier);queue.append(identifier)
@@ -32,8 +35,9 @@ def review(project,scene,key,placement_id,cascade):
     if type(cascade) is not bool:raise ProjectError('Scripted removal requires explicit boolean cascade scope')
     receipt=source(project,scene,key);before=receipt['binding']
     if before is None:raise ProjectError('Scripted removal requires a saved placement ledger')
+    grouped=isinstance(placement_id,list);ids=placement_id if grouped else [placement_id]
     removed=removal_ids(before,placement_id)
-    if len(removed)>1 and not cascade:raise ProjectError('Scripted donor has dependent placements; explicitly review cascade removal')
+    if set(removed)-set(ids) and not cascade:raise ProjectError('Scripted donor has dependent placements; explicitly review cascade removal')
     removed_set=set(removed);base=read_base(project,before);binding=deepcopy(before)
     binding['operations']=[{**operation,'requests':[r for r in operation['requests'] if r['placement_id'] not in removed_set]} for operation in binding['operations']]
     binding['operations']=[operation for operation in binding['operations'] if operation['requests']]
@@ -76,12 +80,12 @@ def review(project,scene,key,placement_id,cascade):
         raise ProjectError('Scripted removal changed other native membership or source positions')
     allocations=[deepcopy(a) for audit in audits for a in audit['allocations']]
     for allocation in allocations:allocation['native_seed']=deepcopy(seeds[allocation['target_cell']])
-    result=dict(schema_version='legaia.worldmap-scripted-removal-review.v1',project_path=str(project.root),scene=scene,
-        source_key=key,source_record=receipt['source_record'],placement_id=placement_id,cascade=cascade,
+    result=dict(schema_version='legaia.worldmap-scripted-removal-review.v2' if grouped else 'legaia.worldmap-scripted-removal-review.v1',project_path=str(project.root),scene=scene,
+        source_key=key,source_record=receipt['source_record'],**({'placement_ids':deepcopy(ids)} if grouped else {'placement_id':placement_id}),cascade=cascade,
         current_map_sha256=receipt['current_map_sha256'],current_man_sha256=receipt['current_man_sha256'],
         proposed_map_sha256=sha256(candidate).hexdigest(),proposed_map_base64=b64encode(candidate).decode('ascii'),
         before_binding=deepcopy(before),binding=binding,audit=dict(removed_placement_ids=removed,removed_placements=deleted,
-            authored_scripted_placements=allocations,scope='authored-scripted-removal-only',
+            authored_scripted_placements=allocations,scope='authored-scripted-group-removal-only' if grouped else 'authored-scripted-removal-only',
             changed_bytes=[dict(byte_offset=i,before_byte=a,after_byte=b) for i,(a,b) in enumerate(zip(current,candidate)) if a!=b],
             gameplay_verified=False),read_only=True,project_changed=False,gameplay_verified=False,build_ready=False)
     result['review_key']=digest(result);_fresh(project,key)
@@ -89,9 +93,11 @@ def review(project,scene,key,placement_id,cascade):
 
 
 def apply(project,command):
-    if not isinstance(command,dict) or set(command)!={'type','scene','source_key','placement_id','cascade','review_key'} or command['type']!='remove_worldmap_scripted_placement':
+    grouped=isinstance(command,dict) and command.get('type')=='remove_worldmap_scripted_placements'
+    identity='placement_ids' if grouped else 'placement_id'
+    if not isinstance(command,dict) or set(command)!={'type','scene','source_key',identity,'cascade','review_key'} or command['type']!=('remove_worldmap_scripted_placements' if grouped else 'remove_worldmap_scripted_placement') or grouped!=isinstance(command[identity],list):
         raise ProjectError('Scripted removal Apply requires exact reviewed identity and cascade scope')
-    result=review(project,command['scene'],command['source_key'],command['placement_id'],command['cascade'])
+    result=review(project,command['scene'],command['source_key'],command[identity],command['cascade'])
     if result['review_key']!=command['review_key']:raise ProjectError('Scripted removal Review changed; review again')
     identifier=owner(command['scene']);before=deepcopy(project.overrides.get(identifier));after={COMPONENT:deepcopy(result['binding'])} if result['binding'] else None
     _fresh(project,command['source_key'])

@@ -100,7 +100,7 @@ export async function qualifyProposedScriptedGroupScene(retail,proposed,review,q
   return proposedSavedScene(retail,proposed,review,qualified,options);
 }
 export async function qualifyProposedScriptedRemovalScene(retail,proposed,review,qualified,options){
-  await qualifyScriptedRemovalReview(review,qualified,review.placement_id,review.cascade);
+  await qualifyScriptedRemovalReview(review,qualified,review.placement_ids??review.placement_id,review.cascade);
   return proposedSavedScene(retail,proposed,review,qualified,options);
 }
 export async function qualifyProposedScriptedRelocationScene(retail,proposed,review,qualified,options){
