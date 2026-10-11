@@ -29,6 +29,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   for(const axis of ['x','y','z','yaw_units']){const input=node('input');input.type='number';input.min=axis==='yaw_units'?'-4095':'-65535';input.max=axis==='yaw_units'?'4095':'65535';input.step='1';input.value='0';input.setAttribute('aria-label','Decoration group delta '+(axis==='yaw_units'?'yaw':axis.toUpperCase()));const label=node('label',axis==='yaw_units'?'Yaw delta':'Native '+axis.toUpperCase()+' delta');Object.assign(input.style,{display:'block',width:'100%',boxSizing:'border-box'});label.append(input);groupFields.append(label);groupDelta[axis]=input;}
   for(const button of [groupReview,groupAll,groupNone])button.type='button';
   const groupCloneAnchor=node('input'),groupClone=node('button','Review decoration group duplication');groupCloneAnchor.type='number';groupCloneAnchor.min='0';groupCloneAnchor.max='16383';groupCloneAnchor.step='1';groupCloneAnchor.setAttribute('aria-label','Decoration duplicate anchor cell');const cloneLabel=node('label','Duplicate anchor cell ');cloneLabel.append(groupCloneAnchor);groupClone.type='button';Object.assign(groupCloneAnchor.style,{display:'block',width:'100%',boxSizing:'border-box'});group.append(cloneLabel,groupClone,node('p','Duplicate up to 32 selected decorations. The first UUID is the source cell anchor; copies keep relative cell spacing and shift to the destination anchor. Group offset XYZ/yaw deltas also apply; positive Z delta moves world Z backward. Native world height is preserved across floor changes. Every target must be available. Review lists all copies; Apply creates one history command.'));
+  const groupCloneFrame=node('input');groupCloneFrame.type='checkbox';groupCloneFrame.checked=true;groupCloneFrame.setAttribute('aria-label','Frame duplicated decoration group');const groupCloneFrameLabel=node('label','Frame duplicated group after Apply ');groupCloneFrameLabel.append(groupCloneFrame);group.append(groupCloneFrameLabel);
   const groupFrame=node('button','Frame decoration group');groupFrame.type='button';group.append(groupFrame);
   const groupMove=node('input');groupMove.type='checkbox';groupMove.id='world-decoration-group-translate';const groupMoveLabel=node('label','Translate decoration group ');groupMoveLabel.append(groupMove);const groupSnap=node('select');groupSnap.setAttribute('aria-label','Decoration group translation snap');for(const step of [1,16,64,128]){const option=node('option',step+' native delta units');option.value=String(step);groupSnap.append(option);}group.append(groupMoveLabel,groupSnap,node('p','Handles edit a snapped native delta draft for every selected UUID. Review and Proposed preview are required before Apply.'));
   const groupRotate=node('input');groupRotate.type='checkbox';groupRotate.id='world-decoration-group-rotate';const groupRotateLabel=node('label','Rotate decoration group yaw delta ');groupRotateLabel.append(groupRotate);const groupYawSnap=node('select');groupYawSnap.setAttribute('aria-label','Decoration group yaw snap');for(const step of [1,16,64,256,512,1024]){const option=node('option',`${step} yaw delta units (${step*360/4096}°)`);option.value=String(step);groupYawSnap.append(option);}group.append(groupRotateLabel,groupYawSnap,node('p','The yaw ring edits a relative delta of −4095..4095 units. Each orientation wraps in 4096 units; positions do not orbit the group pivot.'));
@@ -44,7 +45,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   panel.append(summary, node('p', 'Create a walk decoration from a drawable Current donor, or edit the selected retained decoration’s signed offsets and yaw. Transform edits retain the same cell. Move Cell preserves UUID, record, model and encoded offsets while changing native position from the destination row, column and floor height. Review and preview leave the project unchanged. Apply uses shared Undo/Redo.'), fields,moveLabel,snap,rotateLabel,yawSnap,node('p','Choose Edit selected decoration, then translate with X/Y/Z handles or rotate with the yaw ring. This is an unreviewed display draft. Native Review and Proposed preview are required before Apply. Y and Z follow native offset directions, with one reflection into editor space. Cell moves and model assignments require unchanged offset/yaw fields; Apply those edits or restore Current offset/yaw values first. Model assignment preserves cell, record, XYZ/yaw and child models. Saved views bound to an old cell or model must be recreated.'), nativeFields,nativeUse,node('p','Native world XYZ uses the game source axes, before the editor Y reflection. Choose Edit selected decoration to load its coordinates. Use native world position converts these fields into the offset draft above; the cell stays fixed. Review and Preview are required before Apply.'),actions, status, evidence); host.append(panel);
   fields.before(node('p','Removal Review restores the selected record and cell, lists donor reassignments and checks that surviving decorations stay unchanged. Preview the removal before Apply.'));
   panel.append(group);
-  let source = null, held = null, review = null, placementId = null, editing = false,displayed = false, controller = null, pendingKind = null, generation = 0,savedGroups=null;
+  let source = null, held = null, review = null, placementId = null, editing = false,displayed = false, controller = null, pendingKind = null, generation = 0,savedGroups=null,duplicationReview=false;
   const groupIds=()=>[...groupList.querySelectorAll('input:checked')].map(i=>i.value).sort();
   const groupValues=()=>Object.fromEntries(Object.entries(groupDelta).map(([a,i])=>[a,i.value===''?NaN:Number(i.value)]));
   function groupTransformDraft(){
@@ -77,7 +78,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     return worldDecorationDraft(source, Number(donor.value), Number(target.value), values, undefined, placementId);
   }
   function withdrawReview() {
-    onTransformDraft(null);onGroupTransformDraft(null);review = null; if (displayed) { displayed = false; onDiscard(); }
+    onTransformDraft(null);onGroupTransformDraft(null);duplicationReview=false;review = null; if (displayed) { displayed = false; onDiscard(); }
     evidence.textContent = ''; update();
   }
   function change() { syncNativePosition();groupMove.checked=groupRotate.checked=false;withdrawReview();const draft=transformDraft();if(draft)onTransformDraft(draft);status.textContent = sourceReady() ? 'Draft changed. Review the current donor, target, offsets and yaw again.' : 'Inspect Current decoration donors first.'; }
@@ -115,7 +116,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   donor.onchange = donorValues; for (const input of [target, destination, yaw, ...Object.values(offsets)]) input.oninput = change;
   model.onchange=change;
   function cancel() {
-    move.checked=rotate.checked=groupMove.checked=groupRotate.checked=false;generation++; controller?.abort(); source = held = review = placementId = null; displayed = editing = false;onTransformDraft(null);onGroupTransformDraft(null);
+    move.checked=rotate.checked=groupMove.checked=groupRotate.checked=false;generation++; controller?.abort(); source = held = review = placementId = null; displayed = editing = duplicationReview = false;onTransformDraft(null);onGroupTransformDraft(null);
     syncNativePosition();savedGroups?.cancel();
     donor.replaceChildren();model.replaceChildren();groupList.replaceChildren(); evidence.textContent = ''; status.textContent = 'Switch to a qualified Current scene and inspect decoration donors.';
     if (pendingKind !== 'apply') { controller = null; if (pendingKind) setBusy(false); pendingKind = null; }
@@ -128,7 +129,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     for(const input of [...groupList.querySelectorAll('input'),...Object.values(groupDelta)])input.disabled=locked||!sourceReady();
     groupAll.disabled=locked||!sourceReady()||count<1||count>32;groupNone.disabled=locked||!sourceReady()||!ids.length;
     groupFrame.disabled=locked||!sourceReady()||ids.length<1||ids.length>32;
-    groupCloneAnchor.disabled=locked||!sourceReady();groupClone.disabled=locked||!sourceReady()||ids.length<1||ids.length>32||source.inventory.free_record_indices.length<ids.length||source.inventory.current_placements.length+ids.length>511||groupCloneAnchor.value===''||!source.inventory.target_cells.includes(Number(groupCloneAnchor.value))||Object.values(delta).some(n=>!Number.isInteger(n))||['x','y','z'].some(a=>Math.abs(delta[a])>65535)||Math.abs(delta.yaw_units)>4095||(editing&&JSON.stringify(fieldValues())!==JSON.stringify(worldDecorationDonorValues(source,Number(donor.value))));
+    groupCloneFrame.disabled=locked||!sourceReady();groupCloneAnchor.disabled=locked||!sourceReady();groupClone.disabled=locked||!sourceReady()||ids.length<1||ids.length>32||source.inventory.free_record_indices.length<ids.length||source.inventory.current_placements.length+ids.length>511||groupCloneAnchor.value===''||!source.inventory.target_cells.includes(Number(groupCloneAnchor.value))||Object.values(delta).some(n=>!Number.isInteger(n))||['x','y','z'].some(a=>Math.abs(delta[a])>65535)||Math.abs(delta.yaw_units)>4095||(editing&&JSON.stringify(fieldValues())!==JSON.stringify(worldDecorationDonorValues(source,Number(donor.value))));
     groupMove.disabled=locked||!groupTransformDraft();groupRotate.disabled=groupMove.disabled;groupSnap.disabled=groupYawSnap.disabled=groupMove.disabled;
     groupReview.disabled=locked||!sourceReady()||ids.length<1||ids.length>32||Object.values(delta).some(n=>!Number.isInteger(n))||
       ['x','y','z'].some(a=>Math.abs(delta[a])>65535)||Math.abs(delta.yaw_units)>4095||!Object.values(delta).some(n=>n!==0)||
@@ -214,7 +215,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     return run('group-clone-review',async(context,signal,valid)=>{
       const requests=worldDecorationGroupCloneDraft(source,groupIds(),Number(groupCloneAnchor.value),groupValues());status.textContent='Checking complete native group duplication and preserving existing seeds…';
       const value=await read('/api/worldmap-placement-allocation-review',{scene:context.current.scene,source_key:context.key,requests},signal);
-      const qualified=await qualifyWorldDecorationReview(value,source,requests);if(!valid())return;review=qualified;
+      const qualified=await qualifyWorldDecorationReview(value,source,requests);if(!valid())return;review=qualified;duplicationReview=true;
       evidence.textContent=JSON.stringify({copies:review.audit.allocations.map(a=>({placement_id:a.placement_id,donor_cell:a.donor_cell,target_cell:a.target_cell,record_index:a.record_index,model_pool_index:a.model_pool_index,native_position:a.native_seed.source_position})),proposed_map_sha256:review.proposed_map_sha256,review_key:review.review_key},null,2);status.textContent=`Native Review matches independent complete replay for ${requests.length} duplicates. Preview before Apply.`;
     });
   };
@@ -282,7 +283,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   };
   apply.onclick = async () => {
     if (apply.disabled) return;
-    const context = held, captured = review, request = new AbortController(); let applied = false;
+    const context = held, captured = review, duplicating=duplicationReview,frameCreated=groupCloneFrame.checked,request = new AbortController(); let applied = false;
     // The shared API owns the global busy lock; taking it here would refuse
     // our own command before it reaches the server.
     controller = request; pendingKind = 'apply'; update(); status.textContent = 'Applying the exact reviewed native decoration…';
@@ -293,10 +294,10 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     } catch (error) { status.textContent = error.message; onError(error); }
     finally {
       if (!applied && displayed) onDiscard();
-      controller = null; pendingKind = null; source = held = review = placementId = null; displayed = editing = false; setBusy(false); update();
+      controller = null; pendingKind = null; source = held = review = placementId = null; displayed = editing = duplicationReview = false; setBusy(false); update();
     }
     if (applied && getState().project?.path === context.path && getState().project?.mode === 'edit') {
-      try { await onApplied({scene: context.current.scene, placementId: captured.placement_id??captured.placement_ids?.[0]??captured.requests[0].placement_id, projectPath: context.path}); }
+      try { await onApplied({scene: context.current.scene, placementId: captured.placement_id??captured.placement_ids?.[0]??captured.requests[0].placement_id, projectPath: context.path,...(duplicating?{createdPlacementIds:captured.requests.map(r=>r.placement_id),frameCreated}:{})}); }
       catch (error) { status.textContent = 'Decoration applied, but scene refresh failed: ' + error.message; onError(error); }
     }
   };
