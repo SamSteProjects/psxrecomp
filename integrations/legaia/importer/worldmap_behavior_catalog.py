@@ -15,7 +15,7 @@ LIMITATIONS = [
     'Retail World source resources only; Current transforms and replacement meshes do not overwrite source associations.',
     'Object bindings and decoded script paths do not prove activation, story branches or gameplay reachability.',
     'Animation selectors resolve only supported source clips with exact native object/channel counts; zero IDs are not guessed.',
-    'Playback timing, looping, live PC, runtime residency and general World script/clip authoring remain unresolved; fixed source animation argument overrides use their separate service.',
+    'Playback timing, looping, live PC, runtime residency and general World script/clip authoring remain unresolved; fixed source animation and effect-color argument overrides use their separate service.',
 ]
 
 
@@ -94,7 +94,7 @@ def load_worldmap_behavior_catalog(disc,scene):
             field='animation_asset_id' if row['kind']=='script' else 'script_asset_id'
             row[key]=sorted({b[field] for b in row['bindings'] if b[field] is not None})
             row.update(scope='global-worldmap-behavior-resources',runtime_state='not_observed',
-                       reference_commit=REFERENCE_COMMIT,read_only=True,authoring='fixed_animation_operands' if row['kind']=='script' else 'unsupported')
+                       reference_commit=REFERENCE_COMMIT,read_only=True,authoring='fixed_instruction_operands' if row['kind']=='script' else 'unsupported')
             assets.append(row)
         result=dict(scene=scene,assets=sorted(assets,key=lambda r:r['semantic_id']),
             consumer=dict(executable_sha256=proof['executable_sha256'],function=consumer),

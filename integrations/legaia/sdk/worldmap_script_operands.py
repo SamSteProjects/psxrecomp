@@ -1,4 +1,4 @@
-"""World P0 fixed animation operands through source-owned Review/Apply/Build."""
+"""World P0 fixed operands through source-owned Review/Apply/Build."""
 from base64 import b64encode
 from copy import deepcopy
 from hashlib import sha256
@@ -7,15 +7,27 @@ from importer.pipeline import _disc_context
 from importer.worldmap_geometry import KINGDOM_BASES, _kingdom_table, _slot
 from importer.worldmap_behavior_catalog import load_worldmap_behavior_catalog
 from importer.animation_operand_authoring import SPECS, validate_animation_operand_values, patch_animation_operands_target
+from importer.effect_color_authoring import validate_effect_color_values, patch_effect_color_target
 from importer.script_inspection import inspect_record
 from importer.script_operand_composition import compose_script_operands
 from importer.serialization import serialize_lzs_decoded
 from .project import ProjectError, digest
 from .worldmap_authoring import state_key
 
-COMPONENT='WorldScriptAnimationOperands'
+COMPONENT='WorldScriptOperands'
+LEGACY_COMPONENT='WorldScriptAnimationOperands'
+COMPONENTS={COMPONENT,LEGACY_COMPONENT}
+COLOR='EFFECT_COLOR_INTENSITY'
+def mnemonic_for(values):
+    if isinstance(values,dict) and set(values)=={'red','green','blue','intensity'}:return COLOR
+    return next((m for m,spec in SPECS.items() if isinstance(values,dict) and set(values)=={k for k,_ in spec}),None)
+def validate_values(mnemonic,values):
+    return validate_effect_color_values(values) if mnemonic==COLOR else validate_animation_operand_values(mnemonic,values)
+def writer_for(values):
+    return patch_effect_color_target if mnemonic_for(values)==COLOR else patch_animation_operands_target
 LIMITATIONS=[
-    'Only reached fixed SET_MODEL_ANIMATION and EFFECT_ANIMATION_TRIGGER operands without source decoder stops are writable.',
+    'Only reached fixed animation and EFFECT_COLOR_INTENSITY operands without source decoder stops are writable.',
+    'RGB are encoded bytes and intensity is signed16; visual color space and rendering remain unverified.',
     'Encoded model/effect IDs are arguments, not resolved model or animation asset references.',
     'Opcode, dispatch context, record length, header, branch topology and unrelated MAN bytes remain fixed.',
     'All source objects sharing a script record receive the same authored operands; shared consent is required.',
@@ -32,7 +44,7 @@ def _scene(script):
     if not match:raise ProjectError('World script identity must name a registered source P0 record')
     return match[1]
 
-def validate(project,identifier,binding):
+def validate(project,identifier,binding,component=COMPONENT):
     scene=next((s for s in KINGDOM_BASES if identifier==owner(s)),None)
     if scene is None or not isinstance(binding,dict) or set(binding)!={'source_disc_sha256','source_man_sha256','entries'} or any(not isinstance(binding[k],str) or not re.fullmatch('[0-9a-f]{64}',binding[k]) for k in ('source_disc_sha256','source_man_sha256')) or not isinstance(binding['entries'],dict) or not 1<=len(binding['entries'])<=512:
         raise ProjectError('World script operands require a bounded source-bound entry mapping')
@@ -45,8 +57,9 @@ def validate(project,identifier,binding):
         for pc,values in row['operands'].items():
             count+=1
             if count>1024 or not isinstance(pc,str) or not re.fullmatch('[0-9a-f]{4}',pc):raise ProjectError('World script operand PCs exceed their bounded scope')
-            mnemonic=next((m for m,spec in SPECS.items() if isinstance(values,dict) and set(values)=={k for k,_ in spec}),None)
-            validate_animation_operand_values(mnemonic,values)
+            mnemonic=mnemonic_for(values)
+            if component==LEGACY_COMPONENT and mnemonic==COLOR:raise ProjectError('Legacy World animation component cannot contain color arguments')
+            validate_values(mnemonic,values)
     return deepcopy(binding)
 
 def source(project,scene):
@@ -73,19 +86,19 @@ def compose(man,rows,binding):
         if len(row['source_instance_ids'])>1 and edit['shared_record'] is not True:raise ProjectError('Shared World script operands lack consent for every source object')
         at=row['source_record']['byte_offset'];end=at+row['source_record']['byte_length'];record=man[at:end]
         candidate,changes=compose_script_operands(record,row['entry_pc'],[
-            (patch_animation_operands_target,int(pc,16),values)
+            (writer_for(values),int(pc,16),values)
             for pc,values in sorted(edit['operands'].items())],base_offset=at)
         result[at:end]=candidate
-        audit.extend(dict(change,semantic_id=script,scene=row['source_scene'],scope='world-script-animation-operands-only',affected_source_entities=row['source_instance_ids']) for change in changes)
+        audit.extend(dict(change,semantic_id=script,scene=row['source_scene'],scope='world-script-effect-color-operands-only' if change['mnemonic']==COLOR else 'world-script-animation-operands-only',affected_source_entities=row['source_instance_ids']) for change in changes)
     return bytes(result),audit
 
 def context(project,scene):
     man,rows,provenance,index,offset,slot,carrier=source(project,scene)
     components=project.overrides.get(owner(scene),{})
-    if components and set(components)!={COMPONENT}:raise ProjectError('World script owner accepts only its dedicated component')
-    binding=components.get(COMPONENT)
+    if components and (len(components)!=1 or not set(components)<=COMPONENTS):raise ProjectError('World script owner accepts only one dedicated component')
+    component=next(iter(components),COMPONENT);binding=components.get(component)
     if binding:
-        validate(project,owner(scene),binding)
+        validate(project,owner(scene),binding,component)
         if any(binding[k]!=v for k,v in provenance.items()):raise ProjectError('World script source changed under authored operands')
     current,audit=compose(man,rows,binding)
     return man,rows,provenance,index,offset,slot,carrier,binding,current,audit
@@ -101,18 +114,18 @@ def options(project,script,key):
     authored=(binding or {}).get('entries',{}).get(script,{}).get('operands',{})
     if not graph['stops']:
         for node in graph['instructions']:
-            if node['mnemonic'] not in SPECS:continue
-            values={k:node['operands'][k] for k,_ in SPECS[node['mnemonic']]}
-            patch_animation_operands_target(record,row['entry_pc'],node['pc'],values)
+            if node['mnemonic'] not in SPECS and node['mnemonic']!=COLOR:continue
+            values=dict(zip(('red','green','blue'),node['operands']['rgb']),intensity=node['operands']['intensity']) if node['mnemonic']==COLOR else {k:node['operands'][k] for k,_ in SPECS[node['mnemonic']]}
+            writer_for(values)(record,row['entry_pc'],node['pc'],values)
             targets.append(dict(pc=node['pc'],mnemonic=node['mnemonic'],target_context=node['target_context'],retail_values=values,authored_values=deepcopy(authored.get(f'{node["pc"]:04x}')),current_values=deepcopy(authored.get(f'{node["pc"]:04x}',values))))
     result=dict(schema_version='legaia.world-script-animation-operands.v1',project_path=str(project.root),source_key=key,script_id=script,source_record=deepcopy(row['source_record']),entry_pc=row['entry_pc'],source_instance_ids=deepcopy(row['source_instance_ids']),record_base64=b64encode(record).decode(),current_record_base64=b64encode(current[at:end]).decode(),targets=targets,limitations=list(LIMITATIONS),project_changed=False,gameplay_verified=False)
     _fresh(project,key);return result
 
 def review(project,script,key,pc,values,shared):
     report=options(project,script,key);target=next((t for t in report['targets'] if type(pc) is int and t['pc']==pc),None)
-    if target is None:raise ProjectError('Choose a reached supported World animation instruction')
+    if target is None:raise ProjectError('Choose a reached supported World instruction')
     if type(shared) is not bool or len(report['source_instance_ids'])>1 and not shared:raise ProjectError('Shared World script edits require consent for all source objects')
-    validate_animation_operand_values(target['mnemonic'],values)
+    validate_values(target['mnemonic'],values)
     scene=_scene(script);man,rows,provenance,_,_,slot,carrier,binding,current,_=context(project,scene)
     after=deepcopy(binding or dict(provenance,entries={}));entries=after['entries'];edit=entries.setdefault(script,dict(source_record_sha256=report['source_record']['sha256'],operands={},shared_record=shared));edit['shared_record']=shared
     pc_key=f'{pc:04x}'
@@ -140,7 +153,7 @@ def build(project,archive):
     from importer.prot_layout import locate_physical_span
     overlays=[];changes=[]
     for scene in KINGDOM_BASES:
-        if COMPONENT not in project.overrides.get(owner(scene),{}):continue
+        if not COMPONENTS.intersection(project.overrides.get(owner(scene),{})):continue
         man,rows,_,index,offset,slot,carrier,_,current,audit=context(project,scene)
         if not audit:continue
         entry=archive.entry(index);start=slot['compressed_stream_offset'];consumed=slot['compressed_bytes_consumed'];before=carrier[start:start+consumed]

@@ -1,4 +1,16 @@
-# World Script Animation Arguments
+# World Script Instruction Arguments
+
+## Effect-Color Arguments — 2026-10-10
+
+World script resources now offer **Edit World Instruction Arguments**, **Review World Arguments** and **Apply World Arguments** for both fixed animation arguments and reached `EFFECT_COLOR_INTENSITY` instructions. RGB arguments are unsigned bytes (0–255); intensity is signed 16-bit (-32768–32767). Retail, Authored and Current remain separate. Changing any argument or shared-record consent withdraws Review. Source records with decoder stops remain unavailable.
+
+New Apply commands persist `WorldScriptOperands`, retaining the same source-bound entry format and existing command/API names. Saved `WorldScriptAnimationOperands` projects remain readable and buildable. Their next reviewed Apply migrates that owner's complete argument set to the new component in one history entry; Undo restores the old component. Mixed component owners and color arguments inside the legacy animation component refuse. Imported source records never migrate or change. Both instruction families compose into one World MAN overlay, preserving all other instructions and native data.
+
+Six reached color targets were confirmed in three Map01 source scripts (`0000`, `0006`, `0010`). Sixteen focused Python checks pass with retail input, including mixed-family composition, legacy Save/Open, migration/Undo, signed boundaries and Retail reset preserving the animation coauthor. Actual browser byte/Review qualification passes 16 altered effect-color refusals and 23 existing animation refusals. A fresh component/HTTP Apply and Undo restore the private project baseline. Two full Map01 Project Resources workflows pass changed-draft Review withdrawal, Apply, Current reopen, Save and Undo/Redo/Undo, with two expected commands and zero page errors. Final document, Undo stack and Save/Open baselines are restored. Wide/400-pixel captures were inspected. The pinned `effect.rs` sub0 RGB/signed16 layout and fixed continuation were freshly checked without advancing the reference revision. Data-package Build `0.1.0-a5b8a050321fadfd`, SHA256 `9c156c33e7e72b7611f11b9e09311439a2a91a3a146de59ff3a781a46281ef75`, passes independent directory/ZIP readback of all 21 decoded kingdom slots against the prior coauthored package: only Map01 MAN bytes 271 (65→0) and 272 (0→128) change for the reviewed intensity. Prior models, textures and placement edits remain exact.
+
+Private evidence is under `local-output/sdk-20260909/world-script-effect-colors-20261010/`. Color space, intensity interpretation, activation, execution and actual rendering remain unverified. This is native argument authoring, not a promise that a particular visible effect will occur. No game, native compile, attachment, install or disc export ran.
+
+The following original animation workflow notes describe the initial milestone; current control labels and persistence behavior are given above.
 
 Open a World script from **Project Resources**, then choose **Edit Animation Instruction Arguments**. The inspector lists reached supported fixed instructions and their Retail, Authored and Current arguments. Change the numeric arguments, choose **Review World Animation Arguments**, inspect the byte count and affected source objects, then **Apply World Animation Arguments**. Changing the draft withdraws the review. Save, Undo/Redo and reopening retain the project overrides; changing every argument back to Retail removes the corresponding override.
 
@@ -29,4 +41,4 @@ World animation authoring now uses `importer/script_operand_composition.py` to c
 
 Thirteen focused Python checks pass with the retail disc supplied, including literal mixed animation/effect-color bytes, request-order independence, extended actor context, no-op input, duplicate ownership, forged audits, unreported writes and an audited opcode change. The real Map02 animation Review/Apply, Current values, Save/Open and Undo/Redo workflow also passes after integration. Source inspection found six reached effect-color instructions across Map01 scripts `0000`, `0006` and `0010`, with no decoder stops in those records.
 
-This is shared infrastructure for the next World effect-color workflow. World effect-color controls, persistence and package integration are still unfinished; mixed-family checks use a synthetic record. No new package Build, native compile or gameplay validation occurred.
+This shared-infrastructure checkpoint preceded the effect-color workflow above; mixed-family checks use a synthetic record. No new package Build, native compile or gameplay validation occurred at that checkpoint.

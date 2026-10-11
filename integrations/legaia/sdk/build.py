@@ -121,6 +121,7 @@ def package_change_kinds(edits) -> list[str]:
     """Describe emitted audit scopes, without inferring unexecuted game behavior."""
     labels = {
         'world-script-animation-operands-only': 'World script animation operands',
+        'world-script-effect-color-operands-only': 'World script effect colors',
         'initial-man-placement-only': 'actor positions',
         'initial-man-header-only': 'initial actor appearance',
         'inline-mes-glyph-run-only': 'dialogue text',
@@ -585,11 +586,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             components = {k:v for k,v in components.items() if k != 'AnimationRecords'}
             if not components:
                 continue
-        if isinstance(components, dict) and 'WorldScriptAnimationOperands' in components:
-            from .worldmap_script_operands import validate
-            if set(components) != {'WorldScriptAnimationOperands'}:
+        if isinstance(components, dict) and {'WorldScriptAnimationOperands','WorldScriptOperands'}.intersection(components):
+            from .worldmap_script_operands import validate,COMPONENTS
+            if len(components)!=1 or not set(components)<=COMPONENTS:
                 raise BuildError('World script owner accepts only its dedicated operand component')
-            validate(project,identifier,components['WorldScriptAnimationOperands'])
+            component=next(iter(components));validate(project,identifier,components[component],component)
             continue
         if isinstance(components, dict) and 'WorldMapPlacementAllocations' in components:
             from .worldmap_placement_allocation_binding import validate
@@ -1516,10 +1517,10 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         feature_name = 'Authored game data'
         description = 'Private source-qualified world-map landmark records and supported authored game data.'
         feature_description = 'Apply existing landmark menu fields and other audited changes; activation and gameplay remain unverified.'
-    if any(row.get('scope') == 'world-script-animation-operands-only' for row in audit_edits):
+    if any(row.get('scope') in {'world-script-animation-operands-only','world-script-effect-color-operands-only'} for row in audit_edits):
         package_suffix = ' authored World script arguments'
-        feature_name = 'World script animation arguments'
-        description = 'Private source-qualified fixed World P0 animation argument overrides and supported authored scene data.'
+        feature_name = 'World script instruction arguments'
+        description = 'Private source-qualified fixed World P0 animation and effect-color argument overrides and supported authored scene data.'
         feature_description += ' World script arguments retain original dispatch, headers and control flow; execution and gameplay remain unverified.'
     if any(row.get('scope') == 'worldmap-source-record-transform-only' for row in audit_edits):
         package_suffix = ' authored world source placements'
