@@ -1,5 +1,7 @@
 # Legaia SDK Validation Plan
 
+Offline checks passed — World Native Channel Timeline: compare every object/six-axis sample in all supported clips against independent native decodes, assert immutable tracks and bounded pointer mapping, actual bound/source-only keyboard/pointer navigation, authored draft withdrawal, invalid-frame selection withdrawal, no local server requests and unchanged project/history pass. A held Review proves parent frame/timeline controls disable and restore correctly. Preserve frame/CSV/stale-source regression coverage.
+
 Offline checks passed — World Animation Request Capacity: verify maximum 4,096-row synthetic native data through HTTP Review against independent packed bytes; exact typed Apply dispatch; malformed request refusal; early 1 MiB envelope rejection; unchanged generic 32 KiB limit. Actual placed-object Review/Preview/Apply and one-step history/persistence pass via the dedicated route, with unchanged original project and no page errors.
 
 Offline checks passed — World Native Clip Frame Ranges: compare complete hold/offset/restoration banks with independent packed-byte patches, preserve sibling objects/outside frames, refuse whole proposals on later-frame overflow, and verify one-command history/persistence. Separate preview frames, invalid-preview Apply withdrawal, offset Apply, Retail restoration Review and history/persistence pass in the actual editor. Complete data-package readback passes across all three kingdoms with 113 exact typed axes. [Evidence](legaia-worldmap-clip-channel-authoring.md).

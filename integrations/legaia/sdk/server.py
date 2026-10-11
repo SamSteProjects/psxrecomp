@@ -1143,6 +1143,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-animation-export.js": ("worldmap-animation-export.js", "text/javascript"),
                  "/worldmap-clip-channels.js": ("worldmap-clip-channels.js", "text/javascript"),
                  "/worldmap-animation-channels.js": ("worldmap-animation-channels.js", "text/javascript"),
+                 "/worldmap-animation-timeline.js": ("worldmap-animation-timeline.js", "text/javascript"),
                  "/worldmap-animation-glb.js": ("worldmap-animation-glb.js", "text/javascript"),
                  "/worldmap-object-script.js": ("worldmap-object-script.js", "text/javascript"),
                  "/worldmap-resources.js": ("worldmap-resources.js", "text/javascript"),

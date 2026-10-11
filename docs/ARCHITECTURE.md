@@ -1,5 +1,7 @@
 # Architecture
 
+Offline checks passed — World Native Channel Timeline samples immutable qualified native frame plans in the editor. Object/axis/frame navigation makes no server reads and carries no model, timing or runtime interpretation. Existing frame selection owns authored Review withdrawal and stale snapshot disposal. [Workflow](legaia-worldmap-animation-channels.md#native-channel-timeline).
+
 Offline checks passed — World Animation Request Capacity: placed-object channel Review and Apply share a bounded 1 MiB envelope. Dedicated Apply dispatches the existing canonical project command; generic command requests remain bounded to 32 KiB. [Scope and evidence](legaia-worldmap-animation-ranges.md#channel-request-capacity).
 
 Offline checks passed — World Native Clip Frame Ranges uses immutable qualified native channel snapshots to generate hold, offset and scoped Retail-restoration drafts without a model dependency. The existing typed Review/Apply command owns mutation and history. Local preview frame navigation samples the reviewed bank independently of the edit frame; invalid display frames withdraw Apply. [Workflow](legaia-worldmap-clip-channel-authoring.md).
