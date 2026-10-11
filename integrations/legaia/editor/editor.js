@@ -1,3 +1,4 @@
+import {showBattleCharacterResource} from '/battle-character-resources.js';
 import {worldAnimationBuildSource,worldAnimationBuildTarget} from '/worldmap-animation-build-navigation.js';
 import {qualifyWorldmapBehaviorResource,showWorldmapBehaviorResource} from '/worldmap-behavior-resources.js';
 import {mergeWorldAnimationAuthoredAssets} from '/worldmap-animation-assets.js';
@@ -2028,6 +2029,7 @@ const assetDetailsTrailContext=()=>JSON.stringify([resourceStateKey(),state.insp
 function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false}={}){
   if(!keepTrail)assetDetailsTrail.clear();
   assetPlacementSelection?.dispose();assetPlacementSelection=null;animationContributions?.dispose();animationContributions=null;
+  if(record.projectBattleResource){try{showBattleCharacterResource({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalBattleCharacters,current:()=>state.project?.path===record.projectBattleResource.projectPath&&state.project_assets_source_key===record.projectBattleResource.sourceKey,busy:()=>busy,setBusy,onError:error=>notify(error.message,true)});}catch(error){notify(error.message,true);}return;}
   if(record.projectWorldBehaviorResource){try{showWorldmapBehaviorResource({dialog:assetDetails,record,lookup,getReport:()=>projectAssetControls?.sourceReport()?.globalWorldBehaviorResources,getState:()=>state,busy:()=>busy,setBusy,api,onApplied:next=>{assetDetails.close();if(next&&typeof next==='object'&&next.project)state=next;render();notify('World resource edits applied. Save project to persist.');},onNavigate:next=>showAssetDetails(next,lookup),onFocus:target=>{if(!canEdit()||worldmapDraftPending)throw Error('Resolve the current World draft before resource navigation.');return worldmapGeometryControls.openScene(target);},onError:error=>notify(error.message,true)});}catch(error){notify(error.message,true);}return;}
   if(record.projectWorldResource){try{showWorldmapProjectResource({dialog:assetDetails,record,lookup,getReport:()=>projectAssetControls?.sourceReport()?.globalWorldResources,getState:()=>state,busy:()=>busy,setBusy,api,onProjectState:next=>{state=next;render();notify('World PNG texture applied. Save project to persist.');},onFocus:target=>{if(!canEdit()||worldmapDraftPending||!state.capabilities?.worldmap_geometry)throw Error('Resolve the current world-map draft before resource navigation.');return worldmapGeometryControls.openResource(target);},onError:error=>notify(error.message,true)});}catch(error){notify(error.message,true);}return;}
   const isAuthored=!!record.authoredRecord,inspectorId=assetInspectorDefinition(state.inspector_schema,record);
@@ -2204,6 +2206,7 @@ function projectAssetContext(){return state.capabilities?.project_assets?{projec
 async function resolveProjectAsset(record){
   if(record.projectWorldBehaviorResource){qualifyWorldmapBehaviorResource(record,projectAssetControls?.sourceReport()?.globalWorldBehaviorResources,state);return record;}
   if(record.projectWorldResource){qualifyWorldmapProjectResource(record,projectAssetControls?.sourceReport()?.globalWorldResources,state);return record;}
+  if(record.projectBattleResource){const fresh=projectAssetControls?.records().find(r=>r.id===record.id);if(!fresh||JSON.stringify(fresh)!==JSON.stringify(record))throw Error('Refresh battle project resources before navigation.');return record;}
   if(record.projectGlobal){const report=projectAssetControls?.sourceReport()?.globalWorldmap;worldmapAssetTarget(record,report,state);return record;}
   if(!record.projectMembership)return record;
   const variant=projectAssetVariant(record,projectAssetContext()),expected=record.projectMembership.sourceKey;
@@ -2232,6 +2235,7 @@ async function inspectControllerAsset(record,focusFlagPc=null){
 }
 async function activateAsset(record,action=null){
   if(busy)return;
+  if(record?.projectBattleResource){showAssetDetails(record);return;}
   try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
   if(record.projectWorldBehaviorResource){if(action===null)showAssetDetails(record);return;}
   if(record.projectWorldResource){if(![null,'inspect-world-resource'].includes(action)||!canEdit()||!state.capabilities?.worldmap_geometry||worldmapDraftPending)return;try{const target=qualifyWorldmapProjectResource(record,projectAssetControls?.sourceReport()?.globalWorldResources,state);if(record.type==='model')await worldmapGeometryControls.openResource(target);else showAssetDetails(record);}catch(error){notify(error.message,true);}return;}
@@ -5868,7 +5872,7 @@ worldPlacementControls=mountWorldPlacements({after:$('resource-refresh'),getStat
 
 const projectAssetHost=document.createElement('div');projectAssetHost.style.gridColumn='1 / -1';assetTools.prepend(projectAssetHost);
 projectAssetControls=mountProjectAssets({host:projectAssetHost,getContext:projectAssetContext,busy:()=>busy,setBusy,
-  getUnavailableReason:()=>state.project_assets_unavailable_reason,globalWorldmap:()=>state.capabilities?.worldmap_placements===true,globalResources:()=>state.capabilities?.worldmap_geometry===true,
+  getUnavailableReason:()=>state.project_assets_unavailable_reason,battleResources:()=>state.capabilities?.worldmap_geometry===true,globalWorldmap:()=>state.capabilities?.worldmap_placements===true,globalResources:()=>state.capabilities?.worldmap_geometry===true,
   onChange:()=>{assetPageSignature=null;renderAssets();},onError:error=>notify(error.message,true)});
 
 mountSceneToolDrawer({toolbar:document.querySelector('.viewport-toolbar'),viewport:$('viewport-wrap'),keep:[sceneRuler.bar,npcGroundPlacement.bar,groundPositionBar,npcCreationBar,runRibbon,fieldNote,scenePoseBar,actorGroupTools,scriptTargetTools,transitionArrivalTools,npcArrivalTools,historicalTools],onToggle:()=>{cancelViewportGesture();resize();}});

@@ -1216,6 +1216,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-placement-yaw.js": ("worldmap-placement-yaw.js", "text/javascript"),
                  "/worldmap-scene.js": ("worldmap-scene.js", "text/javascript"),
                  "/project-assets.js": ("project-assets.js", "text/javascript"),
+                 "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
                  "/worldmap-asset-references.js": ("worldmap-asset-references.js", "text/javascript"),
                  "/worldmap-reference-trace.js": ("worldmap-reference-trace.js", "text/javascript"),

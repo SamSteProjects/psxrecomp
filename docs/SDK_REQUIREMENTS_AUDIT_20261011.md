@@ -27,7 +27,7 @@ All five recorded runtime/precompile sources and three fixtures match their expe
 
 ## Battle Discovery Checkpoint — 2026-10-11
 
-[Battle Character Resource Discovery](legaia-battle-character-resources.md) now supplies source-qualified importer/services for five existing-format model bodies and six complete TIMs, with a seventh partial record. Four retail-enabled source/HTTP checks pass. Editor/Asset Database integration and battle assembly/animation remain incomplete; this does not broaden gameplay acceptance.
+[Battle Character Resource Discovery](legaia-battle-character-resources.md) now supplies source-qualified importer/services for five existing-format model bodies and six complete TIMs, with a seventh partial record. Four retail-enabled source/HTTP checks pass. Project-browser global registration and source-only model/TIM editor inspection now pass offline checks; battle assembly/animation remain incomplete; this does not broaden gameplay acceptance.
 
 ## Next Development Frontier
 
