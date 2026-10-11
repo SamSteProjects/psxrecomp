@@ -10,7 +10,7 @@ import struct
 from .core import ImportError, validate_metadata_only
 from .pipeline import REFERENCE_COMMIT, _disc_context
 from .assets import decode_tmd
-from .textures import parse_tim, decode_tim
+from .textures import parse_tim, decode_tim, TextureCatalog, associate_material
 
 ENTRY=1204
 FIRST_ATLAS=0x25804
@@ -70,7 +70,24 @@ def preview(disc,asset_id,expected_source_key,palette_index=0):
         if record['asset_kind']=='tmd_model':
             if type(palette_index) is not int or palette_index!=0:raise ImportError('Battle model preview accepts no palette override')
             value=decode_tmd(body)
+            value['textures']=material_textures(content,catalog,value)
         else:
             if type(palette_index) is not int or not 0<=palette_index<record['palette_count']:raise ImportError('Battle TIM palette index is outside its native local palettes')
             value=decode_tim(body,palette_index)
         return catalog,record,value
+
+
+def material_textures(content,catalog,model):
+    """Static pack address coverage; exclude incomplete TIMs without relocation."""
+    textures=TextureCatalog('battle-character',catalog['source_disc_sha256'])
+    for record in catalog['textures']:
+        if record['preview_supported']:
+            source=record['source_record']
+            textures.textures.append((parse_tim(content[source['byte_offset']:source['byte_offset']+source['byte_length']]),{'semantic_id':record['semantic_id']}))
+    result=[]
+    for index,material in enumerate(model['materials']):
+        uvs=[uv for triangle,m in enumerate(model['triangle_materials']) if m==index for uv in (model['triangle_uvs'][triangle] or [])]
+        bounds=(min(u[0] for u in uvs),min(u[1] for u in uvs),max(u[0] for u in uvs),max(u[1] for u in uvs)) if uvs else (0,0,255,255)
+        crop=associate_material(textures,material,bounds)
+        result.append(dict(crop,material_index=index))
+    return result

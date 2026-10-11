@@ -12,7 +12,7 @@ Structural asset IDs use `asset://legaia/models/battle-character/NNNN` and `text
 
 Four focused checks pass with the retail disc: synthetic layout/span/hash and truncation behavior, malformed-layout refusal, all five native model/six complete texture previews, and actual HTTP resources/private model and texture previews. Exact request fields, stale project keys, foreign roots/assets, partial atlas and boolean palette requests refuse. Project document/history remain unchanged. Evidence: `local-output/sdk-20260909/battle-character-discovery-20261011/native-catalog.json`. No editor workflow, Build, native recompilation, game, runtime attachment, installation or disc export ran. Gameplay remains deferred and the full SDK goal stays active.
 
-Next: establish battle assembly and model/material association from independent source evidence before adding posed/textured character previews. Battle animation containers and assembly require their own pinned/retail evidence; these resources do not establish them.
+The later pack reference pose and static texture coverage workflows below extend this initial discovery. Ordinary battle assembly remains a separate research and implementation requirement.
 
 ## Project Browser Integration
 
@@ -25,3 +25,11 @@ Client qualification passes all twelve records and eleven supported native previ
 ## Pack Rig Versus Normal Battle Assembly
 
 The pinned character-mesh document supersedes old battle_char_pack comments: PROT 1204 is the default pack/viewer/Baka Fighter configuration; ordinary battles assemble equipment meshes from PLAYER files. [Pack Reference Pose](legaia-battle-pack-reference-pose.md) uses the source-corresponding PROT 1203 bank without claiming normal battle assembly, residency or cadence.
+
+## Static Texture Coverage
+
+Offline checks passed — 2026-10-11. Model preview now resolves original material TPage/CLUT words and inclusive UV crops against the six complete pack TIMs using the shared static VRAM association service. No texture relocation, palette substitution, neighbor reads or upload-order guess is used. Models 0/1/2 have 8/10/9 matched materials; model 3 has eight missing materials and model 4 has six missing materials plus one untextured material. Incomplete atlas 6 remains excluded.
+
+Inspect Retail Battle Model displays the qualified textures automatically. Static Texture Coverage exposes each material's status, supplying source IDs or missing/unsupported reason. Missing or conflicting data retains the renderer's color fallback. Pack reference poses retain qualified textures only after unchanged material, UV, triangle-material and color data is checked; Return to Object-Local Model restores the source preview. These are static pack-source views, not proof of runtime palette behavior or normal PLAYER battle assembly.
+
+Five focused native tests pass, including independent original TIM word addressing and RGBA/STP comparison for all 194,857 crop pixels. Client checks refuse twenty altered texture envelopes, and six reference pose fixtures retain 3,666 independently replayed vertices. The actual editor checks all five models, match counts, pack frame navigation/return, object/orbit/zoom, TIM palettes, partial refusal and wide/400-pixel layouts. Captures were inspected; no page errors, commands or scene navigation occur and the project document/history and empty field scene remain unchanged. Private evidence: `static-texture-proof.json` and `textured-pack-browser-proof.json` in `local-output/sdk-20260909/battle-character-discovery-20261011/`. No Build, native compilation, game or runtime attachment ran. Full SDK goal active; gameplay deferred.

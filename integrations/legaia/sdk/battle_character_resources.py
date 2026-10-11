@@ -29,7 +29,11 @@ def preview(project,expected_project_path,expected_source_key,asset_id,catalog_s
     try:catalog,record,value=native_preview(project.disc_path,asset_id,catalog_source_key,palette_index)
     except RetailImportError as error:raise ProjectError(str(error)) from error
     _disc(project,catalog);_fresh(project,expected_project_path,expected_source_key)
-    if record['asset_kind']=='tmd_model':value.update(semantic_id=record['semantic_id'],source_record=record['source_record'])
+    if record['asset_kind']=='tmd_model':
+        value.update(semantic_id=record['semantic_id'],source_record=record['source_record'])
+        for texture in value['textures']:
+            for field in ('rgba','stp'):
+                if field in texture:texture[field+'_base64']=b64encode(texture.pop(field)).decode('ascii')
     if record['asset_kind']=='texture':
         # Private native pixels, not persistent/import metadata.
         rgba,stp=value['rgba'],value['stp'];value={k:v for k,v in value.items() if k not in ('rgba','stp')}

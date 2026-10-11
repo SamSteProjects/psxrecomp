@@ -44,6 +44,29 @@ class BattleCharacterCatalogTests(unittest.TestCase):
         self.assertEqual(catalog,held)
 
     @unittest.skipUnless(os.getenv('LEGAIA_DISC_BIN'),'Retail disc is private')
+    def test_static_texture_crops_against_native_words(self):
+        from importer.pipeline import _disc_context
+        disc=Path(os.environ['LEGAIA_DISC_BIN']);catalog=discover(disc)
+        with _disc_context(disc) as (_,_,_,archive):raw=archive.read_entry(archive.entry(1204))
+        matched=[];pixels=0
+        for model_record in catalog['models']:
+            _,_,model_preview=preview(disc,model_record['semantic_id'],catalog['source_key']);count=0
+            for texture in model_preview['textures']:
+                if texture['status']!='address_match':
+                    self.assertNotIn('rgba',texture);self.assertNotIn('stp',texture);continue
+                count+=1;material=model_preview['materials'][texture['material_index']];page=material['tpage'];clut=material['clut'];u0,v0=texture['uv_origin']
+                # Independently address original TIM image and palette words.
+                for n in range(texture['width']*texture['height']):
+                    u=u0+n%texture['width'];v=v0+n//texture['width'];x=(page&15)*64+u//4;y=((page>>4)&1)*256+v
+                    image=[t for t in catalog['textures'] if t['preview_supported'] and t['image']['x']<=x<t['image']['x']+64 and t['image']['y']<=y<t['image']['y']+256];self.assertEqual(len(image),1);im=image[0];start=im['source_record']['byte_offset']+544
+                    word=struct.unpack_from('<H',raw,start+2*((y-im['image']['y'])*64+x-im['image']['x']))[0];index=(word>>((u%4)*4))&15
+                    palette=[t for t in catalog['textures'] if t['preview_supported'] and t['clut']['y']==clut>>6];self.assertEqual(len(palette),1);pal=palette[0];colour=struct.unpack_from('<H',raw,pal['source_record']['byte_offset']+20+2*((clut&63)*16+index))[0]
+                    expand=lambda v:(v<<3)|(v>>2)
+                    expected=bytes([expand(colour&31),expand((colour>>5)&31),expand((colour>>10)&31),255 if colour else 0]);self.assertEqual(texture['rgba'][4*n:4*n+4],expected);self.assertEqual(texture['stp'][n],colour>>15);pixels+=1
+            matched.append(count)
+        self.assertEqual(matched,[8,10,9,0,0]);self.assertEqual(pixels,194857)
+
+    @unittest.skipUnless(os.getenv('LEGAIA_DISC_BIN'),'Retail disc is private')
     def test_project_http_resources_and_private_previews(self):
         import tempfile
         from sdk.project import ProjectService
