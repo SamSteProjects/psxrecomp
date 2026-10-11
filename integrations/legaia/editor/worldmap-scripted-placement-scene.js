@@ -1,3 +1,4 @@
+import {qualifyScriptedRelocationReview} from './worldmap-scripted-relocation-state.js';
 import {qualifyCurrentWorldMan} from './worldmap-current-man.js';
 import {qualifyCurrentWorldMap} from './worldmap-current-map.js';
 import {decodeWorldPlacementSeeds, equalWorldPlacementBytes} from './worldmap-placement-replay.js';
@@ -87,9 +88,16 @@ export async function qualifyProposedScriptedWorldScene(retail,proposed,review,c
   const view=await qualifyScriptedWorldScene(retail,normalized,{...options,mapWitness,overrides});
   return {...view,entities:view.entities.map(e=>({...e,preview_layer:'Proposed authored seeds'}))};
 }
+export async function qualifyProposedScriptedRelocationScene(retail,proposed,review,qualified,options){
+  await qualifyScriptedRelocationReview(review,qualified,review.placement_id,review.target_cell);
+  return proposedSavedScene(retail,proposed,review,qualified,options);
+}
 export async function qualifyProposedScriptedTransformScene(retail,proposed,review,qualified,options){
   await qualifyScriptedTransformReview(review,qualified,review.placement_id,review.values);
-  if(proposed?.schema_version!=='legaia.worldmap-scripted-placement-proposed-scene.v1'||proposed.representation!=='proposed-scripted-placement-source'||proposed.placement_layer!=='proposed'||!nativeWorldPlacementMatches(proposed.scripted_proposal,review))fail('Proposed scripted transform differs from native Review.');
+  return proposedSavedScene(retail,proposed,review,qualified,options);
+}
+async function proposedSavedScene(retail,proposed,review,qualified,options){
+  if(proposed?.schema_version!=='legaia.worldmap-scripted-placement-proposed-scene.v1'||proposed.representation!=='proposed-scripted-placement-source'||proposed.placement_layer!=='proposed'||!nativeWorldPlacementMatches(proposed.scripted_proposal,review))fail('Proposed saved scripted scene differs from native Review.');
   const normalized=structuredClone(proposed);delete normalized.scripted_proposal;normalized.schema_version='legaia.worldmap-scripted-placement-scene.v1';normalized.representation='current-scripted-placement-source';normalized.placement_layer='current';
   const mapWitness=structuredClone(qualified.mapWitness),overrides=structuredClone(options.overrides);
   mapWitness.current_map_base64=review.proposed_map_base64;mapWitness.current_map_sha256=review.proposed_map_sha256;mapWitness.scripted_binding=structuredClone(review.binding);
