@@ -8,20 +8,21 @@ from .worldmap_authoring import state_key
 from .worldmap_placements import context, SCENES
 from .worldmap_placement_allocation import _context
 
-COMMANDS={'create_worldmap_selection_set','create_worldmap_authored_selection_set','rename_worldmap_selection_set','update_worldmap_selection_set','update_worldmap_authored_selection_set','delete_worldmap_selection_set'}
+COMMANDS={'create_worldmap_selection_set','create_worldmap_authored_selection_set','create_worldmap_scripted_selection_set','rename_worldmap_selection_set','update_worldmap_selection_set','update_worldmap_authored_selection_set','update_worldmap_scripted_selection_set','delete_worldmap_selection_set'}
 AUTHORED_SCHEMA='legaia.worldmap-authored-selection.v1'
+SCRIPTED_SCHEMA='legaia.worldmap-scripted-selection.v1'
 
 
 def _authored_ids(values):
     if (not isinstance(values,list) or not 1<=len(values)<=32 or any(not isinstance(v,str) or not re.fullmatch(
             r'placement://authored/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}',v) for v in values)
             or len(set(values))!=len(values)):
-        raise ProjectError('Authored selection requires 1..32 unique retained decoration UUIDs')
+        raise ProjectError('Authored selection requires 1..32 unique retained placement UUIDs')
     return sorted(values)
 
 
 def _validate_authored(identifier,value):
-    if (set(value)!={'id','name','scene','source_record','placement_ids','bindings','schema_version'} or value['schema_version']!=AUTHORED_SCHEMA
+    if (set(value)!={'id','name','scene','source_record','placement_ids','bindings','schema_version'} or value['schema_version'] not in (AUTHORED_SCHEMA,SCRIPTED_SCHEMA)
             or value['id']!=identifier or value['scene'] not in SCENES or metadata_name(value['name'],'World selection name')!=value['name']
             or _authored_ids(value['placement_ids'])!=value['placement_ids']):
         raise ProjectError('Authored selection requires exact canonical metadata')
@@ -32,10 +33,12 @@ def _validate_authored(identifier,value):
         raise ProjectError('Authored selection lacks immutable source and complete UUID ownership')
     records=set()
     for placement_id,binding in bindings.items():
-        if (not isinstance(binding,dict) or set(binding)!={'record_index','entity_id'} or type(binding['record_index']) is not int
+        if (not isinstance(binding,dict) or set(binding)!=({'record_index','entity_id','script_id'} if value['schema_version']==SCRIPTED_SCHEMA else {'record_index','entity_id'}) or type(binding['record_index']) is not int
                 or not 4<=binding['record_index']<512 or binding['record_index'] in records
                 or binding['entity_id']!=f'scene://{value["scene"]}/worldmap/authored-placements/{placement_id.rsplit("/",1)[1]}'):
             raise ProjectError('Authored selection native record or scene identity differs')
+        if value['schema_version']==SCRIPTED_SCHEMA and (not isinstance(binding['script_id'],str) or not re.fullmatch(r'script://'+re.escape(value['scene'])+r'/worldmap/man-p0/[0-9a-f]{4}',binding['script_id'])):
+            raise ProjectError('Scripted selection requires its retained shared MAN script identity')
         records.add(binding['record_index'])
 
 
@@ -55,6 +58,27 @@ def authored_binding(project,scene,placement_ids,expected_key):
         bindings[identifier]=dict(record_index=matches[0]['record_index'],entity_id=f'scene://{scene}/worldmap/authored-placements/{identifier.rsplit("/",1)[1]}')
     if state_key(project)!=expected_key or state_key(view)!=expected_key:raise ProjectError('Authored selection source changed during capture')
     return dict(source_record=deepcopy(provenance),placement_ids=ids,bindings=bindings)
+
+
+def scripted_binding(project,scene,placement_ids,expected_key):
+    ids=_authored_ids(placement_ids)
+    if project.mode!='edit' or scene not in SCENES or expected_key!=state_key(project):
+        raise ProjectError('Scripted selection requires fresh Edit source inputs')
+    view=copy(project)
+    for name,value in vars(project).items():
+        if name!='assets':setattr(view,name,deepcopy(value))
+    view.assets=AssetDatabase()
+    from .worldmap_scripted_placement_allocation import source
+    qualified=source(view,scene,expected_key)
+    bindings={}
+    for identifier in ids:
+        matches=[a for a in qualified['authored_scripted_placements'] if a['placement_id']==identifier]
+        if len(matches)!=1:raise ProjectError('Scripted selection member is no longer retained')
+        allocation=matches[0]
+        bindings[identifier]=dict(record_index=allocation['record_index'],
+            entity_id=f'scene://{scene}/worldmap/authored-placements/{identifier.rsplit("/",1)[1]}',script_id=allocation['script_id'])
+    if state_key(project)!=expected_key or state_key(view)!=expected_key:raise ProjectError('Scripted selection source changed during capture')
+    return dict(source_record=deepcopy(qualified['source_record']),placement_ids=ids,bindings=bindings)
 
 
 def _ids(values):
@@ -116,31 +140,33 @@ def _saved(project,identifier,key):
 
 
 def review(project,identifier,key,source_key):
-    value=_saved(project,identifier,key);authored=value.get('schema_version')==AUTHORED_SCHEMA
-    fresh=authored_binding(project,value['scene'],value['placement_ids'],source_key) if authored else binding(project,value['scene'],value['record_ids'],source_key)
+    value=_saved(project,identifier,key);schema=value.get('schema_version')
+    capture=scripted_binding if schema==SCRIPTED_SCHEMA else authored_binding if schema==AUTHORED_SCHEMA else binding
+    fresh=capture(project,value['scene'],value['placement_ids'] if schema else value['record_ids'],source_key)
     if any(fresh[k]!=value[k] for k in fresh):raise ProjectError('Saved world selection source ownership changed; recall refused')
-    return dict(schema_version='legaia.worldmap-authored-selection-review.v1' if authored else 'legaia.worldmap-selection-review.v1',read_only=True,source_key=source_key,selection=deepcopy(value),review_key=review_key(project,value))
+    return dict(schema_version='legaia.worldmap-scripted-selection-review.v1' if schema==SCRIPTED_SCHEMA else 'legaia.worldmap-authored-selection-review.v1' if schema==AUTHORED_SCHEMA else 'legaia.worldmap-selection-review.v1',read_only=True,source_key=source_key,selection=deepcopy(value),review_key=review_key(project,value))
 
 
 def command(project,body):
     if project.mode!='edit' or not isinstance(body,dict) or body.get('type') not in COMMANDS:raise ProjectError('World selection commands require Edit mode')
     kind=body['type']
-    authored=kind in ('create_worldmap_authored_selection_set','update_worldmap_authored_selection_set')
+    schema=SCRIPTED_SCHEMA if kind in ('create_worldmap_scripted_selection_set','update_worldmap_scripted_selection_set') else AUTHORED_SCHEMA if kind in ('create_worldmap_authored_selection_set','update_worldmap_authored_selection_set') else None
+    authored=schema is not None
     member_field='placement_ids' if authored else 'record_ids'
-    bind=authored_binding if authored else binding
-    if kind in ('create_worldmap_selection_set','create_worldmap_authored_selection_set'):
+    bind=scripted_binding if schema==SCRIPTED_SCHEMA else authored_binding if authored else binding
+    if kind in ('create_worldmap_selection_set','create_worldmap_authored_selection_set','create_worldmap_scripted_selection_set'):
         if set(body)!={'type','scene','source_key',member_field,'name'}:raise ProjectError('Save world selection requires exact kingdom/source, members and name')
         if len(project.worldmap_selection_sets)>=128:raise ProjectError('Project is limited to 128 saved world selections')
         identifier='worldmap-selection://'+str(uuid.uuid4());before=None
         after=dict(id=identifier,name=metadata_name(body['name'],'World selection name'),scene=body['scene'],**bind(project,body['scene'],body[member_field],body['source_key']))
-        if authored:after['schema_version']=AUTHORED_SCHEMA
+        if authored:after['schema_version']=schema
     else:
-        fields={'type','selection_set_id','review_key'}|({'name'} if kind=='rename_worldmap_selection_set' else {'source_key',member_field} if kind in ('update_worldmap_selection_set','update_worldmap_authored_selection_set') else set())
+        fields={'type','selection_set_id','review_key'}|({'name'} if kind=='rename_worldmap_selection_set' else {'source_key',member_field} if kind in ('update_worldmap_selection_set','update_worldmap_authored_selection_set','update_worldmap_scripted_selection_set') else set())
         if set(body)!=fields:raise ProjectError('World selection command has unsupported fields')
         identifier=body['selection_set_id'];before=_saved(project,identifier,body['review_key']);after=deepcopy(before)
         if kind=='rename_worldmap_selection_set':after['name']=metadata_name(body['name'],'World selection name')
-        elif kind in ('update_worldmap_selection_set','update_worldmap_authored_selection_set'):
-            if authored!=(before.get('schema_version')==AUTHORED_SCHEMA):raise ProjectError('World selection member domains cannot be mixed')
+        elif kind in ('update_worldmap_selection_set','update_worldmap_authored_selection_set','update_worldmap_scripted_selection_set'):
+            if schema!=before.get('schema_version'):raise ProjectError('World selection member domains cannot be mixed')
             fresh=bind(project,before['scene'],before[member_field],body['source_key'])
             if any(fresh[k]!=before[k] for k in fresh):raise ProjectError('Saved world selection source changed; replacement refused')
             after.update(bind(project,before['scene'],body[member_field],body['source_key']))
