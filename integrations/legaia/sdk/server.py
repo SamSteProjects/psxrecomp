@@ -1130,6 +1130,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-footprint.js": ("worldmap-footprint.js", "text/javascript"),
                  "/worldmap-object-bind.js": ("worldmap-object-bind.js", "text/javascript"),
                  "/worldmap-object-animation.js": ("worldmap-object-animation.js", "text/javascript"),
+                 "/worldmap-object-script.js": ("worldmap-object-script.js", "text/javascript"),
                  "/worldmap-resources.js": ("worldmap-resources.js", "text/javascript"),
                  "/worldmap-project-resources.js": ("worldmap-project-resources.js", "text/javascript"),
                  "/worldmap-model-replacement.js": ("worldmap-model-replacement.js", "text/javascript"),
@@ -1365,6 +1366,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'scene','source_key','entity_id','frame_index'}:raise ProjectError('World object animation requires exact source, entity and frame fields')
                     from .worldmap_object_animation import inspect
                     self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body['entity_id'],body['frame_index']))
+                    return
+                if route == '/api/worldmap-object-script':
+                    if set(body)!={'scene','source_key','entity_id'}:raise ProjectError('World object script inspection requires exact source and entity fields')
+                    from .worldmap_object_script import inspect
+                    self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body['entity_id']))
                     return
                 if route == '/api/worldmap-footprint':
                     if set(body)!={'scene','source_key','entity_id'}:raise ProjectError('Footprint inspection requires exact source and entity fields')

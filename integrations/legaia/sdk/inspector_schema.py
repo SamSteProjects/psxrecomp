@@ -471,6 +471,18 @@ def inspector_schema():
     }
     schema['components']['WorldSourcePlacement']['actions'].append({'id':'inspect-world-footprint','label':'Inspect source footprint offset','capability':'worldmap_placements','requires_edit':True})
     schema['components']['WorldSourcePlacement']['actions'].append({'id':'inspect-world-object-bind','label':'Inspect source object bind','capability':'worldmap_placements','requires_edit':True})
+    schema['components']['WorldSourceObjectScript']={
+        'label':'Source Interaction Script','layout':'read-only-properties',
+        'properties':[
+            {'id':'record','label':'Structural source record','path':['source_record_id'],'type':'string','state':'derived'},
+            {'id':'entry','label':'Source entry PC','path':['entry_pc'],'type':'number','state':'read-only-retail'},
+            {'id':'status','label':'Decoder coverage','path':['graph','status'],'type':'string','state':'derived'},
+            {'id':'execution','label':'Runtime execution','path':['runtime_execution'],'type':'string','state':'unresolved'},
+            {'id':'registration','label':'Asset registration','path':['asset_registration'],'type':'string','state':'unresolved'},
+        ],
+        'details':[{'label':'Source graph and opaque regions','path':['graph']}],
+        'notes':['Decoded source continuations only; no VM, story branch or live PC is evaluated.','Structural P0 record identity is not a registered writable script asset.'],
+    }
     schema['components']['WorldSourceObjectBind']={
         'label':'Source Object Bind','layout':'read-only-properties',
         'properties':[
