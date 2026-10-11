@@ -15,7 +15,7 @@ LIMITATIONS = [
     'Retail World source resources only; Current transforms and replacement meshes do not overwrite source associations.',
     'Object bindings and decoded script paths do not prove activation, story branches or gameplay reachability.',
     'Animation selectors resolve only supported source clips with exact native object/channel counts; zero IDs are not guessed.',
-    'Playback timing, looping, live PC, runtime residency and general World script/clip authoring remain unresolved; fixed source animation and effect-color argument overrides use their separate service.',
+    'Playback timing, looping, live PC, runtime residency and general World script/clip authoring remain unresolved; fixed source animation, effect-color and model-selection argument overrides use their separate service.',
 ]
 
 

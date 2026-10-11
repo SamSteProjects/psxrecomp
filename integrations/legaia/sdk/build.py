@@ -122,6 +122,7 @@ def package_change_kinds(edits) -> list[str]:
     labels = {
         'world-script-animation-operands-only': 'World script animation operands',
         'world-script-effect-color-operands-only': 'World script effect colors',
+        'world-script-model-selector-only': 'World script model selectors',
         'initial-man-placement-only': 'actor positions',
         'initial-man-header-only': 'initial actor appearance',
         'inline-mes-glyph-run-only': 'dialogue text',
@@ -1517,10 +1518,10 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         feature_name = 'Authored game data'
         description = 'Private source-qualified world-map landmark records and supported authored game data.'
         feature_description = 'Apply existing landmark menu fields and other audited changes; activation and gameplay remain unverified.'
-    if any(row.get('scope') in {'world-script-animation-operands-only','world-script-effect-color-operands-only'} for row in audit_edits):
+    if any(row.get('scope') in {'world-script-animation-operands-only','world-script-effect-color-operands-only','world-script-model-selector-only'} for row in audit_edits):
         package_suffix = ' authored World script arguments'
         feature_name = 'World script instruction arguments'
-        description = 'Private source-qualified fixed World P0 animation and effect-color argument overrides and supported authored scene data.'
+        description = 'Private source-qualified fixed World P0 animation, effect-color and model-selector argument overrides and supported authored scene data.'
         feature_description += ' World script arguments retain original dispatch, headers and control flow; execution and gameplay remain unverified.'
     if any(row.get('scope') == 'worldmap-source-record-transform-only' for row in audit_edits):
         package_suffix = ' authored world source placements'

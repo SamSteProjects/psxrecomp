@@ -8,6 +8,7 @@ from importer.worldmap_geometry import KINGDOM_BASES, _kingdom_table, _slot
 from importer.worldmap_behavior_catalog import load_worldmap_behavior_catalog
 from importer.animation_operand_authoring import SPECS, validate_animation_operand_values, patch_animation_operands_target
 from importer.effect_color_authoring import validate_effect_color_values, patch_effect_color_target
+from importer.model_selector_authoring import validate_model_selector_values, patch_model_selector_target
 from importer.script_inspection import inspect_record
 from importer.script_operand_composition import compose_script_operands
 from importer.serialization import serialize_lzs_decoded
@@ -18,17 +19,25 @@ COMPONENT='WorldScriptOperands'
 LEGACY_COMPONENT='WorldScriptAnimationOperands'
 COMPONENTS={COMPONENT,LEGACY_COMPONENT}
 COLOR='EFFECT_COLOR_INTENSITY'
+MODEL='SET_ACTOR_MODEL'
+ARGUMENTS={m:dict(fields=tuple(k for k,_ in spec),writer=patch_animation_operands_target,
+    validator=lambda values,m=m:validate_animation_operand_values(m,values),scope='world-script-animation-operands-only') for m,spec in SPECS.items()}
+ARGUMENTS[COLOR]=dict(fields=('red','green','blue','intensity'),writer=patch_effect_color_target,validator=validate_effect_color_values,scope='world-script-effect-color-operands-only')
+ARGUMENTS[MODEL]=dict(fields=('model_selector_signed',),writer=patch_model_selector_target,validator=validate_model_selector_values,scope='world-script-model-selector-only')
 def mnemonic_for(values):
-    if isinstance(values,dict) and set(values)=={'red','green','blue','intensity'}:return COLOR
-    return next((m for m,spec in SPECS.items() if isinstance(values,dict) and set(values)=={k for k,_ in spec}),None)
+    return next((m for m,spec in ARGUMENTS.items() if isinstance(values,dict) and set(values)==set(spec['fields'])),None)
 def validate_values(mnemonic,values):
-    return validate_effect_color_values(values) if mnemonic==COLOR else validate_animation_operand_values(mnemonic,values)
+    if mnemonic not in ARGUMENTS:raise ProjectError('World instruction arguments have unsupported typed fields')
+    return ARGUMENTS[mnemonic]['validator'](values)
 def writer_for(values):
-    return patch_effect_color_target if mnemonic_for(values)==COLOR else patch_animation_operands_target
+    mnemonic=mnemonic_for(values)
+    if mnemonic not in ARGUMENTS:raise ProjectError('World instruction arguments have no supported writer')
+    return ARGUMENTS[mnemonic]['writer']
 LIMITATIONS=[
-    'Only reached fixed animation and EFFECT_COLOR_INTENSITY operands without source decoder stops are writable.',
+    'Only reached fixed animation, effect-color and signed model-selection operands without source decoder stops are writable.',
     'RGB are encoded bytes and intensity is signed16; visual color space and rendering remain unverified.',
     'Encoded model/effect IDs are arguments, not resolved model or animation asset references.',
+    'Signed model selectors do not establish model-pool ownership, restaging or visible models.',
     'Opcode, dispatch context, record length, header, branch topology and unrelated MAN bytes remain fixed.',
     'All source objects sharing a script record receive the same authored operands; shared consent is required.',
     'Current script bytes are authored data, not observed execution, timing, activation or gameplay acceptance.',
@@ -58,7 +67,7 @@ def validate(project,identifier,binding,component=COMPONENT):
             count+=1
             if count>1024 or not isinstance(pc,str) or not re.fullmatch('[0-9a-f]{4}',pc):raise ProjectError('World script operand PCs exceed their bounded scope')
             mnemonic=mnemonic_for(values)
-            if component==LEGACY_COMPONENT and mnemonic==COLOR:raise ProjectError('Legacy World animation component cannot contain color arguments')
+            if component==LEGACY_COMPONENT and mnemonic not in SPECS:raise ProjectError('Legacy World animation component cannot contain other instruction families')
             validate_values(mnemonic,values)
     return deepcopy(binding)
 
@@ -89,7 +98,7 @@ def compose(man,rows,binding):
             (writer_for(values),int(pc,16),values)
             for pc,values in sorted(edit['operands'].items())],base_offset=at)
         result[at:end]=candidate
-        audit.extend(dict(change,semantic_id=script,scene=row['source_scene'],scope='world-script-effect-color-operands-only' if change['mnemonic']==COLOR else 'world-script-animation-operands-only',affected_source_entities=row['source_instance_ids']) for change in changes)
+        audit.extend(dict(change,semantic_id=script,scene=row['source_scene'],scope=ARGUMENTS[change['mnemonic']]['scope'],affected_source_entities=row['source_instance_ids']) for change in changes)
     return bytes(result),audit
 
 def context(project,scene):
@@ -114,8 +123,8 @@ def options(project,script,key):
     authored=(binding or {}).get('entries',{}).get(script,{}).get('operands',{})
     if not graph['stops']:
         for node in graph['instructions']:
-            if node['mnemonic'] not in SPECS and node['mnemonic']!=COLOR:continue
-            values=dict(zip(('red','green','blue'),node['operands']['rgb']),intensity=node['operands']['intensity']) if node['mnemonic']==COLOR else {k:node['operands'][k] for k,_ in SPECS[node['mnemonic']]}
+            if node['mnemonic'] not in ARGUMENTS:continue
+            values=dict(zip(('red','green','blue'),node['operands']['rgb']),intensity=node['operands']['intensity']) if node['mnemonic']==COLOR else {k:node['operands'][k] for k in ARGUMENTS[node['mnemonic']]['fields']}
             writer_for(values)(record,row['entry_pc'],node['pc'],values)
             targets.append(dict(pc=node['pc'],mnemonic=node['mnemonic'],target_context=node['target_context'],retail_values=values,authored_values=deepcopy(authored.get(f'{node["pc"]:04x}')),current_values=deepcopy(authored.get(f'{node["pc"]:04x}',values))))
     result=dict(schema_version='legaia.world-script-animation-operands.v1',project_path=str(project.root),source_key=key,script_id=script,source_record=deepcopy(row['source_record']),entry_pc=row['entry_pc'],source_instance_ids=deepcopy(row['source_instance_ids']),record_base64=b64encode(record).decode(),current_record_base64=b64encode(current[at:end]).decode(),targets=targets,limitations=list(LIMITATIONS),project_changed=False,gameplay_verified=False)

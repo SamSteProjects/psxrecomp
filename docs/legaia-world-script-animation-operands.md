@@ -1,5 +1,15 @@
 # World Script Instruction Arguments
 
+## Signed Model-Selection Arguments — 2026-10-10
+
+**Edit World Instruction Arguments** now includes reached `SET_ACTOR_MODEL` instructions, with Retail/Authored/Current values for **Signed Model Selector Argument**. Review/Apply, shared-source consent, draft withdrawal, Undo/Redo, Save/Open and Build use the existing World script workflow. These entries share `WorldScriptOperands` with animation and effect-color overrides; one kingdom MAN output contains all supported edits.
+
+The encoded domain is -32768–32767. The pinned `menu_ctrl/nibble_5_6_7.rs` sub0 reads little-endian signed16, sets the high-pool dispatch flag for values at least 240 and advances by `header_size + 3`. That native argument is not a resolved Asset Database model reference. Pool bases, restaging, visible model identity and gameplay remain unresolved. Opcode, selector, context, P0 headers, script length, branch topology and unrelated bytes remain fixed.
+
+Retail source inspection confirmed six reached targets without decoder stops: Map01 scripts `0006` and `0008`, Map02 scripts `0000` and `0032` (two targets), and Map03 script `0001`. Twenty-two focused Python checks pass with retail input, including all three instruction families in one source record, extended actor context, legacy-component refusal, signed domain checks and history/persistence. Actual browser source/Review qualification passes five signed Current witnesses (-32768, -1, 239, 240, 32767) and 16 altered model-selector refusals; 16 existing color and 23 animation refusals still pass.
+
+Coauthored data-package Build `0.1.0-f591a5aa74782f63`, SHA256 `02ba9a5a31994f5cfd967db10fcf73f4bd1d54da185adb59aaa1842fbf61c652`, combines Map01 color, Map02 animation and Map02 model-selection arguments with the prior model/texture/placement edits. Independent directory/ZIP readback of all 21 decoded kingdom slots permits only Map01 MAN bytes 271/272 and Map02 MAN bytes 1539/1657. Complete other slots and all other MAN bytes remain exact. Native literal comparison, Undo/Redo, Save/Open and baseline restoration pass. Two full Map01/Map02 Project Resources editor workflows pass draft withdrawal, Apply, Current reopening and history/persistence, with two expected commands and zero page errors. Final document, Undo stack and Save/Open baseline are restored; wide/400-pixel captures were inspected. Private evidence: `local-output/sdk-20260909/world-script-model-selectors-20261010/`. Native compile, runtime execution and visual acceptance remain deferred.
+
 ## Effect-Color Arguments — 2026-10-10
 
 World script resources now offer **Edit World Instruction Arguments**, **Review World Arguments** and **Apply World Arguments** for both fixed animation arguments and reached `EFFECT_COLOR_INTENSITY` instructions. RGB arguments are unsigned bytes (0–255); intensity is signed 16-bit (-32768–32767). Retail, Authored and Current remain separate. Changing any argument or shared-record consent withdraws Review. Source records with decoder stops remain unavailable.

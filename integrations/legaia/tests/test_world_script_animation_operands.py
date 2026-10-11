@@ -8,14 +8,14 @@ from urllib.request import urlopen
 from sdk.project import ProjectService,ProjectError
 from importer.core import ImportError
 from sdk.worldmap_authoring import state_key
-from sdk.worldmap_script_operands import options,review,compose,owner,COMPONENT,LEGACY_COMPONENT
+from sdk.worldmap_script_operands import options,review,compose,owner,COMPONENT,LEGACY_COMPONENT,validate
 from test_project_workflow import synthetic_scene
 from test_effect_color_authoring import END
 from test_model_primitive_workflow import http_server
 
 
 def fixture(project):
-    record=b'\0\0\x4c\x81\1\2\3\4\5\6\7\x34\x0f\1\2\3\4\0'+END
+    record=b'\0\0\x4c\x81\1\2\3\4\5\6\7\x34\x0f\1\2\3\4\0\xcc\x07\x50\x1c\0'+END
     man=bytes(64)+record;script='script://map02/worldmap/man-p0/0000'
     provenance=dict(source_disc_sha256=next(iter(project.imports.values()))['source']['disc_identity'].removeprefix('sha256:'),source_man_sha256=sha256(man).hexdigest())
     carrier=b''.join(bytes([(1<<len(man[i:i+8]))-1])+man[i:i+8] for i in range(0,len(man),8))
@@ -25,6 +25,26 @@ def fixture(project):
 
 
 class WorldAnimationArgumentsTests(TestCase):
+    def test_model_selector_composes_with_animation_and_color(self):
+        with tempfile.TemporaryDirectory() as root:
+            p=ProjectService(Path(root));document=synthetic_scene();document['source']['disc_identity']='sha256:'+'a'*64;p.import_metadata(document);script,source=fixture(p);held=deepcopy(p._document())
+            with patch('sdk.worldmap_script_operands.source',return_value=source):
+                values=[dict(model_id=0x030201,animation_frame=0x0504,tween_frames=1),dict(red=255,green=0,blue=1,intensity=-32768),dict(model_selector_signed=-1)]
+                targets=options(p,script,state_key(p))['targets'];self.assertEqual(targets[2]['target_context'],7)
+                for target,wanted in zip(targets,values):
+                    report,_=review(p,script,state_key(p),target['pc'],wanted,True)
+                    p.command(dict(type='set_world_script_animation_operands',script_id=script,source_key=state_key(p),pc=target['pc'],values=wanted,shared=True,review_key=report['review_key']))
+                binding=p.overrides[owner('map02')][COMPONENT];candidate,audit=compose(source[0],source[1],binding)
+                self.assertEqual(candidate,source[0][:73]+b'\1\0'+source[0][75:77]+b'\xff\0\1\0\x80'+source[0][82:85]+b'\xff\xff'+source[0][87:])
+                self.assertEqual({c['scope'] for c in audit},{'world-script-animation-operands-only','world-script-effect-color-operands-only','world-script-model-selector-only'})
+                with self.assertRaises(ProjectError):validate(p,owner('map02'),binding,LEGACY_COMPONENT)
+                for bad in (True,-32769,32768):
+                    with self.assertRaises((ProjectError,ImportError)):review(p,script,state_key(p),targets[2]['pc'],dict(model_selector_signed=bad),True)
+                p.save();self.assertEqual(ProjectService.open(Path(root))._document(),p._document())
+                p.undo();p.redo();self.assertEqual(options(p,script,state_key(p))['targets'][2]['current_values'],values[2])
+                for _ in range(3):p.undo()
+                self.assertEqual(p._document(),held)
+
     def test_color_coauthor_legacy_migration_and_undo(self):
         with tempfile.TemporaryDirectory() as root:
             p=ProjectService(Path(root));document=synthetic_scene();document['source']['disc_identity']='sha256:'+'a'*64;p.import_metadata(document);script,source=fixture(p)
