@@ -16,11 +16,15 @@ def inspect(project,scene,key,proposal=None):
     receipt=source(project,scene,key)
     reviewed=None
     if proposal is not None:
-        if not isinstance(proposal,dict) or set(proposal) not in ({'requests','review_key'},{'placement_id','values','review_key'},{'placement_id','target_cell','review_key'}):
-            raise ProjectError('Scripted scene proposal requires exact reviewed creation, transform or relocation')
+        if not isinstance(proposal,dict) or set(proposal) not in ({'requests','review_key'},{'placement_id','values','review_key'},{'placement_id','target_cell','review_key'},{'placement_id','cascade','review_key'}):
+            raise ProjectError('Scripted scene proposal requires exact reviewed creation, transform, relocation or removal')
         transforming='placement_id' in proposal
+        removing='cascade' in proposal
         if transforming:
-            if 'target_cell' in proposal:
+            if removing:
+                from .worldmap_scripted_placement_remove import review
+                reviewed=review(project,scene,key,proposal['placement_id'],proposal['cascade'])
+            elif 'target_cell' in proposal:
                 from .worldmap_scripted_placement_relocate import review
                 reviewed=review(project,scene,key,proposal['placement_id'],proposal['target_cell'])
             else:
@@ -33,7 +37,8 @@ def inspect(project,scene,key,proposal=None):
         from base64 import b64encode
         receipt.update(current_map_base64=reviewed['proposed_map_base64'],current_map_sha256=reviewed['proposed_map_sha256'],
             binding=deepcopy(reviewed['binding']),retained_base_map_base64=b64encode(base).decode('ascii'),
-            remaining_creation_capacity=receipt['remaining_creation_capacity']-(0 if transforming else len(proposal['requests'])))
+            remaining_creation_capacity=receipt['remaining_creation_capacity']+(len(reviewed['audit']['removed_placement_ids']) if removing else 0 if transforming else -len(proposal['requests'])))
+        if reviewed['binding'] is None:receipt.pop('retained_base_map_base64',None)
         if transforming:receipt['authored_scripted_placements']=deepcopy(reviewed['audit']['authored_scripted_placements'])
         else:receipt['authored_scripted_placements']+=deepcopy(reviewed['audit']['allocations'])
     geometry=inspect_geometry(project,scene,key,texture_layer='current',model_layer='current')
