@@ -1,0 +1,25 @@
+# World Script Animation Arguments
+
+Open a World script from **Project Resources**, then choose **Edit Animation Instruction Arguments**. The inspector lists reached supported fixed instructions and their Retail, Authored and Current arguments. Change the numeric arguments, choose **Review World Animation Arguments**, inspect the byte count and affected source objects, then **Apply World Animation Arguments**. Changing the draft withdraws the review. Save, Undo/Redo and reopening retain the project overrides; changing every argument back to Retail removes the corresponding override.
+
+This adds the existing fixed `SET_MODEL_ANIMATION` and `EFFECT_ANIMATION_TRIGGER` argument writer to registered World P0 resources. It reuses the established importer writer and browser layout reader rather than inventing another instruction format. Encoded model IDs are unsigned 24-bit arguments; animation/tween frame arguments are unsigned 16-bit, and effect animation arguments are unsigned 8-bit. They do not establish resolved model/clip identities, valid playback ranges or time units.
+
+The SDK verifies the retail kingdom carrier, P0 record/header entry, original hashes, object associations and existing retail executable/consumer evidence. Only reached supported instructions in records without decoder stops are offered. Source headers, opcodes, extended dispatch contexts, record lengths, branch topology and unrelated MAN bytes remain unchanged. Unknown or unsupported source instructions do not become editable merely because the resource is registered.
+
+Authored entries are stored in the dedicated `WorldScriptAnimationOperands` component under `worldmap://map02/script-operands` (and equivalent kingdom owners). Each entry retains its immutable record hash, typed arguments by source PC and explicit shared-record consent. Verified Project Resources shows the corresponding script as authored without replacing its Retail source record. Global World scripts are excluded from Active scene resources and unverified fallback records; they never open the field-script workspace. Source bind/script inspectors continue to show Retail evidence; the argument inspector separately qualifies complete Retail and Current record witnesses.
+
+Options and Review use `/api/world-script-animation-operands` and `/api/world-script-animation-review`, with exact request bodies and fresh World source keys. Apply is one `set_world_script_animation_operands` project command with the matching review key. Review checks the composed MAN and bounded LZS capacity before permitting Apply. Build re-verifies source ownership and emits the same bounded compressed MAN slot through the existing package/relocation composition. Conflicting overlays or compressed growth refuse; unsupported data is never silently dropped.
+
+The current three-object shared Map02 script has no supported fixed animation arguments, so it remains uneditable with either consent setting. Shared-source gating and retained consent are separately qualified with a bounded synthetic three-object fixture. Single-object real Map02 and Map03 instruction workflows pass; those checks do not demonstrate runtime activation or gameplay behavior.
+
+Offline evidence from 2026-10-10 is in `local-output/sdk-20260909/world-script-animation-operands-20261010/`:
+
+- A fresh isolated component/API check also passed Apply with the persisted consent field and Undo baseline restoration. Eight focused Python checks passed, including the existing operand writer, shared/source refusal, history, persistence and exact HTTP/module contracts.
+- The browser independently qualified actual source/Current instruction bytes and Review byte ranges; 23 altered source/Review cases refused.
+- Two actual full-editor workflows passed draft-change review withdrawal, Apply, Current reopening, Save and Undo/Redo/Undo, with two expected authoring commands, zero page errors and restored private document/history/Save-Open baselines.
+- Desktop and 400-pixel inspector captures were inspected without horizontal overflow.
+- Private data-package Build `732e6f1bb8b927c5` passed independent directory and ZIP readbacks. All 21 decoded kingdom slots matched the prior model/texture/placement package except the reviewed Map02 MAN byte at decoded offset 1539 (`0` to `1`). Package SHA-256: `233951a09d979ce41d40fdfdb93558e2e31c8ea868a5388f1853525d14744239`.
+
+The private native harness initially called Undo/Redo as authoring commands instead of their dedicated methods; the corrected harness passed. Synthetic fixture provenance and path setup were also corrected before the passing run. These were harness corrections, not relaxed source validation. Final native checks retain shared consent in the saved component; the final Build was regenerated after that addition.
+
+No native recomp compile, game launch, runtime attachment, package installation or disc export occurred. Gameplay remains deferred. General World script editing, branch/flag/dialogue authoring and animation clip authoring remain separate unfinished work; the full SDK goal stays active.

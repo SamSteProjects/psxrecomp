@@ -120,6 +120,7 @@ def _merge_trigger_script_patch(original, current, changed, audit, scene, bindin
 def package_change_kinds(edits) -> list[str]:
     """Describe emitted audit scopes, without inferring unexecuted game behavior."""
     labels = {
+        'world-script-animation-operands-only': 'World script animation operands',
         'initial-man-placement-only': 'actor positions',
         'initial-man-header-only': 'initial actor appearance',
         'inline-mes-glyph-run-only': 'dialogue text',
@@ -584,6 +585,12 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             components = {k:v for k,v in components.items() if k != 'AnimationRecords'}
             if not components:
                 continue
+        if isinstance(components, dict) and 'WorldScriptAnimationOperands' in components:
+            from .worldmap_script_operands import validate
+            if set(components) != {'WorldScriptAnimationOperands'}:
+                raise BuildError('World script owner accepts only its dedicated operand component')
+            validate(project,identifier,components['WorldScriptAnimationOperands'])
+            continue
         if isinstance(components, dict) and 'WorldMapPlacementAllocations' in components:
             from .worldmap_placement_allocation_binding import validate
             if set(components) != {'WorldMapPlacementAllocations'}:
@@ -852,6 +859,9 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         audio_overlays, audio_changes, audio_requests = prepare_audio_native(project, _image, archive)
         overlays.extend(audio_overlays)
         audit_edits.extend(audio_changes)
+        from .worldmap_script_operands import build as build_world_script_operands
+        world_script_overlays,world_script_changes=build_world_script_operands(project,archive)
+        overlays.extend(world_script_overlays);audit_edits.extend(world_script_changes)
         growth_requests, growth_audit = [], None
         if getattr(project, 'model_overrides', {}):
             from .model_growth import prepare_model_growth
@@ -1506,6 +1516,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         feature_name = 'Authored game data'
         description = 'Private source-qualified world-map landmark records and supported authored game data.'
         feature_description = 'Apply existing landmark menu fields and other audited changes; activation and gameplay remain unverified.'
+    if any(row.get('scope') == 'world-script-animation-operands-only' for row in audit_edits):
+        package_suffix = ' authored World script arguments'
+        feature_name = 'World script animation arguments'
+        description = 'Private source-qualified fixed World P0 animation argument overrides and supported authored scene data.'
+        feature_description += ' World script arguments retain original dispatch, headers and control flow; execution and gameplay remain unverified.'
     if any(row.get('scope') == 'worldmap-source-record-transform-only' for row in audit_edits):
         package_suffix = ' authored world source placements'
         feature_name = 'Authored world source placement transforms'

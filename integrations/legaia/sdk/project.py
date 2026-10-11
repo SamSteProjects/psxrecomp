@@ -2251,6 +2251,10 @@ class ProjectService:
             from .system_flags import apply
             apply(self, command)
             return
+        if command.get('type') == 'set_world_script_animation_operands':
+            from .worldmap_script_operands import apply
+            apply(self,command)
+            return
         if command.get('type') == 'set_worldmap_menu':
             from .worldmap_authoring import apply
             apply(self, command)
@@ -3539,12 +3543,19 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - ({"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptAnimationOperands", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements", "WorldMapPlacementAllocations"} | CONTROLLER_COMPONENTS):
+            if not isinstance(components, dict) or not components or set(components) - ({"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptAnimationOperands", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements", "WorldMapPlacementAllocations", "WorldScriptAnimationOperands"} | CONTROLLER_COMPONENTS):
                 raise ProjectError("Unsupported authored component")
             if CONTROLLER_COMPONENTS & set(components):
                 from .controller_system_flags import validate_components
                 validate_components(result,identifier,components)
                 result.overrides[identifier]=deepcopy(components)
+                continue
+            if 'WorldScriptAnimationOperands' in components:
+                from .worldmap_script_operands import validate
+                if set(components) != {'WorldScriptAnimationOperands'}:
+                    raise ProjectError('World script owner accepts only its dedicated operand component')
+                validate(result, identifier, components['WorldScriptAnimationOperands'])
+                result.overrides[identifier] = deepcopy(components)
                 continue
             if 'WorldMapPlacementAllocations' in components:
                 from .worldmap_placement_allocation_binding import validate
@@ -3985,6 +3996,13 @@ class ProjectService:
         """Project-wide authored references, independent of derived resource caches."""
         records = []
         for identifier, components in sorted(self.overrides.items()):
+            if 'WorldScriptAnimationOperands' in components:
+                binding=components['WorldScriptAnimationOperands']
+                for script,entry in sorted(binding['entries'].items()):
+                    records.append(dict(id=script,script_id=script,kind='script',scene_id=None,source_scene=script.split('/')[2],
+                        name=script.split('/')[2]+' Object Script '+script.rsplit('/',1)[1],
+                        changes=[f"World animation instructions: {len(entry['operands'])} authored entries"],
+                        authored={'WorldScriptAnimationOperands':deepcopy(entry)}))
             if 'WorldMapPlacementAllocations' in components:
                 binding=components['WorldMapPlacementAllocations']
                 count=sum(len(op['requests']) for op in binding['operations'])
