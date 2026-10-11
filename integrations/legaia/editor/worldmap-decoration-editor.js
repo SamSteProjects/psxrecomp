@@ -3,7 +3,7 @@ import {qualifyWorldDecorationSource, qualifyWorldDecorationReview, worldDecorat
 import {validValues} from './worldmap-placement-state.js';
 const node = (tag, text) => { const element = document.createElement(tag); if (text) element.textContent = text; return element; };
 
-export function mountWorldDecorationEditor({host, getContext, getState, busy, setBusy, api, onPreview, onDiscard, onApplied, onError,onTransformDraft=()=>{}}) {
+export function mountWorldDecorationEditor({host, getContext, getState, busy, setBusy, api, onPreview, onDiscard, onApplied, onError,onTransformDraft=()=>{},onFrameGroup=()=>{}}) {
   const panel = node('details'), summary = node('summary', 'World Decoration Authoring'), status = node('p');
   panel.dataset.worldDecorationEditor = ''; status.setAttribute('role', 'status');
   const inspect = node('button', 'Inspect decoration donors'), editSelected = node('button','Edit selected decoration'),removeReview=node('button','Review decoration removal'),reviewButton = node('button', 'Review decoration'),
@@ -27,6 +27,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   Object.assign(groupFields.style,{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:'8px'});
   for(const axis of ['x','y','z','yaw_units']){const input=node('input');input.type='number';input.min=axis==='yaw_units'?'-4095':'-65535';input.max=axis==='yaw_units'?'4095':'65535';input.step='1';input.value='0';input.setAttribute('aria-label','Decoration group delta '+(axis==='yaw_units'?'yaw':axis.toUpperCase()));const label=node('label',axis==='yaw_units'?'Yaw delta':'Native '+axis.toUpperCase()+' delta');Object.assign(input.style,{display:'block',width:'100%',boxSizing:'border-box'});label.append(input);groupFields.append(label);groupDelta[axis]=input;}
   for(const button of [groupReview,groupAll,groupNone])button.type='button';
+  const groupFrame=node('button','Frame decoration group');groupFrame.type='button';group.append(groupFrame);
   for (const axis of ['x','y','z']) { const input = node('input'); input.type = 'number'; input.min = '-32768'; input.max = '32767'; input.step = '1'; offsets[axis] = input; addField('World decoration offset ' + axis.toUpperCase(), input); }
   yaw.type = 'number'; yaw.min = '0'; yaw.max = '4095'; yaw.step = '1'; addField('World decoration yaw units', yaw);
   const move=node('input');move.type='checkbox';move.id='world-decoration-translate';const moveLabel=node('label','Translate selected decoration ');moveLabel.append(move);const snap=node('select');snap.setAttribute('aria-label','Decoration translation snap');for(const step of [1,16,64,128]){const option=node('option',step+' source units');option.value=String(step);snap.append(option);}
@@ -43,6 +44,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   for(const input of Object.values(groupDelta))input.oninput=groupChanged;
   groupAll.onclick=()=>{if(groupAll.disabled)return;for(const input of groupList.querySelectorAll('input'))input.checked=true;groupChanged();};
   groupNone.onclick=()=>{if(groupNone.disabled)return;for(const input of groupList.querySelectorAll('input'))input.checked=false;groupChanged();};
+  groupFrame.onclick=()=>{if(!groupFrame.disabled)onFrameGroup(groupIds());};
   const contextMatches = context => {
     const now = getContext(); return !!now && !!context && now.path === context.path && now.key === context.key &&
       now.current === context.current && now.retail === context.retail;
@@ -96,6 +98,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     const ids=groupIds(),delta=groupValues(),count=groupList.querySelectorAll('input').length;
     for(const input of [...groupList.querySelectorAll('input'),...Object.values(groupDelta)])input.disabled=locked||!sourceReady();
     groupAll.disabled=locked||!sourceReady()||count<1||count>32;groupNone.disabled=locked||!sourceReady()||!ids.length;
+    groupFrame.disabled=locked||!sourceReady()||ids.length<1||ids.length>32;
     groupReview.disabled=locked||!sourceReady()||ids.length<1||ids.length>32||Object.values(delta).some(n=>!Number.isInteger(n))||
       ['x','y','z'].some(a=>Math.abs(delta[a])>65535)||Math.abs(delta.yaw_units)>4095||!Object.values(delta).some(n=>n!==0)||
       (editing&&JSON.stringify(fieldValues())!==JSON.stringify(worldDecorationDonorValues(source,Number(donor.value))));
@@ -254,7 +257,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     }
   };
   discard.onclick = () => { if (discard.disabled) return; move.checked=rotate.checked=false;withdrawReview(); status.textContent = 'Decoration Review discarded; draft fields retained, Current scene restored and project unchanged.'; };
-  update(); return {update,cancel,panel,getTransformDraft:()=>!pendingKind&&!busy()?transformDraft():null,setTransformDraft,editSelected:()=>{update();panel.open=true;return inspectDonors(true);},reviewRemoval:async()=>{
+  update(); return {update,cancel,panel,getGroupIds:()=>sourceReady()&&groupIds().length<=32?groupIds():[],getTransformDraft:()=>!pendingKind&&!busy()?transformDraft():null,setTransformDraft,editSelected:()=>{update();panel.open=true;return inspectDonors(true);},reviewRemoval:async()=>{
     update();panel.open=true;const selectedId=getContext()?.selectedId;
     if(await inspectDonors(true)!==true||held?.selectedId!==selectedId||getContext()?.selectedId!==selectedId)return;
     return removeReview.onclick();

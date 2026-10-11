@@ -1,4 +1,5 @@
 import {nearestSceneVertex} from './scene-ruler.js';
+import {selectionBoundsLines} from './scene-selection-bounds.js';
 // SDK geometry only: no retail format, address, pose or scale interpretation.
 import {sourceNormalMatrix,qualifySourceNormals} from './source-normal-view.js';
 const IDENTITY=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
@@ -69,7 +70,7 @@ export class SceneRenderer {
     finally{if(vertex)gl.deleteShader(vertex);if(fragment)gl.deleteShader(fragment);}
     this.locations={};for(const name of ['position','color','uv','normal','pickId'])this.locations[name]=gl.getAttribLocation(this.program,'a_'+name);
     for(const name of ['view','model','texture','textured','picking','pick','semi','pass','normalMatrix','normalDiagnostic','trianglePicking'])this.locations[name]=gl.getUniformLocation(this.program,'u_'+name);
-    this.gridBuffer=gl.createBuffer();this.gridKey=null;this.gridCount=0;this.pickTarget=null;
+    this.gridBuffer=gl.createBuffer();this.selectionBuffer=gl.createBuffer();this.gridKey=null;this.gridCount=0;this.pickTarget=null;
     this.whiteTexture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.whiteTexture);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,255,255,255]));
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
     gl.disable(gl.CULL_FACE);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
@@ -87,6 +88,7 @@ export class SceneRenderer {
     this.clear();this.disposed=true;this.onStatus=()=>{};
     const gl=this.gl;
     if(this.gridBuffer)gl.deleteBuffer(this.gridBuffer);
+    if(this.selectionBuffer)gl.deleteBuffer(this.selectionBuffer);
     if(this.whiteTexture)gl.deleteTexture(this.whiteTexture);
     if(this.program)gl.deleteProgram(this.program);
     if(this.pickTarget){gl.deleteFramebuffer(this.pickTarget.framebuffer);gl.deleteTexture(this.pickTarget.texture);gl.deleteRenderbuffer(this.pickTarget.depth);}
@@ -265,6 +267,7 @@ export class SceneRenderer {
     gl.uniform1i(l.semi,false);gl.uniform1i(l.pass,0);gl.uniform1i(l.normalDiagnostic,false);
     if(!picking&&view.wireframe)this.drawWireframe(view);
     if(!picking&&view.grid)this.drawGrid(view);
+    if(!picking&&view.selectedEntities?.size)this.drawSelectionBounds(view);
     if(!picking&&view.selectedTriangles!==undefined)this.drawFaceOutline(view);
   }
 
@@ -314,6 +317,20 @@ export class SceneRenderer {
           }
           this.bind(batch.wireBuffer);gl.drawArrays(gl.LINES,0,batch.count*2);
         }
+      }
+    }finally{gl.enable(gl.DEPTH_TEST);gl.depthMask(true);}
+  }
+
+  drawSelectionBounds(view){
+    if(!(view.selectedEntities instanceof Set)||view.selectedEntities.size>32)throw Error('Selection overlay exceeds its bounded entity set.');
+    const gl=this.gl,l=this.locations;
+    gl.uniform1i(l.normalDiagnostic,false);gl.uniform1i(l.textured,false);
+    gl.uniformMatrix4fv(l.model,false,columnMajor(IDENTITY));
+    gl.disable(gl.DEPTH_TEST);gl.depthMask(false);
+    try{
+      for(const id of view.selectedEntities){
+        const points=this.bounds(view.positions,id,view.hiddenEntities??new Set(),view.transforms);if(!points.length)continue;
+        const data=selectionBoundsLines(points);gl.bindBuffer(gl.ARRAY_BUFFER,this.selectionBuffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.DYNAMIC_DRAW);this.bind(this.selectionBuffer);gl.drawArrays(gl.LINES,0,data.length/8);
       }
     }finally{gl.enable(gl.DEPTH_TEST);gl.depthMask(true);}
   }

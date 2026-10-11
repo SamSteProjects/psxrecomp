@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {selectionBounds,selectionBoundsLines} from '../editor/scene-selection-bounds.js';
+import {SceneRenderer} from '../editor/scene-renderer.js';
+const points=[{x:-128,y:-64,z:400},{x:256,y:32,z:-200}];
+assert.deepEqual(selectionBounds(points),{min:[-128,-64,-200],max:[256,32,400],target:{x:64,y:-16,z:100},distance:Math.hypot(384,96,600)*1.4});
+const lines=selectionBoundsLines(points);assert.equal(lines.length,24*8);
+const edges=new Set();for(let i=0;i<lines.length;i+=16){const a=[...lines.slice(i,i+3)],b=[...lines.slice(i+8,i+11)];assert.equal(a.filter((v,j)=>v!==b[j]).length,1);edges.add([a.join(','),b.join(',')].sort().join('/'));assert.deepEqual([...lines.slice(i+3,i+8)],[1,Math.fround(.8),Math.fround(.15),0,0]);}assert.equal(edges.size,12);
+assert.equal(selectionBounds([{x:0,y:0,z:0}]).distance,300);
+for(const bad of [[],[{x:0,y:NaN,z:0}],[{x:Infinity,y:0,z:0}],[{x:1e308,y:0,z:0}],Array(257).fill(points[0])])assert.throws(()=>selectionBounds(bad));
+assert.equal(selectionBounds(Array(256).fill(points[0])).distance,300);
+const calls=[],gl=new Proxy({DEPTH_TEST:'depth',ARRAY_BUFFER:'buffer',DYNAMIC_DRAW:'dynamic',LINES:'lines'}, {get:(target,key)=>key in target?target[key]:(...args)=>calls.push([key,...args])});
+const renderer={gl,locations:{},selectionBuffer:{},bind:()=>{},bounds:(_p,id,hidden)=>hidden.has(id)?[]:points};
+SceneRenderer.prototype.drawSelectionBounds.call(renderer,{selectedEntities:new Set(['a','b']),hiddenEntities:new Set(['b']),positions:new Map()});
+assert.equal(calls.filter(c=>c[0]==='drawArrays').length,1);assert.deepEqual(calls.at(-2),['enable','depth']);assert.deepEqual(calls.at(-1),['depthMask',true]);
+renderer.bounds=()=>{throw Error('invalid transform');};assert.throws(()=>SceneRenderer.prototype.drawSelectionBounds.call(renderer,{selectedEntities:new Set(['a'])}));assert.deepEqual(calls.at(-1),['depthMask',true]);
+assert.throws(()=>SceneRenderer.prototype.drawSelectionBounds.call(renderer,{selectedEntities:new Set(Array.from({length:33},(_,i)=>String(i)))}));
+console.log('Selection extrema, camera framing, twelve unique display edges and bounded/finite refusals passed.');

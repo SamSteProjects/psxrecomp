@@ -979,6 +979,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/audio-volume-sweep-preview.js": ("audio-volume-sweep-preview.js", "text/javascript"),
                  "/audio-volume-sweep.js": ("audio-volume-sweep.js", "text/javascript"),
                  "/scene-ruler.js": ("scene-ruler.js", "text/javascript"),
+                 "/scene-selection-bounds.js": ("scene-selection-bounds.js", "text/javascript"),
                  "/model-normal-rebuild.js": ("model-normal-rebuild.js", "text/javascript"),
                  "/model-normal-rotation.js": ("model-normal-rotation.js", "text/javascript"),
                  "/model-normal-users.js": ("model-normal-users.js", "text/javascript"),
