@@ -1413,6 +1413,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_placement_remove import review
                     self._json(200,review(self.server.project,body['scene'],body['source_key'],body.get('placement_ids',body.get('placement_id'))))
                     return
+                if route == '/api/worldmap-scripted-placement-scene':
+                    if set(body)!={'scene','source_key'}:
+                        raise ProjectError('Scripted World scene requires exact scene and source key')
+                    from .worldmap_scripted_placement_scene import inspect
+                    self._json(200,inspect(self.server.project,body['scene'],body['source_key']))
+                    return
                 if route == '/api/worldmap-placement-scene':
                     if set(body) not in ({'scene','source_key'},{'scene','source_key','allocation_proposal'},{'scene','source_key','allocation_edit_proposal'},{'scene','source_key','allocation_remove_proposal'},{'scene','source_key','allocation_cell_proposal'},{'scene','source_key','allocation_model_proposal'},{'scene','source_key','allocation_group_proposal'}):
                         raise ProjectError('Current World scene requires exact source and optional reviewed allocation')
