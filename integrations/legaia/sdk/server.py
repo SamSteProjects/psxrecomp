@@ -1324,6 +1324,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Stability cancellation requires the current job identity')
                     self._json(200, {'job': self.server.stability_checks.cancel(body['id'])})
                     return
+                if route in ('/api/battle-character-resources','/api/battle-character-preview'):
+                    fields={'expected_project_path','expected_source_key'}
+                    if route.endswith('-preview'):fields|={'asset_id','catalog_source_key','palette_index'}
+                    if set(body)!=fields:raise ProjectError('Battle resource inspection requires exact project and source fields')
+                    from .battle_character_resources import resources,preview
+                    self._json(200,(preview if route.endswith('-preview') else resources)(self.server.project,**body))
+                    return
                 if route == '/api/command-history':
                     if set(body) not in (set(), {'offset'}):
                         raise ProjectError('History listing accepts an optional offset only')

@@ -25,6 +25,10 @@ Inspected implementation revision: `e7b99de012bbe91afef61be3a5aacbdd3559d1eb`. C
 
 All five recorded runtime/precompile sources and three fixtures match their expected SHA-256 values. Fresh receipt: `local-output/sdk-20260909/requirements-audit-20261011/stability-source-inclusion.json`. The audit explicitly reports `execution_repeated=false`, `runtime_binary_verified=false` and `gameplay_verified=false`. No missing patch or drift was found in **this recorded set**; this does not audit every runtime file or a current sibling release checkout.
 
+## Battle Discovery Checkpoint — 2026-10-11
+
+[Battle Character Resource Discovery](legaia-battle-character-resources.md) now supplies source-qualified importer/services for five existing-format model bodies and six complete TIMs, with a seventh partial record. Four retail-enabled source/HTTP checks pass. Editor/Asset Database integration and battle assembly/animation remain incomplete; this does not broaden gameplay acceptance.
+
 ## Next Development Frontier
 
 Offline implementation is still possible. The next high-value research area is provenance-qualified discovery of battle/extended model and animation formats, which current decoders explicitly leave unsupported. Establish pinned reference and retail layout evidence before registering new assets or extending codecs. Full runtime timing, visibility, audible output and cross-scene restore remain gameplay-dependent gates and are deferred under the user's current instructions.
