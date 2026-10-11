@@ -1,5 +1,17 @@
 # Scripted World Object Bind Allocation
 
+## Saved Scripted Group Editor — 2026-10-11
+
+Offline checks passed for a focused editor workflow; runtime/gameplay verification remains deferred. The selected saved scripted object inspector now opens **Edit saved scripted group**. The separate **Saved Scripted World Group Transform** panel inspects complete native Current inputs, lists bounded saved UUID/cell/shared-script owners and permits explicit checkbox membership. Selected instances receive existing viewport group bounds; **Frame scripted group** frames the complete selected set. Retail and decoration ownership remain separate.
+
+Native XYZ deltas translate each selected object's original signed offsets together. Yaw delta adds to each original heading and wraps at 4096, rather than rotating positions about a pivot. Client bounds reject a translation if any resulting offset falls outside signed16. Review constructs exact UUID/value entries and independently reconstructs the native group recipe. Preview independently admits the complete proposed native/model scene; Apply requires that Preview and executes one existing project command. Changes to membership or deltas restore Current and clear Review; competing scripted previews, export and saved proposed views remain excluded. Abort/generation and fresh source identity guards protect asynchronous work. Fresh Current reopening selects the first transformed UUID; Undo/Redo and Save/Open use existing services.
+
+The actual private Map01 donor/child browser workflow passes initial single-member refusal, signed bounds refusal, both objects' proposed coordinates, required Preview, membership withdrawal, competing-transform exclusion, inspector shortcut, group framing/highlights, native XYZ/yaw edits, one-command Apply, fresh Current coordinates, Undo/Redo and Save/Open. Python independently compares complete resulting native MAP bytes with the native Review. There are zero page errors; the original project remains unchanged. Group viewport, wide and 400-pixel captures were inspected. Twenty-two focused Python schema/group/scene checks, HTTP module serving, Python AST, JavaScript syntax and whitespace pass. The existing actual saved single-transform browser workflow passes after shared viewport integration.
+
+Evidence under `local-output/sdk-20260909/world-scripted-placement-build-20261011/`: `browser-scripted-group.py`, `browser-scripted-group.mjs`, `scripted-group-browser-proof.json`, `scripted-group-viewport.png`, `scripted-group-wide.png` and `scripted-group-narrow.png`. The preceding native group Build remains the package checkpoint. No new Build, native compile, game, runtime attachment, installation or disc export occurred.
+
+Scripted group gizmos, box/click selection, saved group metadata/export and deferred gameplay remain unfinished. Full SDK goal remains active; solo development continues.
+
 ## Saved Scripted Group Transforms — 2026-10-11
 
 In progress. Saved scripted UUIDs now support a native group transform recipe through the existing project command/history/persistence and package Build services. The editor group selection and transform controls remain unfinished; this section does not claim gameplay acceptance.
