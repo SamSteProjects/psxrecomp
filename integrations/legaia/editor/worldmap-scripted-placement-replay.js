@@ -20,6 +20,7 @@ function tables(block) {
   }
   return {tables: result, spans};
 }
+export function worldMapTriggerTables(block) {return tables(block);}
 function layout(man) {
   if (!(man instanceof Uint8Array) || !integer(man.length, 43, 4194304)) fail('Bind replay needs a bounded MAN.');
   const v = view(man), counts = [0, 1, 2].map(i => v.getInt16(34 + i * 2, true)), total = counts.reduce((a, b) => a + b, 0), base = 43 + 3 * total;
