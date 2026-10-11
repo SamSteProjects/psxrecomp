@@ -22,7 +22,7 @@ export function mountWorldDecorationGroupGizmo({host,getDraft,getEntities,getVie
   let before=null;
   const available=()=>allowed()&&getDraft()?.enabled===true;
   function axes(){
-    if(!available())return {};
+    if(!available()||getDraft().mode!=='translate')return {};
     let pivot;try{pivot=worldDecorationGroupDisplay(getEntities(),getDraft()).pivot;}catch{return {};}
     const view=getView(),start=renderer().projectPoint(pivot,view),units=Math.max(64,view.camera.distance*.22),result={};if(!start)return result;
     for(const [axis,direction] of Object.entries(sourceOffsetDirections)){
@@ -30,11 +30,21 @@ export function mountWorldDecorationGroupGizmo({host,getDraft,getEntities,getVie
       if(end&&Math.hypot(end.x-start.x,end.y-start.y)>=4)result[axis]={start,end,units};
     }return result;
   }
-  return mountPlacementGizmo({host,idPrefix:'world-decoration-group',range:'world-delta',getAxes:axes,allowed:available,getStep:()=>getDraft().step,
-    getContext:()=>JSON.stringify([getContext(),getDraft()?.ids,getDraft()?.sourceKey,getDraft()?.enabled,getDraft()?.step]),
-    getValues:()=>({offset:Object.fromEntries(['x','y','z'].map(a=>[a,getDraft().delta[a]])),yaw_units:0}),
-    onBegin:()=>{before=structuredClone(getDraft().delta);},onPreview:values=>{const delta={...getDraft().delta,...values.offset};worldDecorationGroupDisplay(getEntities(),{...getDraft(),delta});if(!setDraft(delta))throw Error('Decoration group source changed.');},
-    onEnd:()=>{before=null;},onCancel:()=>{const prior=before;before=null;if(prior)setDraft(prior,true);},onError});
+  const options={host,idPrefix:'world-decoration-group',range:'world-delta',
+    getContext:()=>JSON.stringify([getContext(),getDraft()?.ids,getDraft()?.sourceKey,getDraft()?.enabled,getDraft()?.mode,getDraft()?.step,getDraft()?.yawStep]),
+    onBegin:()=>{before=structuredClone(getDraft().delta);},onPreview:values=>{const delta={...values.offset,yaw_units:getDraft().mode==='yaw'?values.yaw_units:getDraft().delta.yaw_units};worldDecorationGroupDisplay(getEntities(),{...getDraft(),delta});if(!setDraft(delta))throw Error('Decoration group source changed.');},
+    onEnd:()=>{before=null;},onCancel:()=>{const prior=before;before=null;if(prior)setDraft(prior,true);},onError};
+  function rotation(){
+    if(!available()||getDraft().mode!=='yaw')return null;
+    let pivot;try{pivot=worldDecorationGroupDisplay(getEntities(),getDraft()).pivot;}catch{return null;}
+    const view=getView(),radius=Math.max(64,view.camera.distance*.22),center=renderer().projectPoint(pivot,view),at=angle=>renderer().projectPoint({x:pivot.x+Math.cos(angle)*radius,y:pivot.y,z:pivot.z-Math.sin(angle)*radius},view);
+    const points=Array.from({length:64},(_,i)=>at(i*Math.PI/32)),heading=at(getDraft().delta.yaw_units*Math.PI/2048);
+    if(!center||!heading||points.some(p=>!p))return null;
+    return {center,heading,points,plane:{pivot,radius,width:view.width,height:view.height,matrix:Array.from(renderer().viewMatrix(view))}};
+  }
+  const translation=mountPlacementGizmo({...options,getAxes:axes,allowed:()=>available()&&getDraft().mode==='translate',getStep:()=>getDraft().step,getValues:()=>({offset:Object.fromEntries(['x','y','z'].map(a=>[a,getDraft().delta[a]])),yaw_units:0})});
+  const yaw=mountPlacementYaw({...options,getRotation:rotation,allowed:()=>available()&&getDraft().mode==='yaw',getStep:()=>getDraft().yawStep,getValues:()=>({offset:Object.fromEntries(['x','y','z'].map(a=>[a,getDraft().delta[a]])),yaw_units:getDraft().delta.yaw_units})});
+  return {update(){translation.update();yaw.update();},cancel(reason){translation.cancel(reason);yaw.cancel(reason);},isActive:()=>translation.isActive()||yaw.isActive(),dispose(){translation.dispose();yaw.dispose();}};
 }
 
 export function worldDecorationDraftPosition(entity,draft){

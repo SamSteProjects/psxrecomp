@@ -30,6 +30,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   for(const button of [groupReview,groupAll,groupNone])button.type='button';
   const groupFrame=node('button','Frame decoration group');groupFrame.type='button';group.append(groupFrame);
   const groupMove=node('input');groupMove.type='checkbox';groupMove.id='world-decoration-group-translate';const groupMoveLabel=node('label','Translate decoration group ');groupMoveLabel.append(groupMove);const groupSnap=node('select');groupSnap.setAttribute('aria-label','Decoration group translation snap');for(const step of [1,16,64,128]){const option=node('option',step+' native delta units');option.value=String(step);groupSnap.append(option);}group.append(groupMoveLabel,groupSnap,node('p','Handles edit a snapped native delta draft for every selected UUID. Review and Proposed preview are required before Apply.'));
+  const groupRotate=node('input');groupRotate.type='checkbox';groupRotate.id='world-decoration-group-rotate';const groupRotateLabel=node('label','Rotate decoration group yaw delta ');groupRotateLabel.append(groupRotate);const groupYawSnap=node('select');groupYawSnap.setAttribute('aria-label','Decoration group yaw snap');for(const step of [1,16,64,256,512,1024]){const option=node('option',`${step} yaw delta units (${step*360/4096}°)`);option.value=String(step);groupYawSnap.append(option);}group.append(groupRotateLabel,groupYawSnap,node('p','The yaw ring edits a relative delta of −4095..4095 units. Each orientation wraps in 4096 units; positions do not orbit the group pivot.'));
   for (const axis of ['x','y','z']) { const input = node('input'); input.type = 'number'; input.min = '-32768'; input.max = '32767'; input.step = '1'; offsets[axis] = input; addField('World decoration offset ' + axis.toUpperCase(), input); }
   yaw.type = 'number'; yaw.min = '0'; yaw.max = '4095'; yaw.step = '1'; addField('World decoration yaw units', yaw);
   const move=node('input');move.type='checkbox';move.id='world-decoration-translate';const moveLabel=node('label','Translate selected decoration ');moveLabel.append(move);const snap=node('select');snap.setAttribute('aria-label','Decoration translation snap');for(const step of [1,16,64,128]){const option=node('option',step+' source units');option.value=String(step);snap.append(option);}
@@ -45,14 +46,15 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   function groupTransformDraft(){
     if(!sourceReady()||displayed||review||pendingKind||busy()||(editing&&JSON.stringify(fieldValues())!==JSON.stringify(worldDecorationDonorValues(source,Number(donor.value)))))return null;
     const ids=groupIds(),delta=groupValues();if(!ids.length||ids.length>32||Object.values(delta).some(n=>!Number.isInteger(n)))return null;
-    return {kind:'group',ids,delta,source,sourceKey:held.key,enabled:groupMove.checked,step:Number(groupSnap.value)};
+    return {kind:'group',ids,delta,source,sourceKey:held.key,enabled:groupMove.checked||groupRotate.checked,mode:groupMove.checked?'translate':groupRotate.checked?'yaw':null,step:Number(groupSnap.value),yawStep:Number(groupYawSnap.value)};
   }
   function setGroupTransformDraft(delta,restoring=false){
     if(!sourceReady()||pendingKind==='apply'||(!restoring&&!groupTransformDraft())||Object.values(delta).some(n=>!Number.isInteger(n)))return false;
     for(const axis of Object.keys(groupDelta))groupDelta[axis].value=String(delta[axis]);groupChanged();return true;
   }
   function groupChanged(){move.checked=rotate.checked=false;withdrawReview();onGroupTransformDraft(groupTransformDraft());status.textContent='Group draft changed. Review the selected identities and delta again.';}
-  groupMove.onchange=()=>{const enabled=groupMove.checked;move.checked=rotate.checked=false;onTransformDraft(null);groupMove.checked=enabled;onTransformDraft(null);onGroupTransformDraft(groupTransformDraft());update();};groupSnap.onchange=()=>{onGroupTransformDraft(groupTransformDraft());update();};
+  function groupMode(control){const enabled=control.checked;move.checked=rotate.checked=false;onTransformDraft(null);groupMove.checked=control===groupMove&&enabled;groupRotate.checked=control===groupRotate&&enabled;onTransformDraft(null);onGroupTransformDraft(groupTransformDraft());update();}
+  groupMove.onchange=()=>groupMode(groupMove);groupRotate.onchange=()=>groupMode(groupRotate);groupSnap.onchange=groupYawSnap.onchange=()=>{onGroupTransformDraft(groupTransformDraft());update();};
   for(const input of Object.values(groupDelta))input.oninput=groupChanged;
   groupAll.onclick=()=>{if(groupAll.disabled)return;for(const input of groupList.querySelectorAll('input'))input.checked=true;groupChanged();};
   groupNone.onclick=()=>{if(groupNone.disabled)return;for(const input of groupList.querySelectorAll('input'))input.checked=false;groupChanged();};
@@ -73,7 +75,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     onTransformDraft(null);onGroupTransformDraft(null);review = null; if (displayed) { displayed = false; onDiscard(); }
     evidence.textContent = ''; update();
   }
-  function change() { groupMove.checked=false;withdrawReview();const draft=transformDraft();if(draft)onTransformDraft(draft);status.textContent = sourceReady() ? 'Draft changed. Review the current donor, target, offsets and yaw again.' : 'Inspect Current decoration donors first.'; }
+  function change() { groupMove.checked=groupRotate.checked=false;withdrawReview();const draft=transformDraft();if(draft)onTransformDraft(draft);status.textContent = sourceReady() ? 'Draft changed. Review the current donor, target, offsets and yaw again.' : 'Inspect Current decoration donors first.'; }
   function transformDraft(){
     if(!editing||!sourceReady()||getContext()?.selectedId!==held.selectedId||displayed||review||!validValues(fieldValues()))return null;
     const base=worldDecorationDonorValues(source,Number(donor.value)),values=fieldValues();
@@ -83,7 +85,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     if(!validValues(values)||(restoring?(!editing||!sourceReady()||pendingKind==='apply'):(pendingKind||busy()||!transformDraft())))return false;
     for(const axis of ['x','y','z'])offsets[axis].value=String(values.offset[axis]);yaw.value=String(values.yaw_units);change();return true;
   }
-  function singleMode(control){const enabled=control.checked;groupMove.checked=false;onGroupTransformDraft(null);move.checked=control===move&&enabled;rotate.checked=control===rotate&&enabled;onGroupTransformDraft(null);onTransformDraft(transformDraft());update();}
+  function singleMode(control){const enabled=control.checked;groupMove.checked=groupRotate.checked=false;onGroupTransformDraft(null);move.checked=control===move&&enabled;rotate.checked=control===rotate&&enabled;onGroupTransformDraft(null);onTransformDraft(transformDraft());update();}
   move.onchange=()=>singleMode(move);rotate.onchange=()=>singleMode(rotate);snap.onchange=yawSnap.onchange=()=>{onTransformDraft(transformDraft());update();};
   function donorValues() {
     if (!sourceReady() || donor.value === '') return;
@@ -100,7 +102,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   donor.onchange = donorValues; for (const input of [target, destination, yaw, ...Object.values(offsets)]) input.oninput = change;
   model.onchange=change;
   function cancel() {
-    move.checked=rotate.checked=groupMove.checked=false;generation++; controller?.abort(); source = held = review = placementId = null; displayed = editing = false;onTransformDraft(null);onGroupTransformDraft(null);
+    move.checked=rotate.checked=groupMove.checked=groupRotate.checked=false;generation++; controller?.abort(); source = held = review = placementId = null; displayed = editing = false;onTransformDraft(null);onGroupTransformDraft(null);
     savedGroups?.cancel();
     donor.replaceChildren();model.replaceChildren();groupList.replaceChildren(); evidence.textContent = ''; status.textContent = 'Switch to a qualified Current scene and inspect decoration donors.';
     if (pendingKind !== 'apply') { controller = null; if (pendingKind) setBusy(false); pendingKind = null; }
@@ -113,7 +115,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     for(const input of [...groupList.querySelectorAll('input'),...Object.values(groupDelta)])input.disabled=locked||!sourceReady();
     groupAll.disabled=locked||!sourceReady()||count<1||count>32;groupNone.disabled=locked||!sourceReady()||!ids.length;
     groupFrame.disabled=locked||!sourceReady()||ids.length<1||ids.length>32;
-    groupMove.disabled=locked||!groupTransformDraft();groupSnap.disabled=groupMove.disabled;
+    groupMove.disabled=locked||!groupTransformDraft();groupRotate.disabled=groupMove.disabled;groupSnap.disabled=groupYawSnap.disabled=groupMove.disabled;
     groupReview.disabled=locked||!sourceReady()||ids.length<1||ids.length>32||Object.values(delta).some(n=>!Number.isInteger(n))||
       ['x','y','z'].some(a=>Math.abs(delta[a])>65535)||Math.abs(delta.yaw_units)>4095||!Object.values(delta).some(n=>n!==0)||
       (editing&&JSON.stringify(fieldValues())!==JSON.stringify(worldDecorationDonorValues(source,Number(donor.value))));
@@ -180,7 +182,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   }
   inspect.onclick=()=>inspectDonors(false);editSelected.onclick=()=>inspectDonors(true);
   groupReview.onclick=()=>{
-    if(groupReview.disabled)return;groupMove.checked=false;withdrawReview();move.checked=rotate.checked=false;
+    if(groupReview.disabled)return;groupMove.checked=groupRotate.checked=false;withdrawReview();move.checked=rotate.checked=false;
     return run('group-review',async(context,signal,valid)=>{
       const ids=groupIds(),delta=groupValues();status.textContent='Checking every selected native transform and preserving unselected decorations…';
       await transformWorldDecorationGroup(source,ids,delta);
@@ -272,10 +274,10 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
       catch (error) { status.textContent = 'Decoration applied, but scene refresh failed: ' + error.message; onError(error); }
     }
   };
-  discard.onclick = () => { if (discard.disabled) return; move.checked=rotate.checked=groupMove.checked=false;onGroupTransformDraft(null);for(const input of Object.values(groupDelta))input.value='0';withdrawReview(); status.textContent = 'Decoration Review discarded; group delta cleared, Current scene restored and project unchanged.'; };
+  discard.onclick = () => { if (discard.disabled) return; move.checked=rotate.checked=groupMove.checked=groupRotate.checked=false;onGroupTransformDraft(null);for(const input of Object.values(groupDelta))input.value='0';withdrawReview(); status.textContent = 'Decoration Review discarded; group delta cleared, Current scene restored and project unchanged.'; };
   if(typeof api==='function')savedGroups=mountAuthoredWorldSelectionSets({host:group,getState,getSource:()=>sourceReady()?source:null,getIds:()=>sourceReady()?groupIds():[],current:()=>sourceReady()&&!displayed&&!pendingKind,busy,api,onError,recall:ids=>{
     const available=[...groupList.querySelectorAll('input')];if(!sourceReady()||ids.some(id=>!available.some(i=>i.value===id)))throw Error('Saved group is unavailable in this Current source.');
-    groupMove.checked=false;onGroupTransformDraft(null);for(const input of available)input.checked=ids.includes(input.value);for(const input of Object.values(groupDelta))input.value='0';move.checked=rotate.checked=false;groupChanged();
+    groupMove.checked=groupRotate.checked=false;onGroupTransformDraft(null);for(const input of available)input.checked=ids.includes(input.value);for(const input of Object.values(groupDelta))input.value='0';move.checked=rotate.checked=false;groupChanged();
   }});
   update(); return {update,cancel,panel,getGroupIds:()=>sourceReady()&&groupIds().length<=32?groupIds():[],getGroupTransformDraft:groupTransformDraft,setGroupTransformDraft,getTransformDraft:()=>!pendingKind&&!busy()?transformDraft():null,setTransformDraft,editSelected:()=>{update();panel.open=true;return inspectDonors(true);},reviewRemoval:async()=>{
     update();panel.open=true;const selectedId=getContext()?.selectedId;
