@@ -13,6 +13,14 @@ from importer.pipeline import import_scene
 from test_importer_export import parse_glb
 
 class WorldPlacementExportScope(unittest.TestCase):
+ def test_authored_group_scope_refuses_invalid_or_mixed_arguments_before_source(self):
+  p=type('Project',(),{'mode':'edit','disc_path':'private'})()
+  identifier='placement://authored/00000000-0000-4000-8000-000000000001'
+  cases=[dict(scope='selected-authored'),dict(scope='ground',placement_ids=[identifier]),dict(scope='selected-authored',placement_ids=[]),dict(scope='selected-authored',placement_ids=[identifier,identifier]),dict(scope='selected-authored',placement_ids=['foreign']),dict(scope='selected-authored',placement_ids=[identifier],proposal={}),dict(scope='selected-authored',placement_ids=[identifier],batch_proposal={}),dict(scope='selected-authored',placement_ids=[identifier],record_ids=['0004']),dict(scope='selected-authored',placement_ids=[identifier],entity_id='scene://map01/worldmap/ground')]
+  with patch('sdk.worldmap_placement_export.load_worldmap_geometry',side_effect=AssertionError('must not read')),patch('sdk.worldmap_placement_export.write_encoded_glb',side_effect=AssertionError('must not write')):
+   for kwargs in cases:
+    with self.subTest(kwargs=kwargs),self.assertRaises(ProjectError):export(p,'map01','a'*64,**kwargs)
+
  def test_invalid_scopes_reject_before_source_read_or_write(self):
   p=type('Project',(),{'mode':'edit','disc_path':'private'})()
   with patch('sdk.worldmap_placement_export.context',side_effect=AssertionError('must not read source')),patch('sdk.worldmap_placement_export.write_encoded_glb',side_effect=AssertionError('must not write')):

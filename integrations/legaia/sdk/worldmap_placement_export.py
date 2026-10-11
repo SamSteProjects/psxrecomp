@@ -1,7 +1,7 @@
 """Private Current/Proposed world GLBs composed from qualified record bindings."""
 from copy import deepcopy
 from hashlib import sha256
-import base64,json
+import base64,json,re
 
 from importer.export import write_encoded_glb
 from importer.worldmap_geometry import load_worldmap_geometry
@@ -11,11 +11,15 @@ from .worldmap_authoring import state_key
 from .worldmap_placements import context,review,patch
 from .worldmap_export import MAX_RESPONSE_BYTES
 
-def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entity_id=None,batch_proposal=None,record_ids=None):
+def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entity_id=None,batch_proposal=None,record_ids=None,placement_ids=None):
     if scene not in ('map01','map02','map03') or project.mode!='edit' or not project.disc_path:
         raise ProjectError('World placement export requires a supported kingdom in Edit mode')
-    if scope not in ('source-scene','ground','selected','selected-records') or (scope=='selected')!=(entity_id is not None) or (scope=='selected-records')!=(record_ids is not None):
+    if scope not in ('source-scene','ground','selected','selected-records','selected-authored') or (scope=='selected')!=(entity_id is not None) or (scope=='selected-records')!=(record_ids is not None) or (scope=='selected-authored')!=(placement_ids is not None):
         raise ProjectError('Choose source-scene, ground or selected placement export scope')
+    if placement_ids is not None:
+        if (not isinstance(placement_ids,list) or not 1<=len(placement_ids)<=32 or any(not isinstance(i,str) or not re.fullmatch(r'placement://authored/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}',i) for i in placement_ids) or placement_ids!=sorted(set(placement_ids)) or proposal is not None or batch_proposal is not None):
+            raise ProjectError('Authored group export requires 1..32 canonical sorted Current UUIDs without a proposal')
+        placement_ids=deepcopy(placement_ids)
     if record_ids is not None:
         from .worldmap_placement_batch import arguments
         arguments(record_ids,dict(x=0,y=0,z=0,yaw_units=0),False)
@@ -94,6 +98,14 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
             source_rotation_psx=deepcopy(seed['source_rotation_psx']),
             authored_source_transform=dict(record_id=record,retail_record_sha256=row['source_record_sha256'],
                 exported_record_sha256=seed['source_record_sha256'],values=deepcopy((active or {}).get('entries',{}).get(record,{}).get('values'))))
+    if placement_ids is not None:
+        selected=[]
+        for identifier in placement_ids:
+            matches=[e for e in geometry['scene_graph']['entities'] if e.get('placement_scope')=='authored_spawn_seed' and e.get('authored_placement',{}).get('placement_id')==identifier]
+            if len(matches)!=1 or not allocation_scene:
+                raise ProjectError('Authored group export requires every retained native owner in the Current scene')
+            selected.append(matches[0]['entity_id'])
+        selected_ids=sorted(selected)
     metadata=dict(schema_version='legaia.worldmap-placement-export.v1',representation=representation,source_key=key,
         current_map_sha256=sha256(current_map).hexdigest(),exported_map_sha256=sha256(exported_map).hexdigest(),
         source_map_sha256=sha256(raw).hexdigest(),review_key=review_key,proposal=deepcopy(proposal),
@@ -106,6 +118,7 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
             authored_allocations=deepcopy(allocation_scene['authored_allocations']),authored_entity_count=allocation_scene['authored_entity_count'])
     if batch_proposal is not None:metadata['batch_proposal']=deepcopy(batch_proposal)
     if record_ids is not None:metadata['selected_record_ids']=deepcopy(record_ids)
+    if placement_ids is not None:metadata['selected_placement_ids']=deepcopy(placement_ids)
     metadata['model_authoring']=deepcopy(geometry['model_authoring'])
     metadata['texture_authoring']=deepcopy(geometry['texture_authoring'])
     geometry['limitations'].append('Current source record transforms and exact-layout authored TIM payloads are composed; same-layout authored TMD vertex/normal geometry is composed; runtime visibility and texture residency are unverified.')
@@ -117,6 +130,7 @@ def export(project,scene,expected_key,proposal=None,*,scope='source-scene',entit
         gameplay_verified=False,project_changed=False)
     if batch_proposal is not None:response['batch_proposal']=deepcopy(batch_proposal)
     if record_ids is not None:response.update(record_ids=record_ids,entity_ids=selected_ids)
+    if placement_ids is not None:response.update(placement_ids=placement_ids,entity_ids=selected_ids)
     if len(json.dumps(dict(response,audit=audit),allow_nan=False).encode())+65536>MAX_RESPONSE_BYTES:
         raise ProjectError('World placement export response exceeds64 MiB')
     current()

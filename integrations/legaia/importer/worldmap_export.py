@@ -180,9 +180,14 @@ def encode_worldmap_glb(result, source_key, scope='source-scene', entity_id=None
                 or any(placement_authoring.get(k) != native_meta.get(k) for k in (
                     'current_map_sha256','exported_map_sha256','allocation_binding','authored_allocations','authored_entity_count'))):
             raise ImportError('Authored World GLB requires its exact Current allocation export provenance')
-    if scope=='selected-records':
-        if not isinstance(result,dict) or entity_id is not None or not isinstance(entity_ids,list) or not 1<=len(entity_ids)<=511 or any(not isinstance(i,str) or not re.fullmatch(re.escape(f"scene://{result.get('scene')}/worldmap/placements/")+r'[0-3][0-9a-f]{3}',i) for i in entity_ids) or entity_ids!=sorted(set(entity_ids)):
-            raise ImportError('Selected world records require canonical complete source-seed identities')
+    if scope in ('selected-records','selected-authored'):
+        if not isinstance(result,dict):raise ImportError('Selected world export requires a qualified source graph')
+        authored=scope=='selected-authored'
+        pattern=(re.escape(f"scene://{result.get('scene')}/worldmap/authored-placements/")+r'[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}') if authored else re.escape(f"scene://{result.get('scene')}/worldmap/placements/")+r'[0-3][0-9a-f]{3}'
+        if entity_id is not None or not isinstance(entity_ids,list) or not 1<=len(entity_ids)<=(32 if authored else 511) or any(not isinstance(i,str) or not re.fullmatch(pattern,i) for i in entity_ids) or entity_ids!=sorted(set(entity_ids)):
+            raise ImportError('Selected world group requires canonical complete source identities')
+        if authored and (not isinstance(placement_authoring,dict) or placement_authoring.get('representation')!='current-source' or placement_authoring.get('selected_placement_ids')!=['placement://authored/'+i.rsplit('/',1)[1] for i in entity_ids]):
+            raise ImportError('Authored group export requires exact Current UUID membership')
         scene=adapt_worldmap_scene(result,source_key)
         selected=[e for e in scene['entities'] if e['entity_id'] in entity_ids]
         if sorted(e['entity_id'] for e in selected)!=entity_ids:raise ImportError('Selected world source seeds are unavailable')
