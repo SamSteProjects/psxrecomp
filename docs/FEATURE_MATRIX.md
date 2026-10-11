@@ -1,5 +1,7 @@
 # Legaia SDK Feature Matrix
 
+Offline checks passed — [World Reviewed Proposed Timeline](legaia-worldmap-animation-channels.md#reviewed-proposed-timeline): separate Retail/Current/Proposed native tracks, required Preview admission, independent display frames and withdrawal. Independent Proposed bank checks pass; actual six-axis editor Preview/navigation/invalid-frame withdrawal/recovery and Apply/history/persistence pass with unchanged field scene/original project and no page errors.
+
 Offline checks passed — [World Native Channel Timeline](legaia-worldmap-animation-channels.md#native-channel-timeline): discrete Retail/Current samples, object/axis selection and pointer/keyboard frame inspection. All supported clip values and mapping guards pass; actual bound/source-only editor, authored draft withdrawal, Review control disabling, CSV, close/disposal and wide/400-pixel layout checks pass with unchanged project/history.
 
 Offline checks passed — [World Animation Request Capacity](legaia-worldmap-animation-ranges.md#channel-request-capacity): declared 4,096-row channel requests pass synthetic HTTP/native byte checks; exact Apply dispatch and envelope refusals pass. Actual Map02 dedicated-route Review/Preview/Apply and history/persistence pass; wide/400-pixel captures were inspected with no page errors.

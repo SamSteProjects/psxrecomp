@@ -1,5 +1,7 @@
 # Architecture
 
+Offline checks passed — World Reviewed Proposed Timeline takes independently qualified native Review plans through Preview/withdrawal callbacks. Only the native authoring tool admits or withdraws the Proposed bank. Timeline preview navigation feeds its local comparison frame, preserving command rows and the edit frame. [Workflow](legaia-worldmap-animation-channels.md#reviewed-proposed-timeline).
+
 Offline checks passed — World Native Channel Timeline samples immutable qualified native frame plans in the editor. Object/axis/frame navigation makes no server reads and carries no model, timing or runtime interpretation. Existing frame selection owns authored Review withdrawal and stale snapshot disposal. [Workflow](legaia-worldmap-animation-channels.md#native-channel-timeline).
 
 Offline checks passed — World Animation Request Capacity: placed-object channel Review and Apply share a bounded 1 MiB envelope. Dedicated Apply dispatches the existing canonical project command; generic command requests remain bounded to 32 KiB. [Scope and evidence](legaia-worldmap-animation-ranges.md#channel-request-capacity).
