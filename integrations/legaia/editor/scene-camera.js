@@ -19,12 +19,13 @@ export function sceneAxisCamera(camera,axis){
 }
 
 // Fit current rendered bounds with ten percent screen padding on each edge.
-export function sceneFrameCamera(camera,viewport,points){
+export function sceneFrameCamera(camera,viewport,points,frameBasis=null){
  if(!['perspective','orthographic'].includes(camera?.projection)||!finite(viewport?.width)||!finite(viewport?.height)||viewport.width<1||viewport.height<1||viewport.width>1e6||viewport.height>1e6||!Array.isArray(points)||points.length<1||points.length>4096)throw new Error('Framing requires a current camera, viewport and bounded mesh corners.');
  sceneCameraPlanePoint(camera,viewport,viewport.width/2,viewport.height/2);
  const axes=['x','y','z'],lo={x:Infinity,y:Infinity,z:Infinity},hi={x:-Infinity,y:-Infinity,z:-Infinity};
  for(const point of points){if(!point||axes.some(a=>!finite(point[a])||Math.abs(point[a])>1e12))throw new Error('Framing bounds contain an invalid display point.');for(const a of axes){lo[a]=Math.min(lo[a],point[a]);hi[a]=Math.max(hi[a],point[a]);}}
- const target=Object.fromEntries(axes.map(a=>[a,(lo[a]+hi[a])/2])),basis=sceneCameraBasis(camera),focal=Math.min(viewport.width,viewport.height)*.9;
+ const target=Object.fromEntries(axes.map(a=>[a,(lo[a]+hi[a])/2])),basis=frameBasis??sceneCameraBasis(camera),focal=Math.min(viewport.width,viewport.height)*.9;
+ screenCameraInputs(camera,viewport,basis,navigationLimits);
  let distance=20;
  for(const point of points){
   const relative=Object.fromEntries(axes.map(a=>[a,point[a]-target[a]])),dot=v=>axes.reduce((sum,a)=>sum+relative[a]*v[a],0),depth=dot(basis.forward);
@@ -39,12 +40,12 @@ export function sceneFrameCamera(camera,viewport,points){
 
 // A whole visible scene may exceed the selected-group corner bound. Fit its
 // enclosing box conservatively without discarding any loaded mesh or marker.
-export function sceneFrameAllCamera(camera,viewport,points){
+export function sceneFrameAllCamera(camera,viewport,points,frameBasis=null){
  if(!Array.isArray(points)||points.length<1||points.length>262144)throw Error('Scene framing requires bounded visible display points.');
  const axes=['x','y','z'],lo={x:Infinity,y:Infinity,z:Infinity},hi={x:-Infinity,y:-Infinity,z:-Infinity};
  for(const point of points){if(!point||axes.some(a=>!finite(point[a])||Math.abs(point[a])>1e12))throw Error('Scene framing contains invalid display bounds.');for(const a of axes){lo[a]=Math.min(lo[a],point[a]);hi[a]=Math.max(hi[a],point[a]);}}
  const corners=Array.from({length:8},(_,i)=>({x:(i&1?hi:lo).x,y:(i&2?hi:lo).y,z:(i&4?hi:lo).z}));
- return sceneFrameCamera(camera,viewport,corners);
+ return sceneFrameCamera(camera,viewport,corners,frameBasis);
 }
 
 

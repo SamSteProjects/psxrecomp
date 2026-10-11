@@ -1,6 +1,6 @@
 import {worldmapCameraBasis as worldBasis} from '../editor/worldmap-camera.js';
 import assert from 'node:assert/strict';
-import {sceneCameraBasis,sceneAxisCamera,sceneScreenPan,sceneScreenZoom} from '../editor/scene-camera.js';
+import {sceneCameraBasis,sceneAxisCamera,sceneScreenPan,sceneScreenZoom,sceneFrameAllCamera} from '../editor/scene-camera.js';
 import {SceneRenderer} from '../editor/scene-renderer.js';
 const renderer=Object.create(SceneRenderer.prototype),limits={minDistance:10,maxDistance:1e6,targetLimit:1e8};
 const base={projection:'perspective',yaw:-.65,pitch:.8,distance:2048,target:{x:1024,y:-50,z:256}},viewport={width:900,height:600};
@@ -18,3 +18,12 @@ for(const getBasis of [worldBasis,sceneCameraBasis])for(const projection of ['pe
 const b=worldBasis(base);assert.equal(sceneScreenZoom(base,viewport,b,450,300,1e9,limits).distance,1e6);assert.equal(sceneScreenZoom(base,viewport,b,450,300,1e-9,limits).distance,10);
 for(const call of [()=>sceneScreenPan(base,viewport,b,Infinity,0,limits),()=>sceneScreenPan(base,viewport,{...b,forward:{...b.forward,y:-b.forward.y}},1,0,limits),()=>sceneScreenPan(base,viewport,{...b,right:{x:2,y:0,z:0}},1,0,limits),()=>sceneScreenZoom(base,viewport,b,-1,0,1,limits),()=>sceneScreenZoom(base,viewport,b,0,0,0,limits),()=>sceneScreenPan({...base,target:{x:1e8,y:0,z:0}},viewport,b,-1e6,0,limits)])assert.throws(call);
 console.log(`${comparisons} independent World/field GPU cursor zoom comparisons, pan signs, axis views, clamped distance and finite/basis/target refusals pass.`);
+
+const points=Array.from({length:5000},(_,i)=>({x:(i%17)*123-800,y:(i%11)*57-200,z:(i%29)*99-1400}));let framedCases=0;
+for(const viewport of [{width:1440,height:650},{width:320,height:520}])for(const axis of ['orbit','top','front','side']){
+ const camera=axis==='orbit'?base:sceneAxisCamera(base,axis),basis=worldBasis(camera),framed=sceneFrameAllCamera(camera,viewport,points,basis);
+ assert.equal(framed.yaw,camera.yaw);assert.equal(framed.pitch,camera.pitch);assert.equal(framed.projection,camera.projection);
+ for(const point of points){const p=renderer.projectPoint(point,{...viewport,camera:framed,basis});assert(p);assert(p.x>=viewport.width*.099&&p.x<=viewport.width*.901&&p.y>=viewport.height*.099&&p.y<=viewport.height*.901);}framedCases++;
+}
+assert.throws(()=>sceneFrameAllCamera(base,viewport,points,{...worldBasis(base),forward:{x:1,y:1,z:1}}));
+console.log(`${framedCases} World whole-bound framing cases retain all 5000 points with padded wide/tall GPU fits and unchanged angles/projection.`);
