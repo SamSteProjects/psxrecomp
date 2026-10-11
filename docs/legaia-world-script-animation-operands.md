@@ -2,6 +2,14 @@
 
 ## Retail / Current Instruction Inspector — 2026-10-11
 
+### PC Lookup and Static Branch Navigation
+
+**Script PC (Hex)** locates a byte using qualified record ownership. It distinguishes instruction starts/interiors, dialogue records, opaque regions, the immutable header, the record end and out-of-record addresses. Instruction rows and unknown regions receive a visible focus marker. Static successor buttons use this same lookup; they do not execute a branch, infer missing targets or change authored state. Unknown regions open their containing details before focus.
+
+The graph header validator now preserves the decoder's message-picker exception: high-bit `27`/`28`/`29` leads do not introduce an actor context. All 57 registered Retail/Current World scripts qualify, including three partial graphs containing opaque bytes. The real census contains no high-bit picker instructions; a complete literal picker table/labels record is separately decoded and qualified, and a false actor context refuses. The initial literal fixture targeted the interior of its own picker, so the decoder correctly refused ambiguous ownership; its corrected table targets the record boundary. Dedicated Node checks cover PC boundaries, interiors, unknown ownership and picker headers. This source-analysis evidence does not prove gameplay or pager continuation.
+
+Four actual editor workflows pass PC lookup, out-of-record reporting and static branch navigation. An additional focused Map01 check locates an interior opaque byte, opens its details, verifies the byte offset and preserves argument Review withdrawal. All workflows retain zero authoring commands/page errors and exact document/history/saved baselines. The narrow capture fits branch and argument buttons without horizontal overflow. The existing four-snapshot/48-altered-response contract also still passes. No package Build or gameplay ran for navigation.
+
 Project Resources script details now offer **Inspect Retail / Current Instructions**. One source-qualified MAN context supplies the immutable Retail graph, composed Current graph and existing argument byte witness. The table shows instruction PCs, mnemonics, exact Retail/Current bytes and separate Retail/Authored/Current supported arguments. Read-only operands remain SDK static analysis. Branches describe decoded possibilities, not an execution trace. Dialogue records, opaque regions and decoder stops remain inspectable and explicitly unknown where decoding stops.
 
 **Edit Arguments** opens the existing argument editor at that exact instruction PC. Navigation uses the existing Review/Apply path and withdraws an earlier reviewed draft when the selected instruction changes. Inspection and navigation themselves issue no authoring command. The source-object viewport inspector remains a Retail source view.
