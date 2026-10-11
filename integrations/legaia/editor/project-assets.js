@@ -145,6 +145,14 @@ export function mountProjectAssets({host,getContext,busy,setBusy,onChange=()=>{}
   function chooseVariant(assetId,sceneId){updateState();if(disposed||scopeValue!=='project'||!report||!fresh()||busy()!==false||pending||filterValue!=='all'&&filterValue!==sceneId)return false;const asset=report.assets.find(row=>row.id===assetId);if(!asset?.scene_ids.includes(sceneId))return false;preferredScenes.set(assetId,sceneId);notify();return true;}
   function revealSource(sceneId){updateState();if(disposed||scopeValue!=='project'||!fresh()||busy()!==false||pending||!context.scenes.some(scene=>scene.id===sceneId))return false;if(filterValue!=='all'&&filterValue!==sceneId){filterValue=sceneId;filterInput.value=sceneId;renderCoverage();notify();}return true;}
   function sourceReport(){updateState();return report&&fresh()?clone(report):null;}
+  async function revealAsset(id){
+    if(disposed||busy()!==false||typeof id!=='string'||id.length>1024)return null;
+    if(scopeValue!=='project'){scopeValue='project';scopeInput.value='project';updateState();notify();}
+    if(!report||!fresh()){if(!await refreshReport())return null;}
+    if(disposed||busy()!==false||!fresh())return null;
+    filterValue='all';filterInput.value='all';renderCoverage();notify();
+    return records().find(row=>row.id===id)??null;
+  }
   function dispose(){if(disposed)return;disposed=true;discovery.dispose();invalidate();section.remove();}
-  updateState();mounting=false;return {scope:()=>scopeValue,filter:()=>filterValue,chooseVariant,revealSource,records,sourceReport,updateState,dispose};
+  updateState();mounting=false;return {scope:()=>scopeValue,filter:()=>filterValue,chooseVariant,revealSource,revealAsset,records,sourceReport,updateState,dispose};
 }

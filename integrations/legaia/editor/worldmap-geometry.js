@@ -86,7 +86,7 @@ export function decodeWorldmapGeometry(value,scene,key){
   if(new TextEncoder().encode(JSON.stringify(value)).length>32*1024*1024)fail('World ground exceeds its inspection budget.');return value;
 }
 function node(tag,text){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;}
-export function mountWorldmapGeometry({after,getState,busy,setBusy,api=null,onProjectState=null,onError=()=>{},onInspectPlacement=null}){
+export function mountWorldmapGeometry({after,getState,busy,setBusy,api=null,onProjectState=null,onError=()=>{},onInspectPlacement=null,onOpenScript=null}){
   const open=node('button','World ground');open.id='worldmap-geometry';open.type='button';after.after(open);
   const dialog=node('dialog');dialog.id='worldmap-geometry-dialog';dialog.className='project-dialog';Object.assign(dialog.style,{width:'min(1180px,96vw)',maxHeight:'94vh',overflow:'auto',boxSizing:'border-box'});document.body.append(dialog);
   const heading=node('div');heading.className='dialog-heading';const close=node('button','Close');close.type='button';heading.append(node('h2','World-map scene'),close);close.onclick=()=>dialog.close();
@@ -160,7 +160,7 @@ export function mountWorldmapGeometry({after,getState,busy,setBusy,api=null,onPr
       inspectorComponent.querySelector('[data-inspector-component-section="WorldSourceObjectBind"]')?.remove();
       const section=node('div');section.innerHTML=renderComponentSection(getState().inspector_schema,'WorldSourceObjectBind',qualified);inspectorComponent.append(section.firstElementChild);
       scriptTool?.dispose();scriptTool=null;
-      if(qualified.bind.status==='resolved_source_header')scriptTool=mountWorldObjectScript({host:inspectorComponent,binding:qualified,currentReport:captured,entityId,path:binding.path,current:()=>current()&&session===binding&&currentReport===captured&&renderedLayer==='current'&&hierarchy.value===entityId&&!allocationPreview,busy,setBusy,onError,update:updateState,getSchema:()=>getState().inspector_schema});
+      if(qualified.bind.status==='resolved_source_header')scriptTool=mountWorldObjectScript({host:inspectorComponent,binding:qualified,currentReport:captured,entityId,path:binding.path,current:()=>current()&&session===binding&&currentReport===captured&&renderedLayer==='current'&&hierarchy.value===entityId&&!allocationPreview,busy,setBusy,onError,update:updateState,onOpenScript,getSchema:()=>getState().inspector_schema});
       animationTool?.dispose();animationTool=null;
       if(qualified.bind.status==='resolved_source_header'&&qualified.bind.encoded_animation_selector>0)animationTool=mountWorldObjectAnimation({host:inspectorComponent,binding:qualified,currentReport:captured,entityId,path:binding.path,current:()=>current()&&session===binding&&currentReport===captured&&renderedLayer==='current'&&hierarchy.value===entityId&&!allocationPreview,busy,setBusy,onError,update:updateState,
         onPose:geometry=>{const next=structuredClone(sceneView),entity=next.entities.find(e=>e.entity_id===entityId),asset=next.assets.find(a=>a.geometry_key===entity.geometry_key),key=entity.geometry_key+'#source-animation-preview';entity.geometry_key=key;next.assets.push({...asset,geometry_key:key,preview:geometry});const failures=renderer.load(next);if(failures.length){renderer.load(sceneView);fail(failures.join('; '));}animationPreview=true;draw();},

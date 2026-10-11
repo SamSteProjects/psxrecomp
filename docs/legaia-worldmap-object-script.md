@@ -1,5 +1,15 @@
 # World Source Interaction Script Inspector
 
+## Registered Script Editor Navigation — 2026-10-11
+
+After inspecting a Current placed object's source bind and interaction script, **Open Registered Script Editor** opens that exact script in Project resources. Its Retail/Current instruction inspector and fixed-argument/branch destination editors use the existing qualified resource workflow. The selected World object remains in the scene Inspector when the resource dialog closes. The source table above the link remains Retail; resource inspection represents Current and authored changes separately.
+
+Project resource discovery is performed when the catalog has not been loaded. Explicit navigation reveals the target across scene filters, while preserving normal filtered membership-selection rules. The editor qualifies the registered resource through the complete Project behavior catalog and checks project path, fresh World source key, original record hash and entry PC against the selected object's qualified bind. Closing/changing that object or changing source inputs during discovery refuses the handoff. The link does not create a resource from unregistered graph metadata.
+
+This connects viewport selection to the existing script authoring workflow. It does not allocate a new scripted placed object, infer trigger ownership, change the Retail decoder response or execute a script. Walk-decoration allocation remains a separate supported authoring family; scripted object creation still requires additional bind/trigger qualification.
+
+Twenty focused Python checks pass with retail input, alongside Project asset discovery/cache/filter guards and 59 real source-script byte qualifications with 39 altered-response refusals. Two actual browser workflows pass from selected Map01/Map02 placed objects into their exact registered scripts: the first discovers an unloaded Project catalog, and the second reveals the resource across an imported-scene filter. Both open branch-edited Current reached/dormant graphs and destination controls, then return to the unchanged selected object. Zero commands or page errors occur; the complete project document, Undo stack and saved baseline remain unchanged. Wide and 400-pixel resource-dialog captures were inspected without horizontal overflow. Evidence: `local-output/sdk-20260909/world-object-script-navigation-20261011/`. No Build, native compile, game, attachment, installation or disc export ran. Gameplay remains deferred and the full SDK goal stays active.
+
 Current placed-object selection can open its bounded retail partition-0
 interaction script through the Source Object Bind Inspector. Only a qualified
 source header enables the action. The source-script component shows structural
