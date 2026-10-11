@@ -47,6 +47,14 @@ class ScriptedModelTests(TestCase):
     with self.assertRaises(ProjectError):validate(p,owner('map01'),bad)
     command=dict(type='assign_worldmap_scripted_models',scene='map01',source_key=key,placement_ids=[parent],model_pool_index=2,review_key=r['review_key'])
     with http_server(p) as (server,post):
+     from urllib.request import urlopen
+     for filename,symbol in (('worldmap-scripted-model-editor.js','mountScriptedWorldModel'),('worldmap-scripted-model-state.js','qualifyScriptedModelReview')):
+      with urlopen(f'http://127.0.0.1:{server.server_port}/'+filename) as response:self.assertIn(symbol.encode(),response.read())
+     proposal=dict(placement_ids=[parent],model_pool_index=2,review_key=r['review_key'])
+     with patch('sdk.worldmap_scripted_placement_scene.inspect',return_value={'qualified_route':True}) as scene_inspect:
+      self.assertEqual(post('/api/worldmap-scripted-placement-scene',dict(scene='map01',source_key=key,scripted_proposal=proposal)),(200,{'qualified_route':True}))
+      scene_inspect.assert_called_once_with(p,'map01',key,proposal)
+      self.assertEqual(post('/api/worldmap-scripted-placement-scene',dict(scene='map01',source_key=key,scripted_proposal={**proposal,'extra':True}))[0],400)
      self.assertEqual(post('/api/worldmap-scripted-model-review',{k:v for k,v in command.items() if k not in ('type','review_key')}),(200,r))
      for bad in ({**command,'extra':1},{**command,'review_key':'0'*64},{**command,'model_pool_index':True}):
       self.assertEqual(post('/api/command',bad)[0],400);self.assertEqual((p._document(),p.undo_stack),held)

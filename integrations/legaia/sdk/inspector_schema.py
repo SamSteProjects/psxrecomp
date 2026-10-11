@@ -531,13 +531,15 @@ def inspector_schema():
     scripted=schema['components']['WorldAuthoredScriptedPlacement']
     scripted['label']='Authored World scripted placement'
     scripted['actions']=[scripted['actions'][0]]
+    scripted['actions'][0]['label']='Inspect assigned model asset'
     scripted['actions'].append({'id':'inspect-scripted-world-bind','label':'Inspect shared scripted bind','capability':'worldmap_placements','requires_edit':True})
+    scripted['actions'].append({'id':'edit-scripted-world-model','label':'Assign saved scripted model','capability':'worldmap_placements','requires_edit':True})
     scripted['actions'].append({'id':'edit-scripted-world-transform','label':'Edit saved scripted transform','capability':'worldmap_placements','requires_edit':True})
     scripted['actions'].append({'id':'edit-scripted-world-group','label':'Edit saved scripted group','capability':'worldmap_placements','requires_edit':True})
     scripted['actions'].append({'id':'relocate-scripted-world-placement','label':'Relocate saved scripted placement','capability':'worldmap_placements','requires_edit':True})
     scripted['actions'].append({'id':'remove-scripted-world-placement','label':'Remove saved scripted placement','capability':'worldmap_placements','requires_edit':True})
     scripted['notes']=['This authored placement has no Retail instance transform. Native coordinates use Y-down; viewport Y reflection is separate.',
-        'The retained placement shares its donor script. Runtime activation, script effects and resting positions remain unverified.']
+        'Model assignment preserves the native transform, anchor and shared donor script; unselected donor descendants retain their models. Runtime activation, script effects and resting positions remain unverified.']
     schema['components']['WorldAuthoredScriptedBind']={
         'label':'Shared Scripted World Bind','layout':'read-only-properties',
         'properties':[

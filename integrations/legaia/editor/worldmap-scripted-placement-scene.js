@@ -89,6 +89,11 @@ export async function qualifyProposedScriptedWorldScene(retail,proposed,review,c
   const view=await qualifyScriptedWorldScene(retail,normalized,{...options,mapWitness,overrides});
   return {...view,entities:view.entities.map(e=>({...e,preview_layer:'Proposed authored seeds'}))};
 }
+export async function qualifyProposedScriptedModelScene(retail,proposed,review,qualified,options){
+  const {qualifyScriptedModelReview}=await import('./worldmap-scripted-model-state.js');
+  await qualifyScriptedModelReview(review,qualified,review.placement_ids,review.model_pool_index,options.current);
+  return proposedSavedScene(retail,proposed,review,qualified,options);
+}
 export async function qualifyProposedScriptedGroupScene(retail,proposed,review,qualified,options){
   const {qualifyScriptedGroupReview}=await import('./worldmap-scripted-group-state.js');
   await qualifyScriptedGroupReview(review,qualified,review.entries);
