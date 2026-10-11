@@ -1,6 +1,7 @@
 import {qualifyWorldDecorationSource, qualifyWorldDecorationReview, worldDecorationDraft,
   worldDecorationDonorValues,qualifyWorldDecorationTransformReview,qualifyWorldDecorationRemovalReview,qualifyWorldDecorationCellReview,qualifyWorldDecorationModelReview,qualifyWorldDecorationGroupReview,transformWorldDecorationGroup} from './worldmap-decoration-state.js';
 import {validValues} from './worldmap-placement-state.js';
+import {mountAuthoredWorldSelectionSets} from './worldmap-authored-selection-sets.js';
 const node = (tag, text) => { const element = document.createElement(tag); if (text) element.textContent = text; return element; };
 
 export function mountWorldDecorationEditor({host, getContext, getState, busy, setBusy, api, onPreview, onDiscard, onApplied, onError,onTransformDraft=()=>{},onFrameGroup=()=>{}}) {
@@ -37,7 +38,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   panel.append(summary, node('p', 'Create a walk decoration from a drawable Current donor, or edit the selected retained decoration’s signed offsets and yaw. Transform edits retain the same cell. Move Cell preserves UUID, record, model and encoded offsets while changing native position from the destination row, column and floor height. Review and preview leave the project unchanged. Apply uses shared Undo/Redo.'), fields,moveLabel,snap,rotateLabel,yawSnap,node('p','Choose Edit selected decoration, then translate with X/Y/Z handles or rotate with the yaw ring. This is an unreviewed display draft. Native Review and Proposed preview are required before Apply. Y and Z follow native offset directions, with one reflection into editor space. Cell moves and model assignments require unchanged offset/yaw fields; Apply those edits or restore Current offset/yaw values first. Model assignment preserves cell, record, XYZ/yaw and child models. Saved views bound to an old cell or model must be recreated.'), actions, status, evidence); host.append(panel);
   fields.before(node('p','Removal Review restores the selected record and cell, lists donor reassignments and checks that surviving decorations stay unchanged. Preview the removal before Apply.'));
   panel.append(group);
-  let source = null, held = null, review = null, placementId = null, editing = false,displayed = false, controller = null, pendingKind = null, generation = 0;
+  let source = null, held = null, review = null, placementId = null, editing = false,displayed = false, controller = null, pendingKind = null, generation = 0,savedGroups=null;
   const groupIds=()=>[...groupList.querySelectorAll('input:checked')].map(i=>i.value).sort();
   const groupValues=()=>Object.fromEntries(Object.entries(groupDelta).map(([a,i])=>[a,i.value===''?NaN:Number(i.value)]));
   function groupChanged(){withdrawReview();status.textContent='Group draft changed. Review the selected identities and delta again.';}
@@ -88,6 +89,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
   model.onchange=change;
   function cancel() {
     move.checked=rotate.checked=false;generation++; controller?.abort(); source = held = review = placementId = null; displayed = editing = false;onTransformDraft(null);
+    savedGroups?.cancel();
     donor.replaceChildren();model.replaceChildren();groupList.replaceChildren(); evidence.textContent = ''; status.textContent = 'Switch to a qualified Current scene and inspect decoration donors.';
     if (pendingKind !== 'apply') { controller = null; if (pendingKind) setBusy(false); pendingKind = null; }
     update();
@@ -119,6 +121,7 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     preview.disabled = locked || !review || !sourceReady();
     apply.disabled = locked || !review || !displayed || !sourceReady();
     discard.disabled = locked || !source;
+    savedGroups?.update();
     if (!available && !pendingKind) status.textContent = 'Switch to Current authored scene to create a decoration.';
   }
   async function read(route, body, signal) {
@@ -257,6 +260,10 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     }
   };
   discard.onclick = () => { if (discard.disabled) return; move.checked=rotate.checked=false;withdrawReview(); status.textContent = 'Decoration Review discarded; draft fields retained, Current scene restored and project unchanged.'; };
+  if(typeof api==='function')savedGroups=mountAuthoredWorldSelectionSets({host:group,getState,getSource:()=>sourceReady()?source:null,getIds:()=>sourceReady()?groupIds():[],current:()=>sourceReady()&&!displayed&&!pendingKind,busy,api,onError,recall:ids=>{
+    const available=[...groupList.querySelectorAll('input')];if(!sourceReady()||ids.some(id=>!available.some(i=>i.value===id)))throw Error('Saved group is unavailable in this Current source.');
+    for(const input of available)input.checked=ids.includes(input.value);for(const input of Object.values(groupDelta))input.value='0';move.checked=rotate.checked=false;groupChanged();
+  }});
   update(); return {update,cancel,panel,getGroupIds:()=>sourceReady()&&groupIds().length<=32?groupIds():[],getTransformDraft:()=>!pendingKind&&!busy()?transformDraft():null,setTransformDraft,editSelected:()=>{update();panel.open=true;return inspectDonors(true);},reviewRemoval:async()=>{
     update();panel.open=true;const selectedId=getContext()?.selectedId;
     if(await inspectDonors(true)!==true||held?.selectedId!==selectedId||getContext()?.selectedId!==selectedId)return;
