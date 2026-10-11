@@ -16,7 +16,7 @@ def inspect(project,scene,key,proposal=None):
     receipt=source(project,scene,key)
     reviewed=None
     if proposal is not None:
-        if not isinstance(proposal,dict) or set(proposal) not in ({'requests','review_key'},{'placement_id','values','review_key'},{'placement_id','target_cell','review_key'},{'placement_id','cascade','review_key'},{'entries','review_key'},{'placement_ids','model_pool_index','review_key'},{'placement_ids','cascade','review_key'}):
+        if not isinstance(proposal,dict) or set(proposal) not in ({'requests','review_key'},{'placement_id','values','review_key'},{'placement_id','target_cell','review_key'},{'placement_id','cascade','review_key'},{'entries','review_key'},{'placement_ids','model_pool_index','review_key'},{'placement_ids','cascade','review_key'},{'placement_ids','delta','review_key'}):
             raise ProjectError('Scripted scene proposal requires exact reviewed creation, transform, model assignment, group transform, relocation or removal')
         transforming='placement_id' in proposal or 'entries' in proposal or 'placement_ids' in proposal
         removing='cascade' in proposal
@@ -26,6 +26,9 @@ def inspect(project,scene,key,proposal=None):
             if 'placement_ids' in proposal and removing:
                 from .worldmap_scripted_placement_remove import review
                 reviewed=review(project,scene,key,proposal['placement_ids'],proposal['cascade'])
+            elif 'placement_ids' in proposal and 'delta' in proposal:
+                from .worldmap_scripted_group_relocate import review
+                reviewed=review(project,scene,key,proposal['placement_ids'],proposal['delta'])
             elif 'placement_ids' in proposal:
                 from .worldmap_scripted_placement_model import review
                 reviewed=review(project,scene,key,proposal['placement_ids'],proposal['model_pool_index'])

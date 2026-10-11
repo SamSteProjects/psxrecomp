@@ -104,7 +104,8 @@ export async function qualifyProposedScriptedRemovalScene(retail,proposed,review
   return proposedSavedScene(retail,proposed,review,qualified,options);
 }
 export async function qualifyProposedScriptedRelocationScene(retail,proposed,review,qualified,options){
-  await qualifyScriptedRelocationReview(review,qualified,review.placement_id,review.target_cell);
+  if(review.placement_ids){const {qualifyScriptedGroupRelocationReview}=await import('./worldmap-scripted-group-relocation-state.js');await qualifyScriptedGroupRelocationReview(review,qualified,review.placement_ids,review.delta);}
+  else await qualifyScriptedRelocationReview(review,qualified,review.placement_id,review.target_cell);
   return proposedSavedScene(retail,proposed,review,qualified,options);
 }
 export async function qualifyProposedScriptedTransformScene(retail,proposed,review,qualified,options){
