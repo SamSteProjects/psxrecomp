@@ -1,5 +1,7 @@
 # Current Legaia SDK Status — 2026-10-11
 
+Offline checks passed — 2026-10-11: Native Animation Apply Controls synchronizes the parent frame, timeline and channel editors with the root API during Apply. The existing reviewed command and result stay unchanged. The actual delayed-request editor check passes disabled parent frame/timeline/edit/preview controls, blocked frame navigation and duplicate Apply prevention. Apply produces one history entry; intact editor state, unchanged field scene, Undo/Redo, Save/Open and original-project preservation pass with no page errors. Evidence: local-output/sdk-20260909/worldmap-animation-authoring-20261011/native-apply-controls-browser-proof.json. No Build, native recompilation, game, installation or disc export ran. Report headings now use consistent Title Case; historical technical identifiers are preserved. Full SDK goal active; gameplay deferred.
+
 Offline checks passed — 2026-10-11: World Native Channel Timeline adds discrete Retail/Current animation channel samples, object/axis selection and pointer/keyboard frame navigation to registered clip Asset Details. Frame changes update the native inspector and withdraw authored Review/Preview without project mutation. No timing or interpolation is inferred. All 38 supported clips, 2,022 tracks and 49,470 frame-axis samples match independent native decodes; immutable snapshots, pointer bounds and existing frame/CSV/source guards pass. Actual bound and source-only editor workflows pass exact track values, pointer/keyboard frames, no local requests, authored draft withdrawal, invalid-frame selection withdrawal, exact CSV and close/disposal. Parent frame/timeline controls disable during native clip Review and restore afterward. Wide/400-pixel captures were inspected; project/history and the active field scene remain unchanged with no page errors. Evidence: local-output/sdk-20260909/worldmap-animation-authoring-20261011/native-timeline-browser-proof.json. No Build, native recompilation, game, installation or disc export ran. Full SDK goal active; gameplay deferred. [Workflow](legaia-worldmap-animation-channels.md#native-channel-timeline).
 
 Offline checks passed — 2026-10-11: World Animation Request Capacity aligns placed-object animation Review and dedicated Apply envelopes with the declared 4,096-row native authoring budget. The editor now submits Apply through `/api/worldmap-animation-edit-apply`, which dispatches the existing typed project command. Both routes accept at most 1 MiB; the generic command limit remains 32 KiB. A synthetic 512-frame/eight-object native draft reaches HTTP Review and matches independently packed bytes across all 4,096 rows. Exact Apply dispatch, malformed bodies and early oversized-envelope refusals pass. Three prior native authoring checks also pass. Actual Map02 range Review/Preview/Apply passes through the dedicated route, retaining sibling rows and one-step history, Undo/Redo and Save/Open. Wide/400-pixel captures were inspected; page errors are absent and the original project stays unchanged. Evidence: local-output/sdk-20260909/worldmap-animation-authoring-20261011/animation-http-budget-browser-proof.json. No package Build, native recompilation, game, installation or disc export ran. Full SDK goal active; gameplay deferred.
@@ -929,7 +931,7 @@ Offline checks passed — 2026-10-07: [Numeric Scene-Camera Inspector](legaia-sc
 
 Offline checks passed — 2026-10-07: [Native Whole-Object Mirror](legaia-model-object-mirror.md) now reflects source-local geometry/normals and reverses coupled native winding, UV, color and normal-reference corners through reviewed Current/Proposed receipts. Axis/pivot changes and scene Return require fresh review. Acceptance: 17 focused Python tests (24 primitive families, XYZ reflections and exact involution), four Node suites, syntax/AST checks, actual 18-vertex/11-normal Town01 editor workflow, wide/400 px visual inspection, Undo/Redo and Save/Open. An independent full-model oracle matched all 117 changed bytes; normal Build `8e2ddfdc7ce195ca` passed complete decompressed-section, directory and ZIP readback with unrelated overlays unchanged. Package SHA-256: `f0a83e84c5d40e8982435aaaa1f4f170eddc37621de194c1741d668830a56096`. The retained initial client failure came from an aliased synthetic fixture, now corrected. This milestone adds no runtime change and does not represent a fresh full regression campaign. No game, install or disc export occurred. Gameplay verification remains deferred; the full goal remains active, with implementation proceeding solo.
 
-## Static stereo voice-gain audition - offline checks passed (2026-10-07)
+## Static Stereo Voice-Gain Audition - Offline Checks Passed (2026-10-07)
 
 Envelope audition now offers explicit left/right static SPU voice registers
 and stereo playback/WAV export after every existing mono synthesis path.
@@ -958,7 +960,7 @@ ran. Static single-voice preview does not resolve VAB pan, driver mix, reverb or
 runtime instruments. Gameplay stays deferred; solo development and the full SDK
 goal remain active.
 
-## Whole-object axis scaling with normal correction - offline checks passed (2026-10-07)
+## Whole-Object Axis Scaling with Normal Correction - Offline Checks Passed (2026-10-07)
 
 Model vectors now offers separate X/Y/Z percentages and an origin or Current
 bounds-center pivot for the whole object. Stored normals use inverse transpose
@@ -987,7 +989,7 @@ its initial failure and a corrected screenshot locator failure are retained. No 
 export or new full campaign ran. Manual gameplay remains deferred, development
 continues solo, and the full SDK goal stays active.
 
-## Structured hierarchy queries and actor selection - offline checks passed (2026-10-07)
+## Structured Hierarchy Queries and Actor Selection - Offline Checks Passed (2026-10-07)
 
 Hierarchy search now supports name/id/type/component/authored/visibility fields,
 AND terms, quoted phrases and exclusions. Component terms use recorded authored
@@ -1015,7 +1017,7 @@ See [hierarchy query workflow](legaia-hierarchy-query.md) and private
 native Build, full campaign, game, installation or disc export ran. Manual
 gameplay remains deferred; development is solo and the full SDK goal stays active.
 
-## Bounded project relationship tracing - offline checks passed (2026-10-07)
+## Bounded Project Relationship Tracing - Offline Checks Passed (2026-10-07)
 
 Asset references now opens a recorded project trace in either dependency or
 referenced-by direction, at1..4 hops with an explicit layer filter. One fresh
@@ -1038,7 +1040,7 @@ No runtime change, native Build, full campaign, game, installation or disc expor
 ran. Manual gameplay remains deferred, solo development continues and the full
 SDK goal is active.
 
-## Asset reference exploration trail - offline checks passed (2026-10-07)
+## Asset Reference Exploration Trail - Offline Checks Passed (2026-10-07)
 
 Asset references now offers **Explore references** without closing the dialog.
 Back/Forward and a bounded32-entry Recent reference trail follow successive
@@ -1063,7 +1065,7 @@ relationship exploration, not transitive graph completeness or runtime use.
 Solo development continues; manual gameplay remains deferred and the full goal
 is active.
 
-## Whole-object angle rotation - offline checks passed (2026-10-07)
+## Whole-Object Angle Rotation - Offline Checks Passed (2026-10-07)
 
 The vector inspector rotates an object's vertices and stored normals together
 by a quantized arbitrary angle about source X/Y/Z. Vertices use local origin or
@@ -1090,7 +1092,7 @@ fixture-count and fixed-overlay harness failures are retained. No runtime change
 full campaign, game launch, installation or full-disc export occurred. Development
 stays solo; manual verification is deferred and the full goal remains active.
 
-## Stored object normal rotation - offline checks passed (2026-10-07)
+## Stored Object Normal Rotation - Offline Checks Passed (2026-10-07)
 
 The model vector inspector now rotates an object's stored normals independently
 about source X/Y/Z by a reviewed angle. Exact 1/4096-turn quantization, signed-word
@@ -1114,7 +1116,7 @@ change, full campaign, game launch, installation or full-disc export occurred.
 Manual lighting verification remains deferred; development stays solo and the
 full SDK goal remains active.
 
-## Direct SPU pitch envelope preview - offline checks passed (2026-10-07)
+## Direct SPU Pitch Envelope Preview - Offline Checks Passed (2026-10-07)
 
 Qualified native Gaussian loop and one-pass previews now accept a direct 14-bit
 SPU pitch register from 0 through 16383. Zero holds the source counter; 4096 is
@@ -1135,7 +1137,7 @@ and private `local-output/sdk-20260909/audio-direct-pitch-20261007/` evidence.
 No backend/runtime change, new Build, full campaign or gameplay action; manual
 listening stays deferred, development stays solo and the full SDK goal is active.
 
-## Selected vertex per-axis scaling - offline checks passed (2026-10-07)
+## Selected Vertex Per-Axis Scaling - Offline Checks Passed (2026-10-07)
 
 The existing geometry workspace now stages independent X/Y/Z positive integer
 percentages for selected vertex groups, with origin or exact bounds-center
@@ -1157,7 +1159,7 @@ See [per-axis vertex scaling](legaia-model-vertex-axis-scale.md) and private
 change, gameplay action or full campaign; gameplay stays deferred, development
 stays solo and the full SDK goal is active.
 
-## Whole inspected script-flow diagram - offline checks passed (2026-10-07)
+## Whole Inspected Script-Flow Diagram - Offline Checks Passed (2026-10-07)
 
 The existing branch diagram now pages Whole inspected flow alongside Selected
 neighborhood. All reached decoded boundaries in qualified Retail or Current/
@@ -1178,7 +1180,7 @@ solo, gameplay stays deferred and the full SDK goal remains active. See
 [whole inspected flow](legaia-script-whole-flow.md) and private evidence
 `local-output/sdk-20260909/script-whole-flow-20261007/`.
 
-## Native one-pass envelope sample preview - offline checks passed (2026-10-07)
+## Native One-Pass Envelope Sample Preview - Offline Checks Passed (2026-10-07)
 
 Complete standard-shift ADPCM samples with END without REPEAT now offer Native
 ADPCM one pass in the bank editor, with linear or native Gaussian interpolation.
@@ -1200,7 +1202,7 @@ remain open. Development stays solo and the full SDK goal stays active. See
 [native one-pass preview](legaia-audio-native-one-pass.md) and private evidence
 `local-output/sdk-20260909/audio-native-one-pass-20261007/`.
 
-## Native Gaussian envelope sample preview - offline checks passed (2026-10-07)
+## Native Gaussian Envelope Sample Preview - Offline Checks Passed (2026-10-07)
 
 The bank editor now offers Native Gaussian preview for source-qualified native
 ADPCM loops, alongside the default linear preview. Exact recomp table/arithmetic,
@@ -1221,7 +1223,7 @@ Development stays solo, gameplay stays deferred and the full goal remains active
 See [native Gaussian preview](legaia-audio-native-gaussian.md) and private evidence
 `local-output/sdk-20260909/audio-native-gaussian-20261007/`.
 
-## Custom-angle vertex group rotation - offline checks passed (2026-10-07)
+## Custom-Angle Vertex Group Rotation - Offline Checks Passed (2026-10-07)
 
 Move model geometry now supports custom X/Y/Z rotation of selected vertex
 indices, with origin or bounds-center pivot and angles quantized to 1/4096 turn.
@@ -1241,7 +1243,7 @@ verification remains deferred and the full goal stays active. See
 [custom-angle vertex rotation](legaia-model-vertex-angle.md) and private evidence
 `local-output/sdk-20260909/vertex-angle-rotation-20261007/`.
 
-## Grow and shrink Current vertex groups - offline checks passed (2026-10-07)
+## Grow and Shrink Current Vertex Groups - Offline Checks Passed (2026-10-07)
 
 Move model geometry now offers Grow group and Shrink group. Grow adds exactly one
 neighbor ring from the selected object's Current preview triangles. Shrink removes
@@ -1261,7 +1263,7 @@ Development stays solo; gameplay verification remains deferred and the goal
 stays active. See [vertex selection rings](legaia-model-vertex-rings.md) and
 `local-output/sdk-20260909/vertex-selection-rings-20261007/`.
 
-## Native ADPCM loop audition - offline checks passed (2026-10-07)
+## Native ADPCM Loop Audition - Offline Checks Passed (2026-10-07)
 
 The envelope sample audition now offers Native ADPCM loop, carrying both integer
 predictor history samples through source-qualified end/repeat boundaries. It
@@ -1288,7 +1290,7 @@ deferred and the full SDK goal stays active.
 See [native ADPCM loop audition](legaia-audio-native-loop.md) and private evidence
 `local-output/sdk-20260909/audio-native-loop-20261007/`.
 
-## Encoded PCM loop audition - offline checks passed (2026-10-06)
+## Encoded PCM Loop Audition - Offline Checks Passed (2026-10-06)
 
 The bank editor's envelope sample audition now offers an explicit Encoded PCM
 loop beside One pass. Freshly qualified sample markers must contain a loop-start
@@ -1310,7 +1312,7 @@ audio acceptance stays deferred; development stays solo and the goal stays activ
 See [encoded PCM loop audition](legaia-audio-pcm-loop.md) and private evidence
 `local-output/sdk-20260909/audio-pcm-loop-20261007/`.
 
-## Partial script flag qualification - offline checks passed (2026-10-06)
+## Partial Script Flag Qualification - Offline Checks Passed (2026-10-06)
 
 Imported actor Current flag edits now remain discoverable when the native flag
 adapter qualifies the specific operand but the broader catalog has partial
@@ -1333,7 +1335,7 @@ development stays solo and the full SDK goal remains active.
 See [flag qualification](legaia-flag-qualification.md) and private evidence
 `local-output/sdk-20260909/partial-flag-qualification-20261007/`.
 
-## NPC flag operand navigation - offline checks passed (2026-10-06)
+## NPC Flag Operand Navigation - Offline Checks Passed (2026-10-06)
 
 NPC Asset references now include inherited Retail and NPC Current flag operands.
 Inverse flag references identify every NPC clone owner separately, with exact
@@ -1360,7 +1362,7 @@ Gameplay remains deferred; development stays solo and the SDK goal stays active.
 See [NPC flag references](legaia-npc-flag-references.md) and private evidence
 `local-output/sdk-20260909/npc-flag-navigation-20261007/`.
 
-## ADSR sample audition - offline checks passed (2026-10-06)
+## ADSR Sample Audition - Offline Checks Passed (2026-10-06)
 
 The bank parameter editor's tone ADSR view now offers a one-pass envelope sample
 audition for Retail, Current and Reviewed Proposed. Retail uses Retail sample
@@ -1385,7 +1387,7 @@ acceptance remains deferred, development stays solo and the SDK goal is active.
 See [bank authoring](legaia-audio-bank-authoring.md) and private evidence
 `local-output/sdk-20260909/audio-envelope-audition-20261007/`.
 
-## Reviewed NPC script family reset - offline checks passed (2026-10-06)
+## Reviewed NPC Script Family Reset - Offline Checks Passed (2026-10-06)
 
 The NPC ownership Inspector now offers eleven registered actions, including
 Reset NPC-owned script edits; Asset Details exposes the same reset tool. Select
@@ -1408,7 +1410,7 @@ development remains solo and the complete SDK goal is active.
 See [NPC script reset](legaia-npc-script-reset.md) and private evidence
 `local-output/sdk-20260909/npc-script-reset-20261007/`.
 
-## NPC script ownership Inspector - offline checks passed (2026-10-06)
+## NPC Script Ownership Inspector - Offline Checks Passed (2026-10-06)
 
 The SDK now supplies detached NPC script-binding snapshots: exact donor identity,
 authored draft digest and eight owned-family target counts. The NPC Inspector
@@ -1430,7 +1432,7 @@ See [NPC script Inspector](legaia-npc-script-inspector.md) and private evidence
 `local-output/sdk-20260909/npc-script-inspector-20261007/`. Work remains solo,
 manual gameplay remains deferred and the full SDK goal remains active.
 
-## NPC retail script donor navigation - offline checks passed (2026-10-06)
+## NPC Retail Script Donor Navigation - Offline Checks Passed (2026-10-06)
 
 Authored NPC Asset references now links directly to the qualified retail donor
 script; reverse script references list all authored NPC owners. Source hash,
@@ -1447,7 +1449,7 @@ Evidence: `local-output/sdk-20260909/npc-script-navigation-20261007/`.
 See [NPC source navigation](legaia-npc-script-references.md). Development remains
 solo; manual gameplay is deferred and the complete SDK goal remains active.
 
-## NPC-owned script effect colors - offline checks passed (2026-10-06)
+## NPC-Owned Script Effect Colors - Offline Checks Passed (2026-10-06)
 
 **Select an authored NPC -> Edit NPC effect colors** now exposes its qualified retail donor's EFFECT sub0 RGB bytes and signed intensity. Own color stages a complete typed target; unchecking restores the donor span. Retail and Current values remain separate from local input. Fresh Review verifies exact five-byte native audits and Apply stores NPC-owned edits in one history step. Invalid input blocks Review, changed drafts withdraw proposals, Discard restores Current, and source changes withdraw the controls until the dialog is reopened. No color-space, host rendering, runtime effect, actor context or scheduling semantics are inferred.
 
@@ -1460,7 +1462,7 @@ All 36 affected Python checks passed with no skips in 25.29 seconds, including e
 Additional retained-input checks passed captured preset Save/Open, portable v10 transfer Apply, reviewed instance one-step history/Undo/Redo/Save/Open, repetition and actual native comparison/client qualification. Retained runtime/precompile source hashes still match the accepted stability baseline. Evidence: `local-output/sdk-20260909/npc-effect-colors-20261007/acceptance.json`, `python.json`, `node.json`, `browser.json`, `native-proof.json`, `extra-proof.json`, `extra-client.json`, `transfer-proof.json`, logs and screenshots. No new full Python campaign, game launch, runtime attachment, installation or full-disc export occurred. Manual visual effects/gameplay remain deferred; development stays solo and the full SDK goal is active.
 
 
-## Paired ADSR word authoring - offline checks passed (2026-10-06)
+## Paired ADSR Word Authoring - Offline Checks Passed (2026-10-06)
 
 **Bank parameter editor -> Packed tone record -> adsr1 / adsr2 -> Edit ADSR word pair** stages both native u16 words together. Both words have raw inputs and structured fields, with ADSR2 bit 13 held by structured edits. Review submits the same qualified tone's ADSR1/ADSR2 in canonical order, shows both reviewed values and uses the complete reviewed pair in the counter plot. Local drafts never become Proposed before Review. Apply commits the pair through one existing bank command and one history entry; Undo/Redo, Save/Open, paired Discard and paired retail staging retain the same ownership boundary. Invalid companion words or structured fields block Review, and pending pair/raw/structured/navigation controls lock. Source changes withdraw both word controls and the preview until Refresh.
 
@@ -1471,7 +1473,7 @@ All 185 client suites and 184 editor syntax checks passed in 22.11 seconds. Focu
 Normal native Build independently verified the complete audio overlay in both directory and ZIP, with integrity/current-input acceptance and unchanged document/history. Native entry SHA-256 `f07a49ae93ce014b2c91cbd2d4ba0bbedbdd285c7852d5c9b88f479e3f1c8626`; package SHA-256 `96ed72cd4225a64ffb0dde19c1e5529ccd76dc2708631e03999f42e798cb511f`. Retained runtime/precompile sources still match the accepted stability baseline. Evidence: `local-output/sdk-20260909/audio-adsr-pair-20261007/acceptance.json`, `browser.json`, `native-proof.json`, `build-proof.json`, `node.json`, logs and screenshots. This is not a new full Python campaign. No game launch, runtime attachment, installation or full-disc export occurred. Manual gameplay remains deferred, development stays solo and the full SDK goal remains active.
 
 
-## ADSR envelope-counter comparison - offline checks passed (2026-10-06)
+## ADSR Envelope-Counter Comparison - Offline Checks Passed (2026-10-06)
 
 **Bank parameter editor -> Packed tone record -> adsr1 / adsr2 -> Show envelope counter preview** now plots separate Retail, Current and reviewed Proposed register-word pairs. The unselected companion word stays in the same qualified layer; a local draft never becomes Proposed before native Review. The preview begins at zero on modeled key-on, advances at 44.1kHz and applies an explicit key-off at 250, 500, 1000 or 2000 ms inside a 2500 ms window. Source word identities and project state are unchanged. Discard removes Proposed, stale/closed views release model/cache ownership, and hide/show controls and a scoped resize observer repaint a readable narrow-width canvas. Plot samples are downsampled with bounded min/max spans and a continuous counter curve; each simulated window is bounded to five seconds maximum.
 
@@ -1481,7 +1483,7 @@ Acceptance: all 185 client suites and 184 editor syntax checks passed in 21.86 s
 
 The private muted retail editor passed actual Retail/Current/Reviewed Proposed plots, explicit key-off, a stationary Proposed release, local-draft exclusion, immutable Review/Discard, hide/close and wide/400px layouts without page errors or launch requests. Final wide and narrow counter screenshots were inspected. Project document/history, saved content, complete Current native audio entry and Build input key stayed exact; native entry SHA-256 `2763446be4afa339ba8e6a10266e9216a96162608138e2f7f635894c37a60b40`. Retained runtime/precompile stability source hashes still match their accepted baseline. Evidence: `local-output/sdk-20260909/audio-envelope-preview-20261006/acceptance.json`, `node.json`, `oracle-proof.json`, `oracle-cases.json`, `browser.json`, `native-proof.json`, logs and screenshots. The previous ADSR authoring milestone's native package remains independently accepted; this readonly preview does not claim a fresh game Build or full Python campaign. No game launch, runtime attachment, mod installation or full-disc export occurred. Audible behavior and general runtime instrument semantics remain deferred; the full SDK goal stays active and development remains solo.
 
-## Structured ADSR register-word editing - offline checks passed (2026-10-06)
+## Structured ADSR Register-Word Editing - Offline Checks Passed (2026-10-06)
 
 **Bank parameter editor -> Packed tone record -> adsr1 / adsr2** now decodes the selected native u16 word into structured envelope fields. ADSR1 exposes attack mode/shift/step, decay shift and sustain-level code; ADSR2 exposes sustain mode/direction/shift/step and release mode/shift. Each Retail/Current/Reviewed Proposed layer displays its decoded fields alongside the raw word. Structured controls stage one local word through the existing source-qualified Review -> Apply command, history and persistence flow. Invalid values block Review; pending controls lock; Discard, Retail staging, raw-word edits and stale/closed views synchronize or withdraw the structured controls. ADSR2's reserved bit 13 stays held by structured edits; intentional raw u16 authoring remains available.
 
@@ -1491,7 +1493,7 @@ Acceptance: all 184 client suites and 183 editor syntax checks passed in 21.01 s
 
 Save/Open and independent full-entry construction proved that only the intended two tone words changed and all other saved fields/native bytes survived, including the existing Current SEQ/WAV edits. Normal private Build integrity passed; its directory and ZIP overlay both match the entire independently constructed entry, SHA-256 `2763446be4afa339ba8e6a10266e9216a96162608138e2f7f635894c37a60b40`. Package SHA-256 `6f7917476ef60101c3c845abbc5c516ebd0f5c22305af8be6d7108cbac06a3ee`. Build left document/history inputs unchanged; retained runtime/precompile stability source hashes still match their accepted baseline. Evidence: `local-output/sdk-20260909/audio-adsr-editor-20261006/acceptance.json`, `node.json`, `python.json`, `browser.json`, `native-proof.json`, `build-proof.json`, logs and inspected wide/narrow screenshots. No game launch, runtime attachment, mod installation or full-disc export occurred. Audible behavior and runtime assignment remain deferred; the full SDK goal stays active and development remains solo.
 
-## Current note to Retail bank record navigation - offline checks passed (2026-10-06)
+## Current Note to Retail Bank Record Navigation - Offline Checks Passed (2026-10-06)
 
 **Sequence operand editor -> Inspect Current encoded bank links** now opens the exact Retail program slot, packed tone page/row or bounded sample span from each encoded candidate. The source bank inspector focuses one verified record; **Show all source rows** restores the table, including unused program slots. Its existing parameter editor qualifies Retail/Current/Reviewed Proposed separately at the selected tone/slot, and its sample editor remains available at the exact source sample index. Current sample hashes are never substituted for Retail hashes: navigation takes the Retail bank identity from the source Asset Database record and freshly qualifies the bank through the existing API. Missing identities, malformed selections and out-of-range records are refused; no packed-page/program equivalence or runtime instrument assignment is inferred.
 
@@ -1501,7 +1503,7 @@ Acceptance: all 183 client suites and 182 editor syntax checks passed in 21.39 s
 
 Fresh native readback and Save/Open proved unchanged project document/history/saved content, complete Current audio entry and Build input key. Retail bank SHA-256 `56ca3b0be30b19b4173f0a42a47bf9da72803f7ae6af3fd78f9829908482ed82` and Current bank SHA-256 `3e2cd444fb6d20a5a650ebe434473482249aa50e4dd39c6ad73433ef0d13b072` were explicitly distinct. Evidence: `local-output/sdk-20260909/note-bank-navigation-20261006/acceptance.json`, `node.json`, `python.json`, `browser.json`, `native-proof.json`, browser log and wide/narrow/parameter screenshots. Retained runtime/precompile source hashes still match their accepted baseline. This is offline editor workflow acceptance; native Build and gameplay revalidation were not required for this navigation-only change. Synthesis, runtime instruments and gameplay remain unverified; the full SDK goal stays active and development remains solo.
 
-## Request-local WAV reference qualification - offline checks passed (2026-10-06)
+## Request-Local WAV Reference Qualification - Offline Checks Passed (2026-10-06)
 
 Project-wide asset references now qualify retained WAV inputs and compose Current native sample bindings once per request, then share detached proofs across scene adapters and imported-only comparisons. Previously each imported scene repeated both operations twice; 64 scenes could reconstruct the same project audio bindings 128 times. `sdk/audio_reference_snapshot.py` uses navigation-independent persistent project identity, without a global or persisted cache. Before publication it rereads every retained WAV, verifies each unique original native carrier and bank hash/ownership, and checks project identity again. Scene membership, availability, edge identities, historical/Current proof contracts and runtime limitations stay unchanged. The private snapshot is not an HTTP input or an authoring command.
 
@@ -1509,7 +1511,7 @@ Acceptance: all 51 affected retail-enabled Python tests passed in 80.98 seconds 
 
 The private muted editor passed project Asset Database refresh, historical and Current native/WAV reference navigation, exact WAV download, dialog closure and wide/400px layouts without page errors or game launch requests. Document/history/build inputs stayed unchanged; the five retained runtime/precompile stability source hashes still match their accepted baseline. Evidence: `local-output/sdk-20260909/audio-reference-snapshot-20261006/acceptance.json`, `python.json`, `node.json`, `retail.json`, both graph snapshots, `browser.json`, `server-acceptance.json` and screenshots. This is focused offline reference inspection acceptance; no fresh full Python campaign, native Build or gameplay verification was required for this query-only change. Gameplay verification remains deferred and the broad SDK goal stays active.
 
-## Retained animation translation range offsets - offline checks passed (2026-10-06)
+## Retained Animation Translation Range Offsets - Offline Checks Passed (2026-10-06)
 
 **Edit retained content -> Frame sequence tools -> Stage translation offset** now shifts the selected rigid object's X/Y/Z translation across an inclusive output frame range. The base is the effective frozen captured donor plus the current frame mapping and local channel drafts, so inherited axes can be shifted without first authoring every frame. Exact integer deltas use -4095..4095; every resulting axis must fit native signed twelve-bit -2048..2047. Any overflow rejects the entire operation. Zero axes preserve inheritance and do not add channels; rotations, other objects/frames, mapping, opaque channel data, header and trailer remain held. These are native rigid object-local channels, not world-space placement or a general skeleton retargeter.
 
@@ -1521,7 +1523,7 @@ The private muted headless editor passed actual Asset Database navigation, inher
 
 Evidence: `local-output/sdk-20260909/animation-record-offset-20261006/acceptance.json`, `python.json`, `node.json`, `browser.json`, `server-acceptance.json`, `build-readback.json`, and wide/narrow/Proposed pose screenshots. This is focused offline authoring/native package acceptance, not a fresh full Python campaign or gameplay acceptance. No game launch, runtime attachment, mod installation or full-disc export occurred. Gameplay appearance, scheduling and timing remain deferred, and the broad SDK goal remains active.
 
-## Current authored WAV dependencies - offline checks passed (2026-10-06)
+## Current Authored WAV Dependencies - Offline Checks Passed (2026-10-06)
 
 The retained WAV inspector now separates historical capture receipts from Current authored native sample bindings. Inspection contract `legaia.audio-input-inspection.v2` adds `current_bindings`: native asset/sample, capture and binding scenes, receipt identity, authored binding hash, retail/Current full-entry hashes, Current sample hash and exact native byte span. `sdk/audio_input_bindings.py` qualifies the saved sample binding against retail ownership, reconstructs its reviewed WAV candidate, composes all Current audio edits and checks that the resulting sample bytes match the retained candidate. The global resource/sample budgets remain 32; no runtime voice, bank residency, playback pitch or instrument identity is inferred.
 
@@ -1531,7 +1533,7 @@ Acceptance: all 57 affected retail-enabled Python tests passed in 67.33 seconds 
 
 The private muted headless editor proof passed separate Historical/Current sections and hashes, exact WAV recovery, wide/400px layout, close disposal, both graph edge kinds and WAV/native/WAV reference navigation. Project document, undo/redo stacks and authored Build key stayed unchanged. Evidence: `local-output/sdk-20260909/audio-input-current-bindings-20261006/acceptance.json`, `python.json`, `node.json`, `browser.json`, `server-acceptance.json`, and screenshots. No game was launched or attached, no Build installed and no full disc exported. This is offline native dependency acceptance; a fresh full Python campaign and existing manual gameplay gates remain deferred, and the full SDK goal remains active.
 
-## Retained WAV inputs in the Asset Database - offline checks passed (2026-10-06)
+## Retained WAV Inputs in the Asset Database - Offline Checks Passed (2026-10-06)
 
 Retained WAV inputs now have one `audio-input://legaia/wav/<content-sha256>` Asset Database identity per exact blob, shared across historical receipts and imported capture scenes. Inventory and read-only inspection/download verify the canonical project file, mono 16-bit PCM rate/frame extent, receipt ownership, capture-disc identity and fresh project source key. Files are requalified before publication; missing, changed, stale or foreign inputs fail closed. The inspector presents duration, rate, file identity and historical native sample targets, and downloads the exact original bytes after independent client hash/RIFF/PCM verification.
 
@@ -1541,7 +1543,7 @@ Validation: all 56 affected retail-enabled Python tests passed in 37.67 seconds,
 
 The full Python baseline below remains the accepted 1,756-case campaign at `6f51eaa`; this feature adds eight tests and has focused Python acceptance, not a new full Python campaign. The SDK goal remains active, with general runtime/interpreter, synthesis/instrument semantics, MAPDSIP/world-map and deferred gameplay acceptance still open.
 
-## Integrated offline recheck — accepted (2026-10-06)
+## Integrated Offline Recheck — Offline Checks Passed (2026-10-06)
 
 The fresh recheck at `6f51eaaeee47b305bc4e12b8c7a892be90043348` passed all 1,756 retail-enabled Python tests in 2,006.32 seconds (runner duration), with zero errors, failures or skips. All 181 Node suites and 181 editor syntax checks passed in 20.92 seconds with no partial checks, including supplied world-map artifact coverage. Both previously skipped private retail project tests ran and passed. This is a complete green result for these existing offline suites.
 
@@ -1551,7 +1553,7 @@ Current evidence: `local-output/sdk-20260909/sdk-integrated-offline-recheck-2026
 
 Gameplay remains deferred, and the full SDK goal remains open: general runtime identity, full interpreter/story/scheduler, synthesis/instrument semantics, complete MAPDSIP coverage, general skinning/retargeting and the existing manual boundaries are not established by these suites. Development remains solo. The next audio-reference workstream is research only; `next-workstream-research.json` records the central reference contract and unresolved integration questions, not an implemented feature.
 
-## Preserved earlier offline campaign — failure baseline and repair evidence (2026-10-06)
+## Preserved Earlier Offline Campaign — Failure Baseline and Repair Evidence (2026-10-06)
 
 The implementation baseline is `be0898362874f0e6598951b14664a422ee93abdb`. All 181 existing Node suites and 181 editor JavaScript syntax checks passed in 20.03 seconds with unchanged implementation revision/digest. The world-map export suite's optional artifact coverage additionally passed against retained private retail Current/Proposed GLBs, with its fixture hash recorded. The normal Node run's missing-fixture diagnostic is preserved rather than erased.
 
@@ -1561,7 +1563,7 @@ The static model hierarchy caller and floor-height scene edit initializer have b
 
 Evidence: `local-output/sdk-20260909/sdk-integrated-offline-refresh-20261006/` (`node.json`, `worldmap-export.json`, baseline Python result, triage, isolated guard diagnostics and repair progress/log files). The updated [validation plan](TEST_PLAN.md) assigns priorities, fixtures, platforms, estimated budgets and explicit manual/implementation gates for the recent feature families. General runtime identity, complete interpreter/story/scheduler, skinning/retargeting, instrument/synthesis semantics, MAPDSIP coverage and deferred gameplay acceptance still prevent full-goal completion. Development remains solo and the goal stays active.
 
-## Whole-degree mixed placement rotation (2026-10-06)
+## Whole-Degree Mixed Placement Rotation (2026-10-06)
 
 **Scene tools → Move scene placement group → Rotate positions by whole degrees in X/Z** now accepts an integer angle from -359 through 359 around a selected imported actor, NPC draft or static decoration. The existing quarter-turn choices remain available. Review, Current/Proposed viewport inspection, return to the same review and explicit Apply use the shared mixed-group workflow. Apply records one history step; Undo/Redo and Save/Open retain exact positions. An angle of zero is a no-op. This rotates placement positions; height, actor facing, scenery orientation, donor bindings and other components are held.
 
@@ -1573,7 +1575,7 @@ Independent MAN actor decoding/opaque-byte comparison and full MAP directory/ZIP
 
 No game launch, attachment, installed mod or full-disc export occurred. Native appearance/collision acceptance remains deferred; the full SDK goal stays active and development remains solo. See [mixed placement groups](legaia-scene-placement-groups.md).
 
-## Current encoded note/program/tone/sample links (2026-10-06)
+## Current Encoded Note/Program/Tone/Sample Links (2026-10-06)
 
 The sequence operand editor now offers **Inspect Current encoded bank links** for a positive-velocity Current note start. It shows the latest prior encoded program change on the same channel, source tone records with matching explicit program operands/key ranges, and their bounded Current sample spans/hashes. It decodes the composed Current bank, including existing bank parameters and sample edits. Local drafts and reviewed Proposed operands remain separate. Unknown initial assignments, standalone sequences without colocated banks and unresolved sample operands remain explicit. **Save encoded bank link evidence** downloads the full qualified metadata.
 
@@ -1583,7 +1585,7 @@ Two new retail-enabled backend tests and three existing Proposed-sequence checks
 
 Evidence: `local-output/sdk-20260909/note-bank-links-20261006/pass2/` (`acceptance.json`, `native-proof.json`, `download.json`, `browser.log`, `wide.png`, `narrow.png`); initial evidence is preserved. No new Build, game launch, runtime attachment, installation or full-disc export occurred. Gameplay remains deferred; the broader SDK goal stays active and development remains solo.
 
-## Encoded channel transpose (2026-10-06)
+## Encoded Channel Transpose (2026-10-06)
 
 The sequence operand editor now provides **Transpose encoded channel**. Choose an encoded channel (0–15) and a nonzero whole-number **Transpose semitones** value (-127–127), then **Stage channel transpose**. This stages every fully paired Current note on that channel without changing Current. Review lists both start/release operands and obtains the native Proposed timeline; Apply uses the existing batch command for one history change. Discard, Undo/Redo, stale-input withdrawal and Save/Open use the shared workflow. Individual fields, pairing controls and event navigation lock while a channel draft is staged. The currently inspected event can belong to another channel or be a non-note event.
 
@@ -1593,7 +1595,7 @@ Three Node suites passed transpose/pairing contracts, refusal and immutability, 
 
 Native package SHA-256 `c36fb9e1af0edfd0fd710225abc4d85819791b6238b42ac55296150618a30ddf`, Build `e7f77158da4fd26b` passed integrity verification with gameplay acceptance false. Evidence: `local-output/sdk-20260909/channel-transpose-20261006/pass1/` (`acceptance.json`, `native-proof.json`, `browser.log`, `chosen.json`, `review-wide.png`, `review-narrow.png`). An initial backend invocation named a nonexistent standalone HTTP module; the corrected run used the actual modules and passed. No game launch, attachment, mod installation or full-disc export occurred. Development remains solo and the broader goal stays active; gameplay acceptance is deferred.
 
-## Complete persistent-input freshness for project resources (2026-10-06)
+## Complete Persistent-Input Freshness for Project Resources (2026-10-06)
 
 Project resources and asset references now fingerprint the complete saved project document instead of maintaining partial lists of authored fields. Native audio edits, retained animation/model sources, texture additions, templates and saved editor metadata invalidate old views. Future persisted fields participate automatically. Project inventory excludes active-scene navigation; scene-scoped references still include it. Selection, mode, history and transient caches remain outside this identity.
 
@@ -1603,7 +1605,7 @@ All 30 focused retail-enabled Python checks and both project-assets/reference No
 
 No native Build or gameplay verification was needed for this freshness fix. The full SDK goal remains active, development remains solo, and manual gameplay is deferred.
 
-## Align model vertex groups to an explicit native coordinate (2026-10-06)
+## Align Model Vertex Groups to an Explicit Native Coordinate (2026-10-06)
 
 **Move model geometry → Selected vertex group → Plane: Source coordinate** exposes **Plane coordinate**. Enter a signed16 object-local word, then **Align group X/Y/Z** to stage the chosen coordinate on that source axis. Minimum, bounds-center and maximum planes retain their existing behavior. The local draft supports Discard, Current/Draft comparison, exact scene inspection and all-instance preview before explicit Apply. The coordinate field locks during a staged transform. Source Y remains positive down; this edits model words, not actor placement or scene/world coordinates.
 
@@ -1615,7 +1617,7 @@ Independent expected-model construction and full containing LZS-section readback
 
 No game launch, attachment, mod installation or full-disc export occurred. Native appearance and placement acceptance remain deferred; the full SDK goal stays active and development remains solo.
 
-## Paired encoded-note key authoring (2026-10-06)
+## Paired Encoded-Note Key Authoring (2026-10-06)
 
 The sequence operand editor now offers **Keep paired encoded note keys together** for an unambiguous Current note start/release. Changing the key reviews both reached event operands and Apply commits one history change. Release-side selection preserves the start velocity; velocity-zero note-on releases must stay zero, and paired starts must remain positive. The existing raw event editor remains available. Review lists both byte offsets/values and the Proposed timeline is decoded from the complete native candidate.
 
@@ -1625,7 +1627,7 @@ Three focused Node suites passed pairing/refusal/immutability checks, paired UI 
 
 The native batch command remains the Apply authority; this adds no runtime write or new gameplay assumption. No game launch, attachment, installation or full-disc export occurred. Gameplay remains deferred, and the full SDK goal remains active with solo development.
 
-## Retail, Current and reviewed Proposed SEQ timelines (2026-10-06)
+## Retail, Current and Reviewed Proposed SEQ Timelines (2026-10-06)
 
 **Sequence operand editor → Show sequence layers** now opens separate Retail, Current and reviewed Proposed encoded-note timelines. Note selection focuses the original event row and matching tick window; keyboard focus survives selection. Channel filters, quarter-note windows and start/release navigation use the existing bounded FIFO display policy. Local drafts never appear as Proposed. Review obtains a new native-derived report before displaying that layer; Discard withdraws it. Drafts and pending reviews guard editing-row navigation, and stale/closed dialogs release all timeline ownership.
 
@@ -1635,7 +1637,7 @@ Three new retail-enabled backend tests passed native candidate decoding/nonmutat
 
 This is encoded note/timing inspection, not instrument synthesis, sustain evaluation or game playback acceptance. No game launch, runtime attachment, mod installation or full-disc export occurred. Manual gameplay remains deferred; broader SDK work stays active and solo.
 
-## Frozen Build WAV snapshot browser (2026-10-06)
+## Frozen Build WAV Snapshot Browser (2026-10-06)
 
 **Build history → Browse saved WAV inputs** discovers bounded, immediate saved input snapshot directories in identity order. Discovery marks their integrity unchecked and does not imply chronological order. Selecting **Verify saved WAV inputs** qualifies the completed artifact receipt, the selected historical input receipt, frozen manifest/inventory and every original WAV file. **Save frozen input WAV** then rechecks the selected snapshot/manifest/receipt and downloads exact bytes. Current registrations and their files are not replay authority for this historical reader.
 
@@ -1647,7 +1649,7 @@ A fresh private proof built two different input keys against the same verified n
 
 Input verification is labeled separately from native package integrity, source-disc integrity and gameplay acceptance. Frozen receipts remain historical evidence; recovery does not Apply inputs to Current. No game launch, runtime attachment, mod installation or full-disc export occurred. Manual gameplay remains deferred; the broader goal remains active and development stays solo.
 
-## Original WAV recovery and reviewed registration removal (2026-10-06)
+## Original WAV Recovery and Reviewed Registration Removal (2026-10-06)
 
 The sample editor now provides **Save retained input WAV**, **Review input removal** and **Remove reviewed input** for the selected Current receipt. Original-input recovery is separate from decoded preview WAV export. It freshly verifies Current ownership and exact file bytes, independently checks RIFF/chunk extents and mono signed16 PCM frame/rate fields, and downloads the original bytes without normalization. Unknown bounded chunks and their padding remain intact.
 
@@ -1657,7 +1659,7 @@ Six focused Node suites passed: recovery RIFF/hash/removal contracts, sample edi
 
 No new native asset family or runtime behavior was introduced, and no native Build was run for this UI recovery checkpoint. Gameplay verification remains deferred. No game launch, runtime attachment, mod installation or full-disc export occurred. The broader SDK goal remains active and work stays solo.
 
-## Native sample import and waveform editor (2026-10-06)
+## Native Sample Import and Waveform Editor (2026-10-06)
 
 The Audio Asset Database bank inspector now exposes `Source sample spans` → `Edit sample N`. Its separate editor shows Retail, Current and reviewed Proposed waveform layers. Mono PCM WAV upload has local draft, source review and explicit retention; retention preserves input bytes without applying native data. Existing qualified receipts can then be reviewed for native Apply. Reviewed retail restoration clears only the selected sample. Discard, no-op handling, refresh and shared project history keep these steps distinct.
 
@@ -1669,13 +1671,13 @@ Browser-authored edits survived Save/Open with bank parameters, sequence operand
 
 Runtime pitch/instrument assignment, interpreted envelopes, bank/sequence synthesis, sample allocation changes and game playback remain open. Manual gameplay verification is deferred. No game launch, runtime attachment, installation or full-disc export was performed. The broader goal remains active and development stays solo.
 
-## Fresh sample preview layers (2026-10-06)
+## Fresh Sample Preview Layers (2026-10-06)
 
 `POST /api/audio-sample-preview` exposes bounded mono PCM and waveform metadata for Retail, Current and reviewed Proposed sample layers. Every request binds the full Current authoring identity, original entry and selected sample hash. Proposed additionally requires the operation, freshly recomputed review key and retained receipt for Apply. Clear previews Retail bytes. Exact HTTP fields reject proposed bindings on Retail/Current reads. The response carries PCM/sample hashes and leaves sample rate unspecified; preview clients must choose their own rate.
 
 The retail-enabled HTTP workflow passed Retail/Proposed readback without mutation, Current matching after Apply, proposed Clear matching Retail, stale proposal rejection, wrong sample/review hash rejection and extraneous-field rejection. PCM hashes match reviewed native decoding. This earlier checkpoint provides the preview backend; the subsequent editor checkpoint above integrates sample import/waveform and preview playback controls. No game actions were performed.
 
-## Persistent native WAV samples and shared audio delivery (2026-10-06)
+## Persistent Native WAV Samples and Shared Audio Delivery (2026-10-06)
 
 Reviewed retained WAVs now have source-qualified native sample bindings, Retail/Current metadata, fresh Apply/Clear reviews, atomic commands, history, dirty tracking, Save/Open, project copies and Build snapshots. Bindings reconstruct candidates from verified WAV bytes and fresh native source data; historical candidate receipts are not replay authority. Active bindings prevent source-receipt removal. Native sample Undo/Redo validates the proposed bindings and files before changing history.
 
@@ -1685,49 +1687,49 @@ Twenty retail-enabled Python workflow/regression checks and both affected Node c
 
 This earlier native delivery checkpoint preceded the waveform/import editor and Current/Proposed audition implemented above. Only fixed-allocation complete sample prefixes are supported; input WAV rate remains metadata, and runtime pitch, instruments, playback and allocation changes remain unresolved. No game launch, attachment, installation or full-disc export was performed. Manual gameplay acceptance is deferred; the broader goal remains active and work stays solo.
 
-## Reviewed retained WAV inputs (2026-10-06)
+## Reviewed Retained WAV Inputs (2026-10-06)
 
 Source-qualified WAV review now creates recoverable historical input receipts through exact HTTP/command fields. Retention/removal use history and dirty tracking; Save/Open, copies and export snapshots verify the exact hash-addressed WAV bytes. Normal native Builds preserve WAV-input sidecars keyed by authored input identity, while unchanged native bank/SEQ artifacts can be reused with distinct input receipts. Frozen sidecars remain readable independently of later Current source removal and reject modified files/metadata. Retaining a WAV does not apply its candidate to game data; native sample bindings and shared composition are now implemented in the subsequent checkpoint above; editor preview/import controls are now implemented in the subsequent editor checkpoint above.
 
 Fifteen retail-enabled source/bank/SEQ regression checks plus one frozen-input snapshot check passed. The initial HTTP size failure was fixed with dedicated bounded Review/Retain routes. Fresh before/after native Builds retained exact WAV sidecar bytes and identical bank/SEQ edits/overlay bytes/native ZIP (`d8d4dc95410712ba9fe59ec708a120c0f889dfebae20cae0cc25072582da9647`); Save/Open and Current input receipt verification passed. See [sample authoring and retained inputs](legaia-audio-sample-authoring.md). Private proof: `local-output/sdk-20260909/audio-sample-sources-20261006/`. No game launch, attachment, installation or full-disc export. The goal remains active and development stays solo.
 
-## PCM WAV/native sample codec groundwork (2026-10-06)
+## PCM WAV/Native Sample Codec Groundwork (2026-10-06)
 
 A source-qualified mono signed16 WAV-to-SPU-ADPCM codec now replaces a complete bounded sample prefix without changing allocation, loop/end flags, trailing bytes, VAB tables, other samples or SEQ chunks. Predictor/shift trials use closed-loop native integer history and report decoded PCM hash and lossy encoding errors. Input WAV rate is metadata only; runtime rate/pitch and instrument assignment remain unknown. This earlier codec checkpoint preceded the persistent bindings and shared Build composition implemented above. Editor import/preview controls are implemented in the subsequent editor checkpoint above.
 
 All nine focused sample/waveform Python checks passed with no skips. A full sample inventory across 202 qualified banks found 1694 encoded ends, one empty sample and one over the decode budget. The first eligible sample in each of all 202 banks passed encoding, independent integer PCM/error readback and exact flags/tail/non-sample byte preservation. This covers 202 replacements, not every eligible sample; unavailable banks/empty/budget-limited samples remain unsupported. See [sample authoring groundwork](legaia-audio-sample-authoring.md); private evidence is `local-output/sdk-20260909/audio-sample-codec-20261006/`. No game launch, runtime attachment, installation, SDK Build or full-disc export. Development remains solo and the broader goal remains active.
 
-## Bank parameter editor (2026-10-06)
+## Bank Parameter Editor (2026-10-06)
 
 The Audio Asset Database's source bank inspector now opens a separate Retail/Current/reviewed-Proposed parameter editor. Master fields, explicit program slots and packed tone page/record identities expose all 27 qualified native scalar fields. Encoded u8/u16/signed16 bounds, Review/Apply/Discard, retail staging, Clear and refresh use the verified command layer. Source-row actions select the correct slot or packed record. Drafts/proposals lock navigation; stale state withdraws layers, and closing the source inspector disposes its child. Source bank tables, waveform inspection and sample audition remain Retail views.
 
 Eleven retail-enabled Python workflow checks, three Node contract suites and affected-module syntax checks passed. Actual browser Review/Discard, Apply/reload, no-op, retail staging, all three table sections, signed bounds, invalid slot recovery, source-row navigation, Clear/Undo/stale refresh and wide/400px layouts passed with no page errors. Screenshots were inspected. The browser-authored edit survived Save/Open and exact full-entry directory/ZIP native readback with the sequence edit and imported sources unchanged (package SHA-256 `a9424c2b5d6f6bd5699e4c95744e214691e7a27906302f589659d29383990bd2`). See [bank authoring](legaia-audio-bank-authoring.md); private proof is `local-output/sdk-20260909/audio-bank-editor-20261006/`. Instrument assignment, interpreted envelopes, sample replacement/allocation, composition synthesis and runtime playback remain open. No game launch, attachment, installation or full-disc export; development stays solo and the broader goal stays active.
 
-## Persistent VAB parameters and shared bank/SEQ delivery (2026-10-06)
+## Persistent VAB Parameters and Shared Bank/SEQ Delivery (2026-10-06)
 
 Source-qualified bank parameter editing now has Retail/Current metadata, reviewed atomic commands, history, dirty tracking, Save/Open, project copies, Build input snapshots and native audits. Bank and sequence bindings remain independent; one composed native PROT entry preserves both families. Clear or retail restoration of either family preserves the other, and cross-family changes invalidate old reviews. Shared authored audio appears once in the project asset list. Empty bank metadata preserves legacy document and Build input identity.
 
 The 26 regression checks and six focused bank/composition checks passed; two affected lifecycle/HTTP checks were rerun after integration cleanup. Both fresh fixed-span and relocated Builds passed independent full-entry directory/ZIP readback with all 27 bank fields, sequence edits and prior authored changes preserved. Actual sequence-editor Review/Apply/Clear against a bank-authored project passed with no page errors. The subsequent UI checkpoint adds bank editing controls; these HTTP/command and Build capabilities do not establish audible effects, instrument assignment or runtime playback. See [bank authoring and shared delivery](legaia-audio-bank-authoring.md). Private proof: `local-output/sdk-20260909/audio-bank-native-20261006/`. No game launch, attachment, installation or full-disc export. The broader goal stays active and work remains solo.
 
-## Native VAB parameter codec groundwork (2026-10-06)
+## Native VAB Parameter Codec Groundwork (2026-10-06)
 
 A source-qualified codec now edits 27 existing master/program/tone scalar parameters in complete VAB banks. Explicit pinned-parser offsets and native u8/u16/signed16 widths own the edits; counts, allocation, reserved words, sample tables/bodies and nonbank/SEQ bytes stay unchanged. This earlier checkpoint established the codec; persistent commands and shared native delivery are now implemented as recorded above. Bank editor controls are implemented in the subsequent UI checkpoint. Encoded ranges are not audible effect or runtime instrument claims.
 
 All nine focused Python checks passed without skips. Every one of the 202 qualified retail bank carriers passed a combined 27-field edit and exact physical-entry restoration; all three carrier shapes, sparse slots/packed pages, byte ownership, bounds and rejection were checked. The 16 unavailable banks stay unsupported. See [VAB parameter groundwork](legaia-audio-bank-authoring.md); private evidence is `local-output/sdk-20260909/audio-bank-authoring-codec-20261006/focused.log`. The subsequent shared-delivery checkpoint implements one composed PROT overlay for bank/SEQ changes. No gameplay actions; the goal remains active and development remains solo.
 
-## Sequence operand editor (2026-10-06)
+## Sequence Operand Editor (2026-10-06)
 
 Audio source event selection now opens an editor with separate Retail, Current and reviewed Proposed operands. Channel and tempo fields use encoded bounds; Review/Apply/Discard, retail staging, Clear and refresh guards share the verified project command layer. Inputs/navigation lock during review; stale state withdraws proposals, and closing cancels read ownership. The source inspector remains Retail; the operand editor now provides Retail, Current and reviewed Proposed timelines (see the latest checkpoint). Native sequence synthesis, bank/scene assignment and game playback are still unresolved.
 
 Nine retail-enabled focused Python checks, three Node contract suites and affected-module syntax checks passed. Actual browser Review/Discard, Apply/reload, no-op, Clear/Undo, invalid values, event navigation and partial inspection passed with no page errors. Final wide/400px reviewed proposal screenshots were inspected with no horizontal overflow. The browser-authored edit survived Save/Open and exact full-entry directory/ZIP native readback, with unchanged imports/other authored state. See [sequence authoring](legaia-audio-sequence-authoring.md); private evidence is `local-output/sdk-20260909/audio-sequence-editor-20261006/`. Gameplay remains deferred; development stays solo and the goal stays active.
 
-## Persistent SEQ operands and native delivery (2026-10-06)
+## Persistent SEQ Operands and Native Delivery (2026-10-06)
 
 The native audio codec now has source-qualified SDK commands, atomic Undo/Redo, dirty/authored-resource tracking, Save/Open and project-copy validation. Review preserves project state; Apply revalidates its source/state/proposal key. Restoring retail values or clearing removes the binding. Build independently encodes requested operands and preserves full native entries in both fixed overlays and composed PROT relocation, with audio-specific reports. Browser editing controls are the next integration; source/audio playback assignment and gameplay remain unverified.
 
 All 31 focused Python checks passed without skips. Actual complete/partial retail commands and HTTP freshness guards passed; fresh relocated and plain fixed-span packages retained exact expected full audio entries, source imports and existing script/animation composition. Saved Build freshness changes on Clear and restores on Undo. See [SEQ authoring and delivery](legaia-audio-sequence-authoring.md); evidence is in `local-output/sdk-20260909/audio-authoring-20261006/`. No game launch, attachment, installation or full-disc export. The goal remains active and development stays solo.
 
-## Native SEQ operand codec groundwork (2026-10-06)
+## Native SEQ Operand Codec Groundwork (2026-10-06)
 
 A source-qualified serializer now edits reached channel and tempo operands in standalone SEQ and aligned VAB+SEQ native entries. It preserves event structure, running status, delta times, opaque tails, bank/sample chunks and carrier length, and validates independent decoded readback. All 83 retail sequence carriers passed exact-byte edit/restoration checks, including the partial stream; ten focused Python checks passed without skips. This is codec groundwork only: persistent SDK audio commands/history, editor editing controls and native Build composition are still open. See [native SEQ operand groundwork](legaia-audio-sequence-authoring.md). No gameplay verification is needed for this checkpoint; the overall goal remains active and development stays solo.
 
@@ -1756,31 +1758,31 @@ Current capabilities are summarized below; dated milestones above retain their i
 | Build/output | Normal private native packages, source-aware composition, allocation/relocation qualification, reports/readback and supported disc-export infrastructure. | Compilation/package readback alone is not gameplay acceptance. No game, installed mod or full-disc export was run in this verification pass. |
 | Runtime stability | Identified release/precompile, restore ownership, CD/XA, initialization/pacing, audio reporting and input fixes remain recorded in the [parity ledger](legaia-release-parity.md). | Startup audio overflow, field/cross-scene restore performance and the ledger's other manual boundaries remain open; no new patch is justified by a stale test assertion. |
 
-## Connected and inverse model vertex selections (2026-10-06)
+## Connected and Inverse Model Vertex Selections (2026-10-06)
 
 The 3D movement editor now expands selected vertices through Current object preview triangles and inverts a group within its object-local table. These are local selection actions; coordinates/normals/topology and history stay unchanged until an explicit group Save. Existing saved-group Recall, Undo/Redo and Save/Open preserve the exact selection. Coincident positions/shared normals are not links; malformed/cross-object triangle references and results over4096 vertices reject atomically. Geometry drafts lock these selection tools.
 
 Actual Town01 editor selection/recall, no-op and wide/narrow checks passed; source/model state is preserved. Fresh native Build packages before/after group Save are byte-identical. Focused connectivity and existing movement Node guards pass. See [Current vertex connectivity](legaia-model-vertex-connectivity.md); private evidence is in `local-output/sdk-20260909/vertex-connectivity-20261006/`. Gameplay stays deferred and development remains solo.
 
-## Native-grid snapping for selected model vertices (2026-10-06)
+## Native-Grid Snapping for Selected Model Vertices (2026-10-06)
 
 The existing 3D model movement editor now stages a selected group's Current object-local coordinates onto a native-unit grid, with explicit X/Y/Z axes and integer spacing. Halfway values round away from zero; signed16 overflow rejects the whole operation. Draft/Current/Retail and scene Review/Return remain separate from one atomic Apply. Selected rows/axes change; normals, topology and other rows/objects retain their existing native qualification. Already snapped rows are a no-op; Undo/Redo and Save/Open use the model replacement workflow. This adds authored geometry, not a runtime grid or actor-placement rule.
 
 Workflow and acceptance boundary: [vertex grid tool](legaia-model-vertex-grid.md). Private evidence is in `local-output/sdk-20260909/vertex-grid-20261006/`. Development continues solo; gameplay verification remains deferred.
 
-## Selected script operand layers (2026-10-06)
+## Selected Script Operand Layers (2026-10-06)
 
 The source-flow workspace now inspects a selected original instruction/message boundary across Retail, composed Current and reviewed Proposed layers. It shows decoded operands, dispatch/length/successor fields and exact encoded byte differences by record PC. Pending nonbranch form drafts are excluded; unavailable inspections and boundaries not decoded on a layer remain explicit. Review invalidation/Discard, failed Apply, stale source/state and close withdraw the displayed proposal. This is read-only static inspection, with no VM or runtime observation.
 
 Actual Town01 Current RGB/intensity edits and a separately reviewed actor branch proposal passed the editor workflow, exact selected-byte comparison, wide/narrow display and unchanged project/history checks. The surrounding branch flow and new focused operand-layer Node checks pass. See [selected script layers](legaia-script-node-layers.md); private evidence is in `local-output/sdk-20260909/script-node-layers-20261006/`. Gameplay verification remains deferred.
 
-## Retail versus saved Build script comparison (2026-10-06)
+## Retail Versus Saved Build Script Comparison (2026-10-06)
 
 Imported actor and standalone script editors now expose a read-only comparison with an intact saved Build matching current inputs. The SDK reads actual native MAN records from relocated PROT or qualified overlays, verifies source disc/package receipts, retains retail/generated hashes and offsets, and reports exact changed record bytes alongside paired decoded paths. Bounded display and a complete local comparison download preserve stops/opaque regions. Stale inputs, ambiguous records and layout changes reject inspection. This does not establish script execution or gameplay acceptance.
 
 Actual Town01 editor receipt selection/comparison/download and wide/narrow layouts passed; the emitted record exactly matches the independently decoded preceding color-edit Build. HTTP boundaries, stale input rejection and unchanged project/history were verified. Details and acceptance hashes: [source Build script guide](legaia-source-build-script.md). Private evidence: `local-output/sdk-20260909/source-build-script-20261006/`. Development remains solo; gameplay verification stays deferred.
 
-## Fixed source effect color/intensity authoring (2026-10-06)
+## Fixed Source Effect Color/Intensity Authoring (2026-10-06)
 
 Qualified source scripts now expose an **EFFECT_COLOR_INTENSITY** operand editor with encoded red/green/blue bytes (0–255) and signed16 intensity (-32768–32767). Retail, authored and effective values remain separate. Apply/Clear use project commands, atomic history and Save/Open. Source instruction rows link to the editor; standalone script assets, component navigation/reset and source-bound operand file/bundle workflows recognize `ScriptEffectColors`. No renderer or runtime memory write is introduced.
 
@@ -1789,7 +1791,7 @@ The patcher qualifies reached sub0 instructions only in records without decoder 
 Validation: 13 focused Python authoring/project/Build/HTTP/operand-transfer tests passed; the existing streaming native Build regression also passed; the two new source patch tests additionally verify the typed package report/change kind. Five existing Node script lifecycle/navigation/operand/reset checks passed, as did changed JavaScript syntax and Python parsing. Town01 discovery found ten qualified source targets. Fresh retail-project browsers edited partition-two script0000, rejected invalid inputs, showed separate value layers, cleared/restored the override and downloaded exact typed operand metadata with no page errors; wide/narrow screenshots were inspected. Invalid field/width requests rejected before mutation; one-step Apply, no-op reapply, Undo/Redo, Save/Open, project-copy recovery and unchanged imported/reference data passed. Two missing Build-family gates were caught by the initial package audit and corrected before acceptance. Independent final package decoding read back the entire expected script record exactly (SHA-256 `97fc68f29f8bce703a84abc34b14c6410d9b9227fa88759521b7e74640ef7223`); package SHA-256 is `a397f445e3fc290d89f4f0583a638c92ccae2d9ceb2aa7ee72846d54d66d341c`. The first omitted delivery is superseded by this final readback. Private proof: `local-output/sdk-20260909/script-effect-color-20261006/`. No game launch, runtime attachment, installation or full-disc export; gameplay and the full SDK goal remain open.
 
 
-## Source sequence note timeline (2026-10-06)
+## Source Sequence Note Timeline (2026-10-06)
 
 **Inspect sequence events → Show note timeline** opens a graphical encoded-note view in the Audio Asset Database. It has independent channel filtering, 4/8/16/32/64-quarter-note tick windows, Earlier/Later navigation, mouse/keyboard selection and direct navigation to start/release source rows. Channel colors, velocity brightness, source ticks and selected event details aid inspection. At most 512 notes are drawn per window; denser windows explicitly request a narrower range/channel.
 
@@ -1798,7 +1800,7 @@ Relationships are derived display evidence: a release matches the earliest open 
 Validation: focused Node checks passed channel-isolated pairing, ambiguity, zero-velocity release, partial/unmatched boundaries, source immutability and the 32,768-event budget; the existing sequence/bank/waveform/audition checks also passed. Source changes withdraw both table and timeline; close/late-reply ownership remains guarded. Fresh retail-project browsers passed complete/partial timelines, window/channel navigation, pointer/keyboard selection, source-row navigation, hide/reopen, exact unchanged metadata download and wide/narrow layouts with no page errors. Screenshots were inspected. Project documents, history/files and reference fixture were unchanged; normal private native Build before/after browsing was byte-identical (SHA-256 `c309f270d2705d0f72ac3899248b99744689ec553b927c004bc2dfa5c7af2e30`). Private proof: `local-output/sdk-20260909/audio-note-timeline-20261006/`. No game launch, runtime attachment, installation or full-disc export; gameplay remains deferred and the full SDK goal remains active.
 
 
-## Source SEQ event inspector checkpoint (2026-10-06)
+## Source SEQ Event Inspector Checkpoint (2026-10-06)
 
 Validation: all 41 retail-enabled focused Python tests passed without skips/errors/failures. Node source/summary/timing contracts, stale-source withdrawal, close/late-response ownership and existing asset inspector guards passed; all three changed JavaScript modules passed syntax checks. The production frontend decoder qualified all 83 freshly read retail source reports (258,065 events). Fresh browsers passed complete and partial carriers, hidden unsupported actions, pagination/filtering, exact metadata download, pending close and wide/narrow layouts, with no page errors; final screenshots inspected. HTTP exact-field, stale-key/hash and unsupported carrier checks rejected before mutation. Project/history/files and reference fixture were unchanged. Normal native Build before/after inspection was byte-identical (SHA-256 `1e358a48f13f35757fb08a06fd2550b74e5957cf94495ce45fca5c0b75aa6eec`). Private proof: `local-output/sdk-20260909/audio-sequence-20261006/proof.json`, `retail-sequences.json`, `all-source-node.json` and focused logs. No game launch, runtime attachment, installation or full-disc export; gameplay remains deferred and the full SDK goal stays active.
 
@@ -1806,7 +1808,7 @@ Supported source audio records now offer **Inspect sequence events**. The read-o
 
 The pinned Andrew SEQ parser supplies format evidence for VLQ/running status and fixed-size tempo/end-of-track meta events. Unlike its synthesized termination on unknown system/meta events, this SDK stops at the unresolved source offset and labels the decoded prefix partial without inventing end-of-track. Across all 83 supported retail carriers, 82 reached encoded end-of-track and PROT 1045 stopped at a non-seven-bit channel operand; 258,065 events were decoded, with at most 6,451 in one source. These are source syntax/timing facts, not waveform validity, audible duration, looping, scene assignment or runtime cadence. Waveform synthesis, playback and audio authoring remain incomplete.
 
-## Source audio Asset Database checkpoint (2026-10-06)
+## Source Audio Asset Database Checkpoint (2026-10-06)
 
 Validation: the retail-enabled 37-test focused Python regression passed with no skips/errors/failures; four existing Node contract checks and all five changed JavaScript module syntax checks passed. Fresh retail-project browser checks passed active/project discovery, source/confidence filtering, typed complete/partial header inspection, provenance visibility, metadata download and reference navigation with no page errors. Wide/narrow screenshots were inspected. Project documents, files, Undo/Redo history and the reference fixture remained unchanged. Normal native Build before/after browsing was byte-identical (package SHA-256 `7ec8b65439c3a5893fc264b95ba1d4a7d8c11af7f7687fe7dc7344a3bfbb6b98`). Private proof: `local-output/sdk-20260909/audio-catalog-20261006/proof.json`. No game launch, runtime attachment, installation or full-disc export occurred; gameplay remains deferred and the full SDK goal remains active.
 
@@ -1814,19 +1816,19 @@ Audio is now a central read-only resource category in active-scene and project A
 
 Evidence uses the pinned Andrew reference `d6e64c68ede25813d35db20980da82a1a025549b` (`sound_pack.rs`, VAB and SEQ header parsers), read through `git show` because the reference checkout HEAD has advanced. The catalog neither adopts that newer revision nor adds it as a runtime dependency. Events, waveform tables, audio preview/edit/replacement, duration, XA, interior audio containers and scene playback assignments remain incomplete. No runtime or gameplay acceptance is asserted. Private evidence: `local-output/sdk-20260909/audio-catalog-20261006/`.
 
-## Latest feature: repeat and ping-pong animation sampling
+## Latest Feature: Repeat and Ping-Pong Animation Sampling
 
 Enable external sampling in either GLB clip editor and choose **External timeline behavior**: Hold endpoints, Repeat clip or Ping-pong clip. Repeat and ping-pong use one shared channel key range; reverse and hold rates work without changing native frame/object counts. Mode changes invalidate Review, and source recipes preserve the choice across history and Save/Open. Old clamp bindings keep their canonical identity. No native gameplay loop flag or retail FPS is inferred.
 
 Both real retail-project browser workflows passed Review/Pose/Return/Apply, mode invalidation and wide/narrow layout with no page errors; screenshots inspected. HTTP mismatched-mode rejection, one-step history, retained input bytes, Undo/Redo and Save/Open passed. Normal Build's native animation bank was independently read back exactly. Reference projects were unchanged; no game launched or runtime attached. Evidence: `local-output/sdk-20260909/animation-glb-cycles-20261006/pass1/proof.json`. The retail-enabled animation regression passed all 77 tests with no skips, errors or failures (`local-output/sdk-20260909/animation-glb-cycles-20261006/python.json`); focused Node contracts and syntax checks for all three changed JavaScript modules passed.
 
-## Latest feature: historical actor coordinate comparison
+## Latest Feature: Historical Actor Coordinate Comparison
 
 In Edit mode, show a historical file or comparison in the viewport, select an imported actor and a historical node key, then choose **Compare selected actor coordinates**. The table separates retail/current/override positions from viewport surface height and shows captured-minus-reference deltas. It supports the selected historical file layers and metadata download. Unknown native heights remain unknown; candidate metadata does not establish identity. Source/selection/layer/file changes disable export of stale snapshots. Historical toolbar controls now refresh after request completion.
 
 Node checks and fresh retail-scene browsers with synthetic file samples passed the coordinate/download workflow and existing paired-overlay regression. Wide/narrow screenshots inspected; no page errors, game launch or runtime attachment. Imported/authored state and its Build state key were preserved. Evidence: `local-output/sdk-20260909/historical-actor-coordinate-comparison-20261006/final/proof.json` and `regression/proof.json`. Real coordinate/identity correlation and gameplay acceptance remain deferred.
 
-## Offline verification checkpoint
+## Offline Verification Checkpoint
 
 The Node run passed **164 checks** and **160 editor-module syntax checks**, with no fixture skips. The material/texture check received its generated fixture argument and the world-map export check used the existing private artifact fixture. Two old mocks were corrected for default select-option behavior and the vector editor's move control.
 
@@ -1838,6 +1840,6 @@ Two specialized checks remain unexecuted: the private Retail V7 scene-preview pr
 
 Private evidence: `local-output/sdk-20260909/sdk-integrated-offline-20261006/final/acceptance.json`, the preserved baseline logs, `remaining/python.json`, `corrected/python.json`, `shared-fixture/python.json` and `node.json`. Historical viewport acceptance remains separately documented as synthetic captures over actual retail-imported scenes with inspected screenshots. No game launch, runtime attachment, installed mod or full-disc export occurred.
 
-## Next development and manual acceptance
+## Next Development and Manual Acceptance
 
 Offline work can continue on incomplete asset/animation/runtime architecture and on failures revealed by integrated checks. The broad SDK goal remains active. Manual verification is reserved for native gameplay appearance/placement, floor/collision and NPC behavior, audio/input/startup, repeated field/cross-scene restore behavior and confirmed live coordinate/identity correlation. No manual gameplay action is required to finish the current offline verification work.

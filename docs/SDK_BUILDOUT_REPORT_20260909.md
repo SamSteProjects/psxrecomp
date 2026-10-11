@@ -1,5 +1,7 @@
 # Legaia SDK Buildout Report — 2026-09-09
 
+Offline checks passed — 2026-10-11: Native Animation Apply Controls synchronizes the parent frame, timeline and channel editors with the root API during Apply. The existing reviewed command and result stay unchanged. The actual delayed-request editor check passes disabled parent frame/timeline/edit/preview controls, blocked frame navigation and duplicate Apply prevention. Apply produces one history entry; intact editor state, unchanged field scene, Undo/Redo, Save/Open and original-project preservation pass with no page errors. Evidence: local-output/sdk-20260909/worldmap-animation-authoring-20261011/native-apply-controls-browser-proof.json. No Build, native recompilation, game, installation or disc export ran. Report headings now use consistent Title Case; historical technical identifiers are preserved. Full SDK goal active; gameplay deferred.
+
 Offline checks passed — 2026-10-11: World Native Channel Timeline adds discrete Retail/Current animation channel samples, object/axis selection and pointer/keyboard frame navigation to registered clip Asset Details. Frame changes update the native inspector and withdraw authored Review/Preview without project mutation. No timing or interpolation is inferred. All 38 supported clips, 2,022 tracks and 49,470 frame-axis samples match independent native decodes; immutable snapshots, pointer bounds and existing frame/CSV/source guards pass. Actual bound and source-only editor workflows pass exact track values, pointer/keyboard frames, no local requests, authored draft withdrawal, invalid-frame selection withdrawal, exact CSV and close/disposal. Parent frame/timeline controls disable during native clip Review and restore afterward. Wide/400-pixel captures were inspected; project/history and the active field scene remain unchanged with no page errors. Evidence: local-output/sdk-20260909/worldmap-animation-authoring-20261011/native-timeline-browser-proof.json. No Build, native recompilation, game, installation or disc export ran. Full SDK goal active; gameplay deferred. [Workflow](legaia-worldmap-animation-channels.md#native-channel-timeline).
 
 Offline checks passed — 2026-10-11: World Animation Request Capacity aligns placed-object animation Review and dedicated Apply envelopes with the declared 4,096-row native authoring budget. The editor now submits Apply through `/api/worldmap-animation-edit-apply`, which dispatches the existing typed project command. Both routes accept at most 1 MiB; the generic command limit remains 32 KiB. A synthetic 512-frame/eight-object native draft reaches HTTP Review and matches independently packed bytes across all 4,096 rows. Exact Apply dispatch, malformed bodies and early oversized-envelope refusals pass. Three prior native authoring checks also pass. Actual Map02 range Review/Preview/Apply passes through the dedicated route, retaining sibling rows and one-step history, Undo/Redo and Save/Open. Wide/400-pixel captures were inspected; page errors are absent and the original project stays unchanged. Evidence: local-output/sdk-20260909/worldmap-animation-authoring-20261011/animation-http-budget-browser-proof.json. No package Build, native recompilation, game, installation or disc export ran. Full SDK goal active; gameplay deferred.
@@ -1122,7 +1124,7 @@ Offline checks passed — 2026-10-07: [Numeric Scene-Camera Inspector](legaia-sc
 
 Offline checks passed — 2026-10-07: [Native Whole-Object Mirror](legaia-model-object-mirror.md) now reflects source-local geometry/normals and reverses coupled native winding, UV, color and normal-reference corners through reviewed Current/Proposed receipts. Axis/pivot changes and scene Return require fresh review. Acceptance: 17 focused Python tests (24 primitive families, XYZ reflections and exact involution), four Node suites, syntax/AST checks, actual 18-vertex/11-normal Town01 editor workflow, wide/400 px visual inspection, Undo/Redo and Save/Open. An independent full-model oracle matched all 117 changed bytes; normal Build `8e2ddfdc7ce195ca` passed complete decompressed-section, directory and ZIP readback with unrelated overlays unchanged. Package SHA-256: `f0a83e84c5d40e8982435aaaa1f4f170eddc37621de194c1741d668830a56096`. The retained initial client failure came from an aliased synthetic fixture, now corrected. This milestone adds no runtime change and does not represent a fresh full regression campaign. No game, install or disc export occurred. Gameplay verification remains deferred; the full goal remains active, with implementation proceeding solo.
 
-## Static stereo voice-gain audition - offline checks passed (2026-10-07)
+## Static Stereo Voice-Gain Audition - Offline Checks Passed (2026-10-07)
 
 Envelope audition now offers explicit left/right static SPU voice registers
 and stereo playback/WAV export after every existing mono synthesis path.
@@ -1151,7 +1153,7 @@ ran. Static single-voice preview does not resolve VAB pan, driver mix, reverb or
 runtime instruments. Gameplay stays deferred; solo development and the full SDK
 goal remain active.
 
-## Whole-object axis scaling with normal correction - offline checks passed (2026-10-07)
+## Whole-Object Axis Scaling with Normal Correction - Offline Checks Passed (2026-10-07)
 
 Model vectors now offers separate X/Y/Z percentages and an origin or Current
 bounds-center pivot for the whole object. Stored normals use inverse transpose
@@ -1180,7 +1182,7 @@ its initial failure and a corrected screenshot locator failure are retained. No 
 export or new full campaign ran. Manual gameplay remains deferred, development
 continues solo, and the full SDK goal stays active.
 
-## Structured hierarchy queries and actor selection - offline checks passed (2026-10-07)
+## Structured Hierarchy Queries and Actor Selection - Offline Checks Passed (2026-10-07)
 
 Hierarchy search now supports name/id/type/component/authored/visibility fields,
 AND terms, quoted phrases and exclusions. Component terms use recorded authored
@@ -1208,7 +1210,7 @@ See [hierarchy query workflow](legaia-hierarchy-query.md) and private
 native Build, full campaign, game, installation or disc export ran. Manual
 gameplay remains deferred; development is solo and the full SDK goal stays active.
 
-## Bounded project relationship tracing - offline checks passed (2026-10-07)
+## Bounded Project Relationship Tracing - Offline Checks Passed (2026-10-07)
 
 Asset references now opens a recorded project trace in either dependency or
 referenced-by direction, at1..4 hops with an explicit layer filter. One fresh
@@ -1231,7 +1233,7 @@ No runtime change, native Build, full campaign, game, installation or disc expor
 ran. Manual gameplay remains deferred, solo development continues and the full
 SDK goal is active.
 
-## Asset reference exploration trail - offline checks passed (2026-10-07)
+## Asset Reference Exploration Trail - Offline Checks Passed (2026-10-07)
 
 Asset references now offers **Explore references** without closing the dialog.
 Back/Forward and a bounded32-entry Recent reference trail follow successive
@@ -1256,7 +1258,7 @@ relationship exploration, not transitive graph completeness or runtime use.
 Solo development continues; manual gameplay remains deferred and the full goal
 is active.
 
-## Whole-object angle rotation - offline checks passed (2026-10-07)
+## Whole-Object Angle Rotation - Offline Checks Passed (2026-10-07)
 
 The vector inspector rotates an object's vertices and stored normals together
 by a quantized arbitrary angle about source X/Y/Z. Vertices use local origin or
@@ -1283,7 +1285,7 @@ fixture-count and fixed-overlay harness failures are retained. No runtime change
 full campaign, game launch, installation or full-disc export occurred. Development
 stays solo; manual verification is deferred and the full goal remains active.
 
-## Stored object normal rotation - offline checks passed (2026-10-07)
+## Stored Object Normal Rotation - Offline Checks Passed (2026-10-07)
 
 The model vector inspector now rotates an object's stored normals independently
 about source X/Y/Z by a reviewed angle. Exact 1/4096-turn quantization, signed-word
@@ -1307,7 +1309,7 @@ change, full campaign, game launch, installation or full-disc export occurred.
 Manual lighting verification remains deferred; development stays solo and the
 full SDK goal remains active.
 
-## Direct SPU pitch envelope preview - offline checks passed (2026-10-07)
+## Direct SPU Pitch Envelope Preview - Offline Checks Passed (2026-10-07)
 
 Qualified native Gaussian loop and one-pass previews now accept a direct 14-bit
 SPU pitch register from 0 through 16383. Zero holds the source counter; 4096 is
@@ -1328,7 +1330,7 @@ and private `local-output/sdk-20260909/audio-direct-pitch-20261007/` evidence.
 No backend/runtime change, new Build, full campaign or gameplay action; manual
 listening stays deferred, development stays solo and the full SDK goal is active.
 
-## Selected vertex per-axis scaling - offline checks passed (2026-10-07)
+## Selected Vertex Per-Axis Scaling - Offline Checks Passed (2026-10-07)
 
 The existing geometry workspace now stages independent X/Y/Z positive integer
 percentages for selected vertex groups, with origin or exact bounds-center
@@ -1350,7 +1352,7 @@ See [per-axis vertex scaling](legaia-model-vertex-axis-scale.md) and private
 change, gameplay action or full campaign; gameplay stays deferred, development
 stays solo and the full SDK goal is active.
 
-## Whole inspected script-flow diagram - offline checks passed (2026-10-07)
+## Whole Inspected Script-Flow Diagram - Offline Checks Passed (2026-10-07)
 
 The existing branch diagram now pages Whole inspected flow alongside Selected
 neighborhood. All reached decoded boundaries in qualified Retail or Current/
@@ -1371,7 +1373,7 @@ solo, gameplay stays deferred and the full SDK goal remains active. See
 [whole inspected flow](legaia-script-whole-flow.md) and private evidence
 `local-output/sdk-20260909/script-whole-flow-20261007/`.
 
-## Native one-pass envelope sample preview - offline checks passed (2026-10-07)
+## Native One-Pass Envelope Sample Preview - Offline Checks Passed (2026-10-07)
 
 Complete standard-shift ADPCM samples with END without REPEAT now offer Native
 ADPCM one pass in the bank editor, with linear or native Gaussian interpolation.
@@ -1393,7 +1395,7 @@ remain open. Development stays solo and the full SDK goal stays active. See
 [native one-pass preview](legaia-audio-native-one-pass.md) and private evidence
 `local-output/sdk-20260909/audio-native-one-pass-20261007/`.
 
-## Native Gaussian envelope sample preview - offline checks passed (2026-10-07)
+## Native Gaussian Envelope Sample Preview - Offline Checks Passed (2026-10-07)
 
 The bank editor now offers Native Gaussian preview for source-qualified native
 ADPCM loops, alongside the default linear preview. Exact recomp table/arithmetic,
@@ -1414,7 +1416,7 @@ Development stays solo, gameplay stays deferred and the full goal remains active
 See [native Gaussian preview](legaia-audio-native-gaussian.md) and private evidence
 `local-output/sdk-20260909/audio-native-gaussian-20261007/`.
 
-## Custom-angle vertex group rotation - offline checks passed (2026-10-07)
+## Custom-Angle Vertex Group Rotation - Offline Checks Passed (2026-10-07)
 
 Move model geometry now supports custom X/Y/Z rotation of selected vertex
 indices, with origin or bounds-center pivot and angles quantized to 1/4096 turn.
@@ -1434,7 +1436,7 @@ verification remains deferred and the full goal stays active. See
 [custom-angle vertex rotation](legaia-model-vertex-angle.md) and private evidence
 `local-output/sdk-20260909/vertex-angle-rotation-20261007/`.
 
-## Grow and shrink Current vertex groups - offline checks passed (2026-10-07)
+## Grow and Shrink Current Vertex Groups - Offline Checks Passed (2026-10-07)
 
 Move model geometry now offers Grow group and Shrink group. Grow adds exactly one
 neighbor ring from the selected object's Current preview triangles. Shrink removes
@@ -1454,7 +1456,7 @@ Development stays solo; gameplay verification remains deferred and the goal
 stays active. See [vertex selection rings](legaia-model-vertex-rings.md) and
 `local-output/sdk-20260909/vertex-selection-rings-20261007/`.
 
-## Native ADPCM loop audition - offline checks passed (2026-10-07)
+## Native ADPCM Loop Audition - Offline Checks Passed (2026-10-07)
 
 The envelope sample audition now offers Native ADPCM loop, carrying both integer
 predictor history samples through source-qualified end/repeat boundaries. It
@@ -1481,7 +1483,7 @@ deferred and the full SDK goal stays active.
 See [native ADPCM loop audition](legaia-audio-native-loop.md) and private evidence
 `local-output/sdk-20260909/audio-native-loop-20261007/`.
 
-## Encoded PCM loop audition - offline checks passed (2026-10-06)
+## Encoded PCM Loop Audition - Offline Checks Passed (2026-10-06)
 
 The bank editor's envelope sample audition now offers an explicit Encoded PCM
 loop beside One pass. Freshly qualified sample markers must contain a loop-start
@@ -1503,7 +1505,7 @@ audio acceptance stays deferred; development stays solo and the goal stays activ
 See [encoded PCM loop audition](legaia-audio-pcm-loop.md) and private evidence
 `local-output/sdk-20260909/audio-pcm-loop-20261007/`.
 
-## Partial script flag qualification - offline checks passed (2026-10-06)
+## Partial Script Flag Qualification - Offline Checks Passed (2026-10-06)
 
 Imported actor Current flag edits now remain discoverable when the native flag
 adapter qualifies the specific operand but the broader catalog has partial
@@ -1526,7 +1528,7 @@ development stays solo and the full SDK goal remains active.
 See [flag qualification](legaia-flag-qualification.md) and private evidence
 `local-output/sdk-20260909/partial-flag-qualification-20261007/`.
 
-## NPC flag operand navigation - offline checks passed (2026-10-06)
+## NPC Flag Operand Navigation - Offline Checks Passed (2026-10-06)
 
 NPC Asset references now include inherited Retail and NPC Current flag operands.
 Inverse flag references identify every NPC clone owner separately, with exact
@@ -1553,7 +1555,7 @@ Gameplay remains deferred; development stays solo and the SDK goal stays active.
 See [NPC flag references](legaia-npc-flag-references.md) and private evidence
 `local-output/sdk-20260909/npc-flag-navigation-20261007/`.
 
-## ADSR sample audition - offline checks passed (2026-10-06)
+## ADSR Sample Audition - Offline Checks Passed (2026-10-06)
 
 The bank parameter editor's tone ADSR view now offers a one-pass envelope sample
 audition for Retail, Current and Reviewed Proposed. Retail uses Retail sample
@@ -1578,7 +1580,7 @@ acceptance remains deferred, development stays solo and the SDK goal is active.
 See [bank authoring](legaia-audio-bank-authoring.md) and private evidence
 `local-output/sdk-20260909/audio-envelope-audition-20261007/`.
 
-## Reviewed NPC script family reset - offline checks passed (2026-10-06)
+## Reviewed NPC Script Family Reset - Offline Checks Passed (2026-10-06)
 
 The NPC ownership Inspector now offers eleven registered actions, including
 Reset NPC-owned script edits; Asset Details exposes the same reset tool. Select
@@ -1601,7 +1603,7 @@ development remains solo and the complete SDK goal is active.
 See [NPC script reset](legaia-npc-script-reset.md) and private evidence
 `local-output/sdk-20260909/npc-script-reset-20261007/`.
 
-## NPC script ownership Inspector - offline checks passed (2026-10-06)
+## NPC Script Ownership Inspector - Offline Checks Passed (2026-10-06)
 
 The SDK now supplies detached NPC script-binding snapshots: exact donor identity,
 authored draft digest and eight owned-family target counts. The NPC Inspector
@@ -1623,7 +1625,7 @@ See [NPC script Inspector](legaia-npc-script-inspector.md) and private evidence
 `local-output/sdk-20260909/npc-script-inspector-20261007/`. Work remains solo,
 manual gameplay remains deferred and the full SDK goal remains active.
 
-## NPC retail script donor navigation - offline checks passed (2026-10-06)
+## NPC Retail Script Donor Navigation - Offline Checks Passed (2026-10-06)
 
 Authored NPC Asset references now links directly to the qualified retail donor
 script; reverse script references list all authored NPC owners. Source hash,
@@ -1640,7 +1642,7 @@ Evidence: `local-output/sdk-20260909/npc-script-navigation-20261007/`.
 See [NPC source navigation](legaia-npc-script-references.md). Development remains
 solo; manual gameplay is deferred and the complete SDK goal remains active.
 
-## NPC-owned script effect colors - offline checks passed (2026-10-06)
+## NPC-Owned Script Effect Colors - Offline Checks Passed (2026-10-06)
 
 **Select an authored NPC -> Edit NPC effect colors** now exposes its qualified retail donor's EFFECT sub0 RGB bytes and signed intensity. Own color stages a complete typed target; unchecking restores the donor span. Retail and Current values remain separate from local input. Fresh Review verifies exact five-byte native audits and Apply stores NPC-owned edits in one history step. Invalid input blocks Review, changed drafts withdraw proposals, Discard restores Current, and source changes withdraw the controls until the dialog is reopened. No color-space, host rendering, runtime effect, actor context or scheduling semantics are inferred.
 
@@ -1653,7 +1655,7 @@ All 36 affected Python checks passed with no skips in 25.29 seconds, including e
 Additional retained-input checks passed captured preset Save/Open, portable v10 transfer Apply, reviewed instance one-step history/Undo/Redo/Save/Open, repetition and actual native comparison/client qualification. Retained runtime/precompile source hashes still match the accepted stability baseline. Evidence: `local-output/sdk-20260909/npc-effect-colors-20261007/acceptance.json`, `python.json`, `node.json`, `browser.json`, `native-proof.json`, `extra-proof.json`, `extra-client.json`, `transfer-proof.json`, logs and screenshots. No new full Python campaign, game launch, runtime attachment, installation or full-disc export occurred. Manual visual effects/gameplay remain deferred; development stays solo and the full SDK goal is active.
 
 
-## Paired ADSR word authoring - offline checks passed (2026-10-06)
+## Paired ADSR Word Authoring - Offline Checks Passed (2026-10-06)
 
 **Bank parameter editor -> Packed tone record -> adsr1 / adsr2 -> Edit ADSR word pair** stages both native u16 words together. Both words have raw inputs and structured fields, with ADSR2 bit 13 held by structured edits. Review submits the same qualified tone's ADSR1/ADSR2 in canonical order, shows both reviewed values and uses the complete reviewed pair in the counter plot. Local drafts never become Proposed before Review. Apply commits the pair through one existing bank command and one history entry; Undo/Redo, Save/Open, paired Discard and paired retail staging retain the same ownership boundary. Invalid companion words or structured fields block Review, and pending pair/raw/structured/navigation controls lock. Source changes withdraw both word controls and the preview until Refresh.
 
@@ -1664,7 +1666,7 @@ All 185 client suites and 184 editor syntax checks passed in 22.11 seconds. Focu
 Normal native Build independently verified the complete audio overlay in both directory and ZIP, with integrity/current-input acceptance and unchanged document/history. Native entry SHA-256 `f07a49ae93ce014b2c91cbd2d4ba0bbedbdd285c7852d5c9b88f479e3f1c8626`; package SHA-256 `96ed72cd4225a64ffb0dde19c1e5529ccd76dc2708631e03999f42e798cb511f`. Retained runtime/precompile sources still match the accepted stability baseline. Evidence: `local-output/sdk-20260909/audio-adsr-pair-20261007/acceptance.json`, `browser.json`, `native-proof.json`, `build-proof.json`, `node.json`, logs and screenshots. This is not a new full Python campaign. No game launch, runtime attachment, installation or full-disc export occurred. Manual gameplay remains deferred, development stays solo and the full SDK goal remains active.
 
 
-## ADSR envelope-counter comparison - offline checks passed (2026-10-06)
+## ADSR Envelope-Counter Comparison - Offline Checks Passed (2026-10-06)
 
 **Bank parameter editor -> Packed tone record -> adsr1 / adsr2 -> Show envelope counter preview** now plots separate Retail, Current and reviewed Proposed register-word pairs. The unselected companion word stays in the same qualified layer; a local draft never becomes Proposed before native Review. The preview begins at zero on modeled key-on, advances at 44.1kHz and applies an explicit key-off at 250, 500, 1000 or 2000 ms inside a 2500 ms window. Source word identities and project state are unchanged. Discard removes Proposed, stale/closed views release model/cache ownership, and hide/show controls and a scoped resize observer repaint a readable narrow-width canvas. Plot samples are downsampled with bounded min/max spans and a continuous counter curve; each simulated window is bounded to five seconds maximum.
 
@@ -1674,7 +1676,7 @@ Acceptance: all 185 client suites and 184 editor syntax checks passed in 21.86 s
 
 The private muted retail editor passed actual Retail/Current/Reviewed Proposed plots, explicit key-off, a stationary Proposed release, local-draft exclusion, immutable Review/Discard, hide/close and wide/400px layouts without page errors or launch requests. Final wide and narrow counter screenshots were inspected. Project document/history, saved content, complete Current native audio entry and Build input key stayed exact; native entry SHA-256 `2763446be4afa339ba8e6a10266e9216a96162608138e2f7f635894c37a60b40`. Retained runtime/precompile stability source hashes still match their accepted baseline. Evidence: `local-output/sdk-20260909/audio-envelope-preview-20261006/acceptance.json`, `node.json`, `oracle-proof.json`, `oracle-cases.json`, `browser.json`, `native-proof.json`, logs and screenshots. The previous ADSR authoring milestone's native package remains independently accepted; this readonly preview does not claim a fresh game Build or full Python campaign. No game launch, runtime attachment, mod installation or full-disc export occurred. Audible behavior and general runtime instrument semantics remain deferred; the full SDK goal stays active and development remains solo.
 
-## Structured ADSR register-word editing - offline checks passed (2026-10-06)
+## Structured ADSR Register-Word Editing - Offline Checks Passed (2026-10-06)
 
 **Bank parameter editor -> Packed tone record -> adsr1 / adsr2** now decodes the selected native u16 word into structured envelope fields. ADSR1 exposes attack mode/shift/step, decay shift and sustain-level code; ADSR2 exposes sustain mode/direction/shift/step and release mode/shift. Each Retail/Current/Reviewed Proposed layer displays its decoded fields alongside the raw word. Structured controls stage one local word through the existing source-qualified Review -> Apply command, history and persistence flow. Invalid values block Review; pending controls lock; Discard, Retail staging, raw-word edits and stale/closed views synchronize or withdraw the structured controls. ADSR2's reserved bit 13 stays held by structured edits; intentional raw u16 authoring remains available.
 
@@ -1684,7 +1686,7 @@ Acceptance: all 184 client suites and 183 editor syntax checks passed in 21.01 s
 
 Save/Open and independent full-entry construction proved that only the intended two tone words changed and all other saved fields/native bytes survived, including the existing Current SEQ/WAV edits. Normal private Build integrity passed; its directory and ZIP overlay both match the entire independently constructed entry, SHA-256 `2763446be4afa339ba8e6a10266e9216a96162608138e2f7f635894c37a60b40`. Package SHA-256 `6f7917476ef60101c3c845abbc5c516ebd0f5c22305af8be6d7108cbac06a3ee`. Build left document/history inputs unchanged; retained runtime/precompile stability source hashes still match their accepted baseline. Evidence: `local-output/sdk-20260909/audio-adsr-editor-20261006/acceptance.json`, `node.json`, `python.json`, `browser.json`, `native-proof.json`, `build-proof.json`, logs and inspected wide/narrow screenshots. No game launch, runtime attachment, mod installation or full-disc export occurred. Audible behavior and runtime assignment remain deferred; the full SDK goal stays active and development remains solo.
 
-## Current note to Retail bank record navigation - offline checks passed (2026-10-06)
+## Current Note to Retail Bank Record Navigation - Offline Checks Passed (2026-10-06)
 
 **Sequence operand editor -> Inspect Current encoded bank links** now opens the exact Retail program slot, packed tone page/row or bounded sample span from each encoded candidate. The source bank inspector focuses one verified record; **Show all source rows** restores the table, including unused program slots. Its existing parameter editor qualifies Retail/Current/Reviewed Proposed separately at the selected tone/slot, and its sample editor remains available at the exact source sample index. Current sample hashes are never substituted for Retail hashes: navigation takes the Retail bank identity from the source Asset Database record and freshly qualifies the bank through the existing API. Missing identities, malformed selections and out-of-range records are refused; no packed-page/program equivalence or runtime instrument assignment is inferred.
 
@@ -1694,7 +1696,7 @@ Acceptance: all 183 client suites and 182 editor syntax checks passed in 21.39 s
 
 Fresh native readback and Save/Open proved unchanged project document/history/saved content, complete Current audio entry and Build input key. Retail bank SHA-256 `56ca3b0be30b19b4173f0a42a47bf9da72803f7ae6af3fd78f9829908482ed82` and Current bank SHA-256 `3e2cd444fb6d20a5a650ebe434473482249aa50e4dd39c6ad73433ef0d13b072` were explicitly distinct. Evidence: `local-output/sdk-20260909/note-bank-navigation-20261006/acceptance.json`, `node.json`, `python.json`, `browser.json`, `native-proof.json`, browser log and wide/narrow/parameter screenshots. Retained runtime/precompile source hashes still match their accepted baseline. This is offline editor workflow acceptance; native Build and gameplay revalidation were not required for this navigation-only change. Synthesis, runtime instruments and gameplay remain unverified; the full SDK goal stays active and development remains solo.
 
-## Request-local WAV reference qualification - offline checks passed (2026-10-06)
+## Request-Local WAV Reference Qualification - Offline Checks Passed (2026-10-06)
 
 Project-wide asset references now qualify retained WAV inputs and compose Current native sample bindings once per request, then share detached proofs across scene adapters and imported-only comparisons. Previously each imported scene repeated both operations twice; 64 scenes could reconstruct the same project audio bindings 128 times. `sdk/audio_reference_snapshot.py` uses navigation-independent persistent project identity, without a global or persisted cache. Before publication it rereads every retained WAV, verifies each unique original native carrier and bank hash/ownership, and checks project identity again. Scene membership, availability, edge identities, historical/Current proof contracts and runtime limitations stay unchanged. The private snapshot is not an HTTP input or an authoring command.
 
@@ -1702,7 +1704,7 @@ Acceptance: all 51 affected retail-enabled Python tests passed in 80.98 seconds 
 
 The private muted editor passed project Asset Database refresh, historical and Current native/WAV reference navigation, exact WAV download, dialog closure and wide/400px layouts without page errors or game launch requests. Document/history/build inputs stayed unchanged; the five retained runtime/precompile stability source hashes still match their accepted baseline. Evidence: `local-output/sdk-20260909/audio-reference-snapshot-20261006/acceptance.json`, `python.json`, `node.json`, `retail.json`, both graph snapshots, `browser.json`, `server-acceptance.json` and screenshots. This is focused offline reference inspection acceptance; no fresh full Python campaign, native Build or gameplay verification was required for this query-only change. Gameplay verification remains deferred and the broad SDK goal stays active.
 
-## Retained animation translation range offsets - offline checks passed (2026-10-06)
+## Retained Animation Translation Range Offsets - Offline Checks Passed (2026-10-06)
 
 **Edit retained content -> Frame sequence tools -> Stage translation offset** now shifts the selected rigid object's X/Y/Z translation across an inclusive output frame range. The base is the effective frozen captured donor plus the current frame mapping and local channel drafts, so inherited axes can be shifted without first authoring every frame. Exact integer deltas use -4095..4095; every resulting axis must fit native signed twelve-bit -2048..2047. Any overflow rejects the entire operation. Zero axes preserve inheritance and do not add channels; rotations, other objects/frames, mapping, opaque channel data, header and trailer remain held. These are native rigid object-local channels, not world-space placement or a general skeleton retargeter.
 
@@ -1714,7 +1716,7 @@ The private muted headless editor passed actual Asset Database navigation, inher
 
 Evidence: `local-output/sdk-20260909/animation-record-offset-20261006/acceptance.json`, `python.json`, `node.json`, `browser.json`, `server-acceptance.json`, `build-readback.json`, and wide/narrow/Proposed pose screenshots. This is focused offline authoring/native package acceptance, not a fresh full Python campaign or gameplay acceptance. No game launch, runtime attachment, mod installation or full-disc export occurred. Gameplay appearance, scheduling and timing remain deferred, and the broad SDK goal remains active.
 
-## Current authored WAV dependencies - offline checks passed (2026-10-06)
+## Current Authored WAV Dependencies - Offline Checks Passed (2026-10-06)
 
 The retained WAV inspector now separates historical capture receipts from Current authored native sample bindings. Inspection contract `legaia.audio-input-inspection.v2` adds `current_bindings`: native asset/sample, capture and binding scenes, receipt identity, authored binding hash, retail/Current full-entry hashes, Current sample hash and exact native byte span. `sdk/audio_input_bindings.py` qualifies the saved sample binding against retail ownership, reconstructs its reviewed WAV candidate, composes all Current audio edits and checks that the resulting sample bytes match the retained candidate. The global resource/sample budgets remain 32; no runtime voice, bank residency, playback pitch or instrument identity is inferred.
 
@@ -1724,7 +1726,7 @@ Acceptance: all 57 affected retail-enabled Python tests passed in 67.33 seconds 
 
 The private muted headless editor proof passed separate Historical/Current sections and hashes, exact WAV recovery, wide/400px layout, close disposal, both graph edge kinds and WAV/native/WAV reference navigation. Project document, undo/redo stacks and authored Build key stayed unchanged. Evidence: `local-output/sdk-20260909/audio-input-current-bindings-20261006/acceptance.json`, `python.json`, `node.json`, `browser.json`, `server-acceptance.json`, and screenshots. No game was launched or attached, no Build installed and no full disc exported. This is offline native dependency acceptance; a fresh full Python campaign and existing manual gameplay gates remain deferred, and the full SDK goal remains active.
 
-## Retained WAV inputs in the Asset Database - offline checks passed (2026-10-06)
+## Retained WAV Inputs in the Asset Database - Offline Checks Passed (2026-10-06)
 
 Retained WAV inputs now have one `audio-input://legaia/wav/<content-sha256>` Asset Database identity per exact blob, shared across historical receipts and imported capture scenes. Inventory and read-only inspection/download verify the canonical project file, mono 16-bit PCM rate/frame extent, receipt ownership, capture-disc identity and fresh project source key. Files are requalified before publication; missing, changed, stale or foreign inputs fail closed. The inspector presents duration, rate, file identity and historical native sample targets, and downloads the exact original bytes after independent client hash/RIFF/PCM verification.
 
@@ -1734,7 +1736,7 @@ Validation: all 56 affected retail-enabled Python tests passed in 37.67 seconds,
 
 The full Python baseline below remains the accepted 1,756-case campaign at `6f51eaa`; this feature adds eight tests and has focused Python acceptance, not a new full Python campaign. The SDK goal remains active, with general runtime/interpreter, synthesis/instrument semantics, MAPDSIP/world-map and deferred gameplay acceptance still open.
 
-## Integrated offline recheck — accepted (2026-10-06)
+## Integrated Offline Recheck — Offline Checks Passed (2026-10-06)
 
 The fresh recheck at `6f51eaaeee47b305bc4e12b8c7a892be90043348` passed all 1,756 retail-enabled Python tests in 2,006.32 seconds (runner duration), with zero errors, failures or skips. All 181 Node suites and 181 editor syntax checks passed in 20.92 seconds with no partial checks, including supplied world-map artifact coverage. Both previously skipped private retail project tests ran and passed. This is a complete green result for these existing offline suites.
 
@@ -1744,7 +1746,7 @@ Current evidence: `local-output/sdk-20260909/sdk-integrated-offline-recheck-2026
 
 Gameplay remains deferred, and the full SDK goal remains open: general runtime identity, full interpreter/story/scheduler, synthesis/instrument semantics, complete MAPDSIP coverage, general skinning/retargeting and the existing manual boundaries are not established by these suites. Development remains solo. The next audio-reference workstream is research only; `next-workstream-research.json` records the central reference contract and unresolved integration questions, not an implemented feature.
 
-## Preserved earlier offline campaign — failure baseline and repair evidence (2026-10-06)
+## Preserved Earlier Offline Campaign — Failure Baseline and Repair Evidence (2026-10-06)
 
 The implementation baseline is `be0898362874f0e6598951b14664a422ee93abdb`. All 181 existing Node suites and 181 editor JavaScript syntax checks passed in 20.03 seconds with unchanged implementation revision/digest. The world-map export suite's optional artifact coverage additionally passed against retained private retail Current/Proposed GLBs, with its fixture hash recorded. The normal Node run's missing-fixture diagnostic is preserved rather than erased.
 
@@ -1754,7 +1756,7 @@ The static model hierarchy caller and floor-height scene edit initializer have b
 
 Evidence: `local-output/sdk-20260909/sdk-integrated-offline-refresh-20261006/` (`node.json`, `worldmap-export.json`, baseline Python result, triage, isolated guard diagnostics and repair progress/log files). The updated [validation plan](TEST_PLAN.md) assigns priorities, fixtures, platforms, estimated budgets and explicit manual/implementation gates for the recent feature families. General runtime identity, complete interpreter/story/scheduler, skinning/retargeting, instrument/synthesis semantics, MAPDSIP coverage and deferred gameplay acceptance still prevent full-goal completion. Development remains solo and the goal stays active.
 
-## Whole-degree mixed placement rotation (2026-10-06)
+## Whole-Degree Mixed Placement Rotation (2026-10-06)
 
 **Scene tools → Move scene placement group → Rotate positions by whole degrees in X/Z** now accepts an integer angle from -359 through 359 around a selected imported actor, NPC draft or static decoration. The existing quarter-turn choices remain available. Review, Current/Proposed viewport inspection, return to the same review and explicit Apply use the shared mixed-group workflow. Apply records one history step; Undo/Redo and Save/Open retain exact positions. An angle of zero is a no-op. This rotates placement positions; height, actor facing, scenery orientation, donor bindings and other components are held.
 
@@ -1766,7 +1768,7 @@ Independent MAN actor decoding/opaque-byte comparison and full MAP directory/ZIP
 
 No game launch, attachment, installed mod or full-disc export occurred. Native appearance/collision acceptance remains deferred; the full SDK goal stays active and development remains solo. See [mixed placement groups](legaia-scene-placement-groups.md).
 
-## Current encoded note/program/tone/sample links (2026-10-06)
+## Current Encoded Note/Program/Tone/Sample Links (2026-10-06)
 
 The sequence operand editor now offers **Inspect Current encoded bank links** for a positive-velocity Current note start. It shows the latest prior encoded program change on the same channel, source tone records with matching explicit program operands/key ranges, and their bounded Current sample spans/hashes. It decodes the composed Current bank, including existing bank parameters and sample edits. Local drafts and reviewed Proposed operands remain separate. Unknown initial assignments, standalone sequences without colocated banks and unresolved sample operands remain explicit. **Save encoded bank link evidence** downloads the full qualified metadata.
 
@@ -1776,7 +1778,7 @@ Two new retail-enabled backend tests and three existing Proposed-sequence checks
 
 Evidence: `local-output/sdk-20260909/note-bank-links-20261006/pass2/` (`acceptance.json`, `native-proof.json`, `download.json`, `browser.log`, `wide.png`, `narrow.png`); initial evidence is preserved. No new Build, game launch, runtime attachment, installation or full-disc export occurred. Gameplay remains deferred; the broader SDK goal stays active and development remains solo.
 
-## Encoded channel transpose (2026-10-06)
+## Encoded Channel Transpose (2026-10-06)
 
 The sequence operand editor now provides **Transpose encoded channel**. Choose an encoded channel (0–15) and a nonzero whole-number **Transpose semitones** value (-127–127), then **Stage channel transpose**. This stages every fully paired Current note on that channel without changing Current. Review lists both start/release operands and obtains the native Proposed timeline; Apply uses the existing batch command for one history change. Discard, Undo/Redo, stale-input withdrawal and Save/Open use the shared workflow. Individual fields, pairing controls and event navigation lock while a channel draft is staged. The currently inspected event can belong to another channel or be a non-note event.
 
@@ -1786,15 +1788,15 @@ Three Node suites passed transpose/pairing contracts, refusal and immutability, 
 
 Native package SHA-256 `c36fb9e1af0edfd0fd710225abc4d85819791b6238b42ac55296150618a30ddf`, Build `e7f77158da4fd26b` passed integrity verification with gameplay acceptance false. Evidence: `local-output/sdk-20260909/channel-transpose-20261006/pass1/` (`acceptance.json`, `native-proof.json`, `browser.log`, `chosen.json`, `review-wide.png`, `review-narrow.png`). An initial backend invocation named a nonexistent standalone HTTP module; the corrected run used the actual modules and passed. No game launch, attachment, mod installation or full-disc export occurred. Development remains solo and the broader goal stays active; gameplay acceptance is deferred.
 
-## Persistent project resource freshness — 2026-10-06
+## Persistent Project Resource Freshness — 2026-10-06
 
 Fixed incomplete asset/reference source keys that omitted newer persisted inputs. Both now share the complete saved-document identity plus project root, disc path/stat and import digests. Active scene is excluded from project inventory and included for references. All saved metadata participates conservatively; transient selection, mode, history and caches do not. Independent catalog budgets and empty-project state remain intact. This does not replace file qualification or prove runtime behavior.
 
 Acceptance: 30 retail-enabled Python tests and two Node suites passed. Actual private editor audio Review leaves keys unchanged; Apply changes both, withdraws the stale catalog, rejects old reference keys with HTTP 400 and permits a fresh Refresh. Undo and Save/Open restore exact keys/document/full native bytes. Wide/400px screenshots were inspected, with zero page errors. Evidence: `local-output/sdk-20260909/project-input-freshness-20261006/pass2/`. No native Build or game launch occurred. Manual gameplay is still deferred; solo SDK development and the full goal remain active.
 
-## Persistent native WAV samples and shared audio delivery (2026-10-06)
+## Persistent Native WAV Samples and Shared Audio Delivery (2026-10-06)
 
-## Align model vertex groups to an explicit native coordinate (2026-10-06)
+## Align Model Vertex Groups to an Explicit Native Coordinate (2026-10-06)
 
 **Move model geometry → Selected vertex group → Plane: Source coordinate** exposes **Plane coordinate**. Enter a signed16 object-local word, then **Align group X/Y/Z** to stage the chosen coordinate on that source axis. Minimum, bounds-center and maximum planes retain their existing behavior. The local draft supports Discard, Current/Draft comparison, exact scene inspection and all-instance preview before explicit Apply. The coordinate field locks during a staged transform. Source Y remains positive down; this edits model words, not actor placement or scene/world coordinates.
 
@@ -1806,7 +1808,7 @@ Independent expected-model construction and full containing LZS-section readback
 
 No game launch, attachment, mod installation or full-disc export occurred. Native appearance and placement acceptance remain deferred; the full SDK goal stays active and development remains solo.
 
-## Paired encoded-note key authoring (2026-10-06)
+## Paired Encoded-Note Key Authoring (2026-10-06)
 
 The sequence operand editor now offers **Keep paired encoded note keys together** for an unambiguous Current note start/release. Changing the key reviews both reached event operands and Apply commits one history change. Release-side selection preserves the start velocity; velocity-zero note-on releases must stay zero, and paired starts must remain positive. The existing raw event editor remains available. Review lists both byte offsets/values and the Proposed timeline is decoded from the complete native candidate.
 
@@ -1816,7 +1818,7 @@ Three focused Node suites passed pairing/refusal/immutability checks, paired UI 
 
 The native batch command remains the Apply authority; this adds no runtime write or new gameplay assumption. No game launch, attachment, installation or full-disc export occurred. Gameplay remains deferred, and the full SDK goal remains active with solo development.
 
-## Retail, Current and reviewed Proposed SEQ timelines (2026-10-06)
+## Retail, Current and Reviewed Proposed SEQ Timelines (2026-10-06)
 
 **Sequence operand editor → Show sequence layers** now opens separate Retail, Current and reviewed Proposed encoded-note timelines. Note selection focuses the original event row and matching tick window; keyboard focus survives selection. Channel filters, quarter-note windows and start/release navigation use the existing bounded FIFO display policy. Local drafts never appear as Proposed. Review obtains a new native-derived report before displaying that layer; Discard withdraws it. Drafts and pending reviews guard editing-row navigation, and stale/closed dialogs release all timeline ownership.
 
@@ -1826,7 +1828,7 @@ Three new retail-enabled backend tests passed native candidate decoding/nonmutat
 
 This is encoded note/timing inspection, not instrument synthesis, sustain evaluation or game playback acceptance. No game launch, runtime attachment, mod installation or full-disc export occurred. Manual gameplay remains deferred; broader SDK work stays active and solo.
 
-## Frozen Build WAV snapshot browser (2026-10-06)
+## Frozen Build WAV Snapshot Browser (2026-10-06)
 
 **Build history → Browse saved WAV inputs** discovers bounded, immediate saved input snapshot directories in identity order. Discovery marks their integrity unchecked and does not imply chronological order. Selecting **Verify saved WAV inputs** qualifies the completed artifact receipt, the selected historical input receipt, frozen manifest/inventory and every original WAV file. **Save frozen input WAV** then rechecks the selected snapshot/manifest/receipt and downloads exact bytes. Current registrations and their files are not replay authority for this historical reader.
 
@@ -1838,7 +1840,7 @@ A fresh private proof built two different input keys against the same verified n
 
 Input verification is labeled separately from native package integrity, source-disc integrity and gameplay acceptance. Frozen receipts remain historical evidence; recovery does not Apply inputs to Current. No game launch, runtime attachment, mod installation or full-disc export occurred. Manual gameplay remains deferred; the broader goal remains active and development stays solo.
 
-## Original WAV recovery and reviewed registration removal (2026-10-06)
+## Original WAV Recovery and Reviewed Registration Removal (2026-10-06)
 
 The sample editor now provides **Save retained input WAV**, **Review input removal** and **Remove reviewed input** for the selected Current receipt. Original-input recovery is separate from decoded preview WAV export. It freshly verifies Current ownership and exact file bytes, independently checks RIFF/chunk extents and mono signed16 PCM frame/rate fields, and downloads the original bytes without normalization. Unknown bounded chunks and their padding remain intact.
 
@@ -1848,7 +1850,7 @@ Six focused Node suites passed: recovery RIFF/hash/removal contracts, sample edi
 
 No new native asset family or runtime behavior was introduced, and no native Build was run for this UI recovery checkpoint. Gameplay verification remains deferred. No game launch, runtime attachment, mod installation or full-disc export occurred. The broader SDK goal remains active and work stays solo.
 
-## Native sample import and waveform editor (2026-10-06)
+## Native Sample Import and Waveform Editor (2026-10-06)
 
 The Audio Asset Database bank inspector now exposes `Source sample spans` → `Edit sample N`. Its separate editor shows Retail, Current and reviewed Proposed waveform layers. Mono PCM WAV upload has local draft, source review and explicit retention; retention preserves input bytes without applying native data. Existing qualified receipts can then be reviewed for native Apply. Reviewed retail restoration clears only the selected sample. Discard, no-op handling, refresh and shared project history keep these steps distinct.
 
@@ -1860,7 +1862,7 @@ Browser-authored edits survived Save/Open with bank parameters, sequence operand
 
 Runtime pitch/instrument assignment, interpreted envelopes, bank/sequence synthesis, sample allocation changes and game playback remain open. Manual gameplay verification is deferred. No game launch, runtime attachment, installation or full-disc export was performed. The broader goal remains active and development stays solo.
 
-## Fresh sample preview layers (2026-10-06)
+## Fresh Sample Preview Layers (2026-10-06)
 
 `POST /api/audio-sample-preview` exposes bounded mono PCM and waveform metadata for Retail, Current and reviewed Proposed sample layers. Every request binds the full Current authoring identity, original entry and selected sample hash. Proposed additionally requires the operation, freshly recomputed review key and retained receipt for Apply. Clear previews Retail bytes. Exact HTTP fields reject proposed bindings on Retail/Current reads. The response carries PCM/sample hashes and leaves sample rate unspecified; preview clients must choose their own rate.
 
@@ -1874,77 +1876,77 @@ Twenty retail-enabled Python workflow/regression checks and both affected Node c
 
 This earlier native delivery checkpoint preceded the waveform/import editor and Current/Proposed audition implemented above. Only fixed-allocation complete sample prefixes are supported; input WAV rate remains metadata, and runtime pitch, instruments, playback and allocation changes remain unresolved. No game launch, attachment, installation or full-disc export was performed. Manual gameplay acceptance is deferred; the broader goal remains active and work stays solo.
 
-## Reviewed retained WAV inputs (2026-10-06)
+## Reviewed Retained WAV Inputs (2026-10-06)
 
 Source-qualified WAV review now creates recoverable historical input receipts through exact HTTP/command fields. Retention/removal use history and dirty tracking; Save/Open, copies and export snapshots verify the exact hash-addressed WAV bytes. Normal native Builds preserve WAV-input sidecars keyed by authored input identity, while unchanged native bank/SEQ artifacts can be reused with distinct input receipts. Frozen sidecars remain readable independently of later Current source removal and reject modified files/metadata. Retaining a WAV does not apply its candidate to game data; native sample bindings and shared composition are now implemented in the subsequent checkpoint above; editor preview/import controls are now implemented in the subsequent editor checkpoint above.
 
 Fifteen retail-enabled source/bank/SEQ regression checks plus one frozen-input snapshot check passed. The initial HTTP size failure was fixed with dedicated bounded Review/Retain routes. Fresh before/after native Builds retained exact WAV sidecar bytes and identical bank/SEQ edits/overlay bytes/native ZIP (`d8d4dc95410712ba9fe59ec708a120c0f889dfebae20cae0cc25072582da9647`); Save/Open and Current input receipt verification passed. See [sample authoring and retained inputs](legaia-audio-sample-authoring.md). Private proof: `local-output/sdk-20260909/audio-sample-sources-20261006/`. No game launch, attachment, installation or full-disc export. The goal remains active and development stays solo.
 
-## PCM WAV/native sample codec groundwork (2026-10-06)
+## PCM WAV/Native Sample Codec Groundwork (2026-10-06)
 
 A source-qualified mono signed16 WAV-to-SPU-ADPCM codec now replaces a complete bounded sample prefix without changing allocation, loop/end flags, trailing bytes, VAB tables, other samples or SEQ chunks. Predictor/shift trials use closed-loop native integer history and report decoded PCM hash and lossy encoding errors. Input WAV rate is metadata only; runtime rate/pitch and instrument assignment remain unknown. This earlier codec checkpoint preceded the persistent bindings and shared Build composition implemented above. Editor import/preview controls are implemented in the subsequent editor checkpoint above.
 
 All nine focused sample/waveform Python checks passed with no skips. A full sample inventory across 202 qualified banks found 1694 encoded ends, one empty sample and one over the decode budget. The first eligible sample in each of all 202 banks passed encoding, independent integer PCM/error readback and exact flags/tail/non-sample byte preservation. This covers 202 replacements, not every eligible sample; unavailable banks/empty/budget-limited samples remain unsupported. See [sample authoring groundwork](legaia-audio-sample-authoring.md); private evidence is `local-output/sdk-20260909/audio-sample-codec-20261006/`. No game launch, runtime attachment, installation, SDK Build or full-disc export. Development remains solo and the broader goal remains active.
 
-## Bank parameter editor (2026-10-06)
+## Bank Parameter Editor (2026-10-06)
 
 The Audio Asset Database's source bank inspector now opens a separate Retail/Current/reviewed-Proposed parameter editor. Master fields, explicit program slots and packed tone page/record identities expose all 27 qualified native scalar fields. Encoded u8/u16/signed16 bounds, Review/Apply/Discard, retail staging, Clear and refresh use the verified command layer. Source-row actions select the correct slot or packed record. Drafts/proposals lock navigation; stale state withdraws layers, and closing the source inspector disposes its child. Source bank tables, waveform inspection and sample audition remain Retail views.
 
 Eleven retail-enabled Python workflow checks, three Node contract suites and affected-module syntax checks passed. Actual browser Review/Discard, Apply/reload, no-op, retail staging, all three table sections, signed bounds, invalid slot recovery, source-row navigation, Clear/Undo/stale refresh and wide/400px layouts passed with no page errors. Screenshots were inspected. The browser-authored edit survived Save/Open and exact full-entry directory/ZIP native readback with the sequence edit and imported sources unchanged (package SHA-256 `a9424c2b5d6f6bd5699e4c95744e214691e7a27906302f589659d29383990bd2`). See [bank authoring](legaia-audio-bank-authoring.md); private proof is `local-output/sdk-20260909/audio-bank-editor-20261006/`. Instrument assignment, interpreted envelopes, sample replacement/allocation, composition synthesis and runtime playback remain open. No game launch, attachment, installation or full-disc export; development stays solo and the broader goal stays active.
 
-## Persistent VAB parameters and shared bank/SEQ delivery (2026-10-06)
+## Persistent VAB Parameters and Shared Bank/SEQ Delivery (2026-10-06)
 
 Source-qualified bank parameter editing now has Retail/Current metadata, reviewed atomic commands, history, dirty tracking, Save/Open, project copies, Build input snapshots and native audits. Bank and sequence bindings remain independent; one composed native PROT entry preserves both families. Clear or retail restoration of either family preserves the other, and cross-family changes invalidate old reviews. Shared authored audio appears once in the project asset list. Empty bank metadata preserves legacy document and Build input identity.
 
 The 26 regression checks and six focused bank/composition checks passed; two affected lifecycle/HTTP checks were rerun after integration cleanup. Both fresh fixed-span and relocated Builds passed independent full-entry directory/ZIP readback with all 27 bank fields, sequence edits and prior authored changes preserved. Actual sequence-editor Review/Apply/Clear against a bank-authored project passed with no page errors. The subsequent UI checkpoint adds bank editing controls; these HTTP/command and Build capabilities do not establish audible effects, instrument assignment or runtime playback. See [bank authoring and shared delivery](legaia-audio-bank-authoring.md). Private proof: `local-output/sdk-20260909/audio-bank-native-20261006/`. No game launch, attachment, installation or full-disc export. The broader goal stays active and work remains solo.
 
-## Native VAB parameter codec groundwork (2026-10-06)
+## Native VAB Parameter Codec Groundwork (2026-10-06)
 
 A source-qualified codec now edits 27 existing master/program/tone scalar parameters in complete VAB banks. Explicit pinned-parser offsets and native u8/u16/signed16 widths own the edits; counts, allocation, reserved words, sample tables/bodies and nonbank/SEQ bytes stay unchanged. This earlier checkpoint established the codec; persistent commands and shared native delivery are now implemented as recorded above. Bank editor controls are implemented in the subsequent UI checkpoint. Encoded ranges are not audible effect or runtime instrument claims.
 
 All nine focused Python checks passed without skips. Every one of the 202 qualified retail bank carriers passed a combined 27-field edit and exact physical-entry restoration; all three carrier shapes, sparse slots/packed pages, byte ownership, bounds and rejection were checked. The 16 unavailable banks stay unsupported. See [VAB parameter groundwork](legaia-audio-bank-authoring.md); private evidence is `local-output/sdk-20260909/audio-bank-authoring-codec-20261006/focused.log`. The subsequent shared-delivery checkpoint implements one composed PROT overlay for bank/SEQ changes. No gameplay actions; the goal remains active and development remains solo.
 
-## Sequence operand editor (2026-10-06)
+## Sequence Operand Editor (2026-10-06)
 
 Audio source event selection now opens an editor with separate Retail, Current and reviewed Proposed operands. Channel and tempo fields use encoded bounds; Review/Apply/Discard, retail staging, Clear and refresh guards share the verified project command layer. Inputs/navigation lock during review; stale state withdraws proposals, and closing cancels read ownership. The source inspector remains Retail; the operand editor now provides Retail, Current and reviewed Proposed timelines (see the latest checkpoint). Native sequence synthesis, bank/scene assignment and game playback are still unresolved.
 
 Nine retail-enabled focused Python checks, three Node contract suites and affected-module syntax checks passed. Actual browser Review/Discard, Apply/reload, no-op, Clear/Undo, invalid values, event navigation and partial inspection passed with no page errors. Final wide/400px reviewed proposal screenshots were inspected with no horizontal overflow. The browser-authored edit survived Save/Open and exact full-entry directory/ZIP native readback, with unchanged imports/other authored state. See [sequence authoring](legaia-audio-sequence-authoring.md); private evidence is `local-output/sdk-20260909/audio-sequence-editor-20261006/`. Gameplay remains deferred; development stays solo and the goal stays active.
 
-## Persistent SEQ operands and native delivery (2026-10-06)
+## Persistent SEQ Operands and Native Delivery (2026-10-06)
 
 The native audio codec now has source-qualified SDK commands, atomic Undo/Redo, dirty/authored-resource tracking, Save/Open and project-copy validation. Review preserves project state; Apply revalidates its source/state/proposal key. Restoring retail values or clearing removes the binding. Build independently encodes requested operands and preserves full native entries in both fixed overlays and composed PROT relocation, with audio-specific reports. Browser editing controls are the next integration; source/audio playback assignment and gameplay remain unverified.
 
 All 31 focused Python checks passed without skips. Actual complete/partial retail commands and HTTP freshness guards passed; fresh relocated and plain fixed-span packages retained exact expected full audio entries, source imports and existing script/animation composition. Saved Build freshness changes on Clear and restores on Undo. See [SEQ authoring and delivery](legaia-audio-sequence-authoring.md); evidence is in `local-output/sdk-20260909/audio-authoring-20261006/`. No game launch, attachment, installation or full-disc export. The goal remains active and development stays solo.
 
-## Connected and inverse model vertex selections (2026-10-06)
+## Connected and Inverse Model Vertex Selections (2026-10-06)
 
 The 3D movement editor now expands selected vertices through Current object preview triangles and inverts a group within its object-local table. These are local selection actions; coordinates/normals/topology and history stay unchanged until an explicit group Save. Existing saved-group Recall, Undo/Redo and Save/Open preserve the exact selection. Coincident positions/shared normals are not links; malformed/cross-object triangle references and results over4096 vertices reject atomically. Geometry drafts lock these selection tools.
 
 Actual Town01 editor selection/recall, no-op and wide/narrow checks passed; source/model state is preserved. Fresh native Build packages before/after group Save are byte-identical. Focused connectivity and existing movement Node guards pass. See [Current vertex connectivity](legaia-model-vertex-connectivity.md); private evidence is in `local-output/sdk-20260909/vertex-connectivity-20261006/`. Gameplay stays deferred and development remains solo.
 
 
-## Native-grid snapping for selected model vertices (2026-10-06)
+## Native-Grid Snapping for Selected Model Vertices (2026-10-06)
 
 The existing 3D model movement editor now stages a selected group's Current object-local coordinates onto a native-unit grid, with explicit X/Y/Z axes and integer spacing. Halfway values round away from zero; signed16 overflow rejects the whole operation. Draft/Current/Retail and scene Review/Return remain separate from one atomic Apply. Selected rows/axes change; normals, topology and other rows/objects retain their existing native qualification. Already snapped rows are a no-op; Undo/Redo and Save/Open use the model replacement workflow. This adds authored geometry, not a runtime grid or actor-placement rule.
 
 Workflow and acceptance boundary: [vertex grid tool](legaia-model-vertex-grid.md). Private evidence is in `local-output/sdk-20260909/vertex-grid-20261006/`. Development continues solo; gameplay verification remains deferred.
 
 
-## Selected script operand layers (2026-10-06)
+## Selected Script Operand Layers (2026-10-06)
 
 The source-flow workspace now inspects a selected original instruction/message boundary across Retail, composed Current and reviewed Proposed layers. It shows decoded operands, dispatch/length/successor fields and exact encoded byte differences by record PC. Pending nonbranch form drafts are excluded; unavailable inspections and boundaries not decoded on a layer remain explicit. Review invalidation/Discard, failed Apply, stale source/state and close withdraw the displayed proposal. This is read-only static inspection, with no VM or runtime observation.
 
 Actual Town01 Current RGB/intensity edits and a separately reviewed actor branch proposal passed the editor workflow, exact selected-byte comparison, wide/narrow display and unchanged project/history checks. The surrounding branch flow and new focused operand-layer Node checks pass. See [selected script layers](legaia-script-node-layers.md); private evidence is in `local-output/sdk-20260909/script-node-layers-20261006/`. Gameplay verification remains deferred.
 
 
-## Retail versus saved Build script comparison (2026-10-06)
+## Retail Versus Saved Build Script Comparison (2026-10-06)
 
 Imported actor and standalone script editors now expose a read-only comparison with an intact saved Build matching current inputs. The SDK reads actual native MAN records from relocated PROT or qualified overlays, verifies source disc/package receipts, retains retail/generated hashes and offsets, and reports exact changed record bytes alongside paired decoded paths. Bounded display and a complete local comparison download preserve stops/opaque regions. Stale inputs, ambiguous records and layout changes reject inspection. This does not establish script execution or gameplay acceptance.
 
 Actual Town01 editor receipt selection/comparison/download and wide/narrow layouts passed; the emitted record exactly matches the independently decoded preceding color-edit Build. HTTP boundaries, stale input rejection and unchanged project/history were verified. Details and acceptance hashes: [source Build script guide](legaia-source-build-script.md). Private evidence: `local-output/sdk-20260909/source-build-script-20261006/`. Development remains solo; gameplay verification stays deferred.
 
 
-## Fixed source effect color/intensity authoring (2026-10-06)
+## Fixed Source Effect Color/Intensity Authoring (2026-10-06)
 
 Qualified source scripts now expose an **EFFECT_COLOR_INTENSITY** operand editor with encoded red/green/blue bytes (0–255) and signed16 intensity (-32768–32767). Retail, authored and effective values remain separate. Apply/Clear use project commands, atomic history and Save/Open. Source instruction rows link to the editor; standalone script assets, component navigation/reset and source-bound operand file/bundle workflows recognize `ScriptEffectColors`. No renderer or runtime memory write is introduced.
 
@@ -1953,7 +1955,7 @@ The patcher qualifies reached sub0 instructions only in records without decoder 
 Validation: 13 focused Python authoring/project/Build/HTTP/operand-transfer tests passed; the existing streaming native Build regression also passed; the two new source patch tests additionally verify the typed package report/change kind. Five existing Node script lifecycle/navigation/operand/reset checks passed, as did changed JavaScript syntax and Python parsing. Town01 discovery found ten qualified source targets. Fresh retail-project browsers edited partition-two script0000, rejected invalid inputs, showed separate value layers, cleared/restored the override and downloaded exact typed operand metadata with no page errors; wide/narrow screenshots were inspected. Invalid field/width requests rejected before mutation; one-step Apply, no-op reapply, Undo/Redo, Save/Open, project-copy recovery and unchanged imported/reference data passed. Two missing Build-family gates were caught by the initial package audit and corrected before acceptance. Independent final package decoding read back the entire expected script record exactly (SHA-256 `97fc68f29f8bce703a84abc34b14c6410d9b9227fa88759521b7e74640ef7223`); package SHA-256 is `a397f445e3fc290d89f4f0583a638c92ccae2d9ceb2aa7ee72846d54d66d341c`. The first omitted delivery is superseded by this final readback. Private proof: `local-output/sdk-20260909/script-effect-color-20261006/`. No game launch, runtime attachment, installation or full-disc export; gameplay and the full SDK goal remain open.
 
 
-## Source sequence note timeline (2026-10-06)
+## Source Sequence Note Timeline (2026-10-06)
 
 **Inspect sequence events → Show note timeline** opens a graphical encoded-note view in the Audio Asset Database. It has independent channel filtering, 4/8/16/32/64-quarter-note tick windows, Earlier/Later navigation, mouse/keyboard selection and direct navigation to start/release source rows. Channel colors, velocity brightness, source ticks and selected event details aid inspection. At most 512 notes are drawn per window; denser windows explicitly request a narrower range/channel.
 
@@ -1962,7 +1964,7 @@ Relationships are derived display evidence: a release matches the earliest open 
 Validation: focused Node checks passed channel-isolated pairing, ambiguity, zero-velocity release, partial/unmatched boundaries, source immutability and the 32,768-event budget; the existing sequence/bank/waveform/audition checks also passed. Source changes withdraw both table and timeline; close/late-reply ownership remains guarded. Fresh retail-project browsers passed complete/partial timelines, window/channel navigation, pointer/keyboard selection, source-row navigation, hide/reopen, exact unchanged metadata download and wide/narrow layouts with no page errors. Screenshots were inspected. Project documents, history/files and reference fixture were unchanged; normal private native Build before/after browsing was byte-identical (SHA-256 `c309f270d2705d0f72ac3899248b99744689ec553b927c004bc2dfa5c7af2e30`). Private proof: `local-output/sdk-20260909/audio-note-timeline-20261006/`. No game launch, runtime attachment, installation or full-disc export; gameplay remains deferred and the full SDK goal remains active.
 
 
-## Explicit GLB joint-rig motion mapping (2026-10-06)
+## Explicit GLB Joint-Rig Motion Mapping (2026-10-06)
 
 Both imported-actor and allocated-record animation editors accept an explicitly selected GLB skin and one explicitly mapped joint node per native object. The node inventory labels skin joints and mesh instances. Review qualifies scene reachability, joint uniqueness, a common ancestor, optional skeleton and bounded affine inverse-bind matrices. It samples mapped joint/ancestor translation and rotation into existing native channels. Other selected-skin joint tracks are validated and reported as ignored. Mapping/skin changes invalidate Review; the selector is disabled while the dialog is busy. Original GLB, binding and receipt recovery retain the selected skin.
 
@@ -1971,7 +1973,7 @@ This is rigid joint motion only: native geometry and opaque channel packing are 
 Validation: 60 existing focused Python animation tests passed in the broad run; three new rig tests passed after correcting their missing mesh-manifest fixture. Node rig/mapping/lifecycle contracts and changed module syntax passed. Fresh browsers exercised both workflows through Review, Pose, Return, Apply and exact input recovery without page errors. Undo/Redo, Save/Open and project-copy recovery passed. A further browser check covered busy selector ownership and changed/reverted skin invalidation without Apply. Normal private Build readback exactly matched the composed native bank (SHA-256 `b478a4e572459b837ae2be01b1eb94c160cec9aad4b1952c602e1123a356009d`). Reference fixtures were unchanged. Proof: `local-output/sdk-20260909/animation-glb-joint-rig-20261006/`. No game launch, runtime attachment, installation or full-disc export; manual gameplay verification remains deferred and the full SDK goal remains active.
 
 
-## Source SEQ event inspector checkpoint (2026-10-06)
+## Source SEQ Event Inspector Checkpoint (2026-10-06)
 
 Validation: all 41 retail-enabled focused Python tests passed without skips/errors/failures. Node source/summary/timing contracts, stale-source withdrawal, close/late-response ownership and existing asset inspector guards passed; all three changed JavaScript modules passed syntax checks. The production frontend decoder qualified all 83 freshly read retail source reports (258,065 events). Fresh browsers passed complete and partial carriers, hidden unsupported actions, pagination/filtering, exact metadata download, pending close and wide/narrow layouts, with no page errors; final screenshots inspected. HTTP exact-field, stale-key/hash and unsupported carrier checks rejected before mutation. Project/history/files and reference fixture were unchanged. Normal native Build before/after inspection was byte-identical (SHA-256 `1e358a48f13f35757fb08a06fd2550b74e5957cf94495ce45fca5c0b75aa6eec`). Private proof: `local-output/sdk-20260909/audio-sequence-20261006/proof.json`, `retail-sequences.json`, `all-source-node.json` and focused logs. No game launch, runtime attachment, installation or full-disc export; gameplay remains deferred and the full SDK goal stays active.
 
@@ -1980,7 +1982,7 @@ Supported source audio records now offer **Inspect sequence events**. The read-o
 The pinned Andrew SEQ parser supplies format evidence for VLQ/running status and fixed-size tempo/end-of-track meta events. Unlike its synthesized termination on unknown system/meta events, this SDK stops at the unresolved source offset and labels the decoded prefix partial without inventing end-of-track. Across all 83 supported retail carriers, 82 reached encoded end-of-track and PROT 1045 stopped at a non-seven-bit channel operand; 258,065 events were decoded, with at most 6,451 in one source. These are source syntax/timing facts, not waveform validity, audible duration, looping, scene assignment or runtime cadence. Waveform synthesis, playback and audio authoring remain incomplete.
 
 
-## Source audio Asset Database checkpoint (2026-10-06)
+## Source Audio Asset Database Checkpoint (2026-10-06)
 
 Validation: the retail-enabled 37-test focused Python regression passed with no skips/errors/failures; four existing Node contract checks and all five changed JavaScript module syntax checks passed. Fresh retail-project browser checks passed active/project discovery, source/confidence filtering, typed complete/partial header inspection, provenance visibility, metadata download and reference navigation with no page errors. Wide/narrow screenshots were inspected. Project documents, files, Undo/Redo history and the reference fixture remained unchanged. Normal native Build before/after browsing was byte-identical (package SHA-256 `7ec8b65439c3a5893fc264b95ba1d4a7d8c11af7f7687fe7dc7344a3bfbb6b98`). Private proof: `local-output/sdk-20260909/audio-catalog-20261006/proof.json`. No game launch, runtime attachment, installation or full-disc export occurred; gameplay remains deferred and the full SDK goal remains active.
 
@@ -1989,21 +1991,21 @@ Audio is now a central read-only resource category in active-scene and project A
 Evidence uses the pinned Andrew reference `d6e64c68ede25813d35db20980da82a1a025549b` (`sound_pack.rs`, VAB and SEQ header parsers), read through `git show` because the reference checkout HEAD has advanced. The catalog neither adopts that newer revision nor adds it as a runtime dependency. Events, waveform tables, audio preview/edit/replacement, duration, XA, interior audio containers and scene playback assignments remain incomplete. No runtime or gameplay acceptance is asserted. Private evidence: `local-output/sdk-20260909/audio-catalog-20261006/`.
 
 
-## 2026-10-06: repeat and ping-pong sampling for external animation clips
+## 2026-10-06: Repeat and Ping-Pong Sampling for External Animation Clips
 
 Both the imported-actor and allocated-record GLB editors now expose **External timeline behavior** under explicit external sampling: Hold endpoints (legacy default), Repeat clip and Ping-pong clip. Repeat wraps the shared first-to-last channel key extent and excludes its final endpoint; ping-pong reverses at both endpoints. Negative rates reverse traversal, zero holds, and zero-extent/static clips stay constant. Native frame/object counts, source packing and ownership remain fixed. The selected mode is retained with original inputs and bound to Review, Pose and Apply; changing it invalidates the prior Review even if native poses coincide. Existing two-field sampling bindings and explicit clamp mode retain their canonical legacy identities. Cyclic time arithmetic avoids early float32 division rounding at reverse seams while keeping the legacy clamp calculation unchanged.
 
 Validation: independent native-byte cases cover repeat/ping-pong, reverse/hold, seams, STEP curves, static inputs and legacy normalization; review-choice tests reject reuse across modes. Fresh browsers exercised imported Repeat and allocated Ping-pong through Review, Pose, Return and Apply, mode invalidation and wide/narrow layouts with no page errors. Private HTTP checks rejected mismatched mode/Review before mutation; each accepted edit created one history step and preserved exact retained inputs. Undo/Redo and Save/Open passed. Normal native Build delivered an independently decompressed animation bank exactly matching the composed bank (`f3c7c25e11490c13220ee2d5055874a7b0fc8f6b4974ce4fae232bf73ce015cb`). Reference fixtures were unchanged. Evidence: `local-output/sdk-20260909/animation-glb-cycles-20261006/pass1/proof.json`, screenshots and targeted regression logs. The retail-enabled animation regression passed all 77 tests with no skips, errors or failures; focused Node contracts and syntax checks for all three changed JavaScript modules passed. No game launch, runtime attachment, installation or full-disc export; native game cadence/assignment acceptance remains deferred. The full SDK goal stays active/incomplete.
 
 
-## 2026-10-06: compare historical samples with selected actor coordinates
+## 2026-10-06: Compare Historical Samples with Selected Actor Coordinates
 
 The historical viewport toolbar now offers **Compare selected actor coordinates** for a selected imported actor and a displayed node key. Its detached snapshot shows retail native, current native, explicit authored overrides, viewport native and separate viewport surface coordinates. Captured-minus-reference deltas are shown per axis for the selected file layer, including both baseline/comparison samples. Unknown native Y stays unknown, even when a source surface supplies preview height. File-listed candidate IDs remain unconfirmed; numeric agreement does not bind identities or establish a coordinate convention. Metadata-only comparison download preserves scene/source key, actor/key, representation, declared epoch/profile and capture frames. Changing the editor source, selection, representation, sample/file or layer disables export of the old snapshot. The historical toolbar also resynchronizes after API requests, fixing controls left disabled after actor selection.
 
 Validation: focused Node arithmetic/context/authority checks and existing historical review/comparison tests passed, as did editor/module syntax. Fresh browser workflows over retail town01 with synthetic saved samples passed actual dialog/download, native versus preview height, authored placement deltas, both file layers, wide/narrow layout, source-change snapshot withdrawal, no-selection disable and camera/selection preservation. The existing paired-overlay, layer, framing, marker-picking and return/clear browser regression passed. Final screenshots were inspected; no page errors. Authored/imported state and its Build state key were unchanged after verification. Evidence: `local-output/sdk-20260909/historical-actor-coordinate-comparison-20261006/final/proof.json`, metadata downloads and `regression/proof.json`. The first browser run exposed a missing static module route; a subsequent flow exposed the stale toolbar busy state. Both were fixed before acceptance; a private verifier UTF-8 title mismatch was corrected separately. No game launch, runtime attachment, installation, full-disc export or real captured-coordinate acceptance occurred. Manual gameplay remains deferred and the full SDK goal active/incomplete.
 
 
-## 2026-10-06: integrated offline verification and current SDK overview
+## 2026-10-06: Integrated Offline Verification and Current SDK Overview
 
 The [current SDK overview](SDK_CURRENT_STATUS.md) now distinguishes implemented workflows, incomplete subsystems and deferred manual acceptance. The implementation baseline remains `5591cc37`; this checkpoint changes test fixtures/assertions and documentation only. Production SDK/runtime validation is unchanged.
 
@@ -2012,11 +2014,11 @@ Validation: 164 Node checks and 160 editor-module syntax checks passed without f
 
 Current overview: [SDK_CURRENT_STATUS.md](SDK_CURRENT_STATUS.md). Its subsystem summary separates current capabilities from historical checkpoints below; full runtime/gameplay acceptance remains incomplete.
 
-## Native SEQ operand codec groundwork (2026-10-06)
+## Native SEQ Operand Codec Groundwork (2026-10-06)
 
 A source-qualified serializer now edits reached channel and tempo operands in standalone SEQ and aligned VAB+SEQ native entries. It preserves event structure, running status, delta times, opaque tails, bank/sample chunks and carrier length, and validates independent decoded readback. All 83 retail sequence carriers passed exact-byte edit/restoration checks, including the partial stream; ten focused Python checks passed without skips. This is codec groundwork only: persistent SDK audio commands/history, editor editing controls and native Build composition are still open. See [native SEQ operand groundwork](legaia-audio-sequence-authoring.md). No gameplay verification is needed for this checkpoint; the overall goal remains active and development stays solo.
 
-## Source sample audition and WAV export checkpoint (2026-10-06)
+## Source Sample Audition and WAV Export Checkpoint (2026-10-06)
 
 Nonempty waveform prefixes now offer **Load audition**, an explicit **Preview rate**, **Play sample**, **Stop sample**, preview volume and **Save preview WAV…**. Loading never plays automatically. Changing rate, Stop, closing the waveform view or a source change cancels pending/active playback; closing releases its audio context. WAV export preserves the decoded mono 16-bit PCM at the chosen preview rate, independently of preview volume. Rate and preview seconds are user choices, not retail pitch/duration facts. Encoded loops are not replayed; source limits/termination stay visible. Empty prefixes expose no audition controls.
 
@@ -2024,7 +2026,7 @@ The private `/api/audio-pcm` route requires exact scene/entry/bank/sample freshn
 
 Validation: 49 retail-enabled focused Python tests passed without skips/errors/failures; waveform/audition/bank/asset-inspector Node contracts and all three changed editor module syntax checks passed. Of 1,696 source sample spans, 1,695 nonempty prefixes passed frontend PCM/hash/envelope and WAV checks (59,052,168 verified PCM bytes); PROT 1035 sample table slot 9 is zero-length and rejects PCM preview. Actual browser workflow passed no autoplay, explicit rate, nonzero Web Audio buffers at 22,050/44,100 Hz, Stop, rate-change cancellation, natural end, close cleanup, exact WAV/metadata downloads and wide/narrow layouts with no page errors; screenshots inspected. Automation muted device output; listening and native game audio remain unverified. A private fixture initially misdecoded its UTF-8 button label, then passed after correction. Exact HTTP/stale identity guards rejected before mutation. Project/document/history/files and reference fixture stayed unchanged; native packages before/after were byte-identical (SHA-256 `7c72cf0fa141c5076692f77d417576365438d7760f2de0bea4c2a891b8cd29c4`). Private evidence: `local-output/sdk-20260909/audio-audition-20261006/proof.json`, `all-source-node.json`, `empty-source.json`, `preview.wav`, focused logs and acceptance manifest. No game launch, runtime attachment, installation or full-disc export; gameplay remains deferred and the full goal stays active.
 
-## Source sample waveform inspector checkpoint (2026-10-06)
+## Source Sample Waveform Inspector Checkpoint (2026-10-06)
 
 Qualified bank sample rows now offer **Inspect waveform N**. The read-only view decodes a bounded PSX SPU-ADPCM prefix with zero initial predictor history, shows an amplitude envelope in decoded frame coordinates, exposes hover ranges and encoded end/repeat/loop-start markers, and downloads the complete derived evidence. It preserves source sample/table/hash identities and withdraws changed sources; pending close rejects late publication. This does not assume pitch, sample rate, audible duration, instrument assignment or runtime playback. No loops are replayed. Unknown predictors/flag bits and incomplete blocks stop the prefix without synthesized silence; reserved shift values 13–15 use effective shift 9 following the pinned SPU decoder.
 
@@ -2032,7 +2034,7 @@ The pinned Andrew `crates/engine-audio/src/spu/adpcm.rs` and `crates/xa/src/lib.
 
 Validation: 48 retail-enabled focused Python tests passed without skips/errors/failures, including signed low-nibble order, cross-block predictor history, stop semantics, reserved shifts, envelope budgets and stale bank/sample hashes. Waveform/bank/asset-inspector Node contracts and lifecycle checks passed; both changed editor modules passed syntax checks. Actual browsers passed sample-row navigation, nonblank canvas, hover frame ranges, exact export, pending close and wide/narrow layouts without page errors; screenshots inspected. Exact HTTP fields and stale scene/entry/bank/sample identities were rejected. Project/document/history/files and reference fixture stayed unchanged; normal native packages before/after were byte-identical (SHA-256 `a87378af2252cf133a130558a22a4496bbee7cc65a037a19885577cc21a4d084`). Private proof: `local-output/sdk-20260909/audio-waveform-20261006/proof.json`, `preservation.json`, `all-source-node.json`, browser evidence and acceptance manifest. No game launch, runtime attachment, installation, full-disc export or audio playback. Gameplay remains deferred; the full goal stays active.
 
-## Source VAB bank table inspector checkpoint (2026-10-06)
+## Source VAB Bank Table Inspector Checkpoint (2026-10-06)
 
 Audio records now offer **Inspect bank tables** when their complete bank can be independently qualified. The read-only inspector separates all 128 program slots, packed tone pages and size-table sample spans; it supports used-slot/page/search filters, pagination, bounded tone-to-sample navigation and exact metadata download. Packed pages are not assumed to be program slot indices. Each table row and sample span carries its source hash. Current scene/entry/bank identities guard publication; source changes withdraw rows and closed views reject late replies.
 
@@ -2041,35 +2043,35 @@ The pinned Andrew VAB and split-bank parsers supply format evidence. Of 218 reco
 Validation: 45 retail-enabled focused Python tests passed without skips/errors/failures; bank DTO/lifecycle and existing asset inspector Node checks passed, as did syntax checks for all three changed editor modules. Actual browsers passed program/tone/sample views, filters/pagination, sample navigation, banks without sequences, hidden unsupported actions, exact download, pending close and wide/narrow layouts without page errors; screenshots inspected. Exact HTTP fields, stale source/hash and unsupported banks were rejected. Project/document/history/files and the reference fixture were unchanged after inspection; native packages before/after were byte-identical (SHA-256 `82fcb1dab13822a5f8d6c88ba018133e42c51d106ba75e07a5e584416f384551`). The initial fixture snapshot incorrectly preceded baseline Build output creation; the repeat separated preservation checks and passed. Private evidence: `local-output/sdk-20260909/audio-bank-20261006/proof.json`, `preservation.json`, `baseline-copy-delta.json`, `retail-banks.json`, `all-source-node.json` and focused logs. No game launch, runtime attachment, installation or full-disc export. Gameplay remains deferred; the full goal remains active.
 
 
-## 2026-10-06: inspect historical samples from the viewport
+## 2026-10-06: Inspect Historical Samples From the Viewport
 
 Historical overlays now expose a bounded node selector and **Inspect historical sample**, plus an explicit **Pick historical sample** viewport mode. Inspection opens the existing detached review or comparison filtered to that key, preserving complete evidence and original download metadata. Single-file details expand to show coordinates, capture frames and recorded fields. Coincident baseline/comparison markers deduplicate their declared key; different overlapping keys require choosing the selector. Explicit pick gestures take precedence over scene mesh selection and transform handles, guard project/source/camera/viewport context, and never submit authoring commands. Dragging remains camera navigation. Empty layers disable inspection/picking and withdraw pick mode; source changes retain the existing overlay withdrawal. Imported entity selection stays independent.
 
 Validation: Node screen-space hit tests passed the 256-point bound, duplicate-key handling, ambiguity, empty samples and invalid geometry. Existing review/comparison and editor syntax checks passed. Fresh retail-source browsers with synthetic historical files passed selector and actual canvas inspection for single reviews and paired comparisons, capture evidence, preserved camera/selection, all layers, wide/narrow framing, clear/return, empty/foreign rejection and source-change withdrawal. Authored state and its build-state key were unchanged after verification; no page errors. Evidence dialogs inspected. Proofs: `local-output/sdk-20260909/historical-runtime-sample-inspector-20261006/proof.json` and `comparison/proof.json`. No real runtime capture, game launch, attachment, installation or gameplay acceptance occurred. Full SDK goal remains active/incomplete.
 
 
-## 2026-10-06: spatial comparison of historical runtime files
+## 2026-10-06: Spatial Comparison of Historical Runtime Files
 
 The saved-runtime comparison report now connects to the central viewport through **Show historical comparison positions**. Baseline samples are blue, comparison samples amber, with Both/Baseline/Comparison layer selection. Dashed segments join different complete coordinates with the same declared node key; file-only keys have markers without segments. Matching keys remain unconfirmed identities, and lines imply neither motion paths nor chronology. Each file is revalidated and the comparison is reconstructed rather than trusting report rows. The limit is 128 nodes per file / 256 displayed samples; missing or out-of-range XYZ values are skipped independently. Frame uses only the selected layer and disables for an empty layer. Return reopens the full comparison evidence; Clear and source-context withdrawal remain ephemeral.
 
 Validation: Node guards passed layer construction, detached evidence, complete-key segments, unchanged positions, file-only keys, missing coordinates, same-scene/Edit/profile checks, malformed layer rejection and the 256-sample bound. Existing runtime review/comparison and camera tests passed. Fresh retail-source browser workflows with synthetic historical files passed both-file rendering, all three layers, layer-switch display preservation, framing, wide/narrow layouts, Return/Clear, empty-layer disable, foreign-scene rejection, source-change withdrawal and Undo; authored state and its build-state key were unchanged after verification. The single-file browser regression also passed. Final comparison screenshots inspected; no page errors. Evidence: `local-output/sdk-20260909/historical-runtime-comparison-viewport-20261006/final-pass/proof.json`, with the single-file proof in `single-regression/`. The first comparison run exposed Return rebuilding a closed dialog without reopening it; this was fixed before passing runs. No real runtime capture, game launch, attachment, installation or gameplay acceptance occurred. Full SDK goal remains active/incomplete.
 
 
-## 2026-10-06: historical runtime positions in the central viewport
+## 2026-10-06: Historical Runtime Positions in the Central Viewport
 
 Saved runtime node reviews now offer **Show historical positions** for the matching current Edit-mode scene. Complete bounded XYZ file samples appear as dashed amber markers with historical/unconfirmed labels, using the existing scene display transform. Incomplete and out-of-range samples are skipped with counts; no Y or identity is inferred. Active controls stay outside the collapsed scene-tool drawer: Frame historical positions, Return to historical review and Clear. Showing samples preserves the camera; explicit framing preserves its angles/projection and scene visibility. These samples are ephemeral display data, not Live observations, actor bindings or persistent edits. Project/mode/scene/source/representation changes withdraw the overlay, and Undo does not resurrect it.
 
 Validation: focused Node review tests passed detached data, matching Edit-scene checks, bounded complete coordinates and authority rejection; existing review/comparison and camera projection tests also passed. A fresh browser with synthetic historical files over the actual retail town01 scene passed show/frame/return/clear, wide/narrow layout, foreign-scene and empty-sample rejection, real source-change withdrawal and Undo. Authored/imported state and its build-state key remained unchanged after verification; no page errors. Wide and narrow screenshots inspected. Evidence: `local-output/sdk-20260909/historical-runtime-viewport-20261006/final-pass/proof.json`. The first browser run exposed hidden controls in the tool drawer, which were fixed. Subsequent verifier corrections distinguished collapsed evidence text and read-only preview requests from authoring. No game launch, runtime attachment, installation or new gameplay validation occurred. Real captured-coordinate/identity acceptance remains deferred; the full SDK goal remains active/incomplete.
 
 
-## 2026-10-06: frame isolated selections
+## 2026-10-06: Frame Isolated Selections
 
 **Frame isolated** fits the currently visible mesh bounds of the captured isolation group in the viewport. It preserves yaw, pitch, projection, manual hidden instances and layer switches, and accounts for current instance transforms, perspective depth and viewport aspect with ten-percent edge padding. Hidden-layer members are skipped; the action is disabled when no isolated mesh is visible. Saved scene views retain and recall the fitted camera through the existing metadata workflow. Scene content and game coordinates are unchanged.
 
 Validation: the pure camera helper passed eighteen perspective/orthographic, aspect and orientation combinations against the actual renderer projection, plus mutation and invalid-input checks. A fresh retail-source editor browser passed Perspective, Front, Side and narrow-viewport fitting of every current mesh corner, layer skipping/disable, exact saved camera recall, NPC deletion/recovery, metadata history and portable Open. Wide and narrow screenshots were inspected; no page errors. Complete native Build output remained identical before and after the view changes (SHA-256 `ec0f718a3ebfc735e209f6cd935d4d726c5827650095422c5256557c7f7811e3`). Evidence: `local-output/sdk-20260909/scene-isolation-framing-20261006/final/proof.json`. No game launch, runtime attachment or installation occurred. Gameplay acceptance remains deferred and the full SDK goal remains active/incomplete.
 
 
-## 2026-10-06: saved NPC visibility and unavailable-draft recovery
+## 2026-10-06: Saved NPC Visibility and Unavailable-Draft Recovery
 
 Saved scene views now capture NPC draft isolation, mixed actor/NPC/static-decoration groups and manually hidden NPCs in the Authored scene representation. NPC-only visibility uses the authored entity identity without inventing a MAP provenance binding; environment members retain the existing source MAP checks. Save/Replace require available, validated same-scene drafts. The existing saved-placement identity validator is reused. Portable Open retains canonical references to deleted drafts, allowing view metadata to remain manageable rather than blocking the project.
 
@@ -2078,7 +2080,7 @@ Recall is disabled with an explicit missing-draft count and recovery note when h
 Validation: thirteen focused Python view tests passed, including NPC save/open, deletion with retained portable metadata, unavailable Save/Replace rejection, Undo restoration, malformed IDs and foreign-scene/retail-representation rejection. Node visibility/representation/missing-membership guards and editor syntax passed. A fresh retail-source browser saved and recalled single-NPC, mixed-NPC and hidden-NPC views, deleted the draft, checked all three disabled recalls with unchanged display, saved the unavailable project, restored the draft with Undo and recalled every view. Portable Open passed for both unavailable and restored snapshots; native Build matched the pre-view package hash. The existing group, hidden-member and changed-source withdrawal checks also passed; no page errors. Screenshot inspected. Evidence: `local-output/sdk-20260909/scene-npc-visibility-20261006/final/proof.json`. A Node negative case exposed and led to fixing stale eligibility accepting a foreign-scene NPC before the final passing runs. No game launch, runtime attachment or installation occurred; the full SDK goal remains active/incomplete and gameplay acceptance stays deferred.
 
 
-## 2026-10-06: selection-group isolation and saved group views
+## 2026-10-06: Selection-Group Isolation and Saved Group Views
 
 The viewport now isolates the active actor, scenery or mixed placement selection (1..128 renderable instances), including temporary groups containing NPC drafts. Isolation is pinned to the captured group; Restore preserves the camera, manual hidden instances and scene-layer switches. A selected hidden or unrenderable member disables isolation. Scene/project/source/representation changes and active proposals withdraw it, using the existing current-scene binding. Single-instance behavior remains available.
 
@@ -2087,7 +2089,7 @@ Saved scene views now retain canonical group isolation IDs for imported actors, 
 Validation: eleven focused Python saved-view tests and Node view/visibility guards passed, including group history, portable Open, exact static MAP ownership, malformed/duplicate/oversized/hidden-member rejection and legacy compatibility. The actual retail-source browser passed actor-group and mixed actor/NPC/decoration isolation, Restore preservation, mixed actor/decoration bookmark save/recall, metadata Undo/Redo/Save, hidden-member rejection and withdrawal after a private transform change (then Undo). No page errors occurred. Save/Open retained the group exactly; the native package matched the pre-view Build hash. Screenshot inspected. Evidence: `local-output/sdk-20260909/scene-group-isolation-20261006/final/proof.json`. The initial browser verifier assumed an actor kind tag absent from the actual preview; selection now uses SDK entity identity and the corrected workflow passed. No game launch, runtime attachment or installation occurred. The full SDK goal remains active/incomplete, with gameplay acceptance deferred.
 
 
-## 2026-10-06: floor-height delivery with NPC appends and raw streaming
+## 2026-10-06: Floor-Height Delivery with NPC Appends and Raw Streaming
 
 Native package composition is now exercised against retail Town01 and Dolk2: one NPC in a compressed fixed span, eight NPCs requiring compressed relocation, a raw streaming MAN without an NPC, and a raw streaming MAN with an appended NPC requiring relocation. Each height-edited package is reopened independently and its complete decoded MAN compared with an otherwise identical NPC/MAP build using retail heights; only the requested two-byte tier entry may differ. The complete emitted MAP also matches an independent wall-bit and floor-selector calculation, including relocated archive delivery. Actor counts, imported metadata, authored state and history remain unchanged by Build; the authored project passes Save/Open and Review Build. This supersedes the earlier unexercised appended/streaming height-delivery limitation.
 
@@ -2096,7 +2098,7 @@ Build summaries now name source floor heights when an NPC composition contains t
 Validation: four opt-in retail delivery checks and nine focused Build-report checks passed against the final code (13 total); Python syntax and diff checks passed. Evidence: `local-output/sdk-20260909/floor-height-delivery-20261006/final/proof.json`. The initial compressed verifier used an incorrect carrier field name; that verifier was corrected before the final passing run. No game launch, runtime attachment, installation or full-disc export occurred. Manual floor collision, movement, ramps and NPC behavior acceptance remain deferred; the full SDK goal remains active/incomplete.
 
 
-## 2026-10-06: height-table editor and Proposed scene inspection
+## 2026-10-06: Height-Table Editor and Proposed Scene Inspection
 
 `Edit floor heights` now opens from the source collision inspector and Scene Tools, exposing all sixteen source-qualified Retail/Current/draft MAN values and draft reference Y. Signed integer bounds, reset-to-retail, discard-to-Current, fresh Review and normal one-command Apply are connected. Input changes withdraw old Apply and scene-inspection authority. Owned reads abort on close and reject stale scene/project context; the dialog remains bound to its reviewed source. The SDK context route supplies Current values without authoring a change.
 
@@ -2105,7 +2107,7 @@ Inspect proposed height scene builds a detached project view, validates the orig
 Validation: four focused Python height codec/context/history/proposal and preview checks passed; the new Node height Review validator passed typed bounds, source identity, exact MAN audit and detached-response guards. Editor/module syntax and diff checks passed. A private retail browser workflow passed sixteen-tier loading, edit/Review, invalid-value withdrawal, retail and Current resets, fresh Review, read-only Proposed inspection/Return, Apply, Undo/Redo and Save/Open. Independent Proposed and Current comparisons matched all ground vertices (1,088 changed corners) and all 208 qualified placed/decorative reference transforms; source records remained immutable. Normal Build independently matched the complete decoded MAN and MAP, retaining prior wall and selector edits. Native MAN SHA-256 `c6dc3f80d15540c7017f2d48b23fa85acc5234eb6d757f84b4d1614d23d5aa31`; MAP SHA-256 `2222ae211d70fa0b303fb7f5010ceb88699cad90edefd5cdd7b5a70c126e66e1`; package SHA-256 `99c3a091359cb948193cab4b3f0f18b7acd9c0fa85b11b060bd8c4e99e2041fd`. Wide/narrow dialog screenshots were inspected; no page errors occurred. Evidence: `local-output/sdk-20260909/floor-height-editor-20261006/proof.json`. No game launch, runtime attachment or installation occurred. The full SDK goal remains active/incomplete and gameplay verification stays deferred.
 
 
-## 2026-10-06: native MAN floor-height authoring foundation
+## 2026-10-06: Native MAN Floor-Height Authoring Foundation
 
 A source-qualified `FloorHeights` scene component now authors the sixteen signed MAN table values independently of MAP floor selectors. Read-only HTTP Review exposes separate Retail/Current/Proposed values and a sealed Apply key; strict typed bounds, source disc/import/MAN identity, stale-input rejection, one normal Undo step, retail restoration and Save/Open are implemented. The low-level serializer changes only requested two-byte entries in MAN `0x02..0x22`; partition counts, actor records and opaque bytes stay fixed. Build labels distinguish source floor heights, floor selectors and collision walls.
 
@@ -2116,7 +2118,7 @@ Current ground geometry and placed/decorative object reference transforms now co
 Validation: twelve distinct focused Python checks passed across height codec/history/HTTP/native Build, floor preview composition, existing selector authoring/history/HTTP and decoration decoding; module imports and diff checks passed. Private retail HTTP Review/Apply, stale heights, one-step Undo/Redo and Save/Open passed. Independent complete decoded MAN and MAP comparisons passed, preserving the existing wall/selector edits. Every ground vertex matched its expected tier delta (1,088 changed corners), and all 208 qualified placed/decorative transforms matched independently while retaining source metadata. Geometry cache identity changed. Native MAN SHA-256 `c6dc3f80d15540c7017f2d48b23fa85acc5234eb6d757f84b4d1614d23d5aa31`; MAP SHA-256 `2222ae211d70fa0b303fb7f5010ceb88699cad90edefd5cdd7b5a70c126e66e1`; final labelled package SHA-256 `99c3a091359cb948193cab4b3f0f18b7acd9c0fa85b11b060bd8c4e99e2041fd`. Evidence: `local-output/sdk-20260909/floor-heights-20261006/proof.json`. An initial test used the wrong MAP filename; it was corrected before the passing native check. The labelled package was written to a fresh output directory after the existing-output guard correctly refused replacing an older manifest. No game launch, runtime attachment or installation occurred. The full SDK goal remains active/incomplete; gameplay acceptance stays deferred.
 
 
-## 2026-10-06: reusable authored floor patterns
+## 2026-10-06: Reusable Authored Floor Patterns
 
 The floor editor now captures authored selector operations as portable JSON, loads them at a destination, rotates clockwise, mirrors X/Z and repeats them with whole native selector-step gaps. Keep Current captures only explicit paint operations; uniform tier/retail operations capture the selected extent. Loading and transforms stage drafts only, preserving unpainted Current selectors and requiring a fresh source-qualified Review before scene inspection or Apply. Retail restoration resolves against the destination source. File reads are bounded to 512 KiB and reject stale dialog/project context; invalid pattern, repeat or destination choices retain the existing draft.
 
@@ -2127,7 +2129,7 @@ A browser-discovered no-op bug was fixed: differing storage order of equivalent 
 Validation: four focused Python floor authoring/history/HTTP checks passed, including the new no-op regression; Node floor pattern and floor Review checks passed, plus module syntax and diff checks. A fresh private retail browser workflow passed pointer/keyboard painting, rotation, mirroring, a 2-by-2 repeat with gaps, exact download/reimport, invalid-repeat draft preservation, mismatched MAN-height rejection, fresh Review, exact Proposed/Current ground and placed-object reference heights, Return, Apply, Undo/Redo and Save/Open. Its twelve staged operations covered twenty-five selectors; an existing gap selector, outside floor edit and wall bit survived. Independent complete MAP Build readback matched exactly. Native MAP SHA-256 `831bf000fc402b6fa419c1bb0df3d462b09968d52a7b8e8a7cc66317537dc884`; package SHA-256 `22ccffe40e1a13e3c80852b28b371375feb1e89b549b1f2b0d542e7430d172fe`. Wide/narrow screenshots were inspected; no page errors occurred. Evidence: `local-output/sdk-20260909/floor-pattern-20261006/attempt2/proof.json`. The first run exposed the storage-order no-op bug; the fresh run passed after the fix. No game launch, runtime attachment or installation occurred. Gameplay acceptance remains deferred; the full SDK goal stays active and incomplete.
 
 
-## 2026-10-06: mixed floor-selector painting
+## 2026-10-06: Mixed Floor-Selector Painting
 
 The source floor editor now paints individual native shared corner selectors inside one bounded rectangle. Keep Current preserves unpainted selectors; the brush supports any existing MAN tier or retail restoration. Pointer and Enter/Space editing show numbered Proposed points with native coordinates and reference heights. Painting withdraws old Review authority; changing rectangle inputs clears the draft. Fresh Review, Proposed scene inspection/return and normal Apply carry the same canonical selector list. The reviewed patch is one normal Undo step.
 
@@ -2136,7 +2138,7 @@ The optional v2 Review seals sorted unique row/column/tier operations with the e
 Validation: nineteen distinct focused Python checks passed across floor authoring/history/HTTP, preview composition, terrain and scene caching. Node mixed floor Review and viewport picking guards passed, with editor/module syntax and diff checks. A fresh private retail browser project passed pointer and keyboard painting, retail restoration, fresh Review, exact Proposed/Current ground and placed-object reference heights, immutable source transforms, Return, Apply, Undo/Redo and Save/Open. Independent full MAP construction matched ordinary Build exactly while retaining a wall edit in the same byte and an outside authored selector. Native MAP SHA-256 `753e0544250c26503d30a2483a85e1d13ed9e36149ae9a8111f003e763db0d40`; package SHA-256 `b62a156e1e1e4926d80b92f66fe45c2549e96c3cdef85f887f93ee3363e795cb`. Wide/narrow screenshots were inspected; page errors were empty. Evidence: `local-output/sdk-20260909/floor-paint-20261006/attempt2/proof.json`. The first harness compared JavaScript negative zero with serialized zero; its expectation was corrected before the fresh successful run. No game launch, runtime attachment or installation occurred. The full SDK goal remains active and incomplete; gameplay verification stays deferred.
 
 
-## 2026-10-06: native floor picking in the scene viewport
+## 2026-10-06: Native Floor Picking in the Scene Viewport
 
 `Pick floor selector` now resolves the actually visible ground instance and GPU-selected triangle, then opens its nearest projected corner in the floor editor. The draft is seeded with the exact native row/column and Current tier, not an inferred height. Ground preview metadata carries each vertex's source-qualified selector index, so tiers with equal MAN heights remain distinct. Picking can load the scene's collision source automatically and does not change authored state; Review remains required before Apply. Dragging still orbits. Stale scene/project/camera/viewport context and foreign or partial ground ownership reject selection. Outer preview corners use the decoder's evidenced edge clamp and are explicitly labelled when selected.
 
@@ -2145,7 +2147,7 @@ The independent bounded picker qualifies source cell identity, four-corner coord
 Validation: fourteen distinct focused Python cases passed across terrain metadata, floor preview and scene caching; new floor picking, floor Review and existing model face Node checks passed, as did editor/module syntax. Actual retail browser workflow used real WebGL picking to open native floor row0/column127 at its original tier, confirmed a no-op Review with disabled Apply, made one reviewed private change, and picked again at the authored Current tier. Undo/Redo, Save/Open and independent full MAP Build readback passed while retaining an earlier wall edit. Native MAP SHA-256 `7f2948c1b0212b9dd38041ed8b9d78ef5ae72c965fcc8f5eeace13051e13022b`; package SHA-256 `82db32a6a81544bfbd2f9dc4057a599ebac95b6b73a3fc1d8f796a00be3c1e31`. The picked-floor screenshot was inspected; no page errors occurred. Evidence: `local-output/sdk-20260909/floor-picking-20261006/attempt2/proof.json`. The first test used a point measured before the toolbar layout resized the canvas; a fresh attempt recalculated after source load/layout and passed. No game launch, runtime attachment or installation occurred. Source ground remains a reference surface; native ramps, reachability and gameplay acceptance are deferred. The full SDK goal remains incomplete.
 
 
-## 2026-10-06: floor editor and authored height previews
+## 2026-10-06: Floor Editor and Authored Height Previews
 
 The collision inspector now opens `Edit floor tiers`, with bounded native floor rows/columns, sixteen source-qualified MAN selector choices, retail restoration and separate Retail/Current/Proposed rows. Review supplies the immutable signed MAN values and reference Y labels; input changes withdraw old Apply authority. Inspect proposed floor scene uses a detached SDK project view and the existing Proposed/Current scene comparison with Return to floor review. Apply is one normal floor command, followed by the usual history, Save and Build workflow. The dialog and reader reject stale context and dispose owned requests on close.
 
@@ -2154,7 +2156,7 @@ Current ground geometry now decodes authored low-nibble selectors before texture
 Validation: eighteen focused Python checks passed across new floor preview composition, floor Review/history/HTTP, environment/texture projection and scene caching. Node floor decoder and existing wall guards passed; editor/module syntax checks passed. Actual retail browser workflow passed typed LUT labels, input invalidation, fresh Review, Proposed scene inspection/return, private Apply, Undo/Redo and Save/Open. Independent vertex-by-vertex comparison proved exact changed ground corners, unchanged topology/materials/UVs and the expected placed-object height delta; source transforms remained identical. Normal private Build matched the full MAP independently, preserving the existing wall bit in the same byte. Native MAP SHA-256 `25bdeeb8a832129ae434a1e072beeb24bbe9e7e2909738c38042cb1120bdb5b7`; package SHA-256 `b91a7e2c9366b65f39517d1df050ab9edf608629bc939ab8006f6216c19ddd7e`. Wide/narrow dialog screenshots were inspected; no page errors occurred. Evidence: `local-output/sdk-20260909/floor-editor-20261006/attempt2/proof.json`. The first browser attempt exposed an inaccessible modal entry point; the collision inspector entry was added before the successful fresh attempt. No game launch, runtime attachment or installation occurred. The full SDK goal remains incomplete; gameplay acceptance stays deferred.
 
 
-## 2026-10-06: native floor-selector authoring backend
+## 2026-10-06: Native Floor-Selector Authoring Backend
 
 A distinct `FloorTiers` scene component now authors existing MAN height selectors in the MAP low nibble, independently of wall quadrants. The bounded floor rectangle service exposes read-only source-qualified Review and sealed Apply, supporting tier 0..15 or restoration to each selected retail value. Canonical floor rows/columns are 0..127, including row zero; the wall-biased row/Z convention is not reused. At most 4096 combined authored selectors are accepted. Imported MAP/MAN disc identity, MAP hash, LUT values and MAN provenance bind the Review; changed inputs or project state reject Apply.
 
@@ -2163,7 +2165,7 @@ Normal commands preserve other scene components, support one Undo step, dirty tr
 Validation: four focused Python floor cases and seven existing wall rectangle/paint cases passed. Private retail HTTP Review/Apply, stale rectangle rejection, one Undo step, Undo/Redo and Save/Open passed. Independent full MAP construction matched both ordinary Build and the shared composer exactly, including wall/floor edits in the same byte. Native MAP SHA-256 `77fdc3c86a4f14bbdd7948a4734d916a6358aa23c2cf24ae72ae14666f387820`; package SHA-256 `2c21fc94ca8259ad88dd988b488e7be7e0914d53b6dc938d08443dffb30f0392`. Evidence: `local-output/sdk-20260909/floor-authoring-20261006/proof.json`. The shared composer was exercised with Town01, not with an actual appended-NPC or streaming scene. Status: writable SDK backend; editor controls and Current authored terrain/placement preview are pending next. No game launch, runtime attachment or installation occurred. The full SDK goal remains incomplete.
 
 
-## 2026-10-06: repeated wall-pattern placement
+## 2026-10-06: Repeated Wall-Pattern Placement
 
 Source wall patterns now support repeated rows/columns with explicit gaps in whole 128-unit native grid cells. Stage repeated pattern expands the current authored operations into one Current-baseline draft, preserving quadrant parity and all untouched gap bits. A fresh Review is required before the single atomic Apply. Counts do not change the draft until Stage; repeating again repeats the newly staged pattern. The expanded pattern remains downloadable in the existing portable format and supports rotation/mirroring.
 
@@ -2172,7 +2174,7 @@ The pure repetition service rejects invalid counts/gaps, grid extent overflow, m
 Validation: both Node pattern/rectangle checks, JavaScript syntax and three focused Python paint/history/HTTP checks passed. Node coverage includes exact operation placement, gap preservation, quadrant parity, rotation equivalence, detached input and count/extent/destination rejection. Actual retail editor workflow staged a 2-by-2 pattern with gaps, downloaded its exact 12 operations, rejected oversized repetition without altering the draft, completed fresh Review and scene inspection/return, and passed private Apply, Undo/Redo and Save/Open. The Review selected 60 wall bits with seven effective changes. Independent full MAP Build readback exactly matched the intended repeated bits and a pre-existing authored gap bit; all floor nibbles and unrelated bytes were preserved. Native MAP SHA-256 `8f9440f1f32d5e842fb14e38a3e878ef4f93920bc478a40b5f3f97448def4d3b`; package SHA-256 `2f2a3d306971882239cef8a88e8f7a4769891d1c34c4b4fe09ab389962c098d9`. Wide/narrow layouts were inspected and browser errors were empty. Evidence: `local-output/sdk-20260909/wall-pattern-repeat-20261006/proof.json`. No game launch, runtime attachment or installation occurred. Gameplay acceptance remains deferred and the full SDK goal remains incomplete.
 
 
-## 2026-10-06: reusable authored wall patterns
+## 2026-10-06: Reusable Authored Wall Patterns
 
 Source wall drafts can now be downloaded as portable JSON, loaded at a new First row/column, rotated clockwise or mirrored across X/Z. Patterns contain authored Block, Unblock and Restore retail operations only. They contain no captured retail/Current source bits or write authority. Loading and transforming stage a Current-baseline draft and withdraw previous Review; a fresh native Review is required before Apply. Restore retail resolves the destination's verified source value. Uniform fills retain their full operation set through export and transforms.
 
@@ -2181,7 +2183,7 @@ The strict `legaia.wall-pattern.v1` format uses relative 64-unit subcells, even 
 Validation: three focused Python native paint/history/HTTP checks and both Node wall-pattern and rectangle programs passed. Maximum-size 4096-operation JSON round-trips within the file budget. Actual retail browser checks passed relocation, rotation, mirroring, exact download/reimport, invalid-file rejection, fresh Review, scene inspection/return, private Apply, Undo/Redo and Save/Open. Wide/narrow screenshots were inspected; no page errors occurred. Private Build readback matched all MAP bytes independently: only wall bits at byte `0x4815` changed (XOR `0x50`); every floor nibble and other byte remained exact. Native MAP SHA-256 `e2b15ff7fdf124d3979af68b6e11f49a6a7cb6905f1e5eecd5faabd4528d8aa0`; package SHA-256 `9c0b5fb9e856dc8343ee1977b9cc89edad5e847193b7863ba4ec6965e003581d`. Evidence: `local-output/sdk-20260909/wall-pattern-20261006/proof.json`. No game launch, runtime attachment or mod installation occurred. Gameplay acceptance remains deferred and the full SDK goal remains incomplete.
 
 
-## 2026-10-06: source wall quadrant painting
+## 2026-10-06: Source Wall Quadrant Painting
 
 The source wall rectangle comparison is now an editable paint workspace. `Keep Current walls; paint individual quadrants` preserves the selected rectangle's Current baseline; Block, Unblock and Restore retail brushes change individual Proposed quadrants by pointer click/drag or keyboard Enter/Space. Painting clears the previous Review and disables Apply until fresh Review. Keyboard painting retains focus. Rectangle input changes discard the paint draft. Current/Retail comparison layers remain read-only; fresh reviewed patterns can be inspected in the scene and applied as one Undo step. Scene inspection now expands Scene tools so Return to wall review is accessible.
 
@@ -2190,28 +2192,28 @@ The version-2 rectangle review binds a canonical, bounded `cell_edits` list to t
 Validation: twelve focused Python rectangle/HTTP/painting checks and Node rectangle/paint qualification checks passed. Actual retail browser workflow passed pointer drag, keyboard focus, retail restoration, draft invalidation, fresh Review, scene inspection/return, private Apply, Undo/Redo and Save/Open, with no page errors. Native private Build readback matched exactly: two wall bits in one MAP byte changed; every floor nibble and unrelated byte remained identical. Package SHA-256 `3410ed6f08330eca2e0866f34bedadd052f50584cbc7bec9d307f4a8cf3b1ec5`. Evidence: `local-output/sdk-20260909/wall-paint-20261006/proof.json`; wide/narrow screenshots inspected. No game launch, runtime attach or mod installation occurred. Source walls remain a static reference baseline; runtime/script collision paints, actor blockers and gameplay acceptance are deferred. The full SDK goal remains incomplete.
 
 
-## 2026-10-06: Current native mesh import comparison
+## 2026-10-06: Current Native Mesh Import Comparison
 
 `Project mesh inputs` now compares each historical receipt with the complete Current native model and reports how many faces introduced by that import are active or retired. The reader requalifies the library and retained input, replays exact before/after ledger spans, checks the historical candidate hash and Current replay bytes, and seals receipt/root/mode/import/native/disc context before returning. The UI validates exact response fields and hash/count consistency. A whole-model difference can reflect later edits or imports; active face identities do not assert unchanged face content or gameplay acceptance. Comparison requests are read-only and require no active source scene change.
 
 Validation: five focused Python checks passed (three library regressions and two comparison workflows), with the two comparison checks rerun after the final model-byte bound. Exact match, later-import difference with all original faces active, one-face retirement, Undo restoration, HTTP exact fields/stale receipt/root/key and context drift reject paths passed. Node library/comparison validation, hash truth, bounded face totals and no-write claim checks passed. Actual retail-backed browser comparison ran from another scene and matched complete SDK responses and displayed counts for a single import (1 of 2 active, 1 retired) and batch import (4 of 4 active). Independent baseline showed the batch's exact native match, and Undo restored it after private fixture retirement. Comparison reads preserved project document/history/files; original project untouched. Wide/narrow screenshots inspected. Evidence: `local-output/sdk-20260909/mesh-native-comparison-20261006/proof.json`. The private fixture used a qualified native face retirement and Undo to exercise lifetime reporting; no Build, game launch, runtime attach or installation occurred. Full SDK and gameplay acceptance remain incomplete.
 
 
-## 2026-10-06: project-wide retained mesh input library
+## 2026-10-06: Project-Wide Retained Mesh Input Library
 
 The editor now offers `Project mesh inputs` alongside the model and animation input libraries. It finds retained native mesh import GLBs and their historical single/batch recipes across source scenes, filters by scene/model/hash/import kind, recovers original GLB/settings/receipts and opens the Current model in its source scene. The SDK reconstructs each model's retained ledger inputs within a verified disc operation. Complete project/import/native context seals the library key; downloads verify fresh membership, exact receipt, byte length and independently hashed GLB. Navigation requalifies before and after changing scenes. This is read-only recovery: settings remain editable input requiring fresh Review and explicit Apply. The library supports at most 128 receipts and 64 MiB of distinct registered GLBs and refuses larger catalogs without truncation.
 
 Validation: three new Python library checks plus five existing mesh retention checks passed, including HTTP exact-field rejection, stale project/key/mode, corrupt input, late context mutation, global budgets and no project/history/file changes. Node library decoding/filtering, exact recovery, hash-time context and qualified scene navigation passed. Actual browser proof started in `town0c`, recovered all six artifacts from two `town01` imports, filtered single/batch inputs, opened the source scene's exact authored model and verified its native SHA-256. No page errors; wide/narrow library and Current model screenshots inspected. Original and private project files, native receipts and Undo history stayed unchanged; scene selection changed as requested. Evidence: `local-output/sdk-20260909/mesh-input-library-20261006/proof.json`. No native Apply, Build, game launch, runtime attach or installation occurred. Gameplay acceptance and the full SDK goal remain open.
 
 
-## 2026-10-06: recovered mesh settings become editable drafts
+## 2026-10-06: Recovered Mesh Settings Become Editable Drafts
 
 `Import GLB mesh` now accepts the bounded JSON downloaded by `Retained mesh sources` after a GLB is chosen. Single settings restore scene/section, unit scale, XYZ origin/rotation, UV channel, color choice and packet-group mode. Batch settings open the section donor editor with saved section selection, per-section UVs and group/object replacement choices. Both paths request a fresh SDK inventory of the selected GLB before publishing controls, clear any previous Review, and require fresh Review plus explicit Apply. Unavailable Current triangle donors remain unselected; no donor is substituted. Unknown fields, invalid bounds, missing sections/scenes/UVs and conflicting mappings reject.
 
 Validation: new Node settings decoder/qualification checks and the existing recovery/download Node checks passed; all five Python mesh source retention/history/HTTP tests passed. Actual browser checks restored both saved recipes, rejected malformed settings without changing draft choices, required missing-donor reselection, and completed fresh single and mapped Reviews. No Apply, project/history/file mutation, game launch, runtime attach or installation occurred. Wide and narrow screenshots inspected. Evidence: `local-output/sdk-20260909/mesh-settings-draft-20261006/proof.json`. Gameplay acceptance remains deferred; the full SDK goal is incomplete.
 
 
-## 2026-10-06 checkpoint: verified mesh import settings recovery
+## 2026-10-06 Checkpoint: Verified Mesh Import Settings Recovery
 
 Retained mesh sources now downloads a separate import-settings JSON alongside the
 original GLB and complete receipt. All three artifacts requalify the Current SDK
@@ -2236,7 +2238,7 @@ No native Apply, Build, game launch or runtime attachment was used. This workflo
 needs no immediate gameplay verification. The full SDK goal remains incomplete.
 
 
-## 2026-10-06 checkpoint: mirrored model GLB transforms
+## 2026-10-06 Checkpoint: Mirrored Model GLB Transforms
 
 Current-profile fixed-layout model editing now imports signed nonzero axis scales
 and reflected static TRS/matrices through parent hierarchies. Positions bake into
@@ -2270,7 +2272,7 @@ SDK work. The full SDK goal remains active and incomplete. This supersedes earli
 reflection exclusions for current-profile fixed-layout model imports.
 
 
-## 2026-10-06 checkpoint: bounded model container reuse during scene generation
+## 2026-10-06 Checkpoint: Bounded Model Container Reuse During Scene Generation
 
 Cold scene generation now reuses immutable decoded model LZS sections within one
 verified disc operation. The cache belongs to that operation's PROT archive and
@@ -2297,7 +2299,7 @@ verification is needed for this response-preserving change; existing manual
 scene/runtime acceptance remains pending. The full SDK goal remains incomplete.
 
 
-## 2026-10-06 checkpoint: saved animation input native content comparison
+## 2026-10-06 Checkpoint: Saved Animation Input Native Content Comparison
 
 Project animation inputs now offers Compare current native clip. Imported inputs
 compare the exact shared scene-ANM clip recorded by the receipt, independently of
@@ -2326,7 +2328,7 @@ Evidence: `local-output/sdk-20260909/animation-source-comparison-20261006/proof.
 The full SDK goal and manual gameplay acceptance remain open.
 
 
-## 2026-10-06 checkpoint: saved animation input source navigation
+## 2026-10-06 Checkpoint: Saved Animation Input Source Navigation
 
 Project animation inputs now exposes Open source actor for imported inputs and
 Open retained source clip for retained inputs. Navigation verifies the receipt and
@@ -2347,7 +2349,7 @@ Evidence: `local-output/sdk-20260909/animation-source-navigation-20261006/proof.
 The full SDK goal and manual gameplay acceptance remain open.
 
 
-## 2026-10-06 checkpoint: historical model input versus current native content
+## 2026-10-06 Checkpoint: Historical Model Input Versus Current Native Content
 
 Project model inputs now offers Compare current native model. The read-only SDK
 operation verifies the selected receipt, matching retail disc, imported source
@@ -2374,7 +2376,7 @@ Evidence: `local-output/sdk-20260909/model-source-comparison-20261006/proof.json
 The full SDK goal and manual gameplay acceptance remain open.
 
 
-## 2026-10-06 checkpoint: saved model input to source inspector navigation
+## 2026-10-06 Checkpoint: Saved Model Input to Source Inspector Navigation
 
 Project model inputs now provides Open model in source scene. The editor verifies
 the exact historical receipt against the current library, navigates to its imported
@@ -2397,7 +2399,7 @@ Evidence: `local-output/sdk-20260909/model-source-navigation-20261006/proof.json
 The full SDK goal and manual gameplay acceptance remain outstanding.
 
 
-## 2026-10-06 checkpoint: project-wide model input library
+## 2026-10-06 Checkpoint: Project-Wide Model Input Library
 
 The editor now exposes Project model inputs beside the project browsing tools.
 Saved original GLBs, bindings and receipts can be searched by scene, model identity
@@ -2425,7 +2427,7 @@ Physical orphan cleanup remains open. No game was launched; manual gameplay chec
 and the full SDK goal remain outstanding.
 
 
-## 2026-10-06 checkpoint: reviewed model input receipt removal
+## 2026-10-06 Checkpoint: Reviewed Model Input Receipt Removal
 
 The retained model inputs dialog now offers Review followed by explicit removal of
 a selected receipt. Review binds the project context, complete receipt collection
@@ -2445,7 +2447,7 @@ Evidence: `local-output/sdk-20260909/model-glb-source-removal-20261006/proof.jso
 No game was launched; gameplay verification and the broader SDK goal remain open.
 
 
-## 2026-10-06 checkpoint: original model GLB input retention and recovery
+## 2026-10-06 Checkpoint: Original Model GLB Input Retention and Recovery
 
 Successful fixed-layout model GLB Apply now retains the exact original GLB,
 source binding (including explicit node mapping), proposed native hash and Review
@@ -2486,7 +2488,7 @@ No game launch, mod installation or retail-disc export occurred. Gameplay remain
 deferred; solo work and the full SDK goal remain active and incomplete.
 
 
-## 2026-10-06 checkpoint: explicit external model object mapping
+## 2026-10-06 Checkpoint: Explicit External Model Object Mapping
 
 Model GLB authoring now accepts an optional ordered `external_object_nodes`
 binding choice. This recovers renamed/reordered external nodes after source
@@ -2528,7 +2530,7 @@ No game was launched or mod installed. Gameplay remains deferred; solo work and
 the full SDK goal stay active and incomplete.
 
 
-## 2026-10-06 checkpoint: measured composed model scale bounds
+## 2026-10-06 Checkpoint: Measured Composed Model Scale Bounds
 
 Model GLB hierarchy qualification now measures the actual composed singular
 scales instead of multiplying conservative ancestor axis minima/maxima. This
@@ -2562,7 +2564,7 @@ The proposed model screenshot was inspected. No game was launched or mod
 installed. Gameplay remains deferred; the full SDK goal is active and incomplete.
 
 
-## 2026-10-06 checkpoint: positive nonuniform model scale
+## 2026-10-06 Checkpoint: Positive Nonuniform Model Scale
 
 Fixed-layout model GLB imports now bake positive per-axis node scale through
 TRS or affine matrices that decompose into local TRS. Parent and child linear
@@ -2591,7 +2593,7 @@ installed. Gameplay appearance remains deferred; the full SDK goal is active
 and incomplete. This checkpoint supersedes earlier nonuniform-scale exclusions.
 
 
-## 2026-10-06 checkpoint: positive uniform model scale
+## 2026-10-06 Checkpoint: Positive Uniform Model Scale
 
 Fixed-layout model GLB imports now bake positive uniform node and parent scale
 through TRS or uniformly scaled affine matrices. Model-specific transform
@@ -2623,7 +2625,7 @@ are separate concerns; gameplay verification remains deferred. Full SDK goal
 remains active, including nonuniform scale, general skinning and reported gaps.
 
 
-## 2026-10-06 checkpoint: fixed-layout model rigid hierarchy baking
+## 2026-10-06 Checkpoint: Fixed-Layout Model Rigid Hierarchy Baking
 
 Static rigid GLB object transforms and parent groups now bake into existing native
 positions and stored normal words through the reviewed model workflow. Parent-first
@@ -2659,7 +2661,7 @@ unverified; full SDK buildout remains active, including general skinning, packet
 allocation and the other reported feature gaps.
 
 
-## 2026-10-06 checkpoint: model GLB object identity survives external names
+## 2026-10-06 Checkpoint: Model GLB Object Identity Survives External Names
 
 Fixed-layout model GLB editing now resolves preserved source-object tags before
 canonical object-N name fallback. Tagged nodes may be renamed, unnamed, reordered
@@ -2688,7 +2690,7 @@ acceptance remains deferred; the complete SDK goal remains active. This feature
 does not add model hierarchy, arbitrary packet allocation or skeletal skinning.
 
 
-## 2026-10-06 checkpoint: external animation time sampling
+## 2026-10-06 Checkpoint: External Animation Time Sampling
 
 Implemented optional external GLB sampling in both imported and retained animation
 workflows. Choose a start time (0..3600 seconds) and rate (-16..16): negative rates
@@ -2716,7 +2718,7 @@ acceptance remains deferred. Full SDK goal remains active; general skinning,
 automatic retargeting, native playback timing and other reported gaps remain open.
 
 
-## Explicit external rigid-object animation mapping - 2026-10-06
+## Explicit External Rigid-Object Animation Mapping - 2026-10-06
 
 Both animation GLB editors now accept an optional ordered list of external GLB
 node indices, display bounded node names/indices, and invalidate Review after
@@ -2746,7 +2748,7 @@ inputs remained unchanged. No game was launched. Full SDK completion, skeletal
 retargeting/skinning and retail animation playback/timing remain open.
 
 
-## Project-wide animation input browser - 2026-10-06
+## Project-Wide Animation Input Browser - 2026-10-06
 
 The Asset database tools now expose **Project animation inputs**. The SDK
 catalogs all Current animation input receipts independently of active scene or
@@ -2775,7 +2777,7 @@ No edits were repeated and no game was launched. Physical orphan-file cleanup,
 full SDK completion and retail animation playback/timing remain open.
 
 
-## Animation source receipt management - 2026-10-06
+## Animation Source Receipt Management - 2026-10-06
 
 Both animation GLB editors now offer Review source removal and an explicit
 Remove reviewed source receipt action. Review binds the target, active scene,
@@ -2801,7 +2803,7 @@ No game was launched. Physical blob cleanup, project-wide library browsing,
 full SDK completion and retail playback/timing acceptance remain open.
 
 
-## Animation source retention and recovery - 2026-10-06
+## Animation Source Retention and Recovery - 2026-10-06
 
 Both imported-actor and retained UUID GLB Applies now retain exact source GLB
 bytes and parsed binding/clip/mapping receipts in the project. Source receipt
@@ -2831,7 +2833,7 @@ Receipt pruning/source-library management remain incomplete, along with the
 full SDK goal and retail animation playback/timing acceptance.
 
 
-## Static rigid GLB matrix support - 2026-10-06
+## Static Rigid GLB Matrix Support - 2026-10-06
 
 Animation GLB import now accepts static rigid matrices on source objects and
 ancestors, decomposing column-major affine transforms into translation and
@@ -2861,7 +2863,7 @@ animation bank SHA-256
 No game launch, installation or full-disc export occurred.
 
 
-## Rigid GLB parent-transform baking - 2026-10-06
+## Rigid GLB Parent-Transform Baking - 2026-10-06
 
 GLB animation import now composes static and animated ancestor TRS into each
 source object's scene-space pose before native quantization. Mapped parents
@@ -2894,7 +2896,7 @@ animation bank SHA-256
 No game launch, installation or full-disc export occurred.
 
 
-## Equal-pose GLB selections require distinct Review keys - 2026-10-06
+## Equal-Pose GLB Selections Require Distinct Review Keys - 2026-10-06
 
 Imported-actor GLB Review now directly includes any explicit selected animation
 index in its digest. Previously two clips in the same uploaded file could
@@ -2915,7 +2917,7 @@ No Build or game launch was needed for this review-identity-only correction.
 Parent-transform baking is still unimplemented; the full SDK goal remains open.
 
 
-## External animation object names retain native identity - 2026-10-06
+## External Animation Object Names Retain Native Identity - 2026-10-06
 
 Rigid GLB nodes may now use readable external names, or omit display names,
 when they preserve the exported `extras.source_object.object_index`. Node order
@@ -2944,7 +2946,7 @@ SHA-256 `6c1bd95f47855b285e17f3f928fd07b652d894f8fbe3b8c5bc7c92970e4716a2`.
 The reference project remained byte-for-byte unchanged; no game was launched.
 
 
-## Named GLB animation selection - 2026-10-06
+## Named GLB Animation Selection - 2026-10-06
 
 Both imported-actor and retained UUID GLB editors now list the uploaded file's
 clip indices and names. Multi-clip files require explicit selection; only that
@@ -2971,7 +2973,7 @@ animation bank SHA-256
 The private reference project remained byte-for-byte unchanged.
 
 
-## Animation GLB numeric overflow rejection - 2026-10-06
+## Animation GLB Numeric Overflow Rejection - 2026-10-06
 
 **Stability fix:** huge JSON integers in node vectors, integer quaternion
 components or interchange FPS could raise uncaught `OverflowError`. Vector
@@ -2996,7 +2998,7 @@ Evidence: `local-output/sdk-20260909/animation-glb-numeric-bounds-20261006/`
 the remaining full SDK/runtime requirements remain deferred/open.
 
 
-## GLB constant unit-scale interoperability - 2026-10-06
+## GLB Constant Unit-Scale Interoperability - 2026-10-06
 
 **Implemented external animation compatibility:** imported-channel and retained
 UUID GLB workflows now accept provably constant `[1,1,1]` scale tracks from
@@ -3033,7 +3035,7 @@ and TRS interpretation follow the primary Khronos glTF 2.0 specification,
 sections 3.5.3, 3.11 and Appendix C.5. The full SDK/runtime goal stays open.
 
 
-## Independent retained animation duplication - 2026-10-06
+## Independent Retained Animation Duplication - 2026-10-06
 
 **Implemented editor workflow:** Saved allocated clips now offers **Review
 independent duplicate** followed by explicit Apply. It also works from an
@@ -3068,7 +3070,7 @@ Build. No game launch, installation or full-disc export occurred. Gameplay
 playback/timing verification remains deferred, and the full SDK goal is open.
 
 
-## Actor inspector GLB routing for retained assignments - 2026-10-06
+## Actor Inspector GLB Routing for Retained Assignments - 2026-10-06
 
 **Implemented offline workflow:** the actor inspector now exposes GLB editing
 without first entering imported channel authoring. Imported actors use the
@@ -3099,7 +3101,7 @@ Manual initial playback/timing and general external animation retargeting remain
 pending; this workflow does not require immediate gameplay verification.
 
 
-## Verified model-source derivation cache - 2026-10-06
+## Verified Model-Source Derivation Cache - 2026-10-06
 
 **Implemented offline inspection performance:** model source reads share a bounded
 in-memory service for previously qualified scene metadata and immutable retail
@@ -3130,7 +3132,7 @@ all reference project files and history were held. No game launch, package
 installation or full-disc export. The full SDK goal remains active/incomplete.
 
 
-## Retained source inputs in editable project copies - 2026-10-06
+## Retained Source Inputs in Editable Project Copies - 2026-10-06
 
 **Implemented offline workflow:** Copy project and saved export input snapshots
 now carry the original GLBs referenced by Current mesh import receipts. Sources
@@ -3158,7 +3160,7 @@ sources are not repaired implicitly. Gameplay acceptance remains queued and the
 full SDK goal remains active/incomplete.
 
 
-## Retained GLB mesh sources and import receipts - 2026-10-06
+## Retained GLB Mesh Sources and Import Receipts - 2026-10-06
 
 Reviewed single and mapped mesh Apply now retain original GLB bytes under
 `Authored/Models/Sources/<sha256>.glb`, plus exact import settings in the native
@@ -3194,7 +3196,7 @@ queued; this source recovery feature needs no immediate gameplay verification.
 The full SDK goal remains incomplete.
 
 
-## Native import orientation in GLB authoring - 2026-10-06
+## Native Import Orientation in GLB Authoring - 2026-10-06
 
 The GLB importer now exposes **Native import rotation (degrees)** for X/Y/Z.
 Active right-handed rotations apply in X, then Y, then Z order (`Rz Ry Rx`)
@@ -3234,7 +3236,7 @@ No game launch, mod installation or full-disc export occurred. Gameplay acceptan
 remains deferred. Arbitrary images/layouts, general animation import and the
 broader SDK specification remain incomplete; the goal remains active.
 
-## Native origin offsets in GLB import - 2026-10-06
+## Native Origin Offsets in GLB Import - 2026-10-06
 
 The GLB importer now exposes explicit **Native origin offset** X/Y/Z controls.
 Offsets apply after node-hierarchy transforms, unit scaling and Y reflection,
@@ -3270,7 +3272,7 @@ No game launch, mod installation or full-disc export occurred. Gameplay acceptan
 remains queued; arbitrary images/layouts and general animation import remain
 incomplete. The full SDK goal remains active.
 
-## Visible geometry framing for GLB comparisons - 2026-10-06
+## Visible Geometry Framing for GLB Comparisons - 2026-10-06
 
 Single-donor and mapped-section GLB dialogs now expose **Camera framing** and
 **Frame mesh**. The default shared frame covers visible triangles in both
@@ -3294,7 +3296,7 @@ and `validated/` captures/reports. No game launch, mod installation or new Build
 was required for this camera-only change. Gameplay acceptance remains deferred;
 the complete SDK goal remains active and incomplete.
 
-## Replace mapped objects with per-section native materials - 2026-10-06
+## Replace Mapped Objects with Per-Section Native Materials - 2026-10-06
 
 **Map GLB section donors** now offers **Replace all existing geometry in mapped
 donor objects**. Each selected section first allocates its own group using its
@@ -3332,7 +3334,7 @@ No game launch, mod installation or full-disc export occurred. Manual gameplay
 acceptance remains queued. This maps existing native material bindings; arbitrary
 new images, packet layouts and general animation import remain incomplete.
 
-## Replace complete native object geometry from GLB - 2026-10-06
+## Replace Complete Native Object Geometry From GLB - 2026-10-06
 
 The mesh importer now offers **Replace donor object geometry** alongside append,
 new-group and donor-group replacement. It imports the selected static GLB mesh
@@ -3373,7 +3375,7 @@ Manual rendered/gameplay acceptance remains queued; the larger SDK goal stays
 active and solo.
 
 
-## Retail 512-face delivery and packet allocation performance - 2026-10-06
+## Retail 512-Face Delivery and Packet Allocation Performance - 2026-10-06
 
 The expanded mesh capacity now has a private retail normal-Build proof. Town01
 model 0036 replaced one 44-face donor group with 512 triangles and 1,536 distinct
@@ -3409,7 +3411,7 @@ was performed. Manual rendered/gameplay/performance acceptance remains queued;
 the broader SDK goal stays active and solo.
 
 
-## Authored model capacity expanded to 512 faces - 2026-10-06
+## Authored Model Capacity Expanded to 512 Faces - 2026-10-06
 
 The model ledger and native face/group/object allocation paths now allow 512
 historically allocated authored faces, including retired identities. The editor
@@ -3436,7 +3438,7 @@ active, with solo offline implementation continuing; arbitrary packet layouts,
 new image allocation and general animated mesh retargeting remain incomplete.
 
 
-## NPC-owned transition arrival serialization foundation - 2026-10-06
+## NPC-Owned Transition Arrival Serialization Foundation - 2026-10-06
 
 A native serializer now supports independently owned arrival bytes for qualified
 SCENE_CHANGE instructions in appended NPC records. It uses the existing transition
@@ -3465,7 +3467,7 @@ extension is needed before a retail vertical workflow can be proven. No game
 launch or full-disc export occurred. Gameplay acceptance is deferred and the full
 SDK goal remains active; other offline SDK work remains available.
 
-## Portable NPC model-selector presets v9 - 2026-10-06
+## Portable NPC Model-Selector Presets v9 - 2026-10-06
 
 NPC presets now freeze and transfer signed SET_ACTOR_MODEL operands alongside
 all seven earlier edit families. Capture, export, import review and placement
@@ -3494,7 +3496,7 @@ launch or full-disc export occurred. Runtime pool identity, restaging, pairing
 and story execution remain unverified; manual gameplay acceptance stays deferred
 and the full SDK goal active/incomplete.
 
-## Saved NPC model-selector explanations - 2026-10-06
+## Saved NPC Model-Selector Explanations - 2026-10-06
 
 Saved-build comparison now explains NPC-owned SET_ACTOR_MODEL selector words.
 Native qualification binds the typed signed16 request, original donor/PC/opcode,
@@ -3520,7 +3522,7 @@ Portable NPC model-selector presets remain pending. No new Build, game launch or
 full-disc export occurred. Runtime pool identity, restaging, pairing and story
 execution remain unknown; manual acceptance is deferred and the SDK goal active.
 
-## NPC model selectors through editor and normal Build - 2026-10-05
+## NPC Model Selectors Through Editor and Normal Build - 2026-10-05
 
 Independent NPC SET_ACTOR_MODEL signed selectors now connect source inspection,
 complete reviewed entries, Apply/Clear, Undo/Redo, Save/Open, root Inspector and
@@ -3550,7 +3552,7 @@ identity, pairing, restaging and story execution remain unverified. No game laun
 or full-disc export occurred. Manual acceptance stays deferred; the SDK goal stays
 active/incomplete.
 
-## NPC-owned script model selector foundation - 2026-10-05
+## NPC-Owned Script Model Selector Foundation - 2026-10-05
 
 Appended NPC scripts now have independent native SET_ACTOR_MODEL selector-word
 serialization using the existing source-qualified MENU_CTRL 0x50 adapter. The
@@ -3574,7 +3576,7 @@ actor workflow is unchanged. No game launch or full-disc export occurred; runtim
 model identity, pairing, restaging and story execution remain unverified. The full
 SDK goal remains active and manual gameplay verification remains deferred.
 
-## Portable NPC branch presets v8 - 2026-10-05
+## Portable NPC Branch Presets v8 - 2026-10-05
 
 NPC presets now freeze independent branch destinations with all six earlier edit
 families. Capture, export, import review and new-instance placement qualify the
@@ -3602,7 +3604,7 @@ This supersedes the earlier branch-preset capture restriction. No game launch or
 full-disc export occurred. Runtime activation, story reachability, scheduling and
 termination remain unverified; manual acceptance is deferred and the goal active.
 
-## Saved NPC branch explanations - 2026-10-05
+## Saved NPC Branch Explanations - 2026-10-05
 
 Saved-build comparison now explains source-qualified NPC branch destination words
 alongside appearance, dialogue, waits, movement, facing and flag bits. Native
@@ -3626,7 +3628,7 @@ Portable branch presets remain pending. No game launch, new Build or full-disc
 export occurred; branch activation, story reachability and termination remain
 unverified. Manual gameplay acceptance stays deferred and the SDK goal is active.
 
-## NPC branch authoring through editor and normal Build - 2026-10-05
+## NPC Branch Authoring Through Editor and Normal Build - 2026-10-05
 
 NPC branch destinations now connect source-qualified review to the root Inspector
 and Asset Details, reviewed commands, Undo/Redo, Save/Open and both normal Build
@@ -3657,7 +3659,7 @@ No game launch or full-disc export occurred. Branch activation, story reachabili
 and termination remain unknown. Manual acceptance stays deferred and the full SDK
 goal remains active/incomplete.
 
-## NPC-owned branch destination serialization foundation - 2026-10-05
+## NPC-Owned Branch Destination Serialization Foundation - 2026-10-05
 
 Appended NPC records now have a native branch-word serializer using the existing
 source-qualified BranchAuthoringContext. It resolves final clone allocations,
@@ -3683,7 +3685,7 @@ Branch activation, termination and story reachability remain unknown. No game
 launch or full-disc export occurred. Manual acceptance stays deferred and the full
 SDK goal remains active/incomplete.
 
-## Portable NPC presets retain qualified flag-bit overrides - 2026-10-05
+## Portable NPC Presets Retain Qualified Flag-Bit Overrides - 2026-10-05
 
 NPC preset capture now freezes source-qualified flag entries alongside appearance,
 dialogue, waits, movement and facing. Flag-bearing exports use metadata-only
@@ -3711,7 +3713,7 @@ Evidence: `local-output/sdk-20260909/npc-flags-presets-20261005/proof.json`.
 No game launch or full-disc export occurred. Manual runtime acceptance stays
 deferred and the full SDK goal remains active/incomplete.
 
-## Source-qualified saved NPC flag explanations - 2026-10-05
+## Source-Qualified Saved NPC Flag Explanations - 2026-10-05
 
 Saved-script comparison now labels NPC-owned flag-bit index bytes alongside
 appearance, dialogue, waits, movement and facing. Each explanation is bound to the
@@ -3736,7 +3738,7 @@ No new Build, game launch or full-disc export was needed. Flag-bearing portable
 presets remain to be connected. Manual gameplay acceptance stays deferred and the
 full SDK goal remains active/incomplete.
 
-## NPC-owned flag authoring through editor and normal Build - 2026-10-05
+## NPC-Owned Flag Authoring Through Editor and Normal Build - 2026-10-05
 
 NPC flags now connect source-qualified inspection and review to the root Inspector
 and Asset Details, reviewed project commands, Undo/Redo, Save/Open and both normal
@@ -3766,7 +3768,7 @@ No game launch or full-disc export occurred. Runtime variable identity, story
 meaning and gameplay effects remain unknown; manual acceptance stays deferred.
 The full SDK goal remains active/incomplete.
 
-## NPC-owned flag operand serialization foundation - 2026-10-05
+## NPC-Owned Flag Operand Serialization Foundation - 2026-10-05
 
 Appended NPC records now have a native serializer for source-qualified LFLAG,
 GFLAG and CFLAG SET/CLEAR/TEST bit indices. It resolves final record allocations,
@@ -3789,7 +3791,7 @@ Runtime variable identity, story meaning and gameplay effects are not asserted.
 No game launch or full-disc export occurred. Manual gameplay acceptance remains
 deferred and the full SDK goal remains active/incomplete.
 
-## Keep dense source scenes previewable with authored NPCs - 2026-10-05
+## Keep Dense Source Scenes Previewable with Authored NPCs - 2026-10-05
 
 The Rayman viewport failure was a combined entity-budget mismatch, not an endless
 decode. Its supported source scene occupies 512 actor/scenery entries plus one
@@ -3821,7 +3823,7 @@ initial heading and live placement are still explicit preview conventions; rende
 models do not establish gameplay alignment. Manual runtime acceptance stays deferred
 and the full SDK goal remains active/incomplete.
 
-## Streaming NPC readback and saved-inspector receipt fix - 2026-10-05
+## Streaming NPC Readback and Saved-Inspector Receipt Fix - 2026-10-05
 
 A fresh normal Build of the retail streaming `rayman` scene now has independent
 readback proof for two NPC clones carrying appearance, dialogue, waits, movement
@@ -3853,7 +3855,7 @@ its full rendered scene. No game or full-disc export
 ran. Runtime allocation/scheduling, branch execution and visible facing still need
 later gameplay acceptance. The full SDK goal remains active/incomplete.
 
-## Explain NPC-owned facing in saved script comparison - 2026-10-05
+## Explain NPC-Owned Facing in Saved Script Comparison - 2026-10-05
 
 The retail-donor/generated-NPC comparison now labels **Own script facing sector**
 for exact source-qualified authored bytes. Receipt rows must match the native
@@ -3876,7 +3878,7 @@ No Build/Save/authoring command or game launch occurred. The separate own-facing
 retail streaming package check is now verified above; later gameplay remains open.
 The full SDK goal remains active/incomplete.
 
-## Transfer NPC-owned facing presets - 2026-10-05
+## Transfer NPC-Owned Facing Presets - 2026-10-05
 
 NPC preset capture now freezes supported own facing sectors alongside appearance,
 dialogue, waits and movement. Facing-bearing exports use **legaia.npc-preset-file.v6**;
@@ -3901,7 +3903,7 @@ gameplay acceptance. Facing explanations in saved-script comparison are now supp
 above. The separate own-facing retail streaming package check is now verified above.
 The full SDK goal remains active/incomplete.
 
-## Independently author NPC script facing - 2026-10-05
+## Independently Author NPC Script Facing - 2026-10-05
 
 NPC Inspector and registered Asset Details now offer **Edit NPC script facing**.
 Source-qualified CAM_CFG/NPC_RUN targets expose an own sector0..7 override with
@@ -3929,7 +3931,7 @@ verified in the newer rayman checkpoint above. Source operands establish no
 initial/live Transform heading, dispatch identity or execution. No game launched;
 gameplay stays deferred and the full SDK goal is active/incomplete.
 
-## NPC-owned facing serializer foundation - 2026-10-05
+## NPC-Owned Facing Serializer Foundation - 2026-10-05
 
 Added source-qualified facing serialization for uniquely allocated NPC clones.
 Simple CAM_CFG and nonparked NPC_RUN targets accept sector0..7 only. Requests bind
@@ -3958,7 +3960,7 @@ Project commands, editor controls and normal Build integration have now landed;
 see the latest checkpoints above, including v6 preset transfer. No Build, export or game launch
 occurred. Manual gameplay remains deferred; the full SDK goal is active/incomplete.
 
-## Inspect NPC-owned movement targets in the scene - 2026-10-05
+## Inspect NPC-Owned Movement Targets in the Scene - 2026-10-05
 
 The NPC movement editor now offers retail donor, current NPC and reviewed proposal
 scene target layers. Enter an explicit reference Y and choose **Show NPC script
@@ -3984,7 +3986,7 @@ No Build/Save/authoring command or game launch occurred. Reference Y is a displa
 choice, not a recovered script height or gameplay alignment claim. Manual gameplay
 remains deferred and the full SDK goal stays active/incomplete.
 
-## Preserve NPC-owned edits through repetition - 2026-10-05
+## Preserve NPC-Owned Edits Through Repetition - 2026-10-05
 
 Line/grid and selected-arrangement repetition retain each source NPC's own
 appearance, dialogue, wait targets and script movement in independent copies.
@@ -4012,7 +4014,7 @@ No game launched. This proves editor metadata and emitted bytes, not runtime
 allocation, scheduling or movement behavior. Gameplay stays deferred; the full
 SDK goal remains active/incomplete.
 
-## Explain NPC movement edits in saved-script comparison - 2026-10-05
+## Explain NPC Movement Edits in Saved-Script Comparison - 2026-10-05
 
 The saved normal Build comparison now labels source-qualified NPC movement
 operand bytes alongside appearance, dialogue and waits. Each movement audit row
@@ -4037,7 +4039,7 @@ This explains exact authored bytes only; it proves no runtime dispatch, movement
 behavior or branch execution. No game launched; gameplay stays deferred and the
 full SDK goal remains active/incomplete.
 
-## Movement-bearing NPC presets - 2026-10-05
+## Movement-Bearing NPC Presets - 2026-10-05
 
 NPC preset capture now freezes supported own script movement together with
 appearance, dialogue and waits. Export uses **legaia.npc-preset-file.v5** when
@@ -4068,7 +4070,7 @@ No game was launched. Runtime dispatch/selector behavior and streaming retail
 package acceptance remain unverified; gameplay is deferred. The full SDK goal is
 active/incomplete.
 
-## Independently author NPC script movement - 2026-10-05
+## Independently Author NPC Script Movement - 2026-10-05
 
 NPC Inspector and registered Asset Details now offer **Edit NPC script movement**.
 The source-qualified picker groups reached instructions and exposes only their
@@ -4099,7 +4101,7 @@ received a separate retail package check for NPC movement. Saved-script comparis
 now explains qualified movement operands; other unqualified changes stay unexplained. No game was launched.
 Gameplay remains deferred and the full SDK goal stays active/incomplete.
 
-## NPC-owned movement operand serializer - 2026-10-05
+## NPC-Owned Movement Operand Serializer - 2026-10-05
 
 Added native serialization for source-qualified movement operands in allocated
 NPC scripts: MOVE_TO/NPC_RUN encoded X/Z and NPC_RUN/EXEC_MOVE move selectors.
@@ -4127,7 +4129,7 @@ Project commands, persistence, editor controls, presets and normal Build integra
 remain next. No game was launched; runtime movement remains deferred. The full SDK
 goal stays active/incomplete.
 
-## Explain NPC authored edits in saved-script comparison - 2026-10-05
+## Explain NPC Authored Edits in Saved-Script Comparison - 2026-10-05
 
 Retail donor/generated NPC comparison now labels exact bytes accounted for by
 saved initial-appearance, own-dialogue and own-wait audit spans. Each span binds
@@ -4153,7 +4155,7 @@ or Run was called. Evidence:
 No game was launched. Gameplay equivalence remains unverified and the full SDK
 goal stays active/incomplete.
 
-## Preserve NPC-owned waits in reusable presets - 2026-10-05
+## Preserve NPC-Owned Waits in Reusable Presets - 2026-10-05
 
 NPC preset capture now freezes supported own wait targets together with own
 dialogue and independent initial appearance. Capturing, portable transfer and
@@ -4181,7 +4183,7 @@ Evidence: `local-output/sdk-20260909/npc-waits-presets-20261005/proof.json`.
 No game was launched; runtime timing, residency and script compatibility remain
 deferred. The full SDK goal stays active/incomplete.
 
-## Independently author NPC wait targets - 2026-10-05
+## Independently Author NPC Wait Targets - 2026-10-05
 
 NPC Inspector and registered Asset Details now offer **Edit NPC wait targets**.
 The source-qualified picker separates retail targets from optional NPC-owned
@@ -4211,7 +4213,7 @@ is integrated but has not received a separate retail package check for own waits
 No game was launched. Runtime timing acceptance remains deferred and the full
 SDK goal remains active/incomplete.
 
-## NPC-owned wait operand native adapter - 2026-10-05
+## NPC-Owned Wait Operand Native Adapter - 2026-10-05
 
 Added a source-qualified serializer for independent WAIT_FRAMES operands on
 allocated NPC scripts. Requests bind a draft, recorded retail script donor and
@@ -4237,7 +4239,7 @@ Project commands, persistence, presets, editor controls and normal Build integra
 remain next. No game was launched; runtime timing acceptance stays deferred.
 The full SDK goal remains active and incomplete.
 
-## Review NPC appearance in the placed scene - 2026-10-05
+## Review NPC Appearance in the Placed Scene - 2026-10-05
 
 The NPC appearance picker now offers **Inspect NPC appearance in scene** after
 Review. It renders a detached Proposed scene at the selected NPC's existing
@@ -4258,7 +4260,7 @@ appearance-proposal-scene.png under
 This is a visual authoring preview; runtime compatibility remains unverified.
 No game was launched. Gameplay acceptance stays deferred and the full goal active.
 
-## Independently author an NPC initial appearance - 2026-10-05
+## Independently Author an NPC Initial Appearance - 2026-10-05
 
 NPC Inspector and registered Asset Details now offer **Choose NPC initial
 appearance**. The reviewed picker uses freshly source-qualified retail witnesses
@@ -4292,7 +4294,7 @@ bindings. Evidence is under `local-output/sdk-20260909/npc-appearance-editor-202
 No game was launched. Initial assignment does not prove script compatibility,
 residency, eventual appearance or gameplay; those checks remain deferred.
 
-## Independent NPC appearance native adapter - 2026-10-05
+## Independent NPC Appearance Native Adapter - 2026-10-05
 
 Added a source-qualified native adapter that keeps an NPC's script donor separate
 from its initial model/animation witness. Requests identify an allocated draft and
@@ -4317,7 +4319,7 @@ preview/asset/animation references, persistence, presets and normal Build, then
 verify the complete editor workflow. Runtime compatibility and gameplay remain
 unverified; no game was launched. The full SDK goal remains active.
 
-## Retain NPC dialogue in reusable presets - 2026-10-05
+## Retain NPC Dialogue in Reusable Presets - 2026-10-05
 
 Capturing an NPC preset now freezes its supported own dialogue with the retail
 donor, name and native-grid placement defaults. Later edits or deletion of the
@@ -4345,7 +4347,7 @@ back the complete authored glyph span including space padding. Evidence is under
 `local-output/sdk-20260909/npc-dialogue-presets-20261005/`. No game was launched;
 manual spawning, reachability and dialogue-layout acceptance remain deferred.
 
-## Author dialogue independently for an NPC - 2026-10-05
+## Author Dialogue Independently for an NPC - 2026-10-05
 
 NPC Inspector and registered Asset Details now offer **Edit NPC dialogue**.
 The workspace freshly verifies the retail donor's supported plain-glyph runs,
@@ -4377,7 +4379,7 @@ comparisons show 26 changed bytes including placement headers. Evidence is under
 `local-output/sdk-20260909/npc-dialogue-20261005/`. No game was launched; spawning,
 reachability, text layout and runtime behavior remain deferred manual acceptance.
 
-## Compare saved NPC records with retail donors - 2026-10-05
+## Compare Saved NPC Records with Retail Donors - 2026-10-05
 
 The generated NPC script workspace now offers **Compare generated record with
 retail donor**. Both records are freshly inspected against the current project,
@@ -4403,7 +4405,7 @@ no Save, Build or game launch occurred. Evidence is under
 `local-output/sdk-20260909/npc-script-comparison-20261005/`. Manual gameplay
 verification remains deferred; this milestone is read-only package evidence.
 
-## Inspect NPC scripts emitted in saved Builds - 2026-10-05
+## Inspect NPC Scripts Emitted in Saved Builds - 2026-10-05
 
 NPC Inspector and Asset Details now offer **Inspect saved Build script...**.
 Choose an intact saved package matching current authored inputs. The SDK verifies
@@ -4432,7 +4434,7 @@ Save, game launch, install or disc export occurred. Evidence:
 `local-output/sdk-20260909/npc-saved-build-script-20261005/` (`proof.json`,
 `final-readback.json`, `fixed-540.png`, `relocated-540.png`). Gameplay remains deferred.
 
-## NPC retail donor script inspection - 2026-10-05
+## NPC Retail Donor Script Inspection - 2026-10-05
 
 Authored NPCs now expose **Inspect retail donor script...** in the NPC Inspector
 and a registered **Inspect retail donor script** action in Asset Details. The SDK
@@ -4459,7 +4461,7 @@ export occurred. Evidence: `local-output/sdk-20260909/npc-donor-script-20261005/
 (`proof.json`, `browser.log`, `donor-script-540.png`). Gameplay remains deferred.
 See [NPC donor script workflow](legaia-npc-donor-scripts.md).
 
-## Copy selected NPC arrangements - 2026-10-05
+## Copy Selected NPC Arrangements - 2026-10-05
 
 **Repeat draft...** now offers **Copy selected NPC arrangement** when the current
 or recalled selection contains at least two same-scene NPC drafts. Mixed selection
@@ -4488,7 +4490,7 @@ receipt and preserved project/history/preexisting files pass. Evidence lives in
 Gameplay spawning, scheduling, scripts, collision and visibility remain deferred.
 No game launch, install or disc export occurred.
 
-## Reviewed NPC group retail donor assignment - 2026-10-05
+## Reviewed NPC Group Retail Donor Assignment - 2026-10-05
 
 The NPC Inspector now offers **Assign NPC group donor...** for 2 through 128
 same-scene drafts. Current or recalled scene selections seed the dialog; mixed
@@ -4516,7 +4518,7 @@ Evidence: `local-output/sdk-20260909/npc-donor-group-20261005/` (`proof.json`,
 Gameplay visibility, spawning, scheduling and inherited script behavior remain
 unverified. No game launch, install or disc export occurred.
 
-## Repair saved selections after NPC deletion - 2026-10-05
+## Repair Saved Selections After NPC Deletion - 2026-10-05
 
 Saved selections containing deleted NPCs now support **Replace with current
 placements**. Select available placements in the saved scene, then replace the
@@ -4541,7 +4543,7 @@ No game launch, Build, installation or full-disc export ran for this metadata-on
 repair. Gameplay remains deferred; the full SDK goal stays active and work stays solo.
 See [Saved scene selections](legaia-scene-selections.md).
 
-## Saved NPC selections feed group authoring - 2026-10-05
+## Saved NPC Selections Feed Group Authoring - 2026-10-05
 
 Opening **Move NPC draft group...** now checks the NPC members of the current
 scene placement selection, including recalled saved selections. A focused draft
@@ -4571,7 +4573,7 @@ Evidence: `local-output/sdk-20260909/npc-selection-group-handoff-20261005/proof.
 and `normal-build-proof.json`. No game launch, installation or full-disc export ran.
 Gameplay remains deferred; the full SDK goal remains active and work stays solo.
 
-## Native-grid NPC group rotation, scale and reflection - 2026-10-05
+## Native-Grid NPC Group Rotation, Scale and Reflection - 2026-10-05
 
 The NPC group Inspector tool now adds position rotation (-90/+90/180 degrees),
 spacing scale (1-1000 integer percent), and X/Z coordinate reflection about a
@@ -4603,7 +4605,7 @@ Evidence: `local-output/sdk-20260909/npc-native-layout-20261005/proof.json` and
 Gameplay remains deferred; the full SDK goal stays active and work stays solo.
 See [NPC draft group workflow](legaia-npc-draft-groups.md).
 
-## Saved scene selections include NPC drafts - 2026-10-05
+## Saved Scene Selections Include NPC Drafts - 2026-10-05
 
 **Saved scene selections** now stores 1-128 scene placements including authored
 NPC drafts, imported actors and static decorations. Save an individual NPC from
@@ -4629,7 +4631,7 @@ No game launch, Build, installation or full-disc export ran for this metadata-on
 feature. Gameplay remains deferred and the full SDK goal remains active. Work is solo.
 See [Saved scene selections](legaia-scene-selections.md).
 
-## NPC drafts in mixed scene placement groups — 2026-10-05
+## NPC Drafts in Mixed Scene Placement Groups — 2026-10-05
 
 **Scene tools → Select scene placements → Move scene placement group** now accepts
 2–128 members spanning at least two of imported actors, authored NPC drafts and
@@ -4660,7 +4662,7 @@ Evidence: `local-output/sdk-20260909/mixed-npc-placement-20261005/proof.json` an
 Gameplay remains deferred; the full SDK goal remains active. Work continues solo.
 See [Mixed scene placements](legaia-scene-placement-groups.md).
 
-## NPC preset file transfer — 2026-10-05
+## NPC Preset File Transfer — 2026-10-05
 
 NPC presets now use metadata-only `legaia.npc-preset-file.v1` JSON in the shared
 preset export/import workflow. The editor downloads `npc-preset.json`, reviews an
@@ -4690,7 +4692,7 @@ Evidence: `local-output/sdk-20260909/npc-preset-transfer-20261005/proof.json`,
 export occurred. Prefab inheritance, cross-scene remapping and runtime gameplay
 acceptance remain unsupported or deferred. See [NPC presets](NPC_PRESETS.md).
 
-## Reusable NPC draft presets — 2026-10-05
+## Reusable NPC Draft Presets — 2026-10-05
 
 The preset library now supports a separate `npc-draft-preset-v1` scope. Select an
 NPC draft and choose **NPC presets…** to capture its retail donor, authored name
@@ -4719,7 +4721,7 @@ unsupported. Runtime spawning,
 scheduling, collision and visibility remain deferred to manual gameplay; no game,
 install or full-disc export was performed. See [NPC presets](NPC_PRESETS.md).
 
-## NPC animation frames at authored scene placement — 2026-10-05
+## NPC Animation Frames at Authored Scene Placement — 2026-10-05
 
 **Inspect animation in scene** now targets the selected NPC draft when entered
 through its donor animation Inspector. The donor remains the verified animation
@@ -4745,7 +4747,7 @@ history and every project file byte remain unchanged. Evidence:
 `local-output/sdk-20260909/npc-animation-scene-target-20261005/proof.json` and
 `npc-scene-540.png`. No Build, game launch, install or disc export occurred.
 
-## NPC animation Inspector matches shared authored preview — 2026-10-05
+## NPC Animation Inspector Matches Shared Authored Preview — 2026-10-05
 
 The NPC animation button previously opened the imported donor clip even when the
 Authored viewport showed shared authored animation channels. It now uses a
@@ -4771,7 +4773,7 @@ Project document, history and all file bytes remain unchanged during inspection.
 Evidence: `local-output/sdk-20260909/npc-donor-animation-binding-20261005/proof.json`.
 No Build, game launch, install or disc export occurred. Gameplay stays deferred.
 
-## NPC recorded donor-model inspection — 2026-10-05
+## NPC Recorded Donor-Model Inspection — 2026-10-05
 
 Authored NPC records and central project inventory entries now expose the SDK's
 existing `draft_initial_model_assignment` reference. It retains source draft/name,
@@ -4796,7 +4798,7 @@ Undo/Redo and all project file bytes remain unchanged. Evidence:
 `local-output/sdk-20260909/npc-donor-model-navigation-20261005/proof.json`.
 No Build, game launch, install or disc export was performed. Gameplay stays deferred.
 
-## Reviewed NPC draft group removal — 2026-10-05
+## Reviewed NPC Draft Group Removal — 2026-10-05
 
 The NPC group tool now offers **Remove selected NPC drafts** alongside offset,
 alignment and distribution. Review retains exact selected draft metadata and a
@@ -4820,7 +4822,7 @@ Evidence is under
 `local-output/sdk-20260909/npc-draft-removal-20261005/`. Gameplay remains unverified;
 no game launch, install or disc export was performed.
 
-## NPC drafts in the central project Asset Database — 2026-10-05
+## NPC Drafts in the Central Project Asset Database — 2026-10-05
 
 The SDK project inventory now registers each validated NPC draft as an explicitly
 `authored` actor entry. Its stable authored UUID, exact name, donor binding and
@@ -4865,7 +4867,7 @@ Project document, Undo/Redo and all project file bytes remain unchanged. Evidenc
 `asset-540.png`. No Build, game launch, install or disc export was performed;
 manual gameplay verification remains deferred.
 
-## SDK-owned NPC draft Inspector display — 2026-10-05
+## SDK-Owned NPC Draft Inspector Display — 2026-10-05
 
 NPC drafts now use SDK Inspector contracts for identity, authored X/Z placement
 and preview snapshot metadata. `NpcDraftIdentity`, `NpcDraftTransform` and
@@ -4894,7 +4896,7 @@ Proof: `local-output/sdk-20260909/npc-draft-inspector-schema-20261005/proof.json
 This adds display contracts; authored commands, package serialization and runtime
 capabilities are unchanged. See [Inspector schema](legaia-inspector-schema.md).
 
-## NPC draft group alignment/distribution and normal package — 2026-10-05
+## NPC Draft Group Alignment/Distribution and Normal Package — 2026-10-05
 
 **Move NPC draft group → Placement operation** now aligns X/Z to a selected
 anchor or distributes along either axis. Alignment preserves the other axis.
@@ -4925,7 +4927,7 @@ Evidence: `local-output/sdk-20260909/npc-draft-layout-20261005/{proof,normal-bui
 No game, install or full-disc export; gameplay acceptance remains deferred.
 See [group layouts](legaia-npc-draft-groups.md#alignment-and-distribution).
 
-## Reviewed NPC draft group movement — 2026-10-05
+## Reviewed NPC Draft Group Movement — 2026-10-05
 
 Selected authored NPC drafts now expose **Move NPC draft group...**. Search by
 name/stable ID, select visible matches or individual members, then review a shared
@@ -4956,7 +4958,7 @@ A copied native helper initially pointed at the prior grid fixture; corrected
 fixture preparation/readback passes. No normal Build, game, install or disc export.
 Evidence: `local-output/sdk-20260909/npc-draft-group-20261005/{proof,native-proof}.json`.
 
-## Rectangular NPC draft repetition — 2026-10-05
+## Rectangular NPC Draft Repetition — 2026-10-05
 
 **Repeat draft → Rectangular grid** now reviews independent donor-bound copies
 across columns, then rows. The original occupies cell zero; copy count excludes
@@ -4984,7 +4986,7 @@ the first readback used a logical alias offset; corrected checks pass. No normal
 Build, game launch, install or full-disc export occurs. Evidence:
 `local-output/sdk-20260909/npc-grid-repetition-20261005/{proof,native-proof}.json`.
 
-## Current NPC Build scope in repetition/review — 2026-10-05
+## Current NPC Build Scope in Repetition/Review — 2026-10-05
 
 NPC repetition and experimental archive review now share the normal builder's
 current scope note: qualified compressed candidates use fixed spans or capacity-
@@ -5007,7 +5009,7 @@ cleans up, and project document/history/files remain unchanged. No Build or game
 runs during this check. Evidence:
 `local-output/sdk-20260909/npc-build-scope-notes-20261005/proof.json`.
 
-## General Build history fresh-input and receipt qualification — 2026-10-05
+## General Build History Fresh-Input and Receipt Qualification — 2026-10-05
 
 General **Build history** now qualifies fresh `/api/state` after list, verification
 and comparison responses, before displaying their results. A changed server
@@ -5035,7 +5037,7 @@ export occurs. Evidence:
 Runtime/source-disc acceptance stays deferred, work remains solo and the full SDK
 goal remains active.
 
-## Asset Database → verified saved Build records — 2026-10-05
+## Asset Database → Verified Saved Build Records — 2026-10-05
 
 **Asset Details → Inspect saved Build records...** connects a selected stable asset
 ID to saved normal-Build completion receipts. Choose a completed Build in explicit
@@ -5071,7 +5073,7 @@ Evidence: `local-output/sdk-20260909/asset-build-records-20261005/proof.json`.
 No game, installation or full-disc export ran. Full SDK/runtime acceptance remains
 unproven and the goal active; work stays solo.
 
-## Shared scenery Inspector section controls — 2026-10-05
+## Shared Scenery Inspector Section Controls — 2026-10-05
 
 Scenery now uses the same session-only component collapse and keyboard navigation
 as actors. SDK placement, Retail/Current transforms and evidence, plus existing
@@ -5099,7 +5101,7 @@ requests. Evidence:
 No gameplay, installation or full-disc export ran; the full SDK goal remains active
 and deferred gameplay gates are unchanged. Work remains solo.
 
-## SDK-driven scenery Inspector — 2026-10-05
+## SDK-Driven Scenery Inspector — 2026-10-05
 
 The scenery Inspector now renders **Environment placement**, **Retail transform**,
 **Current preview transform** and **Source and bindings** from SDK component
@@ -5128,7 +5130,7 @@ fixture passes. Evidence:
 No gameplay, installation or full-disc export ran. The SDK goal remains active;
 manual runtime placement/collision acceptance stays deferred and work remains solo.
 
-## Save selected Asset Database evidence — 2026-10-05
+## Save Selected Asset Database Evidence — 2026-10-05
 
 **Asset Details → Save asset evidence…** downloads the complete selected catalog
 record as `legaia.asset-record-evidence.v1` JSON. Imported source metadata, authored
@@ -5155,7 +5157,7 @@ passing the fresh-fixture run. Evidence:
 Gameplay, installation and full-disc export remain deferred. Work stays solo;
 the full SDK goal remains active.
 
-## Mirror mixed scene placement coordinates — 2026-10-05
+## Mirror Mixed Scene Placement Coordinates — 2026-10-05
 
 **Move scene placement group → Mirror X/Z coordinates about anchor** reflects the
 selected coordinate across its value at a selected imported actor/static-decoration
@@ -5184,7 +5186,7 @@ Evidence: `local-output/sdk-20260909/mixed-placement-mirror-20261005/proof.json`
 No game, installation or full-disc export ran. Runtime/script-driven placement and
 collision acceptance stay deferred; the full SDK goal remains active and work stays solo.
 
-## Rotate mixed placements at native coordinate precision — 2026-10-05
+## Rotate Mixed Placements at Native Coordinate Precision — 2026-10-05
 
 **Move scene placement group → Rotate positions -90°/+90°/180° in X/Z** accepts a
 selected imported actor or static-decoration anchor at its native integer position.
@@ -5214,7 +5216,7 @@ Evidence: `local-output/sdk-20260909/mixed-placement-native-rotation-20261005/pr
 No game, installation or full-disc export ran; gameplay remains deferred and the full
 SDK goal stays active. Implementation remains solo.
 
-## Saved scene visibility and grid — 2026-10-05
+## Saved Scene Visibility and Grid — 2026-10-05
 
 **Saved scene views** now retain manually hidden imported actors/static decorations/
 ground, an optional isolated instance and the grid switch, alongside camera,
@@ -5243,7 +5245,7 @@ keys remain unchanged. Evidence:
 No package, game, installation or full-disc export ran. Gameplay verification remains
 deferred; the full SDK goal stays active and implementation remains solo.
 
-## Save the complete pre-Build review — 2026-10-05
+## Save the Complete Pre-Build Review — 2026-10-05
 
 **Review Build → Save full Build review…** downloads the complete accepted v1/v2
 review as JSON, including source identity, scope, blockers, native/other change
@@ -5268,7 +5270,7 @@ Evidence: `local-output/sdk-20260909/build-review-download-20261005/proof.json`.
 No game, installation, package or full-disc export ran; gameplay acceptance remains
 deferred and the full SDK goal stays active.
 
-## Review native model coordinate changes before Build — 2026-10-05
+## Review Native Model Coordinate Changes Before Build — 2026-10-05
 
 **Review Build → Native coordinate audit** exposes qualified vertex/normal records:
 object and vector index, axis, model byte offset, and signed before/after values.
@@ -5295,7 +5297,7 @@ Evidence: `local-output/sdk-20260909/build-review-model-coordinates-20261005/pro
 No game, installation or full-disc export ran. Gameplay acceptance remains deferred;
 the full SDK goal stays active.
 
-## Distribute selected model vertices along a source axis — 2026-10-05
+## Distribute Selected Model Vertices Along a Source Axis — 2026-10-05
 
 **Move model geometry → Selected vertex group → Distribute group X/Y/Z** stages even
 spacing between the selected Current axis endpoints. Select 2–4096 unique object-local
@@ -5325,7 +5327,7 @@ Evidence: `local-output/sdk-20260909/vertex-distribution-20261005/proof.json`.
 No game, installation or full-disc export ran. Gameplay appearance remains deferred;
 the full SDK goal stays active.
 
-## Scale mixed placements at native coordinate precision — 2026-10-05
+## Scale Mixed Placements at Native Coordinate Precision — 2026-10-05
 
 **Move scene placement group → Scale spacing at native precision** scales selected
 imported actor and static-decoration X/Z distances around a selected placement anchor.
@@ -5356,7 +5358,7 @@ Evidence: `local-output/sdk-20260909/mixed-placement-native-scale-20261005/proof
 No game, installation or full-disc export ran; gameplay appearance remains deferred.
 The full SDK goal stays active.
 
-## Save complete asset-reference reports — 2026-10-05
+## Save Complete Asset-Reference Reports — 2026-10-05
 
 Asset references now offers **Save full reference report** in Active and Project scopes.
 The downloaded JSON preserves every accepted incoming/outgoing relationship, source
@@ -5376,7 +5378,7 @@ no authoring, Save, Build or Run occurs. Evidence:
 `local-output/sdk-20260909/asset-reference-download-20261005/proof.json`.
 Manual gameplay acceptance remains deferred; the full SDK goal is still active.
 
-## Project asset provenance search across retained memberships — 2026-10-05
+## Project Asset Provenance Search Across Retained Memberships — 2026-10-05
 
 Field-specific asset search now covers all retained project membership records. `name:`
 includes each variant's recorded name; `scene:` includes its source entry alias;
@@ -5405,7 +5407,7 @@ are preserved. Private proof:
 No game ran; the full SDK goal remains unfinished and active, with solo work continuing.
 
 
-## Inspector property-category filtering — 2026-10-05
+## Inspector Property-Category Filtering — 2026-10-05
 
 The actor Inspector now offers **Property category** alongside text search and **Authored
 only**. Options come from the SDK property-state labels already rendered in the current
@@ -5433,7 +5435,7 @@ it, with failed evidence preserved. Private proof:
 No game ran; manual gameplay stays deferred and full SDK buildout continues solo.
 
 
-## SDK property-state labels in the Inspector — 2026-10-05
+## SDK Property-State Labels in the Inspector — 2026-10-05
 
 The shared component/asset property renderer now displays SDK-declared property states:
 Retail, Authored, Effective, Derived, Reference, Source, Project, Live observed,
@@ -5463,7 +5465,7 @@ No game ran; no manual gameplay gate is added. Full SDK/live parity remains unfi
 and solo work continues.
 
 
-## Mixed actor/scenery position rotation — 2026-10-05
+## Mixed Actor/Scenery Position Rotation — 2026-10-05
 
 The scene placement group workspace now rotates selected imported actors and static
 scenery positions by -90, +90 or 180 degrees around a selected actor or decoration.
@@ -5495,7 +5497,7 @@ No game, installation or full-disc export ran. Gameplay remains deferred; the fu
 goal is unfinished and work continues solo.
 
 
-## Mixed group Reset X/Z to Retail - 2026-10-05
+## Mixed Group Reset X/Z to Retail - 2026-10-05
 
 The mixed placement dialog now offers Reset X/Z to Retail for the selected imported
 actors and static decorations. It proposes exact source positions, clears selected
@@ -5527,7 +5529,7 @@ The first private fixture used the public two-decoration minimum for its single 
 cell check; it was corrected to the existing internal minimum-one scope. No game launched
 or installed. Gameplay checks remain deferred; the full SDK goal stays active and solo.
 
-## Mixed actor/scenery alignment and distribution - 2026-10-05
+## Mixed Actor/Scenery Alignment and Distribution - 2026-10-05
 
 The mixed scene placement dialog now supports aligning source X/Z to a selected actor
 or static-decoration anchor and distributing a mixed group along either axis. Groups
@@ -5559,7 +5561,7 @@ was corrected and the failed attempt preserved. Evidence: ignored
 No game was launched or installed. Gameplay checks remain deferred; the full SDK goal
 is active and incomplete, with solo implementation continuing.
 
-## Retained animation assignment-user navigation - 2026-10-05
+## Retained Animation Assignment-User Navigation - 2026-10-05
 
 Retained animation assets now list their authored initial-assignment users by stable
 actor identity. Select assigned actor navigates through the existing selection service,
@@ -5588,7 +5590,7 @@ The first browser attempt exposed the overflowing action row; it was fixed and t
 attempt preserved. Gameplay acceptance remains deferred; the full SDK goal stays active
 and solo.
 
-## Selected model vertex group rotation - 2026-10-05
+## Selected Model Vertex Group Rotation - 2026-10-05
 
 The movement workspace now stages -90, +90 and 180 degree turns of 1..4096 selected
 object-local vertices about source X/Y/Z. Positive source Y points down. Pivot choices
@@ -5615,7 +5617,7 @@ selected XYZ bytes changed. Evidence: ignored
 No game was launched or installed. Gameplay appearance and lighting remain deferred;
 the full SDK goal is still active and incomplete.
 
-## Selected model vertex group scaling - 2026-10-05
+## Selected Model Vertex Group Scaling - 2026-10-05
 
 The model movement workspace now stages positive uniform scaling of 1..4096 selected
 object-local vertices at an integer percent1..1000. Pivot choices are object-local
@@ -5647,7 +5649,7 @@ root scene label/qualification path; it was fixed and the failed attempt preserv
 No game launched or installed. Evidence:
 `local-output/sdk-20260909/vertex-scaling-20261005/proof.json`.
 
-## Assign retained assets to the selected actor - 2026-10-05
+## Assign Retained Assets to the Selected Actor - 2026-10-05
 
 An active retained animation asset now offers Assign to selected actor in Edit mode
 with the authoring/assignment capabilities. The exact inspected clip opens a dedicated
@@ -5678,7 +5680,7 @@ history or file changes. Normal private Build passed native bank/initial-header/
 relocation readback plus ZIP/SHA checks. No game launched or installed. Evidence:
 `local-output/sdk-20260909/retained-asset-assignment-20261005/proof.json`.
 
-## Retained asset retirement and restoration - 2026-10-05
+## Retained Asset Retirement and Restoration - 2026-10-05
 
 Manage retained lifecycle now opens a single-clip lifecycle Inspector directly from
 an authored animation asset. Its fresh library row must match the inspected capture
@@ -5706,7 +5708,7 @@ and relocation readback plus ZIP/SHA integrity checks. Restoration screenshot in
 No game launched or installed. Evidence:
 `local-output/sdk-20260909/retained-asset-lifecycle-20261005/proof.json`.
 
-## Direct retained asset GLB interchange - 2026-10-05
+## Direct Retained Asset GLB Interchange - 2026-10-05
 
 A retained animation asset now offers Edit retained GLB in Edit mode when native
 animation authoring is available. The asset opens the existing captured-clip GLB
@@ -5734,7 +5736,7 @@ native bank/initial-assignment/relocation readback and package ZIP/SHA verificat
 Both proposed screenshots were inspected. No game was launched or installed.
 Evidence: `local-output/sdk-20260909/retained-asset-glb-20261005/proof.json`.
 
-## Direct retained animation asset editing - 2026-10-05
+## Direct Retained Animation Asset Editing - 2026-10-05
 
 Retained asset inspection now offers Edit retained content in Edit mode with the
 animation authoring capability. It routes a detached verified capture row to the
@@ -5760,7 +5762,7 @@ passed. The normal private Build passed native bank, initial assignment and relo
 readback; package ZIP integrity and SHA-256 matched its receipt. No game was launched
 or installed. Evidence: `local-output/sdk-20260909/retained-asset-edit-20261005/proof.json`.
 
-## Retained animations in the Asset Database - 2026-10-05
+## Retained Animations in the Asset Database - 2026-10-05
 
 Refresh scene resources now registers active and retired saved clips as authored
 animation assets, with stable scene/UUID identities. Animations and Authored assets
@@ -5795,7 +5797,7 @@ verified scene catalog registers the clip. Full SDK goal remains active; gamepla
 acceptance remains deferred.
 
 
-## Retained initial animation reference correction - 2026-10-05
+## Retained Initial Animation Reference Correction - 2026-10-05
 
 Actor reference inspection now keeps the original decoded initial clip while a
 retained assignment replaces the effective inherited clip relationship. Stable
@@ -5824,7 +5826,7 @@ The graph change introduces no gameplay verification gate; existing gameplay
 acceptance is deferred and the full SDK goal remains active.
 
 
-## Project-wide source script bookmark navigation - 2026-10-05
+## Project-Wide Source Script Bookmark Navigation - 2026-10-05
 
 Script bookmarks now opens a project-wide catalog beside the resource tools.
 Search covers names, scene/owner identity, padded/unpadded hex offsets, mnemonics
@@ -5853,7 +5855,7 @@ See [project-wide workflow](legaia-script-bookmarks.md#project-wide-navigation).
 No new gameplay gate; full SDK goal remains active.
 
 
-## Source-qualified saved script bookmarks - 2026-10-05
+## Source-Qualified Saved Script Bookmarks - 2026-10-05
 
 The Script and dialogue workspace now saves named original decoded instruction/
 dialogue boundaries as project navigation metadata. Stable UUIDs bind owner, imported
@@ -5881,7 +5883,7 @@ source guards passed; zero page errors or game launches. Private evidence:
 No new gameplay gate; existing gameplay acceptance remains deferred. Full goal active.
 
 
-## Collapsible actor component Inspector - 2026-10-05
+## Collapsible Actor Component Inspector - 2026-10-05
 
 Actor component headers now collapse or expand their existing contents. Left/Right
 collapse/expand; Up/Down and Home/End move focus among visible component headers.
@@ -5906,7 +5908,7 @@ No new gameplay gate; existing package appearance and stability checks stay defe
 The full SDK goal remains active. See [Inspector component layout](legaia-inspector-sections.md).
 
 
-## Selected vertex plane alignment - 2026-10-05
+## Selected Vertex Plane Alignment - 2026-10-05
 
 Selected vertex group scope now offers Align group X/Y/Z at the selected rows'
 minimum, maximum or bounds-centre source coordinate. Centre is (min+max)/2 rounded
@@ -5935,7 +5937,7 @@ Evidence: `local-output/sdk-20260909/vertex-alignment-20261005/proof.json`.
 Package SHA256: `b56e76531495b9a39f9e2831f5f0727461551f185cebd14e479dcf228bd077d4`.
 Appearance and scene/save-load stability remain on the deferred queue. Goal active.
 
-## Reusable saved model vertex groups - 2026-10-05
+## Reusable Saved Model Vertex Groups - 2026-10-05
 
 Selected vertex group scope now has a project-local library: Save, Recall, Rename,
 Update membership and Delete. Up to128 named groups retain stable UUIDs, model/scene
@@ -5965,7 +5967,7 @@ selection checks plus JavaScript exact-recall guards passed. Private evidence:
 `local-output/sdk-20260909/saved-vertex-groups-20261005/proof.json`.
 No new gameplay acceptance gate; existing movement output remains queued. Goal active.
 
-## Marquee selection for model vertex groups - 2026-10-05
+## Marquee Selection for Model Vertex Groups - 2026-10-05
 
 In Selected vertex group scope, Shift-drag a rectangle to replace membership;
 Ctrl+Shift-drag (or Meta+Shift) adds to it. The visible dashed overlay does not orbit
@@ -5994,7 +5996,7 @@ Evidence: `local-output/sdk-20260909/vertex-marquee-final-20261005/proof.json`.
 No Build/runtime behavior changes or game launches. Existing group movement output
 remains on the deferred gameplay queue. The full SDK goal stays active.
 
-## Selected vertex group movement - 2026-10-05
+## Selected Vertex Group Movement - 2026-10-05
 
 Move model geometry now supports a selected group of 1..4096 unique existing
 object-local vertex indices. Enter comma-separated indices or click points to
@@ -6021,7 +6023,7 @@ Screenshots inspected; zero page errors/game launches. Private evidence:
 Package SHA256: `bd600024ab3ef57fd9905667eeff3497125ae5700e5e278a01a3c6deddc85f4f`.
 Game appearance remains deferred in the gameplay queue. The full SDK goal is active.
 
-## Retail comparison and vertex reset in the movement workspace - 2026-10-05
+## Retail Comparison and Vertex Reset in the Movement Workspace - 2026-10-05
 
 Move model geometry now offers Retail, Current and Draft layers. Retail loads the
 independently decoded imported geometry, including its original face topology;
@@ -6046,7 +6048,7 @@ Evidence: `local-output/sdk-20260909/retail-movement-20261005/proof.json`.
 No new gameplay verification gate or package is required for this editor workflow;
 in-game appearance remains on the existing manual queue. The SDK goal stays active.
 
-## Inspect individual vertex drafts in the placed scene - 2026-10-05
+## Inspect Individual Vertex Drafts in the Placed Scene - 2026-10-05
 
 Selected vertex scope now supports the same placed scene inspection as Entire
 object. Inspect movement draft in scene qualifies the exact object-local vertex
@@ -6074,7 +6076,7 @@ No game launched. This read-only integration adds no gameplay verification gate;
 actual appearance remains on the existing package queue. The SDK goal stays active.
 
 
-## Inspect object movement drafts in the placed scene - 2026-10-05
+## Inspect Object Movement Drafts in the Placed Scene - 2026-10-05
 
 The 3D geometry movement workspace now offers a source-qualified Scene instance
 selector and Inspect object draft in scene for Entire object translation. Choose
@@ -6103,7 +6105,7 @@ actual model appearance/pose remains on the existing deferred package queue.
 The full SDK goal stays active and solo.
 
 
-## Whole-object movement and compressed-content delivery - 2026-10-05
+## Whole-Object Movement and Compressed-Content Delivery - 2026-10-05
 
 The model geometry movement workspace now offers Selected vertex and Entire object
 scopes. Object scope moves every existing vertex in the selected native object,
@@ -6132,7 +6134,7 @@ No game launched or user runtime installed. Appearance/pose/scene lifecycle rema
 in the deferred gameplay queue. The full SDK goal remains active and solo.
 
 
-## Retained vertex editing and project history - 2026-10-05
+## Retained Vertex Editing and Project History - 2026-10-05
 
 The vertex movement workspace remains open after Apply. It requalifies the new
 Current source and retains the camera and selected existing row, allowing another
@@ -6152,7 +6154,7 @@ with only model bytes1516 and1524 changed. Other vectors/normals/topology stay f
 No game launched; appearance remains deferred. The SDK goal remains active and solo.
 
 
-## Pick vertices in the model movement viewport - 2026-10-05
+## Pick Vertices in the Model Movement Viewport - 2026-10-05
 
 Move vertices in3D now opens directly from the model shape panel. The movement
 viewport displays bounded projected point markers and selects the exact existing
@@ -6172,7 +6174,7 @@ This browsing addition needs no immediate gameplay check; the previous vertex ed
 package stays in the manual queue. The full SDK goal remains active and solo.
 
 
-## Direct model vertex movement - 2026-10-05
+## Direct Model Vertex Movement - 2026-10-05
 
 The vector Inspector now opens a Current/Draft geometry viewport for an existing
 vertex. X/Y/Z handles and numeric input use signed16 object-local source units;
@@ -6192,7 +6194,7 @@ appearance remains in the manual queue. Details: `docs/legaia-model-vertex-movem
 The broader SDK goal remains active and solo.
 
 
-## Transition graph to exact source entry - 2026-10-04
+## Transition Graph to Exact Source Entry - 2026-10-04
 
 Scene and Project transitions now open the exact transition Inspector from each
 instruction row. Cross-scene navigation refreshes source resources and qualifies
@@ -6209,7 +6211,7 @@ for this navigation feature. Details: `docs/legaia-transition-graph-entry-naviga
 The full SDK goal remains active and solo.
 
 
-## Arrival draft X/Z handles - 2026-10-04
+## Arrival Draft X/Z Handles - 2026-10-04
 
 The destination viewport now has opt-in Move arrival draft handles. Raw guest X/Z
 axes use the same scene transform and camera as the geometry, snap to 64 units and
@@ -6230,7 +6232,7 @@ No game was launched; arrival execution remains queued for later manual verifica
 This completes the arrival drag control, not the full SDK buildout.
 
 
-## Reviewed arrival authoring in the destination viewport - 2026-10-04
+## Reviewed Arrival Authoring in the Destination Viewport - 2026-10-04
 
 The arrival comparison now authors the existing source transition through destination
 viewport controls. Enter grid X/Z and facing sector, Review the green Proposed marker
@@ -6258,7 +6260,7 @@ game launch or runtime installation occurred. Private evidence:
 See [arrival authoring](legaia-transition-arrival-authoring.md).
 
 
-## Transition arrival viewport comparison - 2026-10-04
+## Transition Arrival Viewport Comparison - 2026-10-04
 
 Transition source resources now offer **Compare arrival in destination scene** when
 the named destination is already imported and Edit-mode preview is available. The
@@ -6287,7 +6289,7 @@ preserved. Private proof:
 See [transition arrival preview](legaia-transition-arrival-preview.md).
 
 
-## Current flag operand references - 2026-10-04
+## Current Flag Operand References - 2026-10-04
 
 The reference browser now shows a separate Effective / Current relationship for
 saved ScriptFlags operands, alongside the unchanged Retail encoded reference.
@@ -6308,9 +6310,9 @@ Private evidence: `local-output/sdk-20260909/current-flag-references-20261004/ac
 See [Current flag reference contract](legaia-current-flag-references.md).
 
 
-## Trigger group viewport comparison - 2026-10-04
+## Trigger Group Viewport Comparison - 2026-10-04
 
-## Searchable reference browser - 2026-10-04
+## Searchable Reference Browser - 2026-10-04
 
 Reference inspection now filters exact recorded layers and relationship directions,
 and searches neighbor IDs/labels/types, relation labels and provenance with bounded
@@ -6330,7 +6332,7 @@ Details: [reference browser filters](legaia-reference-browser-filters.md).
 Evidence: `local-output/sdk-20260909/reference-filters-20261004/final/proof.json`.
 The full goal remains active and solo; gameplay stays deferred.
 
-## Guarded Current material reference reuse - 2026-10-04
+## Guarded Current Material Reference Reuse - 2026-10-04
 
 Repeated active/project-wide reference inspection now reuses up to two bounded,
 source-keyed Current material metadata censuses. Retail verification still precedes
@@ -6353,7 +6355,7 @@ Details: [guarded reference reuse](legaia-current-material-cache.md).
 Evidence: `local-output/sdk-20260909/current-material-cache-20261004/final/proof.json`.
 Full goal remains active and solo; gameplay stays deferred.
 
-## Current material-to-texture reference graph - 2026-10-04
+## Current Material-to-Texture Reference Graph - 2026-10-04
 
 The Asset Database now displays separate Retail and Current static material links.
 Current discovery qualifies saved model edits and effective scene textures, including
@@ -6376,7 +6378,7 @@ installed build or game was changed. Full goal remains active and solo.
 Details: [Current material references](legaia-current-material-references.md).
 Evidence: `local-output/sdk-20260909/effective-material-references-20261004/accepted/proof.json`.
 
-## Static VRAM upload map - 2026-10-04
+## Static VRAM Upload Map - 2026-10-04
 
 Find static free coordinates now displays Current image, palette and boot-upload
 footprints in a1024-word by512-row VRAM map, with proposed image/palette outlines.
@@ -6401,7 +6403,7 @@ Details: [static VRAM upload inspection](legaia-texture-upload-map.md).
 Evidence: `local-output/sdk-20260909/texture-upload-map-20261004/final-verified/proof.json`.
 The full SDK goal remains active and solo; gameplay acceptance stays deferred.
 
-## Static texture placement finder - 2026-10-04
+## Static Texture Placement Finder - 2026-10-04
 
 The PNG-to-TIM dialog now offers Find static free coordinates. Its read-only,
 source-bound query considers known Current scene textures, authored slots and
@@ -6452,7 +6454,7 @@ Contact, shadowing, height and activation need gameplay acceptance. The full SDK
 goal stays active and solo.
 
 
-## Atomic trigger group authoring - 2026-10-04
+## Atomic Trigger Group Authoring - 2026-10-04
 
 The registered trigger Inspector now offers Move trigger cell group for existing
 primary kind-0/1 source rows. Select1..128 cells and review an integer X/Z tile
@@ -6484,7 +6486,7 @@ contact/height and script execution still require gameplay verification; the ful
 SDK goal remains active and solo.
 
 
-## Trigger binding Inspector layers - 2026-10-04
+## Trigger Binding Inspector Layers - 2026-10-04
 
 Gate-1 trigger assets in the active scene now show a read-only Script binding
 section directly in their registered Inspector. Retail, Authored and Current
@@ -6509,7 +6511,7 @@ launched or installed output changed. Runtime activation/dispatch remains deferr
 the broader SDK goal stays active and solo.
 
 
-## Effective trigger references - 2026-10-04
+## Effective Trigger References - 2026-10-04
 
 The asset-reference graph now retains each original Retail gate-1 trigger edge
 and adds a separate effective edge for its current authored script binding.
@@ -6532,7 +6534,7 @@ Trigger activation/dispatch still needs gameplay verification. Broader graph and
 SDK buildout remain unfinished; the full goal stays active and solo.
 
 
-## Reviewed trigger script binding editor - 2026-10-04
+## Reviewed Trigger Script Binding Editor - 2026-10-04
 
 The AssetTrigger registry now offers Edit trigger script binding for supported
 primary kind-1 gate-1 rows. The dialog lists only SDK-qualified P2 source targets,
@@ -6555,7 +6557,7 @@ acceptance remains separate; gameplay activation/dispatch and general effective
 asset-reference graph edges remain unfinished. The full SDK goal stays active.
 
 
-## Existing trigger script bindings: SDK/API/Build - 2026-10-04
+## Existing Trigger Script Bindings: SDK/API/Build - 2026-10-04
 
 Existing primary kind-1 gate-1 trigger rows can now be rebound to a qualified
 same-scene partition-two script through a separate TriggerScripts scene override.
@@ -6583,7 +6585,7 @@ game launched, installed runtime changed or Retail disc exported; activation and
 actual script dispatch remain unverified. The full SDK goal stays active and solo.
 
 
-## Script family navigation - 2026-10-04
+## Script Family Navigation - 2026-10-04
 
 The verified script dialog now has an Inspect script families navigator for its
 existing Dialogue, Transitions, Movement, Flags, Waits, Model selectors, Facing and
@@ -6603,7 +6605,7 @@ active. The accepted run uses the actual navigation readiness state. Private pro
 No game launched; this feature requires no immediate gameplay verification.
 
 
-## Hierarchy parent and child keyboard focus - 2026-10-04
+## Hierarchy Parent and Child Keyboard Focus - 2026-10-04
 
 Right expands a collapsed group while keeping focus on the header; pressing Right
 again enters its first available child. Left on a child returns focus to its group;
@@ -6618,7 +6620,7 @@ Private evidence: `local-output/sdk-20260909/hierarchy-parent-child-20261004/par
 No game launched; this feature requires no immediate gameplay verification.
 
 
-## Focused stability recheck - 2026-10-04
+## Focused Stability Recheck - 2026-10-04
 
 At SDK source `28bda1d7`, the inspected runtime/precompile source hashes still
 match the preserved inclusion evidence. Fresh synthetic restore-entry and
@@ -6639,7 +6641,7 @@ Startup audio overflow, field savestate performance and the existing deferred
 gameplay/audio boundaries remain open.
 
 
-## 2026-10-04: Reveal selection in the hierarchy
+## 2026-10-04: Reveal Selection in the Hierarchy
 
 **Reveal selection** clears the hierarchy search, expands the selected row's group,
 scrolls to it and restores keyboard focus. It resolves the current source-resource,
@@ -6655,7 +6657,7 @@ zero page errors, screenshot inspected. Evidence: ignored
 No game launched; gameplay remains deferred.
 
 
-## 2026-10-04: Collapsible scene hierarchy groups
+## 2026-10-04: Collapsible Scene Hierarchy Groups
 
 Hierarchy groups for Actors, NPC drafts, Environment, Transitions, Triggers, Regions,
 Collision and Scripts can now be folded with their header buttons. Fold state is a
@@ -6676,7 +6678,7 @@ inspected; zero page errors. Evidence: ignored
 No game launched; runtime acceptance remains deferred.
 
 
-## 2026-10-04: Hierarchy-selected script component Inspector
+## 2026-10-04: Hierarchy-Selected Script Component Inspector
 
 Selecting a verified partition-two script in the scene Hierarchy now exposes
 its authored components in the central Inspector alongside source asset metadata.
@@ -6696,7 +6698,7 @@ evidence and zero page errors passed. Screenshot inspected. Evidence: ignored
 No game launched; runtime execution remains unverified.
 
 
-## 2026-10-04: Standalone source-owner component Inspector
+## 2026-10-04: Standalone Source-Owner Component Inspector
 
 Verified partition-two script inspection now includes an **Authored script
 components** panel using the shared registered Inspector. It renders supported
@@ -6720,7 +6722,7 @@ and made no writes. Successful evidence: ignored
 No game launched; runtime transition acceptance remains deferred.
 
 
-## 2026-10-04: Dialogue and transition Inspector authoring summaries
+## 2026-10-04: Dialogue and Transition Inspector Authoring Summaries
 
 Dialogue now shows its authored text-run count and offers reviewed component
 reset only when text runs exist. Authored actor Transitions use a registered
@@ -6742,7 +6744,7 @@ ignored `local-output/sdk-20260909/dialogue-transition-inspector-20261004/parent
 No game launched; runtime text/arrival acceptance remains deferred.
 
 
-## 2026-10-04: Facing and branch Inspector workflows
+## 2026-10-04: Facing and Branch Inspector Workflows
 
 ScriptFacing and ScriptBranches now expose detached authored-instruction counts
 and the same reviewed component reset as other supported script operand families.
@@ -6762,7 +6764,7 @@ when empty, Undo/Redo, Save/Open and unchanged imports. Evidence: ignored
 No game launched; manual gameplay remains deferred.
 
 
-## 2026-10-04: Reviewed script component reset in the actor Inspector
+## 2026-10-04: Reviewed Script Component Reset in the Actor Inspector
 
 The registered ScriptMovement, ScriptFlags, ScriptWaits and ScriptModelSelectors
 components now offer **Review component reset** in Edit mode. The dialog shows the
@@ -6781,7 +6783,7 @@ inspected; zero browser errors. Evidence: ignored
 This is an implemented offline authoring workflow; gameplay remains unverified.
 
 
-## 2026-10-04: Actor Inspector component filtering
+## 2026-10-04: Actor Inspector Component Filtering
 
 The actor Inspector now has **Filter Inspector components**, **Authored only**
 and **Reset filter**. Text search matches component identity, heading and displayed
@@ -6806,7 +6808,7 @@ zero page errors. Evidence: ignored
 No game launched; gameplay acceptance remains deferred.
 
 
-## 2026-10-04: Component-directed script source navigation
+## 2026-10-04: Component-Directed Script Source Navigation
 
 Registered Inspector actions now carry their component identity to their existing
 handler. Authored movement, flag, wait and model-selector actions open the source
@@ -6824,7 +6826,7 @@ The other three families have bounded section-registry coverage; gameplay remain
 deferred. No game launched or physical Retail disc exported.
 
 
-## 2026-10-04: Authored script components in the entity Inspector
+## 2026-10-04: Authored Script Components in the Entity Inspector
 
 Actors with authored movement, flag, wait or model-selector instruction overrides
 now expose the corresponding SDK components to the shared Inspector. Each section
@@ -6851,7 +6853,7 @@ No game launched. Browser workflow acceptance here covers waits; other families
 have bounded metadata coverage and retain their existing source-editor workflows.
 
 
-## 2026-10-04: Allocated assignment component inspector
+## 2026-10-04: Allocated Assignment Component Inspector
 
 The allocated initial-animation Inspector now uses the SDK component contract
 for labels, properties, source witness details, notes and registered actions.
@@ -6879,7 +6881,7 @@ Evidence: ignored `local-output/sdk-20260909/allocated-inspector-20261004/verifi
 physical Retail export; gameplay acceptance remains deferred.
 
 
-## 2026-10-04: Retained animation output-frame timeline
+## 2026-10-04: Retained Animation Output-Frame Timeline
 
 **Edit retained content** now displays an **Output frame timeline**. Each cell
 shows the output index, frozen donor index and authored-axis count for the selected
@@ -6907,7 +6909,7 @@ every original retail record. Screenshot inspected, zero page errors. Evidence:
 No game launched or physical Retail disc exported; gameplay remains deferred.
 
 
-## 2026-10-04: Retained clip partial-axis interpolation
+## 2026-10-04: Retained Clip Partial-Axis Interpolation
 
 In **Edit retained content**, open **Frame sequence tools**, author the same
 nonempty set of axes at two output frames for one rigid object, and choose
@@ -6934,7 +6936,7 @@ errors, game launches or physical Retail export. Evidence: ignored
 Gameplay cadence and rendering acceptance remain deferred.
 
 
-## 2026-10-04: Retained animation frame sequence tools
+## 2026-10-04: Retained Animation Frame Sequence Tools
 
 **Edit retained content** now provides **Reverse selected frames**, **Repeat
 selected frames**, and **Remove selected frames** for an inclusive output-frame
@@ -6957,7 +6959,7 @@ bank while preserving every original retail record. Evidence: ignored
 No game was launched and no physical Retail disc was exported.
 
 
-## 2026-10-04: Front and Side orthographic scene views
+## 2026-10-04: Front and Side Orthographic Scene Views
 
 The existing Top/orthographic camera now also exposes **Front (X/Y)** and
 **Side (Z/Y)**. Exact level views preserve target/scale. Right-drag pans on the
@@ -6981,7 +6983,7 @@ No game launched; gameplay and runtime coordinate acceptance remain deferred.
 See [saved scene views](legaia-saved-scene-views.md).
 
 
-## 2026-10-04: Pick a native face from the authored scene
+## 2026-10-04: Pick a Native Face From the Authored Scene
 
 The main viewport now has **Pick model face**. One surface click resolves the
 frontmost visible instance and triangle, selects its entity in the existing
@@ -7001,7 +7003,7 @@ Fresh ownership checks also passed for all 118 loaded Town01 model geometries
 No game launched. Runtime positions, visibility and gameplay remain unverified.
 
 
-## 2026-10-04: Active native face outline
+## 2026-10-04: Active Native Face Outline
 
 The model comparison now shows the selected native face's cyan boundary in both
 Current and Proposed views. Outline selected native face can be toggled independently
@@ -7023,7 +7025,7 @@ and exact normal Build model/TIM readback passed. Screenshot inspected:
 No game launched; gameplay remains deferred and the full goal stays active.
 
 
-## 2026-10-04: Direct native face selection in model comparison
+## 2026-10-04: Direct Native Face Selection in Model Comparison
 
 Click a visible surface in either Current or Proposed model view to select its
 native object/primitive. Existing corner fields, paging and the UV workspace update
@@ -7051,7 +7053,7 @@ Screenshot inspected; evidence:
 No game launched; gameplay acceptance remains deferred and the full goal active.
 
 
-## 2026-10-04: Native face UV workspace
+## 2026-10-04: Native Face UV Workspace
 
 The face editor now includes a 2D UV workspace with Current and Draft outlines,
 numbered triangle/quad corners, a native byte grid and source-qualified static
@@ -7073,7 +7075,7 @@ model/TIM readback. The workspace screenshot was inspected:
 No game launched; live texture residency and gameplay acceptance remain open.
 
 
-## 2026-10-04: Combined pending face/material scene comparison
+## 2026-10-04: Combined Pending Face/Material Scene Comparison
 
 The reviewed UV/face plus texture-binding draft can now be inspected in the authored
 scene before Apply. The combined scene endpoint regenerates both native audits and
@@ -7099,7 +7101,7 @@ matching still does not establish live VRAM residency or gameplay correctness.
 The earlier combined placed-scene-pending notes below are superseded.
 
 
-## 2026-10-04: Combined face and texture-page browser workflow
+## 2026-10-04: Combined Face and Texture-Page Browser Workflow
 
 The face editor now explicitly stages a qualified Current texture page/depth and
 indexed palette binding for its selected face, textured group or GLB-selected
@@ -7122,7 +7124,7 @@ No game launched; runtime texture residency and gameplay verification remain ope
 The earlier API-only browser-pending note below is superseded by this milestone.
 
 
-## 2026-10-04: Combined native face/material Review and Apply API
+## 2026-10-04: Combined Native Face/Material Review and Apply API
 
 Implemented the backend/HTTP composition needed to apply UV/face fields and native
 page/palette/shared-blend drafts as one model replacement. Both drafts independently
@@ -7149,7 +7151,7 @@ completion of the combined browser workflow. See
 [API contract](legaia-model-texture-assignment.md). No game launched; gameplay remains
 deferred and the broader SDK goal remains active.
 
-## 2026-10-04: Native texture page regions feed explicit UV target controls
+## 2026-10-04: Native Texture Page Regions Feed Explicit UV Target Controls
 
 The face editor now offers **Choose target UVs from a scene texture** inside
 **Retarget a UV rectangle**. Browse the source-qualified Current texture catalog,
@@ -7180,7 +7182,7 @@ unchanged. Evidence:
 `local-output/sdk-20260909/uv-target-texture-region-20261004/parent/proof.json`.
 The picker screenshot was inspected. No game launched; gameplay remains deferred.
 
-## 2026-10-04: Qualified native face highlights in placed scene context
+## 2026-10-04: Qualified Native Face Highlights in Placed Scene Context
 
 The model face editor now carries a qualified GLB face highlight into **Inspect
 proposed faces in scene**. Keep **Highlight GLB face selection (yellow)** enabled
@@ -7210,7 +7212,7 @@ model/TIM readback with unchanged decoded neighbors. Screenshots were inspected.
 Evidence: `local-output/sdk-20260909/model-face-scene-selection-20261004/parent/proof.json`.
 No game launched; later gameplay verification remains separate.
 
-## 2026-10-04: Readonly GLB native face highlight
+## 2026-10-04: Readonly GLB Native Face Highlight
 
 After qualifying a GLB material/image face set in the face editor, **Inspect GLB
 face selection** opens the ordinary Current/Proposed comparison without requiring
@@ -7239,7 +7241,7 @@ decoded neighbors. Evidence:
 `local-output/sdk-20260909/model-face-selection-view-20261004/parent/qualified/visual/proof.json`.
 No game launched; gameplay validation remains queued separately.
 
-## 2026-10-04: UV rectangles for GLB-selected native faces
+## 2026-10-04: UV Rectangles for GLB-Selected Native Faces
 
 The face editor now offers **Select UV faces from GLB image** inside **Retarget
 a UV rectangle**. Qualify an exact Current SDK model GLB and fresh binding JSON,
@@ -7270,7 +7272,7 @@ The first private browser harness expected the face editor to close after Apply;
 it was corrected to verify refreshed Current source on a fresh private project.
 No game launched; gameplay and live texture residency remain deferred.
 
-## 2026-10-04: GLB image-to-native-face material selection
+## 2026-10-04: GLB Image-to-Native-Face Material Selection
 
 The material editor now offers **Select faces from GLB image**. Load an exact
 Current SDK model GLB and its fresh binding JSON, qualify the image links, and
@@ -7303,7 +7305,7 @@ model bytes, with neighboring decoded model bytes and Retail metadata unchanged.
 Evidence: `local-output/sdk-20260909/model-glb-material-selection-20261004/parent/proof.json`.
 No game launched; gameplay and live VRAM residency remain deferred.
 
-## 2026-10-04: GLB image dependency views and retained image selection
+## 2026-10-04: GLB Image Dependency Views and Retained Image Selection
 
 Both embedded-PNG pickers now show which standard GLB material texture links use
 the selected image: base color, metallic/roughness, normal, occlusion and emissive.
@@ -7345,7 +7347,7 @@ VRAM policy, scripting/scheduling, live scene identity/parity, world-map/MAPDSIP
 release/performance/gameplay acceptance remain open. The overall goal stays active;
 manual gameplay checks can remain queued.
 
-## 2026-10-04: GLB embedded images feed authored TIM conversion
+## 2026-10-04: GLB Embedded Images Feed Authored TIM Conversion
 
 Convert source PNG now accepts a bounded GLB and explicitly selected embedded PNG.
 It reuses the existing readonly GLB catalog/extraction qualification; URI, JPEG and
@@ -7385,7 +7387,7 @@ allocation, runtime VRAM policy, scripting/scheduling, live scene identity/parit
 world-map/MAPDSIP and release/performance/gameplay acceptance. The overall SDK
 goal remains active; manual gameplay checks can stay queued.
 
-## 2026-10-04: reopen retained conversion inputs directly in the editor
+## 2026-10-04: Reopen Retained Conversion Inputs Directly in the Editor
 
 For a saved slot with a source receipt, Convert source PNG now offers Load retained
 PNG/STP recipe. It loads the immutable PNG and optional STP plane into the file
@@ -7419,7 +7421,7 @@ Broader GLB/image dependencies, general Retail mode/CLUT allocation and runtime 
 gameplay acceptance remain outstanding. No game was launched and no installed
 runtime or physical disc was changed.
 
-## 2026-10-04: combined converted TIM and source Apply
+## 2026-10-04: Combined Converted TIM and Source Apply
 
 Use converted TIM draft now carries the exact PNG, optional STP plane and native
 options into slot Review, Proposed pixel inspection and Apply. Review reproduces
@@ -7458,7 +7460,7 @@ Broader GLB/image dependency integration, general Retail mode/CLUT allocation an
 runtime/gameplay acceptance remain outstanding. No game was launched and no
 installed runtime or physical disc was changed.
 
-## 2026-10-04: retained PNG/STP sources and reproducible slot recipes
+## 2026-10-04: Retained PNG/STP Sources and Reproducible Slot Recipes
 
 Saved authored slots can now retain their original PNG, optional STP plane and
 conversion recipe. Open Edit authored texture slot, Convert source PNG, choose
@@ -7494,7 +7496,7 @@ Evidence: `local-output/sdk-20260909/texture-slot-sources-20261004/parent/proof.
 Gameplay, dynamic residency, upload order and STP blending remain unverified.
 No game was launched and no installed runtime or physical disc was changed.
 
-## 2026-10-04: source PNG conversion for new and saved authored slots
+## 2026-10-04: Source PNG Conversion for New and Saved Authored Slots
 
 The slot editor now offers Convert source PNG. Its readonly conversion dialog
 constructs a complete 4/8/16/24-bit TIM from bounded PNG samples with explicit
@@ -7533,7 +7535,7 @@ allocation, automatic material retargeting, dynamic residency, upload order, STP
 blending and gameplay acceptance remain separate or unverified. No game was
 launched and no installed runtime or physical disc was changed.
 
-## 2026-10-04: authored slot editing and full TIM interchange
+## 2026-10-04: Authored Slot Editing and Full TIM Interchange
 
 Saved authored slots now expose Edit authored texture slot and exact Current TIM
 download. A complete TIM edit preserves the persistent asset ID and native slot
@@ -7565,7 +7567,7 @@ unverified. This implementation concerns authored slots; general Retail mode or
 CLUT allocation and automatic image conversion remain separate work. No game was
 launched and no installed runtime or physical disc was changed.
 
-## 2026-10-04: saved TIM slots in resources and material assignment
+## 2026-10-04: Saved TIM Slots in Resources and Material Assignment
 
 Saved new TIM slots now appear in the active-scene resource catalog under their
 persistent authored IDs and names. Current pixel previews qualify their native
@@ -7595,7 +7597,7 @@ VRAM placement and allocation policies. Runtime upload/residency, materials and
 scene transitions remain queued for gameplay verification. No game was launched
 or installed. The goal remains active.
 
-## 2026-10-04: new TIM slot import editor
+## 2026-10-04: New TIM Slot Import Editor
 
 The texture resource dialog now opens **Import new texture slot** for its native
 pack. Complete TIM files receive readonly placement/overlap review and Proposed
@@ -7618,7 +7620,7 @@ editing, broader image conversion and automatic VRAM placement. No game was
 launched or installed. Runtime upload/residency and appearance verification
 remain deferred; the goal remains active.
 
-## 2026-10-04: authored TIM slot persistence and normal Build
+## 2026-10-04: Authored TIM Slot Persistence and Normal Build
 
 New TIM slots now have persistent `texture-new://` UUIDs, explicit native append
 indices and hash-qualified Retail pack receipts. Readonly service Review
@@ -7645,7 +7647,7 @@ placement, broader source-image conversion and runtime upload/residency remain
 unfinished. No game was launched or installed; gameplay verification stays
 queued and the goal remains active.
 
-## 2026-10-04: native TIM slot append allocation
+## 2026-10-04: Native TIM Slot Append Allocation
 
 The native allocator can append one to 128 complete TIM uploads to a qualified
 raw or compressed texture pack, up to the existing 1024-slot limit. It expands
@@ -7668,7 +7670,7 @@ unfinished. Automatic VRAM placement and overlap/residency acceptance are also
 pending. No game was launched; runtime upload, material appearance, save/load
 and scene-transition verification remain deferred. The goal remains active.
 
-## 2026-10-04: scene texture assignment in the material editor
+## 2026-10-04: Scene Texture Assignment in the Material Editor
 
 The material editor now browses freshly qualified active-scene TIM assets,
 loads a selected Current texture/palette, and lists native page regions with
@@ -7703,7 +7705,7 @@ Runtime residency, texture windows, palette animation and final visual
 suitability remain deferred gameplay checks. The full SDK goal stays active.
 
 
-## 2026-10-04: reviewed UV rectangle retargeting
+## 2026-10-04: Reviewed UV Rectangle Retargeting
 
 The model face editor now remaps an explicit Current UV rectangle into an
 explicit target rectangle for one textured primitive or all textured faces in
@@ -7738,7 +7740,7 @@ VRAM residency and palette animation remain deferred gameplay checks. The full
 SDK goal remains active and incomplete.
 
 
-## 2026-10-04: nearest-neighbor texture scaling
+## 2026-10-04: Nearest-Neighbor Texture Scaling
 
 Resize image now offers **Crop and fill** and **Scale with nearest neighbor**.
 Nearest scaling copies encoded source pixels at destination pixel centers using
@@ -9419,7 +9421,7 @@ record separates functioning features, demonstrated failures and remaining
 product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 [16-layer acceptance plan](TEST_PLAN.md) remain authoritative for scope.
 
-## Current buildout status — updated 2026-10-02
+## Current Buildout Status — Updated 2026-10-02
 
 **World-map source GLB export (2026-10-02):** World ground inspection now connects to private GLB downloads for all resolved source placements plus terrain, terrain alone when the placement layer is hidden, or one selected source entity. Shared meshes, source transforms, embedded matched textures and source provenance use the existing scene exporter. Fresh source checks bind exports to the imported disc and current project; late responses after closing or changing sources cannot trigger downloads. Exported placement seeds retain unknown runtime resting positions and visibility. Exports create private artifacts without authored commands or Build/disc output. See [world-source export](legaia-worldmap-export.md).
 
@@ -11129,9 +11131,9 @@ For current details use [SDK status](SDK_STATUS.md),
 [feature coverage](FEATURE_MATRIX.md), and the
 [deferred gameplay queue](legaia-gameplay-verification-queue.md).
 
-## Historical September 9 milestone evidence
+## Historical September 9 Milestone Evidence
 
-## Source and preservation
+## Source and Preservation
 
 The starting revision was `56892d6216cf1ccf87d4a376c8e0feec67ac4182`, based on
 upstream `1a64f611`. Recovery ref
@@ -11148,7 +11150,7 @@ ignored local paths. Existing `.codex-remote-attachments/`,
 `integrations/legaia/inspector/` and `legaia-release/` remain preserved, untracked
 material. No proprietary payload was added to these commits.
 
-## Implemented milestones
+## Implemented Milestones
 
 | Commit | Result |
 |---|---|
@@ -11188,7 +11190,7 @@ pacing and host timing match `release-full-fixes`. Both inspected manifests
 contain the ten intended roles; 0899 is excluded and dynamic caching remains
 disabled. MAPDSIP handler seeds do not establish full native coverage.
 
-## Verified workflow and limits
+## Verified Workflow and Limits
 
 The primary editor workflow imports a verified user-owned disc, lists scenes,
 selects imported actors, edits authored transforms, undoes/redoes, saves/reopens,
@@ -11293,7 +11295,7 @@ sample followed one dialogue advance to execute the required VM witness; the
 guard was never weakened. Both private processes exited 0. The complete pair
 is recorded in `local-output/sdk-20260909/visible-placement-revert-acceptance.json`.
 
-## Focused validation
+## Focused Validation
 
 One retail idle save/restore comparison now passes on the fixed binary.
 Three ten-second windows measured cold/restored median 59.85/60.02 FPS and
@@ -11339,7 +11341,7 @@ zero errors/warnings and independent glTF-Transform import (10 nodes, 20 channel
 Rendered animated playback in Blender/Unity remains unverified. Native replacement
 and physical-meter scale are not established by these interchange exports.
 
-## Historical remaining-work assessment
+## Historical Remaining-Work Assessment
 
 The reproduced STR/XA stall is fixed and reaches the title menu. Muscle Dome
 relocation remains unresolved: the cited old change documents a repair but contains no
