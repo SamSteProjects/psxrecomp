@@ -1216,6 +1216,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-placement-yaw.js": ("worldmap-placement-yaw.js", "text/javascript"),
                  "/worldmap-scene.js": ("worldmap-scene.js", "text/javascript"),
                  "/project-assets.js": ("project-assets.js", "text/javascript"),
+                 "/player-battle.js": ("player-battle.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
@@ -1325,6 +1326,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body) != {'id'}:
                         raise ProjectError('Stability cancellation requires the current job identity')
                     self._json(200, {'job': self.server.stability_checks.cancel(body['id'])})
+                    return
+                if route in ('/api/player-battle-resources','/api/player-battle-preview'):
+                    fields={'expected_project_path','expected_source_key'}
+                    if route.endswith('-preview'):fields|={'asset_id','catalog_source_key','equipped'}
+                    if set(body)!=fields:raise ProjectError('PLAYER inspection requires exact source and equipment fields')
+                    from .player_battle import resources,preview
+                    self._json(200,(preview if route.endswith('-preview') else resources)(self.server.project,**body))
                     return
                 if route == '/api/battle-pack-clip-export':
                     fields={'expected_project_path','expected_source_key','model_id','model_source_key','animation_id','animation_source_key','fps'}
