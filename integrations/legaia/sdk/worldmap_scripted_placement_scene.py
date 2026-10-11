@@ -6,14 +6,26 @@ import json
 from importer.worldmap_placements import decode_worldmap_placements
 from .project import ProjectError
 from .worldmap_authoring import state_key
-from .worldmap_scripted_placement_allocation import source
+from .worldmap_scripted_placement_allocation import source,_prepare
 from .worldmap_geometry import inspect as inspect_geometry
 
 
-def inspect(project,scene,key):
+def inspect(project,scene,key,proposal=None):
     if project.mode!='edit' or key!=state_key(project):
         raise ProjectError('Scripted World scene requires fresh Edit source inputs')
     receipt=source(project,scene,key)
+    reviewed=None
+    if proposal is not None:
+        if not isinstance(proposal,dict) or set(proposal)!={'requests','review_key'}:
+            raise ProjectError('Scripted scene proposal requires exact reviewed requests and key')
+        base,reviewed=_prepare(project,scene,key,proposal['requests'])
+        if reviewed['review_key']!=proposal['review_key']:
+            raise ProjectError('Scripted scene proposal Review changed; review fresh inputs')
+        from base64 import b64encode
+        receipt.update(current_map_base64=reviewed['proposed_map_base64'],current_map_sha256=reviewed['proposed_map_sha256'],
+            binding=deepcopy(reviewed['binding']),retained_base_map_base64=b64encode(base).decode('ascii'),
+            remaining_creation_capacity=receipt['remaining_creation_capacity']-len(proposal['requests']))
+        receipt['authored_scripted_placements']+=deepcopy(reviewed['audit']['allocations'])
     geometry=inspect_geometry(project,scene,key,texture_layer='current',model_layer='current')
     provenance=receipt['source_record'];native=geometry['source_record']
     if any(native.get(a)!=provenance.get(b) for a,b in (
@@ -24,6 +36,11 @@ def inspect(project,scene,key):
     if len(assets)!=len(graph['assets']):raise ProjectError('Scripted scene model owners are duplicated')
     current=decode_worldmap_placements(b64decode(receipt['current_map_base64']),receipt['floor_lut'],scene=scene)
     seeds={s['entity_id']:s for s in current['placements']}
+    if reviewed:
+        for allocation in receipt['authored_decorations']+receipt['authored_scripted_placements']:
+            identity=allocation['native_seed']['entity_id']
+            if identity not in seeds:raise ProjectError('Proposed scripted scene lost an authored seed')
+            allocation['native_seed']=deepcopy(seeds[identity])
     allocations=receipt['authored_decorations']+receipt['authored_scripted_placements']
     authored={a['native_seed']['entity_id']:a for a in allocations}
     if len(authored)!=len(allocations):raise ProjectError('Authored World placements share a native seed owner')
@@ -81,6 +98,9 @@ def inspect(project,scene,key):
         authored_geometry=bool(geometry.get('authored_geometry') or allocations or changed),
         changed_source_entity_count=changed,authored_entity_count=len(allocations),
         ground_layer='retail',placement_layer='current',project_changed=False,gameplay_verified=False)
+    if reviewed:
+        geometry.update(schema_version='legaia.worldmap-scripted-placement-proposed-scene.v1',
+            representation='proposed-scripted-placement-source',placement_layer='proposed',scripted_proposal=deepcopy(reviewed))
     if project.mode!='edit' or state_key(project)!=key:
         raise ProjectError('Scripted World scene changed during inspection')
     if len(json.dumps(geometry,allow_nan=False).encode('utf-8'))>32*1024*1024:

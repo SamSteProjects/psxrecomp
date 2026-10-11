@@ -35,6 +35,16 @@ class ScriptedSceneTests(TestCase):
                 self.assertEqual(authored['native_entity_id'],allocation['native_seed']['entity_id'])
                 self.assertIsNone(authored['retail_seed']);self.assertEqual(graph['metrics']['entity_count'],len(seeds)+2)
                 self.assertTrue(result['authored_geometry']);self.assertEqual(result['authored_entity_count'],1)
+                unbound=deepcopy(receipt);unbound.update(current_map_base64=b64encode(raw).decode(),remaining_creation_capacity=32,authored_scripted_placements=[])
+                review=dict(review_key='a'*64,proposed_map_base64=b64encode(current).decode(),proposed_map_sha256=binding['operations'][0]['proposed_map_sha256'],binding=binding,audit=audit)
+                proposal=dict(requests=binding['operations'][0]['requests'],review_key='a'*64)
+                with patch('sdk.worldmap_scripted_placement_scene.source',return_value=unbound),patch('sdk.worldmap_scripted_placement_scene._prepare',return_value=(raw,review)):
+                    proposed=inspect(p,'map01',key,proposal)
+                    self.assertEqual(proposed['representation'],'proposed-scripted-placement-source')
+                    self.assertEqual(proposed['placement_layer'],'proposed');self.assertEqual(proposed['scene_graph']['entities'],result['scene_graph']['entities'])
+                    self.assertEqual(proposed['scripted_proposal'],review)
+                    with self.assertRaises(ProjectError):inspect(p,'map01',key,dict(proposal,review_key='0'*64))
+                    with self.assertRaises(ProjectError):inspect(p,'map01',key,dict(proposal,extra=True))
                 raised=deepcopy(receipt);raised['floor_lut']=[v+20 for v in floor]
                 raised_seeds={s['entity_id']:s for s in decode_worldmap_placements(current,raised['floor_lut'],scene='map01')['placements']}
                 for a in raised['authored_scripted_placements']:a['native_seed']=raised_seeds[a['native_seed']['entity_id']]
@@ -51,6 +61,7 @@ class ScriptedSceneTests(TestCase):
                     status,actual=post('/api/worldmap-scripted-placement-scene',dict(scene='map01',source_key=key))
                     self.assertEqual(status,200,actual);self.assertEqual(actual,result)
                     self.assertEqual(post('/api/worldmap-scripted-placement-scene',dict(scene='map01',source_key=key,extra=True))[0],400)
+                    self.assertEqual(post('/api/worldmap-scripted-placement-scene',dict(scene='map01',source_key=key,scripted_proposal=None))[0],400)
                 for bad in ('provenance','model','allocation'):
                     g=deepcopy(geometry);r=deepcopy(receipt)
                     if bad=='provenance':g['source_record']['map_sha256']='0'*64

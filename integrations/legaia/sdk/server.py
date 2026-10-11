@@ -1434,10 +1434,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200,inspect(self.server.project,body['scene'],body['source_key']))
                     return
                 if route == '/api/worldmap-scripted-placement-scene':
-                    if set(body)!={'scene','source_key'}:
+                    if set(body) not in ({'scene','source_key'},{'scene','source_key','scripted_proposal'}):
                         raise ProjectError('Scripted World scene requires exact scene and source key')
+                    if 'scripted_proposal' in body and (not isinstance(body['scripted_proposal'],dict) or set(body['scripted_proposal'])!={'requests','review_key'}):
+                        raise ProjectError('Scripted scene proposal requires exact reviewed requests and key')
                     from .worldmap_scripted_placement_scene import inspect
-                    self._json(200,inspect(self.server.project,body['scene'],body['source_key']))
+                    self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body.get('scripted_proposal')))
                     return
                 if route == '/api/worldmap-placement-scene':
                     if set(body) not in ({'scene','source_key'},{'scene','source_key','allocation_proposal'},{'scene','source_key','allocation_edit_proposal'},{'scene','source_key','allocation_remove_proposal'},{'scene','source_key','allocation_cell_proposal'},{'scene','source_key','allocation_model_proposal'},{'scene','source_key','allocation_group_proposal'}):

@@ -17,7 +17,7 @@ export async function qualifyScriptedCreationSource(source,retail,manWitness,map
  for(const list of [source.free_record_indices,source.target_cells])if(new Set(list).size!==list.length||list.some(n=>!Number.isSafeInteger(n)||n<0||n>16383))fail('Scripted creation candidates are duplicated or outside their bounds.');
  const inventory=await worldPlacementInventory(map.current,man.floor,retail.scene);
  if(!same(source.free_record_indices,inventory.free_record_indices)||!same(source.target_cells,inventory.target_cells))fail('Scripted creation candidates differ from complete native inventory.');
- return {source:structuredClone(source),man,map,mapWitness:structuredClone(mapWitness)};
+ return {source:structuredClone(source),man,map,mapWitness:structuredClone(mapWitness),manWitness:structuredClone(manWitness)};
 }
 export async function qualifyScriptedCreationReview(value,qualified,requests){
  const {source,man,map,mapWitness}=qualified;
