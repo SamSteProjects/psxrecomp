@@ -1743,10 +1743,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_id'],body['values']))
                     return
                 if route == '/api/export/worldmap-scripted':
-                    expected={'scene','source_key','scope'}|({'entity_id'} if body.get('scope')=='selected' else set())
+                    expected={'scene','source_key','scope'}|({'entity_id'} if body.get('scope')=='selected' else {'placement_ids'} if body.get('scope')=='selected-authored' else set())
                     if set(body)!=expected:raise ProjectError('Scripted World export requires exact scene, source key and scope')
                     from .worldmap_scripted_export import export
-                    self._json(200,export(self.server.project,body['scene'],body['source_key'],body['scope'],body.get('entity_id')))
+                    self._json(200,export(self.server.project,body['scene'],body['source_key'],body['scope'],body.get('entity_id'),body.get('placement_ids')))
                     return
                 if route == '/api/export/worldmap-placements':
                     if set(body) not in ({'scene','source_key','proposal'},{'scene','source_key','proposal','scope'},{'scene','source_key','proposal','scope','entity_id'},{'scene','source_key','proposal','scope','placement_ids'}):

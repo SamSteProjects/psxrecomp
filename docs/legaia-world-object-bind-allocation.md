@@ -1,5 +1,21 @@
 # Scripted World Object Bind Allocation
 
+## Scripted Group GLB Export — 2026-10-11
+
+Offline checks passed for Current saved scripted groups. The existing **Export Current group GLB** action now uses the scripted group panel's selected UUIDs when the Current scene contains a saved scripted ledger. Preview still excludes export; membership is captured canonically and rechecked before download. Export remains read-only with respect to the project document/history and does not imply gameplay visibility.
+
+`POST /api/export/worldmap-scripted` accepts exactly scene, source_key, scope=`selected-authored` and placement_ids. One to thirty-two sorted distinct UUIDs must belong to the complete Current scripted allocation inventory; decoration UUIDs are excluded from this scope. Malformed or mixed scope arguments refuse before source reading or writing. Source qualification retains complete MAP/MAN/fallback/base hashes, refreshed native seeds and unique shared primary P0 binds. The shared serializer checks exact native metadata plus selected UUID membership, filters instance roots and referenced assets, and preserves Current authored geometry/textures and each native instance matrix. The response, audit and GLB retain selected UUID/entity identities.
+
+`decodeScriptedWorldSceneExport` admits the download only after exact selected UUID provenance, whole GLB hash, complete audit membership, root counts, original authored/native identity and native-to-GLB matrices match. Display isolation does not change selected export membership. A changed source, selection or viewport layer discards a pending download through the existing fresh request guard.
+
+Actual Map01 one-member subset and donor/child exports pass exact native matrices, UUID membership, file bytes and direct/HTTP equality. Ten malformed/unknown/mixed/stale requests refuse; project document, history and source key remain unchanged. Independent JavaScript checks admit both exports and reject 46 altered receipt/binary/selection claims, including a forged root UUID or matrix with recomputed file hash. Existing scripted scene/ground/selected exports still qualify in all three kingdoms: nine cases and 126 refusals.
+
+The private actual editor browser workflow inspects a saved group and downloads two-member and one-member GLBs through the normal action, checking roots and shared-script metadata. It issues zero commands and produces zero page errors; document, history and reopened saved baseline remain unchanged. Wide/400-pixel captures were inspected. Fourteen focused Python export checks pass with the retail disc enabled, covering canonical membership, scripted-versus-decoration ownership, immutable metadata, pre-read/pre-write refusals and shared export regressions. Python AST, JavaScript syntax and whitespace checks pass.
+
+Evidence under `local-output/sdk-20260909/world-scripted-placement-build-20261011/`: `verify_scripted_group_export.py`, `scripted-group-export-pairs.json`, `scripted-group-export-proof.json`, `scripted-group-export-qualification-proof.json`, `browser-scripted-group-export.py`, `browser-scripted-group-export.mjs`, `scripted-group-export-browser-proof.json`, `scripted-group-export-wide.png` and `scripted-group-export-narrow.png`.
+
+No package Build, native compile, game, runtime attachment, installation or disc export occurred. Scripted group gizmos, box/click selection, saved group metadata and deferred gameplay remain unfinished. Full SDK goal remains active; solo development continues.
+
 ## Saved Scripted Group Editor — 2026-10-11
 
 Offline checks passed for a focused editor workflow; runtime/gameplay verification remains deferred. The selected saved scripted object inspector now opens **Edit saved scripted group**. The separate **Saved Scripted World Group Transform** panel inspects complete native Current inputs, lists bounded saved UUID/cell/shared-script owners and permits explicit checkbox membership. Selected instances receive existing viewport group bounds; **Frame scripted group** frames the complete selected set. Retail and decoration ownership remain separate.

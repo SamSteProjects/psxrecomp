@@ -184,8 +184,9 @@ def encode_worldmap_glb(result, source_key, scope='source-scene', entity_id=None
     graph = result.get('scene_graph') if isinstance(result,dict) else None
     scripted = isinstance(result,dict) and result.get('schema_version') == 'legaia.worldmap-scripted-placement-scene.v1'
     if scripted:
-        from .worldmap_scripted_export import qualify_source
-        if placement_authoring != qualify_source(result,source_key) or scope not in ('source-scene','ground','selected'):
+        from .worldmap_scripted_export import qualify_source,group_metadata
+        expected=group_metadata(result,source_key,placement_authoring.get('selected_placement_ids')) if scope=='selected-authored' and isinstance(placement_authoring,dict) else qualify_source(result,source_key)
+        if placement_authoring != expected or scope not in ('source-scene','ground','selected','selected-authored'):
             raise ImportError('Scripted World export requires exact Current native provenance and scope')
     if not scripted and isinstance(graph,dict) and isinstance(graph.get('entities'),list) and any(e.get('placement_scope') == 'authored_spawn_seed' for e in graph['entities'] if isinstance(e,dict)):
         native_meta = result.get('placement_authoring',{})
@@ -199,7 +200,7 @@ def encode_worldmap_glb(result, source_key, scope='source-scene', entity_id=None
         pattern=(re.escape(f"scene://{result.get('scene')}/worldmap/authored-placements/")+r'[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}') if authored else re.escape(f"scene://{result.get('scene')}/worldmap/placements/")+r'[0-3][0-9a-f]{3}'
         if entity_id is not None or not isinstance(entity_ids,list) or not 1<=len(entity_ids)<=(32 if authored else 511) or any(not isinstance(i,str) or not re.fullmatch(pattern,i) for i in entity_ids) or entity_ids!=sorted(set(entity_ids)):
             raise ImportError('Selected world group requires canonical complete source identities')
-        if authored and (not isinstance(placement_authoring,dict) or placement_authoring.get('representation')!='current-source' or placement_authoring.get('selected_placement_ids')!=['placement://authored/'+i.rsplit('/',1)[1] for i in entity_ids]):
+        if authored and (not isinstance(placement_authoring,dict) or placement_authoring.get('representation')!=('current-scripted-placement-source' if scripted else 'current-source') or placement_authoring.get('selected_placement_ids')!=['placement://authored/'+i.rsplit('/',1)[1] for i in entity_ids]):
             raise ImportError('Authored group export requires exact Current UUID membership')
         scene=adapt_worldmap_scene(result,source_key)
         selected=[e for e in scene['entities'] if e['entity_id'] in entity_ids]

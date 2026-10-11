@@ -9,6 +9,23 @@ from .worldmap_object_bind_allocation import _catalog
 from .worldmap_object_binds import resolve_object_bind
 
 
+def scripted_group_ids(placement_ids):
+    if (not isinstance(placement_ids,list) or not 1<=len(placement_ids)<=32
+            or any(not isinstance(i,str) or not re.fullmatch(r'placement://authored/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}',i) for i in placement_ids)
+            or placement_ids!=sorted(set(placement_ids))):
+        raise ImportError('Scripted group export requires canonical saved scripted UUID membership')
+    return deepcopy(placement_ids)
+
+
+def group_metadata(result,key,placement_ids):
+    placement_ids=scripted_group_ids(placement_ids)
+    metadata=deepcopy(qualify_source(result,key))
+    if not set(placement_ids).issubset({a['placement_id'] for a in metadata['authored_scripted_placements']}):
+        raise ImportError('Scripted group export requires saved scripted UUID ownership')
+    metadata['selected_placement_ids']=deepcopy(placement_ids)
+    return metadata
+
+
 def qualify_source(result,key):
     source=result.get('placement_source',{})
     if not isinstance(source,dict):raise ImportError('Scripted World export source is invalid')
