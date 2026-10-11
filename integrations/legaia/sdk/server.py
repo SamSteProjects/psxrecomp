@@ -1141,6 +1141,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-animation-assets.js": ("worldmap-animation-assets.js", "text/javascript"),
                  "/worldmap-animation-build-navigation.js": ("worldmap-animation-build-navigation.js", "text/javascript"),
                  "/worldmap-animation-export.js": ("worldmap-animation-export.js", "text/javascript"),
+                 "/worldmap-animation-glb.js": ("worldmap-animation-glb.js", "text/javascript"),
                  "/worldmap-object-script.js": ("worldmap-object-script.js", "text/javascript"),
                  "/worldmap-resources.js": ("worldmap-resources.js", "text/javascript"),
                  "/world-script-animation-operands.js": ("world-script-animation-operands.js", "text/javascript"),
@@ -1272,7 +1273,7 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/worldmap-replacement-review", "/api/worldmap-replacement-apply", "/api/text-json-preview", "/api/text-json-import") else 32768
-            if urlsplit(self.path).path in ('/api/worldmap-model-glb-review','/api/worldmap-model-glb-apply'):
+            if urlsplit(self.path).path in ('/api/worldmap-model-glb-review','/api/worldmap-model-glb-apply','/api/worldmap-animation-glb-review','/api/worldmap-animation-glb-apply'):
                 request_limit = 48 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/worldmap-model-replacement-review','/api/worldmap-model-replacement-apply','/api/worldmap-model-replacement-preview','/api/worldmap-model-replacement-material-preview'):
                 request_limit = 24 * 1024 * 1024
@@ -1418,6 +1419,21 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route == '/api/worldmap-animation-export':
                     from .worldmap_animation_export import inspect
                     self._json(200,inspect(self.server.project,body))
+                    return
+                if route in ('/api/worldmap-animation-glb-review','/api/worldmap-animation-glb-apply'):
+                    from .worldmap_animation_glb import inspect,apply
+                    import base64
+                    fields={'scene','source_key','entity_id','frame_index','glb_base64','binding','shared_record','animation_index','object_nodes'}
+                    if route.endswith('-apply'):fields=fields|{'review_key'}
+                    if set(body)!=fields or not isinstance(body['glb_base64'],str) or len(body['glb_base64'])>45*1024*1024:raise ProjectError('World GLB requires exact bounded input and source fields')
+                    try:content=base64.b64decode(body['glb_base64'],validate=True)
+                    except ValueError as error:raise ProjectError('World GLB input is not valid base64') from error
+                    args={k:body[k] for k in ('scene','entity_id','frame_index','binding','shared_record','animation_index','object_nodes')}
+                    args.update(key=body['source_key'],content=content)
+                    if route.endswith('-review'):self._json(200,inspect(self.server.project,**args))
+                    else:
+                        apply(self.server.project,review_key=body['review_key'],**args)
+                        self._json(200,self.server.state())
                     return
                 if route == '/api/worldmap-animation-scene':
                     if set(body)!={'scene','source_key'}:raise ProjectError('World scene animation requires exact kingdom and source fields')

@@ -154,3 +154,5 @@ All 125 Current comparison frames/normals and 125 Proposed frames match independ
 ## World Animation Full-Clip GLB Export
 
 Selected supported Retail or saved Current clips now export through the shared rigid GLB encoder with an explicit caller-selected rate and source/hash audit. Both layers use the raw Current model; World placement is excluded. See [World Animation Full-Clip GLB Export](legaia-worldmap-animation-export.md) for scope, provenance and validation status.
+
+Edited exported clips can return through [World Animation GLB Round-Trip Authoring](legaia-worldmap-animation-glb.md), with fresh source binding, native Review, Preview and one-command Apply.

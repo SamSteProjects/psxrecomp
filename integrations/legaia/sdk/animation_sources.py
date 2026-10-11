@@ -25,7 +25,7 @@ def _hash(value):
 def validate_record(record):
     if not isinstance(record,dict) or set(record)!=FIELDS or record['schema_version']!='legaia.animation-source.v1':
         raise ProjectError('Invalid animation source receipt fields')
-    if record['kind'] not in ('imported','retained'):
+    if record['kind'] not in ('imported','retained','world'):
         raise ProjectError('Unknown animation source kind')
     if any(not _hash(record[k]) for k in ('glb_sha256','candidate_sha256','review_key','receipt_key')):
         raise ProjectError('Invalid animation source digest')
@@ -68,13 +68,17 @@ def validate_record(record):
         if (binding.get('schema_version') not in ('legaia.animation-glb-binding.v1','legaia.animation-glb-binding.v2')
                 or binding.get('entity_id')!=target or not target.startswith(scene+'/actors/') or frames is not None):
             raise ProjectError('Imported animation source identity changed')
-    else:
+    elif record['kind']=='retained':
         try: valid_uuid=str(UUID(target))==target
         except (ValueError,AttributeError): valid_uuid=False
         if (not valid_uuid or binding.get('schema_version')!='legaia.animation-record-glb-binding.v1'
                 or binding.get('record_id')!=target or not isinstance(frames,list) or not 1<=len(frames)<=4096
                 or any(type(v) is not int or not 0<=v<65536 for v in frames)):
             raise ProjectError('Retained animation source identity or mapping changed')
+    else:
+        from .worldmap_animation_glb import validate_input_binding
+        validate_input_binding(binding,target)
+        if frames is not None:raise ProjectError('World input preserves its existing native frame layout')
     if 'external_pose_alignment' in binding:
         try:pose_alignment_config(binding['external_pose_alignment'],len(frames) if record['kind']=='retained' else binding.get('frame_count'))
         except AlignmentError as error:raise ProjectError(str(error)) from error
@@ -173,15 +177,21 @@ def apply(project,command,content,**recipe):
 
 def catalog(project,scene_id,target_id,kind,expected_source_key):
     from .scene_preview import source_key
-    if not isinstance(scene_id,str) or not _hash(expected_source_key) or scene_id!=project.active_scene or source_key(project)!=expected_source_key:
+    if kind=='world':
+        from .worldmap_placement_allocation import _fresh
+        import re
+        if not isinstance(scene_id,str) or not re.fullmatch(r'scene://map0[123]/worldmap',scene_id):raise ProjectError('World input scene changed')
+        _fresh(project,expected_source_key)
+    elif not isinstance(scene_id,str) or not _hash(expected_source_key) or scene_id!=project.active_scene or source_key(project)!=expected_source_key:
         raise ProjectError('Animation source recovery context changed')
-    if kind not in ('imported','retained') or not isinstance(target_id,str) or not 1<=len(target_id)<=512:
+    if kind not in ('imported','retained','world') or not isinstance(target_id,str) or not 1<=len(target_id)<=512:
         raise ProjectError('Animation source recovery requires a stable target')
     validate_collection(project.animation_sources)
     rows=[deepcopy(r) for r in project.animation_sources.values()
           if (r['scene_id'],r['target_id'],r['kind'])==(scene_id,target_id,kind)]
     validate_files(project,{r['receipt_key']:r for r in rows})
-    if source_key(project)!=expected_source_key:raise ProjectError('Animation source recovery context changed')
+    if kind=='world':_fresh(project,expected_source_key)
+    elif source_key(project)!=expected_source_key:raise ProjectError('Animation source recovery context changed')
     return dict(schema_version='legaia.animation-sources.v1',scene_id=scene_id,target_id=target_id,kind=kind,
                 project_source_key=expected_source_key,imports=rows,project_changed=False,historical_inputs=True)
 
@@ -193,7 +203,10 @@ def download(project,receipt_key,**request):
     if record is None:raise ProjectError('Animation source receipt is absent from Current')
     raw=read_source(project,record)
     from .scene_preview import source_key
-    if source_key(project)!=request['expected_source_key']:raise ProjectError('Animation source recovery context changed')
+    if request['kind']=='world':
+        from .worldmap_placement_allocation import _fresh
+        _fresh(project,request['expected_source_key'])
+    elif source_key(project)!=request['expected_source_key']:raise ProjectError('Animation source recovery context changed')
     return dict(result,selected=record,glb_base64=base64.b64encode(raw).decode('ascii'))
 
 
@@ -305,6 +318,9 @@ def compare_native(project,receipt_key,expected_project_path,expected_library_ke
     from .animation_record_ledger import verified_source,compose,validate,verify_witnesses,reconstruct
     import re
     value,row=_library_receipt(project,receipt_key,expected_project_path,expected_library_key)
+    if row['kind']=='world':
+        from .worldmap_animation_glb import compare_input
+        return compare_input(project,value,row)
     scene=row['scene_id'];evidence=digest(project.imports.get(scene));disc=project.disc_path
     if not disc:raise ProjectError('Native animation comparison requires the matching retail disc')
     with _disc_context(disc):
