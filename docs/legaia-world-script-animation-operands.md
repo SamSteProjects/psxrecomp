@@ -1,5 +1,19 @@
 # World Script Instruction Arguments
 
+## Normal System-Flag Selectors — 2026-10-11
+
+**Edit World Instruction Arguments** now offers supported normal `SYSFLAG_SET`, `SYSFLAG_CLEAR` and `SYSFLAG_TEST` selectors. **System Flag Selector Argument** separates Retail/Authored/Current and uses the existing Review/Apply, consent, history, persistence and Build workflow. The encoded index is 0–4095. It spans the opcode's low nibble and the following byte, rather than an ordinary little-endian operand. The operation/high nibble, normal dispatch context, TEST delta, record/header lengths and graph continuations stay fixed. Extended system addressing remains unavailable.
+
+The browser now has one instruction-byte writer for complete Current witnesses and Review deltas across all supported families. Its dedicated system reader validates two-byte SET/CLEAR and four-byte TEST layouts. Changes to operation nibbles or TEST deltas refuse. The SDK reuses the existing source-qualified system writer and composes it with animation, color, model-selector and masked flag-bit edits in one MAN output per kingdom.
+
+The source census confirms 46 normal targets: Map01 13, Map02 31 and Map03 2. Thirty-six focused Python checks pass with retail input, including all five families in one record, SET/TEST source bytes, preserved TEST words, invalid selector domains, source graph shape, history/persistence and fresh literal SCUS/overlay helper witnesses. Five Node contracts pass: four system Current witnesses and 16 altered system refusals, plus the existing model/color/flag/animation contracts and 71 altered refusals. An initial UI harness chose a Map02 record with no system target; it stopped before editing that record, and was corrected using the source census.
+
+Reference distinction: pinned Andrew `step.rs` explicitly routes `0x50..=0x77`; its implementation is not proof of execution for the entire 12-bit domain supported by our source decoder and serializer. Fresh Retail evidence verifies the SCUS helper byte-index/mask operations and overlay dispatch calls. This establishes encoding/helper provenance, not native bank capacity, valid runtime addresses, story meaning or execution of a particular authored selector. The reference pin remains unchanged; no reference VM dependency was added.
+
+Coauthored Build `0.1.0-320b805870ce8c12`, SHA256 `79d99f5dc88c632a0219de761ff29c141c69298ee1e83474576612733696afd9`, includes all five families with prior model/texture/placement edits. Independent directory/ZIP readback of all 21 decoded kingdom slots allows only seven reviewed MAN bytes: Map01 241/242/271/272, Map02 1539/1657 and Map03 299. TEST words and every unrelated decoded byte remain exact. Native literal comparison, Undo/Redo, Save/Open and baseline restoration pass.
+
+Two corrected full Map01/Map02 editor workflows pass Review withdrawal, Apply, Current reopening, Save and Undo/Redo/Undo, with two expected commands and zero page errors. Final document, Undo stack and Save/Open baselines are restored; wide/400-pixel captures were inspected. Private evidence: `local-output/sdk-20260909/world-script-system-selectors-20261011/`. No native compile, game, attachment, install or disc export ran; runtime flag state and gameplay remain deferred.
+
 ## Flag-Bit Arguments — 2026-10-10
 
 **Edit World Instruction Arguments** now offers supported reached `LFLAG`, `GFLAG` and `CFLAG` SET/CLEAR/TEST instructions. **Flag Bit Argument** displays Retail/Authored/Current indices and participates in the shared Review/Apply, consent, history, persistence and Build workflow. Only the operand's low five bits change; the upper three bits, opcode, extended context and continuation stay fixed. A World adapter supplies exact byte-span audits around the existing flag writer, so mixed instruction families share the same composer and MAN output.
