@@ -23,7 +23,7 @@ def _hash(value):
 def adapt_worldmap_scene(result, source_key, scope='source-scene', entity_id=None):
     if scope not in ('source-scene', 'ground', 'selected') or (scope == 'selected') != (entity_id is not None):
         raise ImportError('Choose source-scene, ground or one selected world source entity')
-    if not isinstance(result, dict) or result.get('schema_version') != 'legaia.worldmap-geometry.v2' or result.get('scene') not in ('map01', 'map02', 'map03') or not _hash(source_key):
+    if not isinstance(result, dict) or result.get('schema_version') not in ('legaia.worldmap-geometry.v2','legaia.worldmap-scripted-placement-scene.v1') or result.get('scene') not in ('map01', 'map02', 'map03') or not _hash(source_key):
         raise ImportError('World export requires a verified kingdom source graph and current source key')
     scene = result['scene']
     ground_id = f'asset://{scene}/worldmap/walk-ground'
@@ -94,8 +94,13 @@ def adapt_worldmap_scene(result, source_key, scope='source-scene', entity_id=Non
     entities, seen = [], set()
     drawn = grounds = authored_count = 0
     placement_meta = result.get('placement_authoring')
+    scripted = result.get('schema_version') == 'legaia.worldmap-scripted-placement-scene.v1'
+    if scripted:
+        from .worldmap_scripted_export import qualify_source
+        scripted_meta = qualify_source(result,source_key)
+        allocation_rows = scripted_meta['authored_decorations'] + scripted_meta['authored_scripted_placements']
     has_authored = any(e.get('placement_scope') == 'authored_spawn_seed' for e in graph['entities'] if isinstance(e,dict))
-    if has_authored and (not isinstance(placement_meta,dict)
+    if has_authored and not scripted and (not isinstance(placement_meta,dict)
             or placement_meta.get('schema_version') != 'legaia.worldmap-placement-scene.v1'
             or placement_meta.get('scene') != scene or placement_meta.get('source_key') != source_key
             or placement_meta.get('source_map_sha256') != result['source_record'].get('map_sha256')
@@ -109,7 +114,7 @@ def adapt_worldmap_scene(result, source_key, scope='source-scene', entity_id=Non
         if not isinstance(entity, dict):
             raise ImportError('World export source entity is invalid')
         ground = entity.get('placement_scope') == 'source_ground'
-        authored = entity.get('placement_scope') == 'authored_spawn_seed'
+        authored = entity.get('placement_scope') in ('authored_spawn_seed','authored_scripted_seed') if scripted else entity.get('placement_scope') == 'authored_spawn_seed'
         identity = entity.get('entity_id')
         allocation = entity.get('authored_placement')
         uuid = allocation['placement_id'].rsplit('/',1)[-1] if isinstance(allocation,dict) and isinstance(allocation.get('placement_id'),str) else ''
@@ -117,27 +122,28 @@ def adapt_worldmap_scene(result, source_key, scope='source-scene', entity_id=Non
         authored_valid = (authored and isinstance(allocation,dict)
             and re.fullmatch(r'[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}',uuid)
             and allocation.get('placement_id') == 'placement://authored/'+uuid
-            and sum(row == allocation for row in placement_meta['authored_allocations']) == 1
+            and sum(row == allocation for row in (allocation_rows if scripted else placement_meta['authored_allocations'])) == 1
             and identity == f'scene://{scene}/worldmap/authored-placements/{uuid}'
             and type(allocation.get('target_cell')) is int and 0 <= allocation['target_cell'] < 16384
             and entity.get('native_entity_id') == f"scene://{scene}/worldmap/placements/{allocation['target_cell']:04x}"
             and allocation.get('record_index') == entity.get('object_record_index')
             and type(allocation.get('record_index')) is int and 4 <= allocation['record_index'] < 512
-            and allocation.get('model_pool_index') == entity.get('model_pool_index')
-            and type(allocation.get('model_pool_index')) is int and 0 <= allocation['model_pool_index'] < 128
-            and entity.get('asset_id') == f"asset://{scene}/worldmap/models/{allocation['model_pool_index']:04d}"
+            and (allocation.get('model_pool_index') == entity.get('model_pool_index') if not scripted else isinstance(native,dict) and native.get('model_pool_index') == entity.get('model_pool_index'))
+            and type(entity.get('model_pool_index')) is int and 0 <= entity['model_pool_index'] < 128
+            and entity.get('asset_id') == f"asset://{scene}/worldmap/models/{entity['model_pool_index']:04d}"
             and allocation.get('allocated_record_sha256') == entity.get('source_record_sha256')
             and isinstance(native,dict) and native.get('entity_id') == entity.get('native_entity_id')
             and native.get('source_cell') == allocation['target_cell']
             and all(entity.get(k) == v for k,v in native.items() if k not in ('entity_id','placement_scope'))
-            and 'retail_source_position' in entity and entity['retail_source_position'] is None
-            and 'retail_source_to_world' in entity and entity['retail_source_to_world'] is None)
+            and (entity.get('retail_seed','missing') is None if scripted else
+                 'retail_source_position' in entity and entity['retail_source_position'] is None
+                 and 'retail_source_to_world' in entity and entity['retail_source_to_world'] is None))
         owner_valid = (isinstance(identity, str) and
             (identity == f'scene://{scene}/worldmap/ground' and entity.get('asset_id') == ground_id if ground else
              authored_valid if authored else re.fullmatch(re.escape(f'scene://{scene}/worldmap/placements/') + r'[0-3][0-9a-f]{3}', identity)))
         if not owner_valid:
             raise ImportError('World export source entity identity is invalid')
-        if (identity in seen or entity.get('asset_id') not in assets or entity.get('placement_scope') not in ('source_ground', 'source_spawn_seed', 'authored_spawn_seed') or
+        if (identity in seen or entity.get('asset_id') not in assets or entity.get('placement_scope') not in (('source_ground', 'source_spawn_seed', 'authored_spawn_seed','authored_scripted_seed') if scripted else ('source_ground', 'source_spawn_seed', 'authored_spawn_seed')) or
                 entity.get('runtime_visibility') != 'not_evaluated' or entity.get('runtime_resting_position') != 'unknown' or
                 entity.get('renderable') is not True or not ground and not _hash(entity.get('source_record_sha256'))):
             raise ImportError('World export source entity confidence or binding is invalid')
@@ -152,7 +158,9 @@ def adapt_worldmap_scene(result, source_key, scope='source-scene', entity_id=Non
         display = [matrix[col * 4 + row] * (-1 if row == 1 else 1) for row in range(4) for col in range(4)]
         entities.append(dict(deepcopy(entity), geometry_key=entity['asset_id'], model_to_scene=display))
     coverage, metrics = graph.get('coverage'), graph.get('metrics')
-    if has_authored and (authored_count != len(placement_meta['authored_allocations'])
+    if scripted and authored_count != len(allocation_rows):
+        raise ImportError('Scripted World scene coverage differs from retained native owners')
+    if has_authored and not scripted and (authored_count != len(placement_meta['authored_allocations'])
             or authored_count != placement_meta.get('authored_entity_count')):
         raise ImportError('Authored World scene coverage differs from its retained allocations')
     if (grounds != 1 or drawn > 200000 or not isinstance(metrics, dict) or
@@ -163,7 +171,7 @@ def adapt_worldmap_scene(result, source_key, scope='source-scene', entity_id=Non
         raise ImportError('World export coverage differs from its source geometry')
     scene_preview = dict(schema='legaia.scene-preview.v1', coordinate_system='editor_field_y_up_source_units',
         scene_id='scene://' + scene, source_key=source_key, project_source_key=source_key,
-        representation=result.get('representation','current-source') if has_authored else 'retail-source',
+        representation=result['representation'] if scripted else result.get('representation','current-source') if has_authored else 'retail-source',
         assets=list(assets.values()), entities=entities, limits=list(result.get('limitations', [])) + list(graph.get('limitations', [])), export_scope=scope)
     if scope != 'source-scene':
         scene_preview = select_scene_export_instance(scene_preview, f'scene://{scene}/worldmap/ground' if scope == 'ground' else entity_id)
@@ -174,7 +182,12 @@ def adapt_worldmap_scene(result, source_key, scope='source-scene', entity_id=Non
 
 def encode_worldmap_glb(result, source_key, scope='source-scene', entity_id=None, *, placement_authoring=None,entity_ids=None):
     graph = result.get('scene_graph') if isinstance(result,dict) else None
-    if isinstance(graph,dict) and isinstance(graph.get('entities'),list) and any(e.get('placement_scope') == 'authored_spawn_seed' for e in graph['entities'] if isinstance(e,dict)):
+    scripted = isinstance(result,dict) and result.get('schema_version') == 'legaia.worldmap-scripted-placement-scene.v1'
+    if scripted:
+        from .worldmap_scripted_export import qualify_source
+        if placement_authoring != qualify_source(result,source_key) or scope not in ('source-scene','ground','selected'):
+            raise ImportError('Scripted World export requires exact Current native provenance and scope')
+    if not scripted and isinstance(graph,dict) and isinstance(graph.get('entities'),list) and any(e.get('placement_scope') == 'authored_spawn_seed' for e in graph['entities'] if isinstance(e,dict)):
         native_meta = result.get('placement_authoring',{})
         if (not isinstance(native_meta,dict) or not isinstance(placement_authoring,dict) or placement_authoring.get('schema_version') != 'legaia.worldmap-placement-export.v2'
                 or any(placement_authoring.get(k) != native_meta.get(k) for k in (
@@ -197,8 +210,9 @@ def encode_worldmap_glb(result, source_key, scope='source-scene', entity_id=None
         if entity_ids is not None:raise ImportError('Only selected-records scope accepts world source-seed identities')
         scene = adapt_worldmap_scene(result, source_key, scope, entity_id)
     if placement_authoring is not None:
-        if (not isinstance(placement_authoring, dict) or placement_authoring.get('schema_version') not in ('legaia.worldmap-placement-export.v1','legaia.worldmap-placement-export.v2') or
-                placement_authoring.get('representation') not in ('current-source', 'proposed-source') or
+        if (not isinstance(placement_authoring, dict) or placement_authoring.get('schema_version') not in ('legaia.worldmap-placement-export.v1','legaia.worldmap-placement-export.v2','legaia.worldmap-scripted-placement-export.v1') or
+                not scripted and placement_authoring.get('schema_version')=='legaia.worldmap-scripted-placement-export.v1' or
+                placement_authoring.get('representation') not in ('current-source', 'proposed-source','current-scripted-placement-source') or
                 placement_authoring.get('source_key') != source_key or placement_authoring.get('gameplay_verified') is not False or
                 not _hash(placement_authoring.get('current_map_sha256')) or not _hash(placement_authoring.get('exported_map_sha256')) or
                 len(json.dumps(placement_authoring, allow_nan=False).encode()) > 512 * 1024):
