@@ -1439,8 +1439,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route == '/api/worldmap-scripted-placement-scene':
                     if set(body) not in ({'scene','source_key'},{'scene','source_key','scripted_proposal'}):
                         raise ProjectError('Scripted World scene requires exact scene and source key')
-                    if 'scripted_proposal' in body and (not isinstance(body['scripted_proposal'],dict) or set(body['scripted_proposal']) not in ({'requests','review_key'},{'placement_id','values','review_key'})):
-                        raise ProjectError('Scripted scene proposal requires exact reviewed creation or transform')
+                    if 'scripted_proposal' in body and (not isinstance(body['scripted_proposal'],dict) or set(body['scripted_proposal']) not in ({'requests','review_key'},{'placement_id','values','review_key'},{'placement_id','target_cell','review_key'})):
+                        raise ProjectError('Scripted scene proposal requires exact reviewed creation, transform or relocation')
                     from .worldmap_scripted_placement_scene import inspect
                     self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body.get('scripted_proposal')))
                     return
@@ -1715,6 +1715,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_export import export
                     self._json(200, export(self.server.project, body['scene'], body['source_key'],
                                            body['scope'], body.get('entity_id')))
+                    return
+                if route == '/api/worldmap-scripted-relocation-review':
+                    if set(body)!={'scene','source_key','placement_id','target_cell'}:raise ProjectError('Scripted relocation Review requires exact source, UUID and target cell')
+                    from .worldmap_scripted_placement_relocate import review
+                    self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_id'],body['target_cell']))
                     return
                 if route == '/api/worldmap-scripted-transform-review':
                     if set(body)!={'scene','source_key','placement_id','values'}:raise ProjectError('Scripted transform Review requires exact source, UUID and values')
