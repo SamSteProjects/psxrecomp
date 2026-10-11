@@ -1076,6 +1076,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/preset-animation.js": ("preset-animation.js", "text/javascript"),
                  "/actor-placement-batch.js": ("actor-placement-batch.js", "text/javascript"),
                  "/editor.css": ("editor.css", "text/css"),
+                 "/scene-grid.js": ("scene-grid.js", "text/javascript"),
                  "/scene-renderer.js": ("scene-renderer.js", "text/javascript"),
                  "/source-normal-view.js": ("source-normal-view.js", "text/javascript"),
                  "/asset-navigation.js": ("asset-navigation.js", "text/javascript"),

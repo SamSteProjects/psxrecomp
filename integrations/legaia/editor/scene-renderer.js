@@ -1,3 +1,4 @@
+import {sceneGridGeometry} from './scene-grid.js';
 import {nearestSceneVertex} from './scene-ruler.js';
 import {selectionBoundsLines} from './scene-selection-bounds.js';
 // SDK geometry only: no retail format, address, pose or scale interpretation.
@@ -336,14 +337,14 @@ export class SceneRenderer {
   }
 
   drawGrid(view){
-    const gl=this.gl,l=this.locations,spacing=10**Math.floor(Math.log10(view.camera.distance/7)),half=spacing*12,cx=Math.round(view.camera.target.x/spacing)*spacing,cz=Math.round(view.camera.target.z/spacing)*spacing,key=[spacing,cx,cz].join('/');
+    const gl=this.gl,l=this.locations,geometry=sceneGridGeometry(view);
     gl.uniform1i(l.normalDiagnostic,false);
-    if(key!==this.gridKey){
-      const data=[],add=(x,z)=>data.push(x,0,z,.16,.23,.24,0,0);
-      for(let i=-12;i<=12;i++){add(cx+i*spacing,cz-half);add(cx+i*spacing,cz+half);add(cx-half,cz+i*spacing);add(cx+half,cz+i*spacing);}
-      gl.bindBuffer(gl.ARRAY_BUFFER,this.gridBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);this.gridCount=data.length/8;this.gridKey=key;
+    if(geometry.key!==this.gridKey){
+      gl.bindBuffer(gl.ARRAY_BUFFER,this.gridBuffer);gl.bufferData(gl.ARRAY_BUFFER,geometry.vertices,gl.DYNAMIC_DRAW);this.gridCount=geometry.count;this.gridKey=geometry.key;
     }
-    gl.uniformMatrix4fv(l.model,false,columnMajor(IDENTITY));gl.uniform1i(l.textured,false);this.bind(this.gridBuffer);gl.drawArrays(gl.LINES,0,this.gridCount);
+    gl.uniformMatrix4fv(l.model,false,columnMajor(IDENTITY));gl.uniform1i(l.textured,false);this.bind(this.gridBuffer);
+    if(view.grid==='world-native')gl.disable(gl.DEPTH_TEST);
+    try{gl.drawArrays(gl.LINES,0,this.gridCount);}finally{if(view.grid==='world-native')gl.enable(gl.DEPTH_TEST);}
   }
 
   preparePick(width,height){

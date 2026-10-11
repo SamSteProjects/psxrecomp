@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {sceneGridGeometry} from '../editor/scene-grid.js';
+const view={grid:'world-native',camera:{distance:1024,target:{x:65,y:99,z:-65}}},held=JSON.stringify(view),g=sceneGridGeometry(view);
+assert.equal(g.spacing,128);assert.equal(g.radius,12);assert.equal(g.count,106);assert.equal(g.vertices.length,g.count*8);assert(g.vertices.every(Number.isFinite));
+const positions=Array.from({length:g.count},(_,i)=>Array.from(g.vertices.slice(i*8,i*8+3)));assert(positions.slice(0,-6).every(p=>p[1]===0&&p[0]%128===0&&p[2]%128===0));
+assert.deepEqual(positions.slice(-6),[[0,0,0],[512,0,0],[0,0,0],[0,-512,0],[0,0,0],[0,0,512]]);
+assert.equal(sceneGridGeometry({...view,camera:{...view.camera,distance:1e6}}).count,522);
+const adaptive=sceneGridGeometry({...view,grid:true});assert.equal(adaptive.spacing,100);assert.equal(adaptive.count,100);
+assert.equal(JSON.stringify(view),held);
+for(const bad of [{...view,grid:'other'},{...view,camera:{distance:0,target:{x:0,z:0}}},{...view,camera:{distance:Infinity,target:{x:0,z:0}}},{...view,camera:{distance:1e308,target:{x:0,z:0}}},{...view,camera:{distance:1,target:{x:NaN,z:0}}}])assert.throws(()=>sceneGridGeometry(bad));
+console.log('Native 128-unit grid, reflected native Y axis, bounded geometry, adaptive field grid and finite-domain refusals pass.');
