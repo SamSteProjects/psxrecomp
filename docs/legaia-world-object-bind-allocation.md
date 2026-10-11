@@ -1,5 +1,17 @@
 # Scripted World Object Bind Allocation
 
+## Scripted Viewport Group Selection — 2026-10-11
+
+Offline checks passed for saved scripted Current objects. Ctrl/Command-click toggles group membership; Shift-click adds. **Box select scripted objects** replaces the group with visible scripted mesh hits; Ctrl/Command-box extends it, and an empty replacement clears it. Shift-drag continues to orbit. Scripted and decoration selection route through separate qualified inventories. Retail and proposed scripted layers cannot author viewport groups.
+
+First use lazily inspects and independently qualifies complete Current MAP/MAN/source witnesses. `scriptedGroupSelection` checks saved UUID, native entity identity, scripted kind and exact retained allocation against that qualified source, enforces thirty-two owners/members and at most 512 picked entities, and returns canonical membership without mutating inputs. Ground, Retail, decoration and altered allocation witnesses refuse. The group panel updates the same checkboxes and selected bounds used by group framing, numeric Review/Preview/Apply and Current group export. Pointer operations preserve project state/history; edits still require the existing reviewed command. Fresh scene/layer/context checks surround asynchronous qualification, and busy/proposed previews exclude group gestures.
+
+The actual private Map01 pointer browser workflow passes initial Ctrl-click lazy qualification, Ctrl toggle, Shift add, box replacement, empty box clear and Ctrl-box extension. It issues zero project commands and produces zero page errors; document, history and reopened saved baseline remain unchanged. Viewport and wide/400-pixel captures were inspected. Six pure JavaScript selection cases and fourteen owner/scope/budget refusals pass with unchanged inputs. Twenty-one focused Python schema/scene checks, module serving, Python AST, JavaScript syntax and whitespace pass. The actual saved scripted group transform browser workflow passes after integration, including atomic Apply, exact whole MAP comparison, Undo/Redo and Save/Open with untouched original project.
+
+Evidence under `local-output/sdk-20260909/world-scripted-placement-build-20261011/`: `browser-scripted-group-picking.py`, `browser-scripted-group-picking.mjs`, `scripted-group-picking-browser-proof.json`, `scripted-group-picking-viewport.png`, `scripted-group-picking-wide.png` and `scripted-group-picking-narrow.png`. The focused selection test is `integrations/legaia/tests/test_worldmap_scripted_group_selection.mjs` against retained native group witnesses.
+
+No Build, native compile, game, runtime attachment, installation or disc export occurred. Scripted group gizmos, saved group metadata and deferred gameplay remain unfinished. Full SDK goal remains active; solo development continues.
+
 ## Scripted Group GLB Export — 2026-10-11
 
 Offline checks passed for Current saved scripted groups. The existing **Export Current group GLB** action now uses the scripted group panel's selected UUIDs when the Current scene contains a saved scripted ledger. Preview still excludes export; membership is captured canonically and rechecked before download. Export remains read-only with respect to the project document/history and does not imply gameplay visibility.

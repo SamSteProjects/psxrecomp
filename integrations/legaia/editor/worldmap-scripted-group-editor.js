@@ -1,6 +1,7 @@
 import {qualifyScriptedCreationSource} from './worldmap-scripted-creation-state.js';
 import {qualifyScriptedGroupReview} from './worldmap-scripted-group-state.js';
 import {validValues} from './worldmap-placement-state.js';
+import {scriptedGroupSelection} from './worldmap-scripted-group-selection.js';
 const node=(tag,text)=>{const e=document.createElement(tag);if(text)e.textContent=text;return e;};
 export function mountScriptedWorldGroup({host,getContext,busy,setBusy,api,onApplied,onPreview,onDiscard,onError,onSelection,onFrameGroup}){
  const panel=node('details'),selection=node('div'),fields=node('div'),actions=node('div'),status=node('p'),evidence=node('pre');panel.dataset.worldScriptedGroup='';
@@ -21,7 +22,7 @@ export function mountScriptedWorldGroup({host,getContext,busy,setBusy,api,onAppl
   if(buttons.inspect.disabled)return;const context=getContext(),token=++generation;controller=new AbortController();kind='inspect';qualified=review=null;held=context;selected.clear();selection.replaceChildren();checks.length=0;setBusy(true);update();onSelection();
   try{status.textContent='Qualifying complete native Current group source…';const body={scene:context.retail.scene,source_key:context.key};const [source,man,map]=await Promise.all([request('/api/worldmap-scripted-placement-source',body,controller.signal,2*1024*1024),request('/api/worldmap-current-man',body,controller.signal,16*1024*1024),request('/api/worldmap-current-map',body,controller.signal,4*1024*1024)]);
    const result=await qualifyScriptedCreationSource(source,context.retail,man,map,context);if(token!==generation||!fresh())return;qualified=result;
-   for(const a of source.authored_scripted_placements){const label=node('label'),check=node('input');check.type='checkbox';check.setAttribute('aria-label','Scripted group member '+a.placement_id);check.style.width='auto';label.style.display='block';label.append(check,document.createTextNode(' '+a.placement_id+' · cell '+a.target_cell+' · '+a.script_id));selection.append(label);checks.push(check);check.checked=a.placement_id===context.placementId;if(check.checked)selected.add(a.placement_id);check.onchange=()=>{if(check.checked)selected.add(a.placement_id);else selected.delete(a.placement_id);invalidate();};}
+   for(const a of source.authored_scripted_placements){const label=node('label'),check=node('input');check.type='checkbox';check.value=a.placement_id;check.setAttribute('aria-label','Scripted group member '+a.placement_id);check.style.width='auto';label.style.display='block';label.append(check,document.createTextNode(' '+a.placement_id+' · cell '+a.target_cell+' · '+a.script_id));selection.append(label);checks.push(check);check.checked=a.placement_id===context.placementId;if(check.checked)selected.add(a.placement_id);check.onchange=()=>{if(check.checked)selected.add(a.placement_id);else selected.delete(a.placement_id);invalidate();};}
    for(const i of Object.values(inputs))i.value='0';status.textContent='Saved native owners qualified. Select at least two objects; deltas use native units. Viewport Y is reflected separately.';onSelection();
   }catch(e){if(e.name!=='AbortError'&&token===generation){status.textContent=e.message;onError(e);}}finally{if(token===generation){controller=null;kind=null;setBusy(false);update();}}
  };
@@ -35,5 +36,11 @@ export function mountScriptedWorldGroup({host,getContext,busy,setBusy,api,onAppl
  buttons.preview.onclick=async()=>{if(buttons.preview.disabled)return;const token=++generation;controller=new AbortController();kind='preview';setBusy(true);update();try{if(await onPreview(qualified,review,held,controller.signal)&&token===generation){displayed=true;status.textContent='Proposed scripted group displayed; project unchanged. Apply or discard.';}}catch(e){if(e.name!=='AbortError'){status.textContent=e.message;onError(e);}}finally{if(token===generation){controller=null;kind=null;setBusy(false);update();}}};
  buttons.apply.onclick=async()=>{if(buttons.apply.disabled)return;const context=held,captured=review;controller=new AbortController();kind='apply';update();try{const applied=await api('/api/command',{type:'transform_worldmap_scripted_placements',scene:context.retail.scene,source_key:context.key,entries:captured.entries,review_key:captured.review_key});if(applied!==true)throw Error('Scripted group Apply failed. Inspect fresh sources.');cancel();await onApplied({scene:context.retail.scene,projectPath:context.path,placementId:captured.entries[0].placement_id});}catch(e){status.textContent=e.message;onError(e);}finally{controller=null;kind=null;update();}};
  buttons.frame.onclick=()=>{if(!buttons.frame.disabled)onFrameGroup();};
- buttons.discard.onclick=()=>{cancel();status.textContent='Scripted group draft discarded; project unchanged.';};update();return {update,cancel,getGroupIds:()=>fresh()?[...selected]:[],open(){panel.open=true;buttons.inspect.click();}};
+ async function pickGroupEntities(entities,mode,valid=()=>true){
+  if(!getContext()||busy()||controller||displayed||!valid())return null;
+  const ready=qualified&&fresh();if(!ready)await buttons.inspect.onclick();
+  if(!qualified||!fresh()||busy()||controller||displayed||!valid())return null;
+  try{const ids=scriptedGroupSelection(qualified.source,ready?[...selected]:[],entities,mode);selected.clear();for(const id of ids)selected.add(id);for(const check of checks)check.checked=ids.includes(check.value);panel.open=true;invalidate();status.textContent=`${ids.length} saved scripted objects selected from the viewport; project unchanged.`;return ids;}catch(e){status.textContent=e.message;onError(e);return null;}
+ }
+ buttons.discard.onclick=()=>{cancel();status.textContent='Scripted group draft discarded; project unchanged.';};update();return {update,cancel,pickGroupEntities,getGroupIds:()=>fresh()?[...selected]:[],open(){panel.open=true;buttons.inspect.click();}};
 }
