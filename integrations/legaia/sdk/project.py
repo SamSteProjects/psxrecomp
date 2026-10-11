@@ -2255,6 +2255,10 @@ class ProjectService:
             from .worldmap_script_operands import apply
             apply(self,command)
             return
+        if command.get('type') == 'set_world_script_branches':
+            from .worldmap_script_branches import apply
+            apply(self,command)
+            return
         if command.get('type') == 'set_worldmap_menu':
             from .worldmap_authoring import apply
             apply(self, command)
@@ -3543,11 +3547,17 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - ({"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptAnimationOperands", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements", "WorldMapPlacementAllocations", "WorldScriptAnimationOperands", "WorldScriptOperands"} | CONTROLLER_COMPONENTS):
+            if not isinstance(components, dict) or not components or set(components) - ({"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptSystemFlags", "ScriptWaits", "ScriptAnimationOperands", "ScriptEffectColors", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "FloorTiers", "FloorHeights", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements", "WorldMapPlacementAllocations", "WorldScriptAnimationOperands", "WorldScriptOperands", "WorldScriptBranches"} | CONTROLLER_COMPONENTS):
                 raise ProjectError("Unsupported authored component")
             if CONTROLLER_COMPONENTS & set(components):
                 from .controller_system_flags import validate_components
                 validate_components(result,identifier,components)
+                result.overrides[identifier]=deepcopy(components)
+                continue
+            if 'WorldScriptBranches' in components:
+                from .worldmap_script_branches import validate
+                if set(components)!={'WorldScriptBranches'}:raise ProjectError('World branch owner accepts only its dedicated component')
+                validate(result,identifier,components['WorldScriptBranches'])
                 result.overrides[identifier]=deepcopy(components)
                 continue
             if {'WorldScriptAnimationOperands','WorldScriptOperands'}.intersection(components):
@@ -3996,12 +4006,18 @@ class ProjectService:
         """Project-wide authored references, independent of derived resource caches."""
         records = []
         for identifier, components in sorted(self.overrides.items()):
-            if {'WorldScriptAnimationOperands','WorldScriptOperands'}.intersection(components):
+            if {'WorldScriptAnimationOperands','WorldScriptOperands','WorldScriptBranches'}.intersection(components):
                 component=next(iter(components));binding=components[component]
                 for script,entry in sorted(binding['entries'].items()):
+                    label='World branch destinations' if component=='WorldScriptBranches' else 'World instruction arguments'
+                    count=len(entry['branches' if component=='WorldScriptBranches' else 'operands'])
+                    existing=next((r for r in records if r['id']==script),None)
+                    if existing is not None:
+                        existing['changes'].append(f'{label}: {count} authored entries');existing['authored'][component]=deepcopy(entry)
+                        continue
                     records.append(dict(id=script,script_id=script,kind='script',scene_id=None,source_scene=script.split('/')[2],
                         name=script.split('/')[2]+' Object Script '+script.rsplit('/',1)[1],
-                        changes=[f"World instruction arguments: {len(entry['operands'])} authored entries"],
+                        changes=[f'{label}: {count} authored entries'],
                         authored={component:deepcopy(entry)}))
             if 'WorldMapPlacementAllocations' in components:
                 binding=components['WorldMapPlacementAllocations']

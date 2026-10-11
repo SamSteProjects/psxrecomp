@@ -2003,7 +2003,7 @@ function assetRecords(activeOnly=false){
   for(const authored of state.authored_assets ?? []){
     if(typeof authored.id!=='string'||!['actor','model','texture','template','script','controller','scene','worldmap'].includes(authored.kind))continue;
     const assetId=authored.kind==='script'?(authored.script_id ?? authored.id):authored.id,existing=records.get(assetId);
-    if((authored.authored?.WorldScriptAnimationOperands||authored.authored?.WorldScriptOperands)&&!existing?.projectWorldBehaviorResource)continue; // Global World scripts require the verified Project resource source, not a field workspace.
+    if((authored.authored?.WorldScriptAnimationOperands||authored.authored?.WorldScriptOperands||authored.authored?.WorldScriptBranches)&&!existing?.projectWorldBehaviorResource)continue; // Global World scripts require the verified Project resource source, not a field workspace.
     if(activeOnly&&!existing&&authored.scene_id&&authored.scene_id!==state.scene?.id)continue;
     if(projectScope&&projectAssetControls.filter()!=='all'&&!existing&&authored.scene_id!==projectAssetControls.filter())continue;
     records.set(assetId,{...(existing ?? {id:assetId,type:authored.kind,label:authored.name ?? authored.id,source:authored.source_scene ?? authored.scene_id ?? 'Project library',data:{source_record:authored.source_record}}),sceneId:existing?.sceneId??authored.scene_id,authored:authored.authored ?? {},changes:authored.changes ?? [],authoredRecord:authored});

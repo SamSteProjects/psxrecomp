@@ -141,6 +141,9 @@ def context(project,scene):
         validate(project,owner(scene),binding,component)
         if any(binding[k]!=v for k,v in provenance.items()):raise ProjectError('World script source changed under authored operands')
     current,audit=compose(man,rows,binding)
+    from .worldmap_script_branches import compose_project
+    current,branch_audit=compose_project(project,scene,man,rows,provenance,current)
+    audit.extend(branch_audit)
     return man,rows,provenance,index,offset,slot,carrier,binding,current,audit
 
 def _fresh(project,key):
@@ -193,6 +196,8 @@ def review(project,script,key,pc,values,shared):
     if not edit['operands']:entries.pop(script,None)
     if not entries:after=None
     candidate,audit=compose(man,rows,after)
+    from .worldmap_script_branches import compose_project
+    candidate,_=compose_project(project,scene,man,rows,provenance,candidate)
     start=slot['compressed_stream_offset'];consumed=slot['compressed_bytes_consumed']
     _,compression=serialize_lzs_decoded(carrier[start:start+consumed],len(man),candidate,scene+' World script MAN')
     result=dict(schema_version='legaia.world-script-animation-review.v1',project_path=str(project.root),source_key=key,script_id=script,pc=pc,mnemonic=target['mnemonic'],retail_values=target['retail_values'],current_values=target['current_values'],proposed_values=deepcopy(values),source_instance_ids=report['source_instance_ids'],shared=shared,current_man_sha256=sha256(current).hexdigest(),candidate_man_sha256=sha256(candidate).hexdigest(),changes=[dict(decoded_byte_offset=i,before_byte=a,after_byte=b) for i,(a,b) in enumerate(zip(current,candidate)) if a!=b],compression=compression,no_op=candidate==current,project_changed=False,gameplay_verified=False)
@@ -211,8 +216,9 @@ def build(project,archive):
     from .texture_build import archive_overlay_patches
     from importer.prot_layout import locate_physical_span
     overlays=[];changes=[]
+    from .worldmap_script_branches import owner as branch_owner,COMPONENT as BRANCH_COMPONENT
     for scene in KINGDOM_BASES:
-        if not COMPONENTS.intersection(project.overrides.get(owner(scene),{})):continue
+        if not COMPONENTS.intersection(project.overrides.get(owner(scene),{})) and BRANCH_COMPONENT not in project.overrides.get(branch_owner(scene),{}):continue
         man,rows,_,index,offset,slot,carrier,_,current,audit=context(project,scene)
         if not audit:continue
         entry=archive.entry(index);start=slot['compressed_stream_offset'];consumed=slot['compressed_bytes_consumed'];before=carrier[start:start+consumed]

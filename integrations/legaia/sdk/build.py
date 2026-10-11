@@ -589,6 +589,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             components = {k:v for k,v in components.items() if k != 'AnimationRecords'}
             if not components:
                 continue
+        if isinstance(components,dict) and 'WorldScriptBranches' in components:
+            from .worldmap_script_branches import validate
+            if set(components)!={'WorldScriptBranches'}:raise BuildError('World branch owner accepts only its dedicated component')
+            validate(project,identifier,components['WorldScriptBranches'])
+            continue
         if isinstance(components, dict) and {'WorldScriptAnimationOperands','WorldScriptOperands'}.intersection(components):
             from .worldmap_script_operands import validate,COMPONENTS
             if len(components)!=1 or not set(components)<=COMPONENTS:

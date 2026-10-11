@@ -1611,6 +1611,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .worldmap_script_operands import inspection
                     self._json(200,inspection(self.server.project,body['script_id'],body['source_key']))
                     return
+                if route == '/api/world-script-branches':
+                    if set(body)!={'script_id','source_key'}:raise ProjectError('World branch options require exact source scope')
+                    from .worldmap_script_branches import options
+                    self._json(200,options(self.server.project,body['script_id'],body['source_key']))
+                    return
+                if route == '/api/world-script-branch-review':
+                    if set(body)!={'script_id','source_key','pc','values','shared'}:raise ProjectError('World branch Review requires exact source scope')
+                    from .worldmap_script_branches import review
+                    report,_=review(self.server.project,body['script_id'],body['source_key'],body['pc'],body['values'],body['shared'])
+                    self._json(200,report)
+                    return
                 if route == '/api/world-script-animation-review':
                     if set(body)!={'script_id','source_key','pc','values','shared'}:raise ProjectError('World script review requires the exact source scope and values')
                     from .worldmap_script_operands import review
