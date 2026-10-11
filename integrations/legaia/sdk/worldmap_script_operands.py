@@ -9,6 +9,8 @@ from importer.worldmap_behavior_catalog import load_worldmap_behavior_catalog
 from importer.animation_operand_authoring import SPECS, validate_animation_operand_values, patch_animation_operands_target
 from importer.effect_color_authoring import validate_effect_color_values, patch_effect_color_target
 from importer.model_selector_authoring import validate_model_selector_values, patch_model_selector_target
+from importer.flag_authoring import validate_flag_values, patch_flag_bit
+from importer.core import ImportError
 from importer.script_inspection import inspect_record
 from importer.script_operand_composition import compose_script_operands
 from importer.serialization import serialize_lzs_decoded
@@ -20,10 +22,15 @@ LEGACY_COMPONENT='WorldScriptAnimationOperands'
 COMPONENTS={COMPONENT,LEGACY_COMPONENT}
 COLOR='EFFECT_COLOR_INTENSITY'
 MODEL='SET_ACTOR_MODEL'
+FLAGS=tuple(f'{bank}_{operation}' for bank in ('LFLAG','GFLAG','CFLAG') for operation in ('SET','CLEAR','TEST'))
+def patch_world_flag(record,entry,pc,values,*,base_offset=0):
+    candidate,changes=patch_flag_bit(record,entry,pc,values,base_offset=base_offset)
+    return candidate,[dict(change,byte_length=1,before_hex=bytes([change['before_byte']]).hex(),after_hex=bytes([change['after_byte']]).hex()) for change in changes]
 ARGUMENTS={m:dict(fields=tuple(k for k,_ in spec),writer=patch_animation_operands_target,
     validator=lambda values,m=m:validate_animation_operand_values(m,values),scope='world-script-animation-operands-only') for m,spec in SPECS.items()}
 ARGUMENTS[COLOR]=dict(fields=('red','green','blue','intensity'),writer=patch_effect_color_target,validator=validate_effect_color_values,scope='world-script-effect-color-operands-only')
 ARGUMENTS[MODEL]=dict(fields=('model_selector_signed',),writer=patch_model_selector_target,validator=validate_model_selector_values,scope='world-script-model-selector-only')
+for mnemonic in FLAGS:ARGUMENTS[mnemonic]=dict(fields=('bit',),writer=patch_world_flag,validator=validate_flag_values,scope='world-script-flag-bit-only')
 def mnemonic_for(values):
     return next((m for m,spec in ARGUMENTS.items() if isinstance(values,dict) and set(values)==set(spec['fields'])),None)
 def validate_values(mnemonic,values):
@@ -34,7 +41,9 @@ def writer_for(values):
     if mnemonic not in ARGUMENTS:raise ProjectError('World instruction arguments have no supported writer')
     return ARGUMENTS[mnemonic]['writer']
 LIMITATIONS=[
-    'Only reached fixed animation, effect-color and signed model-selection operands without source decoder stops are writable.',
+    'Only reached supported fixed instruction arguments without source decoder stops are writable.',
+    'Flag bits preserve the upper operand bits; local bits16..31 and context SET8/CLEAR10 side effects remain unsupported.',
+    'Flag bit indices are encoded arguments, not observed live values or named story variables; SYSFLAG selectors remain unsupported here.',
     'RGB are encoded bytes and intensity is signed16; visual color space and rendering remain unverified.',
     'Encoded model/effect IDs are arguments, not resolved model or animation asset references.',
     'Signed model selectors do not establish model-pool ownership, restaging or visible models.',
@@ -125,7 +134,10 @@ def options(project,script,key):
         for node in graph['instructions']:
             if node['mnemonic'] not in ARGUMENTS:continue
             values=dict(zip(('red','green','blue'),node['operands']['rgb']),intensity=node['operands']['intensity']) if node['mnemonic']==COLOR else {k:node['operands'][k] for k in ARGUMENTS[node['mnemonic']]['fields']}
-            writer_for(values)(record,row['entry_pc'],node['pc'],values)
+            try:writer_for(values)(record,row['entry_pc'],node['pc'],values)
+            except ImportError:
+                if node['mnemonic'] in FLAGS:continue
+                raise
             targets.append(dict(pc=node['pc'],mnemonic=node['mnemonic'],target_context=node['target_context'],retail_values=values,authored_values=deepcopy(authored.get(f'{node["pc"]:04x}')),current_values=deepcopy(authored.get(f'{node["pc"]:04x}',values))))
     result=dict(schema_version='legaia.world-script-animation-operands.v1',project_path=str(project.root),source_key=key,script_id=script,source_record=deepcopy(row['source_record']),entry_pc=row['entry_pc'],source_instance_ids=deepcopy(row['source_instance_ids']),record_base64=b64encode(record).decode(),current_record_base64=b64encode(current[at:end]).decode(),targets=targets,limitations=list(LIMITATIONS),project_changed=False,gameplay_verified=False)
     _fresh(project,key);return result

@@ -1,5 +1,17 @@
 # World Script Instruction Arguments
 
+## Flag-Bit Arguments — 2026-10-10
+
+**Edit World Instruction Arguments** now offers supported reached `LFLAG`, `GFLAG` and `CFLAG` SET/CLEAR/TEST instructions. **Flag Bit Argument** displays Retail/Authored/Current indices and participates in the shared Review/Apply, consent, history, persistence and Build workflow. Only the operand's low five bits change; the upper three bits, opcode, extended context and continuation stay fixed. A World adapter supplies exact byte-span audits around the existing flag writer, so mixed instruction families share the same composer and MAN output.
+
+Local bit indices are limited to 0–15; global/context indices are limited to 0–31. Local source indices 16–31, context SET8/CLEAR10 and corresponding requested values remain unavailable because their widths or side effects are not supported for authoring. Source records with decoder stops remain unavailable. `SYSFLAG` selector authoring is not included in this milestone. Indices do not establish named story variables, live values, valid story progression or executed flag banks.
+
+The Retail census found 63 writable source targets: Map01 8, Map02 30, Map03 25. Twenty-seven focused Python checks pass with retail input, including masked bytes, source exclusions, reserved-value refusals, all four instruction families in one record, extended contexts, history and Save/Open. Actual browser source/Review qualification passes five Current flag witnesses and 16 altered flag refusals, including upper-bit corruption; existing model/color/animation qualification and their 55 altered refusals still pass. The pinned `step.rs` masking, local16 width, context SET8 side effect and fixed continuation were freshly inspected. No reference revision advance occurred.
+
+Coauthored data-package Build `0.1.0-f2018adaf81b5e48`, SHA256 `1b278b3d9fdb88836939a9c983d6628f9c393428ded2f22cdc96317fafab71a2`, includes all four instruction families with the prior model/texture/placement edits. Independent directory/ZIP comparison of all 21 decoded kingdom slots allows only Map01 MAN bytes 271/272, Map02 MAN bytes 1539/1657 and Map03 MAN byte 299 (0→3). All unrelated decoded bytes remain exact. Native literal comparison, Undo/Redo, Save/Open and baseline restoration pass.
+
+Two full Map01/Map03 Project Resources editor workflows pass changed-draft withdrawal, Apply, Current reopening, Save and Undo/Redo/Undo, with two expected commands and zero page errors. Final private document, Undo stack and Save/Open baseline are restored; wide/400-pixel captures were inspected. Private evidence: `local-output/sdk-20260909/world-script-flag-bits-20261010/`. Native compile, runtime flag observations, execution, story outcomes and gameplay remain deferred.
+
 ## Signed Model-Selection Arguments — 2026-10-10
 
 **Edit World Instruction Arguments** now includes reached `SET_ACTOR_MODEL` instructions, with Retail/Authored/Current values for **Signed Model Selector Argument**. Review/Apply, shared-source consent, draft withdrawal, Undo/Redo, Save/Open and Build use the existing World script workflow. These entries share `WorldScriptOperands` with animation and effect-color overrides; one kingdom MAN output contains all supported edits.
