@@ -12,6 +12,7 @@ for(const row of rows){
  for(const change of [v=>v.schema_version+='-forged',v=>v.model_pool_index++,v=>v.asset_id+='-forged',v=>v.model_source_record.extra=true,v=>v.binding.operations[0].proposed_map_sha256='0'.repeat(64),v=>v.current_map_sha256='0'.repeat(64),v=>v.proposed_map_sha256='0'.repeat(64),v=>v.audit.before.pop(),v=>v.audit.after[0].script_id+='-forged',v=>v.audit.authored_scripted_placements[0].native_seed.source_position.y++,v=>v.audit.changed_bytes[0].after_byte^=1,v=>v.proposed_map_base64=v.proposed_map_base64.slice(4),v=>v.audit.scope='anything',v=>v.gameplay_verified=true,v=>v.extra=true]){
   const altered=structuredClone(r);change(altered);await assert.rejects(()=>qualifyScriptedModelReview(altered,q,r.placement_ids,r.model_pool_index,row.current));refusals++;
  }
+ if(r.placement_ids.length>1){await assert.rejects(()=>qualifyScriptedModelReview(r,q,[...r.placement_ids].reverse(),r.model_pool_index,row.current));refusals++;}
  for(const ids of [[],[...r.placement_ids,r.placement_ids[0]],['missing']]){await assert.rejects(()=>qualifyScriptedModelReview(r,q,ids,r.model_pool_index,row.current));refusals++;}
  for(const change of [v=>v.representation='current-scripted-placement-source',v=>v.scripted_proposal.review_key='0'.repeat(64),v=>v.scene_graph.entities.pop(),v=>v.placement_source.current_map_sha256='0'.repeat(64),v=>v.authored_entity_count++,v=>v.gameplay_verified=true]){
   const altered=structuredClone(row.proposed);change(altered);await assert.rejects(()=>qualifyProposedScriptedModelScene(row.retail,altered,r,q,o));refusals++;
