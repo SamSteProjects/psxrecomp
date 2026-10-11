@@ -242,6 +242,25 @@ export async function qualifyProposedWorldPlacementCell(retail,current,proposed,
   return {...view,entities:view.entities.map(entity=>({...entity,preview_layer:'Proposed authored seeds'}))};
 }
 
+export async function qualifyProposedWorldPlacementGroup(retail,current,proposed,review,options){
+  await qualifyCurrentWorldPlacements(retail,current,options);
+  const before=current.placement_authoring,after=proposed?.placement_authoring;
+  if(review?.schema_version!=='legaia.worldmap-decoration-group-review.v1'||proposed?.representation!=='proposed-source'||proposed.allocation_proposal!==null||
+      !same(proposed.allocation_group_proposal,{placement_ids:review.placement_ids,delta:review.delta,review_key:review.review_key})||!after||
+      after.current_map_base64!==before.current_map_base64||after.current_map_sha256!==before.current_map_sha256||
+      after.exported_map_base64!==review.proposed_map_base64||after.exported_map_sha256!==review.proposed_map_sha256||
+      !same(after.authored_records,before.authored_records)||!same(after.allocation_binding,review.binding)||
+      !same(proposed.scene_graph?.assets,current.scene_graph.assets)||!same(proposed.model_authoring,current.model_authoring)||!same(proposed.texture_authoring,current.texture_authoring))
+    fail('Proposed group transform differs from qualified Current and its reviewed native receipt.');
+  const {qualifyWorldDecorationGroupReview}=await import('./worldmap-decoration-state.js');
+  await qualifyWorldDecorationGroupReview(review,{metadata:{...before,project_path:options.path,source_key:current.project_source_key,binding:before.allocation_binding},
+    retailBytes:mapBytes(before.retail_map_base64),bytes:mapBytes(before.current_map_base64),authoredRecords:before.authored_records},review.placement_ids,review.delta);
+  const normalized=structuredClone(proposed);delete normalized.allocation_group_proposal;normalized.representation='current-source';
+  normalized.placement_authoring.current_map_base64=after.exported_map_base64;normalized.placement_authoring.current_map_sha256=after.exported_map_sha256;
+  const view=await qualifyCurrentWorldPlacements(retail,normalized,options);
+  return {...view,entities:view.entities.map(entity=>({...entity,preview_layer:'Proposed authored seeds'}))};
+}
+
 export async function qualifyProposedWorldPlacementModel(retail,current,proposed,review,options){
   await qualifyCurrentWorldPlacements(retail,current,options);
   const before=current.placement_authoring,after=proposed?.placement_authoring;
