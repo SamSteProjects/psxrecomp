@@ -222,6 +222,8 @@ class EditorServer(ThreadingHTTPServer):
         state['capabilities']['source_build_script_inspection'] = bool(self.project.disc_path)
         from .worldmap_authoring import state_key as worldmap_state_key
         state['worldmap_authoring_state_key'] = worldmap_state_key(self.project)
+        from .worldmap_edit_state import snapshot as worldmap_edit_snapshot
+        state['worldmap_edit_bindings'] = worldmap_edit_snapshot(self.project)
         state['capabilities']['worldmap_authoring'] = bool(self.project.disc_path and self.project.imports)
         state['capabilities']['worldmap_geometry'] = bool(self.project.disc_path)
         state['capabilities']['worldmap_export'] = bool(self.project.disc_path and self.project.imports)

@@ -15,6 +15,35 @@ from test_model_primitive_workflow import http_server
 
 
 class CurrentWorldMapTests(TestCase):
+    def test_editor_binding_snapshot_is_scoped_fresh_and_detached(self):
+        from sdk.worldmap_edit_state import snapshot
+        with tempfile.TemporaryDirectory() as root:
+            p=ProjectService(Path(root));p.import_metadata(synthetic_scene())
+            p.overrides={'scene://map01':{'FloorHeights':{'heights':{'0':123}},'Dialogue':{'private':True}},
+                         'worldmap://map02/script-operands':{'WorldScriptOperands':{'entries':{}},'Unsupported':{}},
+                         'worldmap://map03/scripted-placement-allocations':{'WorldMapScriptedPlacementAllocations':{'scene':'map03','operations':[]}},
+                         'scene://town01':{'Unrelated':{'private':True}},
+                         'actor://other':{'Transform':{'x':9}}}
+            before=deepcopy(p._document());key=state_key(p)
+            expected={'scene://map01':{'FloorHeights':{'heights':{'0':123}}},
+                      'worldmap://map02/script-operands':deepcopy(p.overrides['worldmap://map02/script-operands']),
+                      'worldmap://map03/scripted-placement-allocations':deepcopy(p.overrides['worldmap://map03/scripted-placement-allocations'])}
+            self.assertEqual(snapshot(p),expected)
+            detached=snapshot(p);detached['scene://map01']['FloorHeights']['heights']['0']=999
+            self.assertEqual(snapshot(p),expected)
+            with http_server(p) as (server,post):
+                with urlopen(f'http://127.0.0.1:{server.server_port}/api/state') as response:
+                    import json
+                    state=json.load(response)
+                self.assertEqual(state['worldmap_edit_bindings'],expected)
+                self.assertEqual(state['worldmap_authoring_state_key'],key)
+                p.overrides['scene://map01']['FloorHeights']['heights']['0']=124
+                with urlopen(f'http://127.0.0.1:{server.server_port}/api/state') as response:changed=json.load(response)
+                self.assertNotEqual(changed['worldmap_authoring_state_key'],key)
+                self.assertEqual(changed['worldmap_edit_bindings']['scene://map01']['FloorHeights']['heights']['0'],124)
+                p.overrides['scene://map01']['FloorHeights']['heights']['0']=123
+            self.assertEqual(p._document(),before)
+
     def test_complete_scripted_map_http_and_stale_refusal(self):
         base,fallback,man,floor,binding,expected,_=ledger();provenance={k:binding[k] for k in ('scene','source_disc_sha256','source_map_sha256','source_floor_lut_sha256')}
         inputs=(base,provenance,floor,base,[],fallback,man,man,{},[])
