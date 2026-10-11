@@ -76,3 +76,20 @@ def export(project,expected_project_path,expected_source_key,model_id,model_sour
     except RetailImportError as error:raise ProjectError(str(error)) from error
     _fresh(project,expected_project_path,expected_source_key)
     return dict(schema_version='legaia.battle-pack-export.v1',project_path=str(project.root),project_source_key=expected_source_key,model_source_key=model_source_key,model_id=model_id,animation_id=animation_id,animation_source_key=animation_source_key,frame_index=frame_index,mode='reference-pose' if selected else 'object-local',filename=f'battle-pack-{receipt["record"]["pool_index"]}-{f"frame-{frame_index}" if selected else "object-local"}.glb',glb_base64=b64encode(content).decode('ascii'),audit=model_audit,layer='retail',read_only=True,project_changed=False,gameplay_verified=False)
+
+
+def export_clip(project,expected_project_path,expected_source_key,model_id,model_source_key,animation_id,animation_source_key,fps):
+    import math
+    from importer.battle_pack_animation import clip_frames
+    from importer.export import encode_model_glb
+    if type(fps) not in (int,float) or not math.isfinite(fps) or not 1<=fps<=120:raise ProjectError('Choose an explicit interchange rate from 1 to 120 fps; native cadence is unresolved')
+    receipt=preview(project,expected_project_path,expected_source_key,model_id,model_source_key,0)
+    try:
+        catalog,model,clip,frames=clip_frames(project.disc_path,model_id,animation_id,model_source_key,animation_source_key)
+        _disc(project,catalog)
+        if model!=receipt['record']:raise ProjectError('Clip export model differs from the inspected source')
+        geometry=receipt['preview'];geometry.update(frames=frames,animation=dict(semantic_id=animation_id,source_record=clip['source_record'],timing='unresolved',runtime_state='not_observed'),representation='retail-default-battle-pack-not-player-assembly')
+        content,audit=encode_model_glb(geometry,clip_fps=fps)
+    except RetailImportError as error:raise ProjectError(str(error)) from error
+    _fresh(project,expected_project_path,expected_source_key)
+    return dict(schema_version='legaia.battle-pack-clip-export.v1',project_path=str(project.root),project_source_key=expected_source_key,model_id=model_id,model_source_key=model_source_key,animation_id=animation_id,animation_source_key=animation_source_key,clip=clip,fps=fps,filename=f'battle-pack-{model["pool_index"]}-clip-{clip["source_record"]["record_index"]}.glb',glb_base64=b64encode(content).decode('ascii'),audit=audit,layer='retail',read_only=True,project_changed=False,gameplay_verified=False)

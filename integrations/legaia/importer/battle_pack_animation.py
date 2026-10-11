@@ -39,6 +39,22 @@ def discover(disc):
     with _disc_context(disc) as (_,digest,_,archive):return decode_catalogue(archive.read_entry(archive.entry(1203)),digest)[0]
 
 
+def clip_frames(disc,model_id,animation_id,model_source_key,animation_source_key):
+    """Read a complete qualified pack clip once, without inferring cadence."""
+    with _disc_context(disc) as (_,digest,_,archive):
+        models=decode_catalog(archive.read_entry(archive.entry(1204)),digest)
+        catalog,bank=decode_catalogue(archive.read_entry(archive.entry(1203)),digest)
+        if models['source_key']!=model_source_key or catalog['source_key']!=animation_source_key:raise ImportError('Pack model or animation source changed')
+        model=next((r for r in models['models'] if r['semantic_id']==model_id),None);clip=next((r for r in catalog['clips'] if r['semantic_id']==animation_id),None)
+        if model is None or clip is None or clip['model_asset_id']!=model_id or clip['bone_count']!=model['source_record']['object_count']:raise ImportError('Choose a qualified matching pack model and clip')
+        source=clip['source_record'];data=bank[source['byte_offset']:source['byte_offset']+source['byte_length']]
+        frames=[]
+        for frame in range(clip['frame_count']):
+            transforms=[dict(object_index=i,**decode_bone_transform(data[8+(frame*clip['bone_count']+i)*8:16+(frame*clip['bone_count']+i)*8])) for i in range(clip['bone_count'])]
+            frames.append(dict(object_transforms=transforms))
+        return catalog,model,clip,frames
+
+
 def pose(disc,model_id,animation_id,model_source_key,animation_source_key,frame_index):
     with _disc_context(disc) as (_,digest,_,archive):
         raw=archive.read_entry(archive.entry(1204));models=decode_catalog(raw,digest);catalog,bank=decode_catalogue(archive.read_entry(archive.entry(1203)),digest)

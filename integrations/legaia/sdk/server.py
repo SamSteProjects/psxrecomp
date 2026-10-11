@@ -1326,6 +1326,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Stability cancellation requires the current job identity')
                     self._json(200, {'job': self.server.stability_checks.cancel(body['id'])})
                     return
+                if route == '/api/battle-pack-clip-export':
+                    fields={'expected_project_path','expected_source_key','model_id','model_source_key','animation_id','animation_source_key','fps'}
+                    if set(body)!=fields:raise ProjectError('Battle clip export requires exact project, model, clip and selected-rate fields')
+                    from .battle_character_resources import export_clip
+                    self._json(200,export_clip(self.server.project,**body))
+                    return
                 if route == '/api/battle-pack-export':
                     fields={'expected_project_path','expected_source_key','model_id','model_source_key','animation_id','animation_source_key','frame_index'}
                     if set(body)!=fields:raise ProjectError('Battle pack export requires exact project, model and optional pose selection')
