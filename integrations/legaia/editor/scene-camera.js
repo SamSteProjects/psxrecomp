@@ -53,3 +53,24 @@ export function sceneFrameMarkerCamera(camera,viewport,points){
  const framed=sceneFrameCamera(camera,viewport,points);
  return {...framed,distance:Math.max(800,framed.distance)};
 }
+
+// Use the renderer's supplied basis; camera navigation never changes native placements.
+function screenCameraInputs(camera,viewport,basis,limits){
+ const axes=['x','y','z'];
+ if(!['perspective','orthographic'].includes(camera?.projection)||!finite(camera.yaw)||!finite(camera.pitch)||!finite(camera.distance)||camera.distance<=0||!axes.every(a=>finite(camera.target?.[a]))||!finite(viewport?.width)||!finite(viewport?.height)||viewport.width<=0||viewport.height<=0||viewport.width>1e6||viewport.height>1e6||!['right','up','forward'].every(row=>axes.every(a=>finite(basis?.[row]?.[a])))||!finite(limits?.minDistance)||!finite(limits.maxDistance)||!finite(limits.targetLimit)||limits.minDistance<=0||limits.maxDistance<limits.minDistance||limits.targetLimit<=0)throw Error('Camera navigation requires finite display inputs and limits.');
+ for(const row of ['right','up','forward'])if(Math.abs(axes.reduce((n,a)=>n+basis[row][a]**2,0)-1)>1e-6)throw Error('Camera screen basis must have unit axes.');
+ if([['right','up'],['right','forward'],['up','forward']].some(([a,b])=>Math.abs(axes.reduce((n,axis)=>n+basis[a][axis]*basis[b][axis],0))>1e-6))throw Error('Camera screen basis axes must be perpendicular.');
+}
+const navigationLimits={minDistance:20,maxDistance:1e8,targetLimit:1e12};
+export function sceneScreenPan(camera,viewport,basis,dx,dy,limits=navigationLimits){
+ screenCameraInputs(camera,viewport,basis,limits);if(!finite(dx)||!finite(dy)||Math.abs(dx)>1e6||Math.abs(dy)>1e6)throw Error('Camera pan exceeds its pointer budget.');
+ const scale=camera.distance/(Math.min(viewport.width,viewport.height)*.9),target={};
+ for(const a of ['x','y','z']){target[a]=camera.target[a]+(-dx*basis.right[a]+dy*basis.up[a])*scale;if(!finite(target[a])||Math.abs(target[a])>limits.targetLimit)throw Error('Camera pan exceeds its display coordinate bounds.');}
+ return {...camera,target};
+}
+export function sceneScreenZoom(camera,viewport,basis,x,y,factor,limits=navigationLimits){
+ screenCameraInputs(camera,viewport,basis,limits);if(!finite(x)||!finite(y)||x<0||y<0||x>viewport.width||y>viewport.height||!finite(factor)||factor<=0)throw Error('Camera zoom requires a bounded viewport cursor and positive factor.');
+ const distance=Math.max(limits.minDistance,Math.min(limits.maxDistance,camera.distance*factor)),scale=(camera.distance-distance)/(Math.min(viewport.width,viewport.height)*.9),target={};
+ for(const a of ['x','y','z']){target[a]=camera.target[a]+((x-viewport.width/2)*basis.right[a]-(y-viewport.height/2)*basis.up[a])*scale;if(!finite(target[a])||Math.abs(target[a])>limits.targetLimit)throw Error('Camera zoom exceeds its display coordinate bounds.');}
+ return {...camera,target,distance};
+}

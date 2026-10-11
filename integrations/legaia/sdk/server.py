@@ -1129,6 +1129,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/system-flag-selectors.js": ("system-flag-selectors.js", "text/javascript"),
                  "/source-build-script.js": ("source-build-script.js", "text/javascript"),
                  "/worldmap-authoring.js": ("worldmap-authoring.js", "text/javascript"),
+                 "/worldmap-camera.js": ("worldmap-camera.js", "text/javascript"),
                  "/worldmap-geometry.js": ("worldmap-geometry.js", "text/javascript"),
                  "/worldmap-footprint.js": ("worldmap-footprint.js", "text/javascript"),
                  "/worldmap-object-bind.js": ("worldmap-object-bind.js", "text/javascript"),
