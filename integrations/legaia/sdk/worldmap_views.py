@@ -20,7 +20,10 @@ def display(value):
 
 def authored_owner(entity):
  a=entity['authored_placement']
- return dict(placement_id=a['placement_id'],native_entity_id=entity['native_entity_id'],record_index=a['record_index'],target_cell=a['target_cell'],model_pool_index=a['model_pool_index'])
+ owner=dict(placement_id=a['placement_id'],native_entity_id=entity['native_entity_id'],record_index=a['record_index'],target_cell=a['target_cell'],model_pool_index=entity['model_pool_index'] if entity.get('placement_scope')=='authored_scripted_seed' else a['model_pool_index'])
+ if entity.get('placement_scope')=='authored_scripted_seed':
+  owner.update(placement_kind='scripted',script_id=a['script_id'],shared_script=a['shared_script'])
+ return owner
 
 def validate(project,identifier,value):
  try:
@@ -32,23 +35,30 @@ def validate(project,identifier,value):
  authored='/authored-placements/' in d['selected_id']
  if authored:
   a=b['authored_owner'];target_uuid=d['selected_id'].rsplit('/',1)[1]
-  if (not isinstance(a,dict) or set(a)!={'placement_id','native_entity_id','record_index','target_cell','model_pool_index'} or a['placement_id']!='placement://authored/'+target_uuid or type(a['record_index']) is not int or not 4<=a['record_index']<512 or type(a['target_cell']) is not int or not 0<=a['target_cell']<16384 or type(a['model_pool_index']) is not int or not 0<a['model_pool_index']<512 or a['native_entity_id']!=f'scene://{scene}/worldmap/placements/{a["target_cell"]:04x}' or b['asset_id']!=f'asset://{scene}/worldmap/models/{a["model_pool_index"]:04d}' or b['entity_sha256']!=digest(a) or b['source_instance_ids']!=[d['selected_id']]):raise ProjectError('Authored World view has invalid stable native ownership')
+  if (not isinstance(a,dict) or set(a)!=({'placement_id','native_entity_id','record_index','target_cell','model_pool_index'}|({'placement_kind','script_id','shared_script'} if a.get('placement_kind')=='scripted' else set())) or a['placement_id']!='placement://authored/'+target_uuid or type(a['record_index']) is not int or not 4<=a['record_index']<512 or type(a['target_cell']) is not int or not 0<=a['target_cell']<16384 or type(a['model_pool_index']) is not int or not (0<=a['model_pool_index']<128 if a.get('placement_kind')=='scripted' else 0<a['model_pool_index']<512) or a['native_entity_id']!=f'scene://{scene}/worldmap/placements/{a["target_cell"]:04x}' or b['asset_id']!=f'asset://{scene}/worldmap/models/{a["model_pool_index"]:04d}' or b['entity_sha256']!=digest(a) or b['source_instance_ids']!=[d['selected_id']]):raise ProjectError('Authored World view has invalid stable native ownership')
+  if a.get('placement_kind')=='scripted' and (a['shared_script'] is not True or not isinstance(a['script_id'],str) or not re.fullmatch(f'script://{scene}/worldmap/man-p0/[0-9]{{4}}',a['script_id'])):raise ProjectError('Scripted World view has invalid shared script ownership')
  ids=b['source_instance_ids']
- if not isinstance(ids,list) or not 1<=len(ids)<=512 or (not authored and any(not isinstance(id,str) or not re.fullmatch(f'scene://{scene}/worldmap/(ground|placements/[0-3][0-9a-f]{{3}})',id) for id in ids)) or ids!=sorted(set(ids)) or b['entity_id'] not in ids:raise ProjectError('World view asset instances are incomplete or conflicting')
+ if not isinstance(ids,list) or not 1<=len(ids)<=512 or (not authored and any(not isinstance(id,str) or not re.fullmatch(f'scene://{scene}/worldmap/(ground|placements/[0-3][0-9a-f]{{3}}'+(r'|authored-placements/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}' if d['layer']=='current' else '')+')',id) for id in ids)) or ids!=sorted(set(ids)) or b['entity_id'] not in ids:raise ProjectError('World view asset instances are incomplete or conflicting')
  _metadata(value)
  if len(_budget(value))>128*1024 or len(_budget(s))>16*1024:raise ProjectError('World view source metadata exceeds its bounded saved format')
 
 def binding(project,scene,shown,key):
  d=display(shown)
  if project.mode!='edit' or not project.disc_path or scene not in SCENES or key!=state_key(project):raise ProjectError('World view requires the current Edit project and source disc')
- if d['layer']=='current':
-  from .worldmap_placements import context
-  context(project,scene)
- geometry=load_worldmap_geometry(project.disc_path,scene)
+ from .worldmap_scripted_placement_binding import COMPONENT as SCRIPTED_COMPONENT,owner as scripted_owner
+ scripted=d['layer']=='current' and SCRIPTED_COMPONENT in project.overrides.get(scripted_owner(scene),{})
  authored='/authored-placements/' in d['selected_id']
- if authored:
-  from .worldmap_current_placements import compose
-  compose(project,geometry)
+ if scripted:
+  from .worldmap_scripted_placement_scene import inspect
+  geometry=inspect(project,scene,key)
+ else:
+  if d['layer']=='current':
+   from .worldmap_placements import context
+   context(project,scene)
+  geometry=load_worldmap_geometry(project.disc_path,scene)
+  if authored:
+   from .worldmap_current_placements import compose
+   compose(project,geometry)
  graph=geometry['scene_graph'];e=next((r for r in graph['entities'] if r['entity_id']==d['selected_id']),None)
  if e is None:raise ProjectError('Saved World view target was removed or is not a qualified source instance')
  a=next((r for r in graph['assets'] if r['asset_id']==e['asset_id']),None)
