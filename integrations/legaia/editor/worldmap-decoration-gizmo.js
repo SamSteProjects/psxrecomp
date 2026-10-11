@@ -2,20 +2,22 @@ import {mountPlacementYaw} from './worldmap-placement-yaw.js';
 import {mountPlacementGizmo,sourceOffsetDirections} from './worldmap-placement-gizmo.js';
 import {validValues} from './worldmap-placement-state.js';
 import {selectionBounds} from './scene-selection-bounds.js';
+import {worldDecorationGroupValues} from './worldmap-decoration-state.js';
 
 export function worldDecorationGroupDisplay(entities,draft){
   const {ids,delta,source}=draft??{},requests=source?.metadata?.binding?.operations?.flatMap(op=>op.requests);
-  if(!Array.isArray(ids)||!ids.length||ids.length>32||new Set(ids).size!==ids.length||!requests||!delta||Object.keys(delta).sort().join(',')!=='x,y,yaw_units,z'||Object.values(delta).some(n=>!Number.isInteger(n))||['x','y','z'].some(a=>Math.abs(delta[a])>65535)||Math.abs(delta.yaw_units)>4095)throw Error('Group display requires bounded retained native identities and integer deltas.');
+  const proposed=worldDecorationGroupValues(source,ids,delta);
   const positions=new Map(),transforms=new Map(),points=[];
   for(const id of ids){
     const owned=requests.filter(r=>r.placement_id===id),matches=entities.filter(e=>e.placement_scope==='authored_spawn_seed'&&e.authored_placement?.placement_id===id);
     if(owned.length!==1||matches.length!==1||matches[0].authored_placement.record_index!==owned[0].record_index||matches[0].entity_id!==`scene://${source.metadata.scene}/worldmap/authored-placements/${id.split('/').pop()}`)throw Error('Group native owner is missing or ambiguous.');
-    const entity=matches[0],base=owned[0].values,values={offset:Object.fromEntries(['x','y','z'].map(a=>[a,base?.offset?.[a]+delta[a]])),yaw_units:((base?.yaw_units+delta.yaw_units)%4096+4096)%4096},item={entityId:entity.entity_id,base,values};
+    const entity=matches[0],base=owned[0].values,values=proposed.get(id),item={entityId:entity.entity_id,base,values};
     const position=worldDecorationDraftPosition(entity,{...item,values:{...values,yaw_units:base?.yaw_units}}),matrix=worldDecorationDraftTransform(entity,item);
     if(position)positions.set(entity.entity_id,position);if(matrix)transforms.set(entity.entity_id,matrix);
     points.push(position??{x:entity.model_to_scene[3],y:entity.model_to_scene[7],z:entity.model_to_scene[11]});
   }
-  return {positions,transforms,pivot:selectionBounds(points).target};
+  const pivotEntity=delta.orbit_pivot?entities.find(e=>e.authored_placement?.placement_id===delta.orbit_pivot):null;
+  return {positions,transforms,pivot:pivotEntity?(positions.get(pivotEntity.entity_id)??{x:pivotEntity.model_to_scene[3],y:pivotEntity.model_to_scene[7],z:pivotEntity.model_to_scene[11]}):selectionBounds(points).target};
 }
 
 export function mountWorldDecorationGroupGizmo({host,getDraft,getEntities,getView,getContext,allowed,renderer,setDraft,onError}){
@@ -31,8 +33,8 @@ export function mountWorldDecorationGroupGizmo({host,getDraft,getEntities,getVie
     }return result;
   }
   const options={host,idPrefix:'world-decoration-group',range:'world-delta',
-    getContext:()=>JSON.stringify([getContext(),getDraft()?.ids,getDraft()?.sourceKey,getDraft()?.enabled,getDraft()?.mode,getDraft()?.step,getDraft()?.yawStep]),
-    onBegin:()=>{before=structuredClone(getDraft().delta);},onPreview:values=>{const delta={...values.offset,yaw_units:getDraft().mode==='yaw'?values.yaw_units:getDraft().delta.yaw_units};worldDecorationGroupDisplay(getEntities(),{...getDraft(),delta});if(!setDraft(delta))throw Error('Decoration group source changed.');},
+    getContext:()=>JSON.stringify([getContext(),getDraft()?.ids,getDraft()?.sourceKey,getDraft()?.enabled,getDraft()?.mode,getDraft()?.step,getDraft()?.yawStep,getDraft()?.delta.orbit_pivot]),
+    onBegin:()=>{before=structuredClone(getDraft().delta);},onPreview:values=>{const delta={...values.offset,yaw_units:getDraft().mode==='yaw'?values.yaw_units:getDraft().delta.yaw_units,...(getDraft().delta.orbit_pivot?{orbit_pivot:getDraft().delta.orbit_pivot}:{})};worldDecorationGroupDisplay(getEntities(),{...getDraft(),delta});if(!setDraft(delta))throw Error('Decoration group source changed.');},
     onEnd:()=>{before=null;},onCancel:()=>{const prior=before;before=null;if(prior)setDraft(prior,true);},onError};
   function rotation(){
     if(!available()||getDraft().mode!=='yaw')return null;

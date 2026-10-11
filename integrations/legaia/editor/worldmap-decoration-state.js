@@ -71,23 +71,52 @@ export async function qualifyWorldDecorationReview(value, source, requests) {
   return structuredClone(value);
 }
 
-export async function transformWorldDecorationGroup(source, placementIds, delta) {
+export function worldDecorationGroupValues(source, placementIds, delta) {
+  const orbit = Object.hasOwn(delta ?? {}, 'orbit_pivot');
   if (!Array.isArray(placementIds) || placementIds.length < 1 || placementIds.length > 32 ||
       placementIds.some(i=>typeof i!=='string') || !same(placementIds,[...new Set(placementIds)].sort()) ||
-      !exact(delta,['x','y','z','yaw_units']) || ['x','y','z'].some(a=>!Number.isInteger(delta[a])||Math.abs(delta[a])>65535) ||
-      !Number.isInteger(delta.yaw_units) || Math.abs(delta.yaw_units)>4095 || !Object.values(delta).some(n=>n!==0))
-    fail('Choose 1–32 unique retained identities and bounded nonzero integer deltas.');
+      !exact(delta,['x','y','z','yaw_units',...(orbit?['orbit_pivot']:[])]) || ['x','y','z'].some(a=>!Number.isInteger(delta[a])||Math.abs(delta[a])>65535) ||
+      !Number.isInteger(delta.yaw_units) || Math.abs(delta.yaw_units)>4095 ||
+      orbit && !placementIds.includes(delta.orbit_pivot))
+    fail('Choose 1–32 unique retained identities, a selected pivot and bounded integer deltas.');
+  const requests=source?.metadata?.binding?.operations.flatMap(op=>op.requests)??[];
+  const selected=new Map(placementIds.map(id=>{
+    const matches=requests.filter(r=>r.placement_id===id);
+    if(matches.length!==1||!validValues(matches[0].values))fail('Group contains an unavailable authored identity.');
+    return [id,matches[0]];
+  }));
+  const position=r=>({x:(r.target_cell%128)*128+64+r.values.offset.x,z:Math.floor(r.target_cell/128)*128+64-r.values.offset.z});
+  const pivot=orbit?position(selected.get(delta.orbit_pivot)):null, angle=delta.yaw_units*Math.PI/2048;
+  let c=Math.cos(angle),s=Math.sin(angle);
+  if(delta.yaw_units%1024===0)[c,s]=[[1,0],[0,1],[-1,0],[0,-1]][((delta.yaw_units/1024)%4+4)%4];
+  const rounded=n=>{if(Math.abs(n-Math.floor(n)-.5)<1e-8)fail('Orbit lies too close to a half-unit rounding boundary; choose another angle or pivot.');return Math.floor(n+.5);};
+  return new Map([...selected].map(([id,r])=>{
+    const offset=Object.fromEntries(['x','y','z'].map(a=>[a,r.values.offset[a]+delta[a]]));
+    if(pivot){const p=position(r),dx=p.x-pivot.x,dz=p.z-pivot.z;
+      offset.x=rounded(pivot.x+c*dx+s*dz)+delta.x-(r.target_cell%128)*128-64;
+      offset.z=Math.floor(r.target_cell/128)*128+64-rounded(pivot.z-s*dx+c*dz)+delta.z;
+    }
+    const values={offset,yaw_units:((r.values.yaw_units+delta.yaw_units)%4096+4096)%4096};
+    if(!validValues(values))fail('Group transform overflows a signed16 offset.');
+    return [id,values];
+  }));
+}
+
+export async function transformWorldDecorationGroup(source, placementIds, delta) {
+  const proposed=worldDecorationGroupValues(source,placementIds,delta);
+  if(Object.hasOwn(delta,'orbit_pivot')&&!delta.yaw_units)fail('Group orbit requires nonzero native yaw.');
+  if(!['x','y','z','yaw_units'].some(a=>delta[a]!==0))fail('Group transform is unchanged.');
   const binding=structuredClone(source.metadata.binding), changes=[];
   const all=binding?.operations.flatMap(op=>op.requests)??[], literal=source.bytes.slice(), view=new DataView(literal.buffer);
   for(const placementId of placementIds){
     const matches=all.filter(r=>r.placement_id===placementId), before=source.metadata.authored_allocations.find(a=>a.placement_id===placementId);
     if(matches.length!==1||!before)fail('Group contains an unavailable authored identity.');
-    const current=matches[0].values, values={offset:Object.fromEntries(['x','y','z'].map(a=>[a,current.offset[a]+delta[a]])),yaw_units:((current.yaw_units+delta.yaw_units)%4096+4096)%4096};
-    if(!validValues(values))fail('Group transform overflows a signed16 offset.');
+    const current=matches[0].values, values=proposed.get(placementId);
     matches[0].values=values;
     const at=before.record_index*32,currentValues={offset:Object.fromEntries(['x','y','z'].map((a,i)=>[a,view.getInt16(at+i*2,true)])),yaw_units:view.getUint16(at+10,true)&4095};
-    for(const [i,a] of ['x','y','z'].entries())view.setInt16(at+i*2,currentValues.offset[a]+delta[a],true);
-    view.setUint16(at+10,(view.getUint16(at+10,true)&0xf000)|((currentValues.yaw_units+delta.yaw_units+4096)%4096),true);
+    if(!same(currentValues,current))fail('Selected native words differ from their retained transform recipe.');
+    for(const [i,a] of ['x','y','z'].entries())view.setInt16(at+i*2,values.offset[a],true);
+    view.setUint16(at+10,(view.getUint16(at+10,true)&0xf000)|values.yaw_units,true);
     changes.push({placement_id:placementId,before:structuredClone(before),current_values:currentValues,values:structuredClone(values)});
   }
   let canonical=source.retailBytes;
@@ -102,7 +131,7 @@ export async function transformWorldDecorationGroup(source, placementIds, delta)
 export async function qualifyWorldDecorationGroupReview(value,source,placementIds,delta){
   const before=source.metadata;
   if(!exact(value,['schema_version','project_path','scene','source_key','source_record','placement_ids','delta','current_map_sha256','proposed_map_sha256','proposed_map_base64','before_binding','binding','audit','read_only','project_changed','gameplay_verified','build_ready','review_key']) ||
-      value.schema_version!=='legaia.worldmap-decoration-group-review.v1'||value.project_path!==before.project_path||value.scene!==before.scene||
+      value.schema_version!==(Object.hasOwn(delta??{},'orbit_pivot')?'legaia.worldmap-decoration-group-review.v2':'legaia.worldmap-decoration-group-review.v1')||value.project_path!==before.project_path||value.scene!==before.scene||
       value.source_key!==before.source_key||!same(value.source_record,before.source_record)||!same(value.placement_ids,placementIds)||!same(value.delta,delta)||
       value.current_map_sha256!==before.current_map_sha256||!same(value.before_binding,before.binding)||value.read_only!==true||value.project_changed!==false||value.gameplay_verified!==false||value.build_ready!==false||!hash(value.review_key))
     fail('Group Review changed its Current identities, delta or read-only scope.');

@@ -245,7 +245,7 @@ export async function qualifyProposedWorldPlacementCell(retail,current,proposed,
 export async function qualifyProposedWorldPlacementGroup(retail,current,proposed,review,options){
   await qualifyCurrentWorldPlacements(retail,current,options);
   const before=current.placement_authoring,after=proposed?.placement_authoring;
-  if(review?.schema_version!=='legaia.worldmap-decoration-group-review.v1'||proposed?.representation!=='proposed-source'||proposed.allocation_proposal!==null||
+  if(!['legaia.worldmap-decoration-group-review.v1','legaia.worldmap-decoration-group-review.v2'].includes(review?.schema_version)||proposed?.representation!=='proposed-source'||proposed.allocation_proposal!==null||
       !same(proposed.allocation_group_proposal,{placement_ids:review.placement_ids,delta:review.delta,review_key:review.review_key})||!after||
       after.current_map_base64!==before.current_map_base64||after.current_map_sha256!==before.current_map_sha256||
       after.exported_map_base64!==review.proposed_map_base64||after.exported_map_sha256!==review.proposed_map_sha256||

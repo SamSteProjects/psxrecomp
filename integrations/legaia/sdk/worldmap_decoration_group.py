@@ -4,6 +4,7 @@ from hashlib import sha256
 import base64
 import json
 import struct
+import math
 
 from importer.worldmap_placement_allocation import allocate
 from importer.worldmap_placements import decode_worldmap_placements
@@ -19,12 +20,52 @@ def arguments(placement_ids, delta):
             or any(not isinstance(i, str) for i in placement_ids)
             or placement_ids != sorted(set(placement_ids))):
         raise ProjectError('Decoration group requires 1..32 sorted unique retained identities')
-    if (not isinstance(delta, dict) or set(delta) != {'x', 'y', 'z', 'yaw_units'}
+    numeric_fields = {'x', 'y', 'z', 'yaw_units'}
+    if (not isinstance(delta, dict) or set(delta) not in (numeric_fields, numeric_fields | {'orbit_pivot'})
             or any(type(delta[a]) is not int or not -65535 <= delta[a] <= 65535 for a in ('x', 'y', 'z'))
             or type(delta['yaw_units']) is not int or not -4095 <= delta['yaw_units'] <= 4095):
         raise ProjectError('Decoration group requires bounded integer XYZ and yaw deltas')
-    if not any(delta.values()):
+    if 'orbit_pivot' in delta and (not isinstance(delta['orbit_pivot'], str)
+            or delta['orbit_pivot'] not in placement_ids or not delta['yaw_units']):
+        raise ProjectError('Group orbit requires a selected retained pivot and nonzero native yaw')
+    if not any(delta[a] for a in ('x','y','z','yaw_units')):
         raise ProjectError('Decoration group transform is unchanged')
+
+
+def proposed_values(requests, placement_ids, delta):
+    selected = {identifier: next(r for r in requests if r['placement_id'] == identifier)
+                for identifier in placement_ids}
+
+    def position(request):
+        current = values(request['values'])
+        cell = request['target_cell']
+        return dict(x=(cell % 128) * 128 + 64 + current['offset']['x'],
+                    z=(cell // 128) * 128 + 64 - current['offset']['z'])
+
+    pivot = position(selected[delta['orbit_pivot']]) if 'orbit_pivot' in delta else None
+    angle = delta['yaw_units'] * math.tau / 4096
+    cosine, sine = math.cos(angle), math.sin(angle)
+    # Exact cardinal rotations avoid floating-point drift at native quarter turns.
+    if delta['yaw_units'] % 1024 == 0:
+        cosine, sine = ((1, 0), (0, 1), (-1, 0), (0, -1))[(delta['yaw_units'] // 1024) % 4]
+
+    def rounded(number):
+        if abs(number - math.floor(number) - 0.5) < 1e-8:
+            raise ProjectError('Orbit lies too close to a half-unit rounding boundary; choose another angle or pivot')
+        return math.floor(number + 0.5)
+
+    result = {}
+    for identifier, request in selected.items():
+        current = values(request['values'])
+        offset = {a: current['offset'][a] + delta[a] for a in ('x', 'y', 'z')}
+        if pivot is not None:
+            before = position(request)
+            dx, dz = before['x'] - pivot['x'], before['z'] - pivot['z']
+            cell = request['target_cell']
+            offset['x'] = rounded(pivot['x'] + cosine * dx + sine * dz) + delta['x'] - (cell % 128) * 128 - 64
+            offset['z'] = (cell // 128) * 128 + 64 - rounded(pivot['z'] - sine * dx + cosine * dz) + delta['z']
+        result[identifier] = values(dict(offset=offset, yaw_units=(current['yaw_units'] + delta['yaw_units']) % 4096))
+    return result
 
 
 def revised_binding(raw, floor, binding, placement_ids, delta):
@@ -36,11 +77,9 @@ def revised_binding(raw, floor, binding, placement_ids, delta):
     selected = {i: [r for r in requests if r['placement_id'] == i] for i in placement_ids}
     if any(len(rows) != 1 for rows in selected.values()):
         raise ProjectError('Decoration group contains an unavailable authored identity')
-    for rows in selected.values():
-        request = rows[0]; current = values(request['values'])
-        request['values'] = values(dict(
-            offset={a: current['offset'][a] + delta[a] for a in ('x', 'y', 'z')},
-            yaw_units=(current['yaw_units'] + delta['yaw_units']) % 4096))
+    proposed = proposed_values(requests, placement_ids, delta)
+    for identifier, rows in selected.items():
+        rows[0]['values'] = proposed[identifier]
     current = raw
     for op in result['operations']:
         current, audit = allocate(current, floor, result['scene'], op['requests'])
@@ -59,12 +98,16 @@ def review(project, scene, key, placement_ids, delta):
     old = {a['placement_id']: a for a in allocations}
     new = {a['placement_id']: a for a in after_allocations}
     expected = bytearray(current); changes = []
+    recipes = {r['placement_id']: r for op in before['operations'] for r in op['requests']}
+    proposed_by_id = proposed_values(list(recipes.values()), placement_ids, delta)
     for identifier in placement_ids:
         at = old[identifier]['record_index'] * 32
         offset = dict(zip(('x', 'y', 'z'), struct.unpack_from('<3h', current, at)))
         yaw = struct.unpack_from('<H', current, at + 10)[0]
-        proposed = values(dict(offset={a: offset[a] + delta[a] for a in offset},
-                               yaw_units=((yaw & 4095) + delta['yaw_units']) % 4096))
+        recipe = recipes[identifier]['values']
+        if offset != recipe['offset'] or (yaw & 4095) != recipe['yaw_units']:
+            raise ProjectError('Selected native words differ from their retained transform recipe')
+        proposed = proposed_by_id[identifier]
         struct.pack_into('<3h', expected, at, *(proposed['offset'][a] for a in ('x', 'y', 'z')))
         struct.pack_into('<H', expected, at + 10, (yaw & 0xf000) | proposed['yaw_units'])
         changes.append(dict(placement_id=identifier, before=old[identifier], after=new[identifier],
@@ -80,7 +123,7 @@ def review(project, scene, key, placement_ids, delta):
             or before_decoded['unresolved'] != after_decoded['unresolved']
             or any(seed != new_seeds[i] for i, seed in old_seeds.items() if i not in selected_native)):
         raise ProjectError('Decoration group changed native membership or an unselected seed')
-    result = dict(schema_version='legaia.worldmap-decoration-group-review.v1', project_path=str(project.root),
+    result = dict(schema_version='legaia.worldmap-decoration-group-review.v2' if 'orbit_pivot' in delta else 'legaia.worldmap-decoration-group-review.v1', project_path=str(project.root),
         scene=scene, source_key=key, source_record=provenance, placement_ids=list(placement_ids), delta=deepcopy(delta),
         current_map_sha256=sha256(current).hexdigest(), proposed_map_sha256=sha256(candidate).hexdigest(),
         proposed_map_base64=base64.b64encode(candidate).decode('ascii'), before_binding=before, binding=binding,
