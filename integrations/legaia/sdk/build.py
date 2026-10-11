@@ -120,6 +120,7 @@ def _merge_trigger_script_patch(original, current, changed, audit, scene, bindin
 def package_change_kinds(edits) -> list[str]:
     """Describe emitted audit scopes, without inferring unexecuted game behavior."""
     labels = {
+        'world-animation-channel-content-only': 'World animation channels',
         'world-script-animation-operands-only': 'World script animation operands',
         'world-script-effect-color-operands-only': 'World script effect colors',
         'world-script-model-selector-only': 'World script model selectors',
@@ -203,6 +204,8 @@ def build_report(audit) -> dict:
         elif change.get('scope') == 'script-movement-target-only':
             field = 'movement.' + field
             before, after = change['before_coordinate'], change['after_coordinate']
+        elif change.get('scope') == 'world-animation-channel-content-only':
+            before,after=change['before_value'],change['after_value']
         elif change.get("scope") == "script-system-selector-only":
             field = "system_flag.index"
             before, after = change["before_index"], change["after_index"]
@@ -240,7 +243,9 @@ def build_report(audit) -> dict:
                         **({"frame_index": change["frame_index"], "object_index": change["object_index"],
                             "authored_owners": list(change.get("axis_owners", change.get("authored_owners", []))),
                             "contributor_scope": "axis" if "axis_owners" in change else "clip"}
-                           if change.get("scope") == "shared-scene-animation-record" else {}),
+                           if change.get('scope') in ('shared-scene-animation-record','world-animation-channel-content-only') else {}),
+                        **({key:deepcopy(change[key]) for key in ('record_index','bank_byte_offset','source_record_sha256','proposed_record_sha256','shared_record')}
+                           if change.get('scope')=='world-animation-channel-content-only' else {}),
                         **({'payload_changes': deepcopy(change['payload_changes'])}
                            if field == 'texture.tim' and 'payload_changes' in change else {}),
                         **({'coordinate_changes': [dict(row) for row in change['coordinate_changes']]}
@@ -602,7 +607,10 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             component=next(iter(components));validate(project,identifier,components[component],component)
             continue
         if isinstance(components,dict) and 'WorldAnimationChannels' in components:
-            raise BuildError('Saved World animation channels require pending native ANM Build delivery')
+            from .worldmap_animation_binding import validate,verify,COMPONENT
+            if set(components)!={COMPONENT}:raise BuildError('World animation owner accepts only its dedicated component')
+            validate(project,identifier,components[COMPONENT]);verify(project,components[COMPONENT]['scene'])
+            continue
         if isinstance(components,dict) and 'WorldMapScriptedPlacementAllocations' in components:
             from .worldmap_scripted_placement_binding import validate,read_base,COMPONENT
             if set(components)!={COMPONENT}:raise BuildError('Scripted World owner accepts only its dedicated component')
@@ -890,6 +898,9 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             growth_requests, growth_audit = prepare_model_growth(project, archive)
         deferred_models = set(growth_audit['deferred_model_ids']) if growth_audit else set()
         growth_requests.extend(audio_requests)
+        from .worldmap_animation_build import prepare as prepare_world_animation
+        world_animation_requests,world_animation_audit,world_animation_changes=prepare_world_animation(project,archive)
+        growth_requests.extend(world_animation_requests);audit_edits.extend(world_animation_changes)
         animation_growth_audit = None
         if animation_ledgers:
             from .animation_growth import prepare_animation_growth
@@ -1460,6 +1471,9 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         audit['relocation_payload'] = {k:v for k,v in relocation.items() if k != 'payload'}
         audit['overlay_application'] = 'composed_before_relocation'
         audit['model_growth'] = growth_audit
+        if world_animation_requests:
+            audit['world_animation'] = world_animation_audit
+            audit['validation']['world_animation_bank_readback'] = True
         if animation_growth_audit:
             audit['animation_growth'] = animation_growth_audit
             audit['validation']['allocated_animation_bank_readback'] = True
