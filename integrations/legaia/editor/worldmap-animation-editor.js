@@ -1,4 +1,5 @@
 import {qualifyWorldAnimationCurrent,qualifyWorldAnimationEdit} from './worldmap-animation-current.js';
+import {qualifyWorldAnimationBuildPose} from './worldmap-animation-build-navigation.js';
 const node=(tag,text)=>{const e=document.createElement(tag);if(text)e.textContent=text;return e;};
 
 function validateWorldChannel(held,objectIndex,values){
@@ -74,5 +75,11 @@ export function mountWorldAnimationEditor({host,currentReport,entityId,path,curr
   };
   function cancel(){generation++;controller?.abort();controller=null;if(kind==='inspect'||kind==='review')setBusy(false);kind=null;restore();held=review=null;consent.checked=false;evidence.textContent='';refresh();}
   buttons.discard.onclick=()=>{cancel();status.textContent='World animation draft discarded; project unchanged.';outerUpdate();};
-  refresh();return {update:refresh,cancel,dispose(){disposed=true;cancel();panel.remove();}};
+  refresh();return {update:refresh,cancel,async openBuild(record,change){
+    if(!fresh()||busy()||controller)throw Error('Current World animation Inspector is unavailable.');
+    panel.open=true;inputs.frame.value=String(change.frame_index);await buttons.inspect.onclick();
+    if(!fresh()||!held)throw Error('Built World animation could not be inspected in Current.');let currentValue,retailValue;
+    try{const values=qualifyWorldAnimationBuildPose(held,record,change);currentValue=values.current;retailValue=values.retail;if(!inputs[change.field])throw Error('Built axis is unsupported.');}catch(error){cancel();throw error;}
+    inputs.object.value=String(change.object_index);mode.value='frame';populate();status.textContent=`Built ${change.field}: Retail ${retailValue} → Current ${currentValue}. Frame ${change.frame_index}, object ${change.object_index}; shared clip affects every matching selector. No project change.`;refresh();inputs[change.field].focus();inputs[change.field].scrollIntoView({block:'nearest'});return true;
+  },dispose(){disposed=true;cancel();panel.remove();}};
 }
