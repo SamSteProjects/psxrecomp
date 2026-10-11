@@ -1170,6 +1170,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-placement-state.js": ("worldmap-placement-state.js", "text/javascript"),
                  "/worldmap-placement-replay.js": ("worldmap-placement-replay.js", "text/javascript"),
                  "/worldmap-scripted-placement-replay.js": ("worldmap-scripted-placement-replay.js", "text/javascript"),
+                 "/worldmap-current-man.js": ("worldmap-current-man.js", "text/javascript"),
                  "/worldmap-current-placements.js": ("worldmap-current-placements.js", "text/javascript"),
                  "/worldmap-decoration-state.js": ("worldmap-decoration-state.js", "text/javascript"),
                  "/worldmap-authored-selection-state.js": ("worldmap-authored-selection-state.js", "text/javascript"),
@@ -1413,6 +1414,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Removal identity shape differs from the selected scope')
                     from .worldmap_placement_remove import review
                     self._json(200,review(self.server.project,body['scene'],body['source_key'],body.get('placement_ids',body.get('placement_id'))))
+                    return
+                if route == '/api/worldmap-current-man':
+                    if set(body)!={'scene','source_key'}:
+                        raise ProjectError('Current World MAN requires exact scene and source key')
+                    from .worldmap_current_man import inspect
+                    self._json(200,inspect(self.server.project,body['scene'],body['source_key']))
                     return
                 if route == '/api/worldmap-scripted-placement-scene':
                     if set(body)!={'scene','source_key'}:

@@ -31,6 +31,15 @@ function layout(man) {
   for (let i = 0; i < 6; i++) {const end = cursor + 3 + u24(cursor); if (end > man.length) fail('MAN section crosses its source.'); sections.push([cursor, end]); cursor = end;}
   return {starts, counts, sections};
 }
+export function worldManRecordSpans(man) {
+  const l=layout(man);let flat=0;const rows=[];
+  for(let partition=0;partition<3;partition++)for(let index=0;index<l.counts[partition];index++){
+    const at=l.starts[flat++],end=Math.min(man.length,...l.starts.filter(n=>n>at),...l.sections.map(s=>s[0]).filter(n=>n>at));
+    if(l.starts.filter(n=>n===at).length!==1||!integer(end-at,1,65536)||l.sections.some(([lo,hi])=>at<hi&&lo<end))fail('MAN record spans have ambiguous native owners.');
+    rows.push({partition,index,at,length:end-at});
+  }
+  return rows;
+}
 async function header(man, l, flat) {
   if (!integer(flat, 0, l.starts.length - 1)) fail('Bind has an invalid flat MAN index.');
   const at = l.starts[flat], end = Math.min(man.length, ...l.starts.filter(n => n > at), ...l.sections.map(s => s[0]).filter(n => n > at));
