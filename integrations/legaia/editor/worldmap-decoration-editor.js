@@ -1,15 +1,16 @@
 import {qualifyWorldDecorationSource, qualifyWorldDecorationReview, worldDecorationDraft,
-  worldDecorationDonorValues,qualifyWorldDecorationTransformReview,qualifyWorldDecorationRemovalReview} from './worldmap-decoration-state.js';
+  worldDecorationDonorValues,qualifyWorldDecorationTransformReview,qualifyWorldDecorationRemovalReview,qualifyWorldDecorationCellReview} from './worldmap-decoration-state.js';
 import {validValues} from './worldmap-placement-state.js';
 const node = (tag, text) => { const element = document.createElement(tag); if (text) element.textContent = text; return element; };
 
 export function mountWorldDecorationEditor({host, getContext, getState, busy, setBusy, api, onPreview, onDiscard, onApplied, onError,onTransformDraft=()=>{}}) {
-  const panel = node('details'), summary = node('summary', 'Create, Edit or Remove World Decoration'), status = node('p');
+  const panel = node('details'), summary = node('summary', 'Create, Edit, Move Cell or Remove World Decoration'), status = node('p');
   panel.dataset.worldDecorationEditor = ''; status.setAttribute('role', 'status');
   const inspect = node('button', 'Inspect decoration donors'), editSelected = node('button','Edit selected decoration'),removeReview=node('button','Review decoration removal'),reviewButton = node('button', 'Review decoration'),
     preview = node('button', 'Preview reviewed decoration'), apply = node('button', 'Apply reviewed decoration'), discard = node('button', 'Discard decoration');
   const actions = node('div'); actions.className = 'dialog-actions'; actions.style.flexWrap = 'wrap';
-  for (const button of [inspect, editSelected,reviewButton,removeReview, preview, apply, discard]) { button.type = 'button'; actions.append(button); }
+  const cellReview=node('button','Review decoration cell move');
+  for (const button of [inspect, editSelected,reviewButton,cellReview,removeReview, preview, apply, discard]) { button.type = 'button'; actions.append(button); }
   const fields = node('div'); Object.assign(fields.style, {display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '8px'});
   const donor = node('select'), target = node('input'), yaw = node('input'), offsets = {};
   const addField = (label, input) => {
@@ -18,13 +19,14 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     wrapper.append(input); fields.append(wrapper);
   };
   addField('World decoration donor', donor); target.type = 'number'; target.min = '0'; target.max = '16383'; target.step = '1'; addField('World decoration target cell', target);
+  const destination=node('input');destination.type='number';destination.min='0';destination.max='16383';destination.step='1';addField('World decoration new native cell',destination);
   for (const axis of ['x','y','z']) { const input = node('input'); input.type = 'number'; input.min = '-32768'; input.max = '32767'; input.step = '1'; offsets[axis] = input; addField('World decoration offset ' + axis.toUpperCase(), input); }
   yaw.type = 'number'; yaw.min = '0'; yaw.max = '4095'; yaw.step = '1'; addField('World decoration yaw units', yaw);
   const move=node('input');move.type='checkbox';move.id='world-decoration-translate';const moveLabel=node('label','Translate selected decoration ');moveLabel.append(move);const snap=node('select');snap.setAttribute('aria-label','Decoration translation snap');for(const step of [1,16,64,128]){const option=node('option',step+' source units');option.value=String(step);snap.append(option);}
   const rotate=node('input');rotate.type='checkbox';rotate.id='world-decoration-rotate';const rotateLabel=node('label','Rotate selected decoration yaw ');rotateLabel.append(rotate);const yawSnap=node('select');yawSnap.setAttribute('aria-label','Decoration yaw snap');for(const step of [1,16,64,256,512,1024]){const option=node('option',`${step} yaw units (${step*360/4096}°)`);option.value=String(step);yawSnap.append(option);}
   const evidence = node('pre'); evidence.className = 'diagnostic-detail';
   Object.assign(evidence.style, {whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxHeight: '220px', overflow: 'auto'});
-  panel.append(summary, node('p', 'Create a walk decoration from a drawable Current donor, or edit the selected retained decoration’s signed offsets and yaw. Existing edits retain the same UUID, cell, record and model; donor and target stay fixed. Review and preview leave the project unchanged. Apply uses shared Undo/Redo.'), fields,moveLabel,snap,rotateLabel,yawSnap,node('p','Choose Edit selected decoration, then translate with X/Y/Z handles or rotate with the yaw ring. This is an unreviewed display draft. Native Review and Proposed preview are required before Apply. Y and Z follow native offset directions, with one reflection into editor space.'), actions, status, evidence); host.append(panel);
+  panel.append(summary, node('p', 'Create a walk decoration from a drawable Current donor, or edit the selected retained decoration’s signed offsets and yaw. Transform edits retain the same cell. Move Cell preserves UUID, record, model and encoded offsets while changing native position from the destination row, column and floor height. Review and preview leave the project unchanged. Apply uses shared Undo/Redo.'), fields,moveLabel,snap,rotateLabel,yawSnap,node('p','Choose Edit selected decoration, then translate with X/Y/Z handles or rotate with the yaw ring. This is an unreviewed display draft. Native Review and Proposed preview are required before Apply. Y and Z follow native offset directions, with one reflection into editor space. Cell moves require unchanged offset/yaw fields; Apply those edits or restore Current offset/yaw values first. Saved views bound to the old cell must be recreated.'), actions, status, evidence); host.append(panel);
   fields.before(node('p','Removal Review restores the selected record and cell, lists donor reassignments and checks that surviving decorations stay unchanged. Preview the removal before Apply.'));
   let source = null, held = null, review = null, placementId = null, editing = false,displayed = false, controller = null, pendingKind = null, generation = 0;
   const contextMatches = context => {
@@ -63,9 +65,9 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
       const distance = n => Math.abs(n % 128 - col) + Math.abs(Math.floor(n / 128) - row);
       return best === null || distance(next) < distance(best) ? next : best;
     }, null);
-    target.value = editing ? donor.value : closest === null ? '' : String(closest); change();
+    target.value = editing ? donor.value : closest === null ? '' : String(closest);destination.value=closest===null?'':String(closest); change();
   }
-  donor.onchange = donorValues; for (const input of [target, yaw, ...Object.values(offsets)]) input.oninput = change;
+  donor.onchange = donorValues; for (const input of [target, destination, yaw, ...Object.values(offsets)]) input.oninput = change;
   function cancel() {
     move.checked=rotate.checked=false;generation++; controller?.abort(); source = held = review = placementId = null; displayed = editing = false;onTransformDraft(null);
     donor.replaceChildren(); evidence.textContent = ''; status.textContent = 'Switch to a qualified Current scene and inspect decoration donors.';
@@ -79,9 +81,12 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     editSelected.disabled=locked||!available||!getContext()?.current.scene_graph.entities.some(e=>e.entity_id===getContext().selectedId&&e.placement_scope==='authored_spawn_seed');
     for (const field of [donor, target, yaw, ...Object.values(offsets)]) field.disabled = locked || !sourceReady();
     if(editing){donor.disabled=true;target.disabled=true;}
+    destination.disabled=locked||!editing||!sourceReady();
     let validDraft = false; if (sourceReady()) { try { draft(); validDraft = true; } catch {} }
     reviewButton.disabled = locked || !validDraft;
     removeReview.disabled=locked||!editing||!sourceReady();
+    cellReview.disabled=locked||!editing||!sourceReady()||destination.value===''||!Number.isInteger(Number(destination.value))||
+      !source?.inventory.target_cells.includes(Number(destination.value))||JSON.stringify(fieldValues())!==JSON.stringify(worldDecorationDonorValues(source,Number(donor.value)));
     preview.disabled = locked || !review || !sourceReady();
     apply.disabled = locked || !review || !displayed || !sourceReady();
     discard.disabled = locked || !source;
@@ -116,11 +121,26 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
         const option = node('option', `Cell ${seed.source_cell} · model ${seed.model_pool_index} · record ${seed.object_record_index}`); option.value = String(seed.source_cell); donor.append(option);
       }
       if (selected && [...donor.options].some(o => o.value === String(selected.source_cell))) donor.value = String(selected.source_cell);
-      donorValues(); status.textContent = edit?`Editing retained decoration ${placementId}. Change signed offsets or yaw; UUID, cell, native record and model stay fixed.`:`${donor.options.length} drawable donors · ${value.target_cells.length} available target cells · ${value.free_record_indices.length} unused native records. Draft identity ${placementId}.`;
+      donorValues(); status.textContent = edit?`Editing retained decoration ${placementId}. Change offsets/yaw, or review a separate native cell move with unchanged encoded values.`:`${donor.options.length} drawable donors · ${value.target_cells.length} available target cells · ${value.free_record_indices.length} unused native records. Draft identity ${placementId}.`;
       return true;
     });
   }
   inspect.onclick=()=>inspectDonors(false);editSelected.onclick=()=>inspectDonors(true);
+  cellReview.onclick=()=>{
+    if(cellReview.disabled)return;withdrawReview();
+    return run('cell-review',async(context,signal,valid)=>{
+      const id=placementId,cell=Number(destination.value);status.textContent='Replaying the native cell move and dependent donor recipes…';
+      const value=await read('/api/worldmap-decoration-cell-review',{scene:context.current.scene,source_key:context.key,placement_id:id,target_cell:cell},signal);
+      const qualified=await qualifyWorldDecorationCellReview(value,source,id,cell);if(!valid())return;
+      review=qualified;evidence.textContent=JSON.stringify({placement_id:id,record_index:review.audit.after.record_index,
+        before_cell:review.audit.before.target_cell,after_cell:review.audit.after.target_cell,
+        before_position:review.audit.before.native_seed.source_position,after_position:review.audit.after.native_seed.source_position,
+        before_floor_tier:review.audit.before.native_seed.source_floor_tier,after_floor_tier:review.audit.after.native_seed.source_floor_tier,
+        before_terrain:review.audit.before.preserved_terrain_hex,after_terrain:review.audit.after.preserved_terrain_hex,
+        rebased_donors:review.audit.rebased_donors,proposed_map_sha256:review.proposed_map_sha256,review_key:review.review_key},null,2);
+      status.textContent='Cell move Review matches independent complete native replay. Encoded offsets/yaw and surviving poses are unchanged. Preview before Apply.';
+    });
+  };
   removeReview.onclick=()=>{
     if(removeReview.disabled)return;withdrawReview();
     return run('removal-review',async(context,signal,valid)=>{
@@ -161,9 +181,9 @@ export function mountWorldDecorationEditor({host, getContext, getState, busy, se
     // The shared API owns the global busy lock; taking it here would refuse
     // our own command before it reaches the server.
     controller = request; pendingKind = 'apply'; update(); status.textContent = 'Applying the exact reviewed native decoration…';
-    const removing=captured.schema_version==='legaia.worldmap-decoration-removal-review.v1';
-    try { applied = await api('/api/command', {type: removing?'remove_worldmap_authored_placement':captured.placement_id?'set_worldmap_authored_placement':'allocate_worldmap_placements', scene: context.current.scene,
-      source_key: context.key,...(removing?{placement_id:captured.placement_id}:captured.placement_id?{placement_id:captured.placement_id,values:captured.values}:{requests:captured.requests}),review_key: captured.review_key}) === true;
+    const removing=captured.schema_version==='legaia.worldmap-decoration-removal-review.v1',relocating=captured.schema_version==='legaia.worldmap-decoration-cell-review.v1';
+    try { applied = await api('/api/command', {type: removing?'remove_worldmap_authored_placement':relocating?'relocate_worldmap_authored_placement':captured.placement_id?'set_worldmap_authored_placement':'allocate_worldmap_placements', scene: context.current.scene,
+      source_key: context.key,...(removing?{placement_id:captured.placement_id}:relocating?{placement_id:captured.placement_id,target_cell:captured.target_cell}:captured.placement_id?{placement_id:captured.placement_id,values:captured.values}:{requests:captured.requests}),review_key: captured.review_key}) === true;
       if (!applied) throw Error('Decoration Apply failed. Inspect fresh Current sources before retrying.');
     } catch (error) { status.textContent = error.message; onError(error); }
     finally {

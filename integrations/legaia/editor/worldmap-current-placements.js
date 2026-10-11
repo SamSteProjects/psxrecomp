@@ -208,3 +208,33 @@ export async function qualifyProposedWorldPlacementRemoval(retail,current,propos
   const view=await qualifyCurrentWorldPlacements(retail,normalized,options);
   return {...view,entities:view.entities.map(entity=>({...entity,preview_layer:'Proposed authored seeds'}))};
 }
+
+export async function qualifyProposedWorldPlacementCell(retail,current,proposed,review,options){
+  await qualifyCurrentWorldPlacements(retail,current,options);
+  const before=current.placement_authoring,after=proposed?.placement_authoring;
+  if(review?.schema_version!=='legaia.worldmap-decoration-cell-review.v1'||proposed?.representation!=='proposed-source'||proposed.allocation_proposal!==null||
+      !same(proposed.allocation_cell_proposal,{placement_id:review.placement_id,target_cell:review.target_cell,review_key:review.review_key})||
+      review.source_key!==current.project_source_key||review.current_map_sha256!==before.current_map_sha256||!same(review.before_binding,before.allocation_binding)||!after||
+      after.current_map_base64!==before.current_map_base64||after.current_map_sha256!==before.current_map_sha256||
+      after.exported_map_base64!==review.proposed_map_base64||after.exported_map_sha256!==review.proposed_map_sha256||
+      !same(after.authored_records,before.authored_records)||!same(after.allocation_binding,review.binding)||
+      !same(proposed.scene_graph?.assets,current.scene_graph.assets)||!same(proposed.model_authoring,current.model_authoring)||
+      !same(proposed.texture_authoring,current.texture_authoring))fail('Proposed cell move differs from qualified Current and reviewed native receipt.');
+  const expected=structuredClone(before.allocation_binding),matches=expected?.operations.flatMap(op=>op.requests).filter(r=>r.placement_id===review.placement_id)??[];
+  if(matches.length!==1||!Number.isInteger(review.target_cell)||review.target_cell<0||review.target_cell>=16384)fail('Cell move requires a retained owner and native destination.');
+  const selected=matches[0],previous=selected.target_cell;
+  for(const op of expected.operations)for(const request of op.requests)
+    if(request.placement_id!==selected.placement_id&&request.donor_cell===previous)request.donor_cell=review.target_cell;
+  selected.target_cell=review.target_cell;
+  for(let i=0;i<expected.operations.length;i++)expected.operations[i].proposed_map_sha256=review.binding?.operations?.[i]?.proposed_map_sha256;
+  if(!same(expected,review.binding))fail('Cell move changed offsets, ownership or unrelated recipe requests.');
+  const literal=mapBytes(before.current_map_base64),raw=mapBytes(before.retail_map_base64),oldAt=0x8000+previous*2,newAt=0x8000+review.target_cell*2;
+  const word=new DataView(literal.buffer).getUint16(newAt,true),terrain=(word&511)*32+20,selectors=literal.slice(terrain,terrain+4);
+  literal.set(raw.subarray(oldAt,oldAt+2),oldAt);new DataView(literal.buffer).setUint16(newAt,(word&~511)|selected.record_index,true);
+  literal.set(selectors,selected.record_index*32+20);
+  if(!equalWorldPlacementBytes(literal,mapBytes(after.exported_map_base64)))fail('Proposed cell move changed unrelated native bytes.');
+  const normalized=structuredClone(proposed);delete normalized.allocation_cell_proposal;normalized.representation='current-source';
+  normalized.placement_authoring.current_map_base64=after.exported_map_base64;normalized.placement_authoring.current_map_sha256=after.exported_map_sha256;
+  const view=await qualifyCurrentWorldPlacements(retail,normalized,options);
+  return {...view,entities:view.entities.map(entity=>({...entity,preview_layer:'Proposed authored seeds'}))};
+}

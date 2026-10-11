@@ -486,7 +486,7 @@ def inspector_schema():
             {'id':'visibility','label':'Runtime visibility','path':['runtime_visibility'],'type':'string','state':'unresolved'},
             {'id':'resting','label':'Runtime resting position','path':['runtime_resting_position'],'type':'string','state':'unresolved'},
         ],
-        'notes':['This decoration is authored and has no Retail instance transform. Native coordinates use Y-down; viewport Y reflection is separate.', 'Retained decoration XYZ/yaw can be reviewed and edited through its dedicated tool. Cell, record and model stay fixed; collision, scripts and native visibility remain unverified.'],
+        'notes':['This decoration is authored and has no Retail instance transform. Native coordinates use Y-down; viewport Y reflection is separate.', 'Retained decoration XYZ/yaw edits keep the cell fixed. Its dedicated tool also supports reviewed native cell moves preserving UUID, record, model and encoded offsets. Collision, scripts and native visibility remain unverified.'],
         'details':[{'label':'Native allocation provenance','path':['authored_placement']}],
     }
     schema['authored_asset_inspectors']['world_placements']='AssetWorldPlacements'
