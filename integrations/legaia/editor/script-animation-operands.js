@@ -17,6 +17,8 @@ function decodeNative(target,hex){
  if(target.mnemonic==='SET_MODEL_ANIMATION'?((raw[0]&127)!==0x4c||raw[header]!==0x81):((raw[0]&127)!==0x34||raw[header]>>4!==3))fail('Animation instruction dispatch is unsupported.');
  let offset=header+1;const values={};for(const [key,width] of spec){let value=0;for(let i=0;i<width;i++)value+=raw[offset+i]*2**(i*8);values[key]=value;offset+=width;}return {raw,values,header};
 }
+// Reuse the same bounded native layout reader for source-owned World P0 resources.
+export {specs as animationOperandSpecs,valuesValid as animationOperandValuesValid,decodeNative as decodeAnimationOperandInstruction};
 function targetValid(target,owner,manSize){
  if(!object(target)||!int(target.pc,0,65535)||target.owner_id!==owner||target.semantic_id!=='script://'+owner.slice(8)+'/animation-operands/'+target.pc.toString(16).padStart(4,'0')||!hash(target.source_record_sha256)||!(target.target_context===null||int(target.target_context,0,255))||!int(target.decoded_byte_offset,0,manSize)||!valuesValid(target.mnemonic,target.values))fail('Animation operand target ownership or fields are invalid.');
  const native=decodeNative(target,target.raw_instruction_hex),start=target.decoded_byte_offset-native.header-1;

@@ -1132,6 +1132,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-object-animation.js": ("worldmap-object-animation.js", "text/javascript"),
                  "/worldmap-object-script.js": ("worldmap-object-script.js", "text/javascript"),
                  "/worldmap-resources.js": ("worldmap-resources.js", "text/javascript"),
+                 "/world-script-animation-operands.js": ("world-script-animation-operands.js", "text/javascript"),
                  "/worldmap-behavior-resources.js": ("worldmap-behavior-resources.js", "text/javascript"),
                  "/worldmap-project-resources.js": ("worldmap-project-resources.js", "text/javascript"),
                  "/worldmap-model-replacement.js": ("worldmap-model-replacement.js", "text/javascript"),
@@ -1598,6 +1599,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'source_key'}:raise ProjectError('World resource discovery requires the exact project source key')
                     from .worldmap_resources import inspect
                     self._json(200,inspect(self.server.project,body['source_key']))
+                    return
+                if route == '/api/world-script-animation-operands':
+                    if set(body)!={'script_id','source_key'}:raise ProjectError('World script operand options require the exact source scope')
+                    from .worldmap_script_operands import options
+                    self._json(200,options(self.server.project,body['script_id'],body['source_key']))
+                    return
+                if route == '/api/world-script-animation-review':
+                    if set(body)!={'script_id','source_key','pc','values','shared'}:raise ProjectError('World script review requires the exact source scope and values')
+                    from .worldmap_script_operands import review
+                    self._json(200,review(self.server.project,body['script_id'],body['source_key'],body['pc'],body['values'],body['shared'])[0])
                     return
                 if route == '/api/worldmap-behavior-resources':
                     if set(body)!={'source_key'}:raise ProjectError('World behavior resources require the exact source key')
