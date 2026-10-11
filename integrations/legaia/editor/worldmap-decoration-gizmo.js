@@ -1,6 +1,41 @@
 import {mountPlacementYaw} from './worldmap-placement-yaw.js';
 import {mountPlacementGizmo,sourceOffsetDirections} from './worldmap-placement-gizmo.js';
 import {validValues} from './worldmap-placement-state.js';
+import {selectionBounds} from './scene-selection-bounds.js';
+
+export function worldDecorationGroupDisplay(entities,draft){
+  const {ids,delta,source}=draft??{},requests=source?.metadata?.binding?.operations?.flatMap(op=>op.requests);
+  if(!Array.isArray(ids)||!ids.length||ids.length>32||new Set(ids).size!==ids.length||!requests||!delta||Object.keys(delta).sort().join(',')!=='x,y,yaw_units,z'||Object.values(delta).some(n=>!Number.isInteger(n))||['x','y','z'].some(a=>Math.abs(delta[a])>65535)||Math.abs(delta.yaw_units)>4095)throw Error('Group display requires bounded retained native identities and integer deltas.');
+  const positions=new Map(),transforms=new Map(),points=[];
+  for(const id of ids){
+    const owned=requests.filter(r=>r.placement_id===id),matches=entities.filter(e=>e.placement_scope==='authored_spawn_seed'&&e.authored_placement?.placement_id===id);
+    if(owned.length!==1||matches.length!==1||matches[0].authored_placement.record_index!==owned[0].record_index||matches[0].entity_id!==`scene://${source.metadata.scene}/worldmap/authored-placements/${id.split('/').pop()}`)throw Error('Group native owner is missing or ambiguous.');
+    const entity=matches[0],base=owned[0].values,values={offset:Object.fromEntries(['x','y','z'].map(a=>[a,base?.offset?.[a]+delta[a]])),yaw_units:((base?.yaw_units+delta.yaw_units)%4096+4096)%4096},item={entityId:entity.entity_id,base,values};
+    const position=worldDecorationDraftPosition(entity,{...item,values:{...values,yaw_units:base?.yaw_units}}),matrix=worldDecorationDraftTransform(entity,item);
+    if(position)positions.set(entity.entity_id,position);if(matrix)transforms.set(entity.entity_id,matrix);
+    points.push(position??{x:entity.model_to_scene[3],y:entity.model_to_scene[7],z:entity.model_to_scene[11]});
+  }
+  return {positions,transforms,pivot:selectionBounds(points).target};
+}
+
+export function mountWorldDecorationGroupGizmo({host,getDraft,getEntities,getView,getContext,allowed,renderer,setDraft,onError}){
+  let before=null;
+  const available=()=>allowed()&&getDraft()?.enabled===true;
+  function axes(){
+    if(!available())return {};
+    let pivot;try{pivot=worldDecorationGroupDisplay(getEntities(),getDraft()).pivot;}catch{return {};}
+    const view=getView(),start=renderer().projectPoint(pivot,view),units=Math.max(64,view.camera.distance*.22),result={};if(!start)return result;
+    for(const [axis,direction] of Object.entries(sourceOffsetDirections)){
+      const end=renderer().projectPoint({x:pivot.x+direction.x*units,y:pivot.y+direction.y*units,z:pivot.z+direction.z*units},view);
+      if(end&&Math.hypot(end.x-start.x,end.y-start.y)>=4)result[axis]={start,end,units};
+    }return result;
+  }
+  return mountPlacementGizmo({host,idPrefix:'world-decoration-group',range:'world-delta',getAxes:axes,allowed:available,getStep:()=>getDraft().step,
+    getContext:()=>JSON.stringify([getContext(),getDraft()?.ids,getDraft()?.sourceKey,getDraft()?.enabled,getDraft()?.step]),
+    getValues:()=>({offset:Object.fromEntries(['x','y','z'].map(a=>[a,getDraft().delta[a]])),yaw_units:0}),
+    onBegin:()=>{before=structuredClone(getDraft().delta);},onPreview:values=>{const delta={...getDraft().delta,...values.offset};worldDecorationGroupDisplay(getEntities(),{...getDraft(),delta});if(!setDraft(delta))throw Error('Decoration group source changed.');},
+    onEnd:()=>{before=null;},onCancel:()=>{const prior=before;before=null;if(prior)setDraft(prior,true);},onError});
+}
 
 export function worldDecorationDraftPosition(entity,draft){
   if(!entity||entity.placement_scope!=='authored_spawn_seed'||entity.entity_id!==draft?.entityId||!validValues(draft.base)||!validValues(draft.values)||draft.values.yaw_units!==draft.base.yaw_units||!Array.isArray(entity.model_to_scene)||entity.model_to_scene.length!==16||entity.model_to_scene.some(n=>!Number.isFinite(n)))throw Error('Decoration translation requires one qualified Current owner and native offsets.');
