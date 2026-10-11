@@ -1,4 +1,4 @@
-"""Append donor-derived primary kind-1 binds without relocating source tables.
+"""Append donor-derived primary kind-1 binds, optionally relocating that table.
 
 Pinned field_objects.rs / field_env.rs: init-managed placed objects resolve
 their anchor through kind-1 lookup and a flat MAN partition-0 header. This
@@ -37,23 +37,34 @@ def _catalog(primary,fallback,scene):
     return dict(assets=assets)
 
 
-def allocate_object_bind_rows(original,fallback,man,scene,requests):
+def allocate_object_bind_rows(original,fallback,man,scene,requests,*,relocation_offset=None):
     """Copy existing primary P0 bind records into verified zero append space.
 
     Callers must qualify these complete immutable MAP/fallback/MAN inputs.
     New coordinates must be absent from both lookup tables. Requests carry
     only an authored UUID, original donor row and new native anchor tile.
-    Placement/anchor flags, project persistence and Build are separate stages.
+    An explicit relocation offset copies the complete original table into a
+    zero destination outside all original table spans, preserving its old bytes.
+    This proves serialization ownership, not that opaque zero bytes are unused
+    by every runtime subsystem. Placement and project/Build are separate stages.
     """
     if scene not in ('map01','map02','map03') or not isinstance(original,bytes) or len(original)!=0x12000 or not isinstance(fallback,bytes) or len(fallback)!=0x2000:
         raise ImportError('Object bind allocation requires complete kingdom MAP and fallback bytes')
     if not isinstance(requests,list) or not 1<=len(requests)<=32:
         raise ImportError('Object bind allocation requires one to thirty-two donor requests')
     primary=original[0x10000:];tables,occupied=_tables(primary);catalog=_catalog(primary,fallback,scene)
-    offset,rows=tables[1];count=len(rows);start=offset+4*count;end=start+4*len(requests)
-    if not count or end>len(primary) or count+len(requests)>32767 or any(start<hi and lo<end for lo,hi in occupied) or primary[start:end]!=bytes(end-start):
+    offset,rows=tables[1];count=len(rows)
+    if relocation_offset is not None and (type(relocation_offset) is not int or relocation_offset<0x12 or relocation_offset%2 or relocation_offset>=0x2000):
+        raise ImportError('Object bind relocation requires an aligned bounded primary-block offset')
+    destination=offset if relocation_offset is None else relocation_offset
+    start=destination+4*count;end=start+4*len(requests)
+    claimed_start=start if relocation_offset is None else destination
+    if not count or end>len(primary) or count+len(requests)>32767 or any(claimed_start<hi and lo<end for lo,hi in occupied) or primary[claimed_start:end]!=bytes(end-claimed_start):
         raise ImportError('Object bind table has no verified zero append capacity')
     used={(r['encoded']['tile_x'],r['encoded']['tile_z']) for r in catalog['assets']};ids=set();result=bytearray(original);allocations=[]
+    if relocation_offset is not None:
+        result[0x10000+destination:0x10000+start]=b''.join(rows)
+        struct.pack_into('<h',result,0x10006,destination)
     for index,request in enumerate(requests):
         if not isinstance(request,dict) or set(request)!={'bind_id','donor_index','tile_x','tile_z'}:
             raise ImportError('Object bind allocation requires exact donor and anchor fields')
@@ -74,17 +85,21 @@ def allocate_object_bind_rows(original,fallback,man,scene,requests):
             man_record_sha256=resolved['man_record']['sha256'],encoded_animation_selector=resolved['encoded_animation_selector']))
     struct.pack_into('<h',result,0x10008,count+len(requests));candidate=bytes(result)
     after_tables,_=_tables(candidate[0x10000:])
-    if any(after_tables[k][0]!=tables[k][0] or after_tables[k][1][:len(tables[k][1])]!=tables[k][1] or k!=1 and after_tables[k][1]!=tables[k][1] for k in range(4)):
+    if any(after_tables[k][0]!=(destination if k==1 else tables[k][0]) or after_tables[k][1][:len(tables[k][1])]!=tables[k][1] or k!=1 and after_tables[k][1]!=tables[k][1] for k in range(4)):
         raise ImportError('Object bind allocation changed original table ownership')
     after_catalog=_catalog(candidate[0x10000:],fallback,scene)
     for request,audit in zip(requests,allocations):
         resolved=resolve_object_bind(after_catalog,man,request['tile_x'],request['tile_z'])
         if resolved['status']!='resolved_source_header' or resolved['trigger']['record_index']!=audit['record_index'] or resolved['man_record']['sha256']!=audit['man_record_sha256']:
             raise ImportError('Object bind allocation failed independent anchor/MAN readback')
-    allowed={0x10008,0x10009,*range(0x10000+start,0x10000+end)}
+    allowed={0x10008,0x10009,*range(0x10000+claimed_start,0x10000+end)}
+    if relocation_offset is not None:allowed.update((0x10006,0x10007))
     changes=[dict(byte_offset=i,before_byte=a,after_byte=b) for i,(a,b) in enumerate(zip(original,candidate)) if a!=b]
     if any(r['byte_offset'] not in allowed for r in changes):raise ImportError('Object bind allocation changed unaudited MAP bytes')
     return candidate,dict(scope='primary-kind-1-bind-row-allocation',scene=scene,source_sha256=sha256(original).hexdigest(),
         proposed_sha256=sha256(candidate).hexdigest(),fallback_sha256=sha256(fallback).hexdigest(),man_sha256=sha256(man).hexdigest(),
-        original_row_count=count,proposed_row_count=count+len(requests),allocations=allocations,changed_bytes=changes,
+        original_row_count=count,proposed_row_count=count+len(requests),original_table_offset=offset,proposed_table_offset=destination,
+        relocation=None if relocation_offset is None else dict(byte_offset=0x10000+destination,byte_length=4*count,
+            before_hex=bytes(4*count).hex(),after_hex=b''.join(rows).hex(),original_bytes_preserved=True),
+        allocations=allocations,changed_bytes=changes,
         gameplay_verified=False,placement_allocated=False)

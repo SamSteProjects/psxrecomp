@@ -19,6 +19,27 @@ def inputs():
 
 
 class WorldObjectBindAllocationTests(TestCase):
+    def test_literal_relocation_keeps_old_rows_and_other_tables(self):
+        source,fallback,man,requests=inputs();data=bytearray(source)
+        struct.pack_into('<hh',data,0x1000a,0x26,1)
+        data[0x10026:0x1002a]=bytes([40,41,42,43]);source=bytes(data)
+        actual,audit=allocate_object_bind_rows(source,fallback,man,'map01',requests,relocation_offset=0x40)
+        expected=bytearray(source)
+        expected[0x10006:0x1000a]=bytes([0x40,0,2,0])
+        expected[0x10040:0x10048]=bytes([8,9,0,0x83,10,11,0,0x83])
+        self.assertEqual(actual,bytes(expected))
+        self.assertEqual(audit['relocation']['after_hex'],'08090083')
+        self.assertEqual(audit['proposed_table_offset'],0x40)
+
+    def test_relocation_destination_refusals(self):
+        for at in (True,-2,0x10,0x21,0x20,0x1ffc,0x2000):
+            source,fallback,man,requests=inputs()
+            with self.subTest(at=at),self.assertRaises(ImportError):
+                allocate_object_bind_rows(source,fallback,man,'map01',requests,relocation_offset=at)
+        source,fallback,man,requests=inputs();data=bytearray(source);data[0x10043]=1
+        with self.assertRaises(ImportError):
+            allocate_object_bind_rows(bytes(data),fallback,man,'map01',requests,relocation_offset=0x40)
+
     def test_literal_complete_map_and_immutable_donor(self):
         source,fallback,man,requests=inputs();held=deepcopy(requests)
         actual,audit=allocate_object_bind_rows(source,fallback,man,'map01',requests)
