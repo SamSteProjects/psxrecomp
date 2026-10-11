@@ -469,6 +469,17 @@ def inspector_schema():
         ],
         'notes':['Source coordinates are decoded spawn seeds in the retail Y-down coordinate system. Display Y reflection is separate.', 'Runtime visibility and resting transforms are unverified; no authoring or runtime-write capability is inferred.'],
     }
+    schema['components']['WorldSourcePlacement']['actions'].append({'id':'inspect-world-footprint','label':'Inspect source footprint offset','capability':'worldmap_placements','requires_edit':True})
+    schema['components']['WorldSourceFootprint']={
+        'label':'Source footprint calculation','layout':'read-only-properties',
+        'properties':[
+            {'id':'correction','label':'Encoded correction flag','path':['correction'],'type':'boolean','state':'read-only-retail'},
+            *[{'id':kind+'-'+axis,'label':label+' '+axis.upper(),'path':[kind,axis],'type':'number','state':'derived'} for kind,label in [('offset','Collision formula offset'),('centre','Collision formula centre')] for axis in ('x','z')],
+            *[{'id':kind,'label':label,'path':[kind],'type':'string','state':'unresolved'} for kind,label in [('extents','Collision extents'),('runtime_collision','Live collision'),('interaction_script','Interaction script'),('animation','Animation bind')]],
+        ],
+        'details':[{'label':'Encoded footprint and source witness','path':[]}],
+        'notes':['Calculated from native anchor/sub-anchor bytes in Current; no collision shape or live actor position is inferred.','Placed object animation and interaction depend on MAN binds. A copied mesh is not a new scripted landmark.'],
+    }
     schema['components']['WorldAuthoredPlacement']={
         'label':'Authored World decoration','layout':'read-only-properties',
         'actions':[{'id':'inspect-world-source-asset','label':'Inspect donor model asset','capability':'worldmap_geometry','requires_edit':True},

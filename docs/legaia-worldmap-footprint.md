@@ -1,0 +1,13 @@
+# World Source Footprint Inspector
+
+The World source Inspector now offers **Inspect source footprint offset** for resolved placed objects in the qualified Current layer. Its SDK report binds the entity, native record/cell, complete Current MAP hash, source provenance and project key. The editor independently recomputes the report from the already qualified native bytes before showing a registered **Source footprint calculation** component. Ground, walk decorations, unresolved actor-pool records and Proposed layers do not receive this action. Changing selection clears the inspected component.
+
+The pinned Andrew reference `d6e64c68ede25813d35db20980da82a1a025549b`, `crates/asset/src/field_objects.rs::collision_footprint_offset`, supplies the static-object formula: column/row deltas use 128-unit steps and signed sub-anchor bytes use 16-unit steps. Record flag `0x8` subtracts the encoded X offset and adds the encoded Z offset. Adding the result to the Current native source position produces the reported formula centre. The anchor cell also exposes its existing init-bind/subarea ownership flag. No imported bytes or authoring state change.
+
+This is source analysis. Collision extents and live collision remain unknown; interaction scripts and animation binds are not resolved by this report. No collision volume, runtime actor position or scripted-landmark creation is inferred. Placed-object authoring still needs the relevant MAN bind and lifecycle evidence.
+
+Offline checks passed for 21 focused footprint/schema Python tests, including both correction branches, exact HTTP scope, stale keys, static-module delivery and unchanged files/history. Independent raw-word comparison covers all 64 placed kingdom seeds: map01 6, map02 33 and map03 25. Independent editor replay matches all 64 reports and refuses 39 altered coordinate/provenance/scope claims. Existing component Inspector Node checks pass. Three Python AST and two JS syntax checks pass. Evidence: `local-output/sdk-20260909/worldmap-footprint-20261010/`.
+
+Three actual kingdom editor workflows pass qualified Inspector fields, ground-selection clearing and zero authoring commands/page errors. Private document/history and Save/Open baselines are restored. Wide and 400-pixel captures were inspected without horizontal overflow.
+
+The first browser run found an omitted module in the explicit static-route table; it was fixed, and HTTP module delivery is now covered. No package Build, native compile, game launch, runtime attachment, installation or disc export occurred. Gameplay remains deferred; full SDK goal active, solo implementation continues.

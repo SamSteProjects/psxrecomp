@@ -1,3 +1,4 @@
+import {qualifyWorldFootprint} from './worldmap-footprint.js';
 import {selectionBounds} from './scene-selection-bounds.js';
 import {mountWorldDecorationGroupGizmo,worldDecorationGroupDisplay,mountWorldDecorationGizmo,worldDecorationDraftPosition,worldDecorationDraftTransform} from './worldmap-decoration-gizmo.js';
 import {qualifyCurrentWorldPlacements,qualifyProposedWorldPlacements,qualifyProposedWorldPlacementEdit,qualifyProposedWorldPlacementRemoval,qualifyProposedWorldPlacementCell,qualifyProposedWorldPlacementModel,qualifyProposedWorldPlacementGroup} from './worldmap-current-placements.js';
@@ -123,10 +124,26 @@ export function mountWorldmapGeometry({after,getState,busy,setBusy,api=null,onPr
     if(selected?.placement_scope==='authored_spawn_seed')registry['edit-world-decoration-transform']={canRun:()=>!!decorations&&currentReport?.scene_graph.entities.some(e=>e.entity_id===entityId&&e.placement_scope==='authored_spawn_seed'),run:()=>decorations.editSelected()};
     if(selected?.placement_scope==='authored_spawn_seed')registry['remove-world-decoration']={canRun:()=>!!decorations&&currentReport?.scene_graph.entities.some(e=>e.entity_id===entityId&&e.placement_scope==='authored_spawn_seed'),run:()=>decorations.reviewRemoval()};
     if(selected?.placement_scope==='source_spawn_seed'&&Number.isSafeInteger(selected.object_record_index)&&hash(selected.source_record_sha256)&&typeof onInspectPlacement==='function')Object.assign(registry,{'inspect-world-placement-record':{canRun:()=>getState().capabilities?.worldmap_placements===true,run:async()=>{const target={scene:capturedReport.scene,entityId,recordIndex:selected.object_record_index,sourceRecordHash:selected.source_record_sha256,sourceKey:session.key,projectPath:session.path};dialog.close();await onInspectPlacement(target);}},'edit-world-asset-owners':{canRun:()=>getState().capabilities?.worldmap_placements===true,run:()=>openAssetOwners(entityId,capturedReport)}});
+    if(selected?.source_layer==='placed'&&renderedLayer==='current'&&currentReport&&!allocationPreview)registry['inspect-world-footprint']={run:()=>inspectFootprint(entityId,currentReport)};
     const component=selected?.placement_scope==='authored_spawn_seed'?'WorldAuthoredPlacement':'WorldSourcePlacement';inspectorComponent.innerHTML=selected&&schema?.components?.[component]?renderComponentSection(schema,component,selected,{registry,capabilities:getState().capabilities,editable:getState().project?.mode==='edit'}):'';
     if(registry['edit-world-asset-owners'])inspectorComponent.append(node('p','Opens complete native owners for every source instance of this asset. Shared records can affect additional cells; Review and shared-record consent remain required.'));
     const actionButton=inspectorComponent.querySelector('[data-inspector-action]');
     bindComponentActions(inspectorComponent,registry,{current:()=>inspectorComponent.isConnected&&inspectorComponent.contains(actionButton)&&getState().capabilities?.worldmap_geometry===true&&current()&&report===capturedReport&&hierarchy.value===entityId,editable:()=>getState().project?.mode==='edit',busy,onError});inspector.textContent=selected?JSON.stringify({entity_id:selected.entity_id,asset_id:selected.asset_id,source_position:selected.source_position,retail_source_position:selected.retail_source_position,authored_source_transform:selected.authored_source_transform,authored_placement:selected.authored_placement,native_entity_id:selected.native_entity_id,preview_layer:selected.preview_layer,displayed_source_position:selected.displayed_source_position,source_cell:selected.source_cell,object_record_index:selected.object_record_index,model_pool_index:selected.model_pool_index,source_record_sha256:selected.source_record_sha256,placement_scope:selected.placement_scope,runtime_visibility:selected.runtime_visibility,runtime_resting_position:selected.runtime_resting_position},null,2):'';}
+  async function inspectFootprint(entityId,captured){
+    if(!current()||busy()||currentReport!==captured||renderedLayer!=='current'||hierarchy.value!==entityId||allocationPreview)return;
+    const binding=session,controller=new AbortController(),token=++generation;pending=controller;pendingKind='footprint';setBusy(true);updateState();
+    const valid=()=>current()&&session===binding&&currentReport===captured&&renderedLayer==='current'&&hierarchy.value===entityId&&pending===controller&&generation===token&&!allocationPreview;
+    try{
+      status.textContent='Qualifying the native footprint anchor and collision-offset formula…';
+      const response=await fetch('/api/worldmap-footprint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scene:captured.scene,source_key:binding.key,entity_id:entityId}),signal:controller.signal});
+      const text=await response.text();if(!valid())return;if(new TextEncoder().encode(text).length>16384)fail('Footprint report exceeds its response budget.');
+      const value=JSON.parse(text);if(!response.ok)fail(value.error||'Footprint inspection failed.');const qualified=await qualifyWorldFootprint(value,captured,entityId,binding.path);if(!valid())return;
+      inspectorComponent.querySelector('[data-inspector-component-section="WorldSourceFootprint"]')?.remove();
+      const section=node('div');section.innerHTML=renderComponentSection(getState().inspector_schema,'WorldSourceFootprint',qualified);inspectorComponent.append(section.firstElementChild);
+      status.textContent='Source footprint calculation qualified; collision extents, live activation and MAN binds remain unresolved.';
+    }catch(error){if(error.name!=='AbortError'&&valid()){status.textContent=error.message;throw error;}}
+    finally{if(pending===controller){pending=null;pendingKind=null;setBusy(false);updateState();}}
+  }
   async function openAssetOwners(entityId,capturedReport){
    if(!current()||busy()||report!==capturedReport||hierarchy.value!==entityId||getState().capabilities?.worldmap_placements!==true)return;
    const binding=session,scene=report.scene,key=session.key,controller=new AbortController(),token=++generation;let target=null;

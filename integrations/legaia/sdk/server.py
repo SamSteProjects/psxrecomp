@@ -1127,6 +1127,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/source-build-script.js": ("source-build-script.js", "text/javascript"),
                  "/worldmap-authoring.js": ("worldmap-authoring.js", "text/javascript"),
                  "/worldmap-geometry.js": ("worldmap-geometry.js", "text/javascript"),
+                 "/worldmap-footprint.js": ("worldmap-footprint.js", "text/javascript"),
                  "/worldmap-resources.js": ("worldmap-resources.js", "text/javascript"),
                  "/worldmap-project-resources.js": ("worldmap-project-resources.js", "text/javascript"),
                  "/worldmap-model-replacement.js": ("worldmap-model-replacement.js", "text/javascript"),
@@ -1352,6 +1353,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Decoration transform Review requires exact current identity and values')
                     from .worldmap_placement_edit import review
                     self._json(200,review(self.server.project,body['scene'],body['source_key'],body['placement_id'],body['values']))
+                    return
+                if route == '/api/worldmap-footprint':
+                    if set(body)!={'scene','source_key','entity_id'}:raise ProjectError('Footprint inspection requires exact source and entity fields')
+                    from .worldmap_footprint import inspect
+                    self._json(200,inspect(self.server.project,body['scene'],body['source_key'],body['entity_id']))
                     return
                 if route == '/api/worldmap-decoration-model-review':
                     if set(body) not in ({'scene','source_key','placement_id','model_pool_index'},{'scene','source_key','placement_ids','model_pool_index'}):raise ProjectError('Model Review requires exact current identities and model')
