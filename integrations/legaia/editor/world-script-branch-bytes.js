@@ -10,6 +10,10 @@ function layout(node,data){
  const at=node.pc+header+spec[0];if(!valid||at+2>node.pc+node.length)fail('World branch operation or owned word differs from source bytes.');
  return {at,condition:spec[1],target:(at+data[at]+256*data[at+1])&65535};
 }
+export function worldBranchTarget(node,data){
+ if(!families[node.mnemonic]||node.mnemonic==='SYSFLAG_TEST'&&node.target_context!==null)return null;
+ const decoded=layout(node,data);return {pc:node.pc,mnemonic:node.mnemonic,target_context:node.target_context,operand_pc:decoded.at,width:2,condition:decoded.condition,encoding:['FLAG_WORD_BRANCH','FIELD_68_BRANCH','ACTOR_SEARCH_BRANCH'].includes(node.mnemonic)?'relative_i16_wrap16':'relative_u16_wrap16',target_pc:decoded.target};
+}
 export function applyQualifiedWorldBranchBytes(source,retail,fixed){
  qualifyWorldScriptGraph(source.branch_source_graph,retail,source);
  if(source.branch_source_graph.stops.length)fail('World branch source has decoder stops.');

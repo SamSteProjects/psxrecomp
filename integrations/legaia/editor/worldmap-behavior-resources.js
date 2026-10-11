@@ -1,5 +1,6 @@
 import {mountWorldScriptOperands} from './world-script-animation-operands.js';
 import {mountWorldScriptInspection} from './world-script-inspection.js';
+import {mountWorldScriptBranches} from './world-script-branches.js';
 // SDK metadata projections; source byte decoding remains in the importer.
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const exact=(v,keys)=>object(v)&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
@@ -64,7 +65,7 @@ export function qualifyWorldmapBehaviorResource(record,index,state){
 }
 const node=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
 export function showWorldmapBehaviorResource({dialog,record,lookup,getReport,getState,busy,setBusy,api,onApplied,onFocus,onNavigate,onError}){
- const target=qualifyWorldmapBehaviorResource(record,getReport(),getState());let editing=null,inspecting=null;
+ const target=qualifyWorldmapBehaviorResource(record,getReport(),getState());let editing=null,inspecting=null,branching=null;
  const current=()=>{if(busy()||!dialog.open||!same(lookup().find(r=>r.id===record.id),record))fail('World behavior details are no longer current.');return qualifyWorldmapBehaviorResource(record,getReport(),getState());};
  dialog.replaceChildren();const heading=node('div');heading.className='dialog-heading';const close=node('button','Close');close.setAttribute('aria-label','Close asset details');close.onclick=()=>dialog.close();heading.append(node('h2',record.label),close);dialog.append(heading,node('p','Registered Retail source resource. Bindings describe source objects; Current edits and live activation are separate. Supported fixed instruction arguments use separate project overrides.'));
  const links=node('section');links.dataset.worldBehaviorRelationships='';links.append(node('h3','Related Resources'));
@@ -75,9 +76,10 @@ export function showWorldmapBehaviorResource({dialog,record,lookup,getReport,get
  for(const b of target.record.bindings){const button=node('button','Inspect source object '+b.entity_id.split('/').at(-1));button.dataset.worldBehaviorEntityId=b.entity_id;Object.assign(button.style,{display:'block',whiteSpace:'normal',maxWidth:'100%'});button.onclick=async()=>{try{const fresh=current();dialog.close();if(!await onFocus({...fresh,scene:fresh.record.source_scene,entityId:b.entity_id}))fail('World source object could not be opened.');}catch(e){onError(e);}};bindings.append(button);}
  dialog.append(bindings);if(record.type==='script'){
   const valid=()=>{try{return dialog.open&&same(lookup().find(r=>r.id===record.id),record)&&!!qualifyWorldmapBehaviorResource(record,getReport(),getState());}catch{return false;}};
-  const ownedBusy=value=>{setBusy(value);editing?.update();inspecting?.update();};
-  inspecting=mountWorldScriptInspection({host:dialog,record:target.record,key:target.sourceKey,path:target.projectPath,current:valid,busy,setBusy:ownedBusy,onError,onEdit:async pc=>{try{if(!await editing.focus(pc))throw Error('World instruction editor is no longer current.');return true;}catch(e){onError(e);return false;}}});
+  const ownedBusy=value=>{setBusy(value);editing?.update();inspecting?.update();branching?.update();};
+  inspecting=mountWorldScriptInspection({host:dialog,record:target.record,key:target.sourceKey,path:target.projectPath,current:valid,busy,setBusy:ownedBusy,onError,onEditBranch:async pc=>{try{if(!await branching.focus(pc))throw Error('World branch editor is no longer current.');return true;}catch(e){onError(e);return false;}},onEdit:async pc=>{try{if(!await editing.focus(pc))throw Error('World instruction editor is no longer current.');return true;}catch(e){onError(e);return false;}}});
   editing=mountWorldScriptOperands({host:dialog,record:target.record,key:target.sourceKey,path:target.projectPath,current:valid,busy,setBusy:ownedBusy,api,onApplied,onError});
-  dialog.addEventListener('close',()=>{editing.dispose();inspecting.dispose();},{once:true});editing.update();inspecting.update();
- }const metadata=node('details');metadata.open=true;metadata.append(node('summary','SDK Source and Provenance'));const pre=node('pre',JSON.stringify(target.record,null,2));pre.id='asset-source-data';pre.className='diagnostic-detail';Object.assign(pre.style,{whiteSpace:'pre-wrap',overflowWrap:'anywhere'});metadata.append(pre);dialog.append(metadata);dialog.showModal();editing?.update();inspecting?.update();
+  branching=mountWorldScriptBranches({host:dialog,record:target.record,key:target.sourceKey,path:target.projectPath,current:valid,busy,setBusy:ownedBusy,api,onApplied,onError});
+  dialog.addEventListener('close',()=>{editing.dispose();inspecting.dispose();branching.dispose();},{once:true});editing.update();inspecting.update();branching.update();
+ }const metadata=node('details');metadata.open=true;metadata.append(node('summary','SDK Source and Provenance'));const pre=node('pre',JSON.stringify(target.record,null,2));pre.id='asset-source-data';pre.className='diagnostic-detail';Object.assign(pre.style,{whiteSpace:'pre-wrap',overflowWrap:'anywhere'});metadata.append(pre);dialog.append(metadata);dialog.showModal();editing?.update();inspecting?.update();branching?.update();
 }

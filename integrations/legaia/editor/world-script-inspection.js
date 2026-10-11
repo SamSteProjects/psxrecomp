@@ -1,6 +1,6 @@
 import {qualifyWorldScriptGraph as qualifyGraph} from './world-script-graph.js';
 import {qualifyWorldScriptOperands} from './world-script-animation-operands.js';
-import {updateWorldBranchGraph,reachedWorldBranchGraph} from './world-script-branch-bytes.js';
+import {updateWorldBranchGraph,reachedWorldBranchGraph,worldBranchTarget} from './world-script-branch-bytes.js';
 const fail=message=>{throw Error(message);};
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
@@ -48,7 +48,7 @@ export async function qualifyWorldScriptInspection(value,record,key,path){
  return structuredClone(value);
 }
 const node=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
-export function mountWorldScriptInspection({host,record,key,path,current,busy,setBusy,onError,onEdit}){
+export function mountWorldScriptInspection({host,record,key,path,current,busy,setBusy,onError,onEdit,onEditBranch}){
  const section=node('section'),open=node('button','Inspect Retail / Current Instructions'),status=node('p'),output=node('div');section.dataset.worldScriptInspection='';section.append(open,status,output);host.append(section);let disposed=false,pending=null;
  const valid=()=>!disposed&&current(),update=()=>{open.disabled=!valid()||busy();};
  open.onclick=async()=>{
@@ -75,11 +75,13 @@ export function mountWorldScriptInspection({host,record,key,path,current,busy,se
    const table=node('table');table.dataset.worldCurrentInstructions='';Object.assign(table.style,{width:'100%',tableLayout:'fixed'});const heading=node('tr');for(const label of ['PC / Instruction','Retail / Current Bytes','Arguments / Branches'])heading.append(node('th',label));table.append(heading);
    const targets=new Map(value.source.targets.map(t=>[t.pc,t]));
    const currentInstructions=new Map([...value.current_graph.instructions,...(value.current_graph.unvisited_instructions||[])].map(r=>[r.pc,r])),reached=new Set(value.current_graph.instructions.map(r=>r.pc)),branchEdits=new Map((value.source.branch_changes||[]).map(r=>[r.pc,r]));
+   const sourceBytes=bytes(value.source.record_base64),sourceDestinations=new Set([...value.retail_graph.instructions,...value.retail_graph.dialogues].filter(r=>r.pc<=32767).map(r=>r.pc));
    for(let i=0;i<value.retail_graph.instructions.length;i++){
     const retail=value.retail_graph.instructions[i],now=currentInstructions.get(retail.pc),target=targets.get(now.pc),row=node('tr');row.dataset.worldInstructionPc=String(now.pc);row.dataset.authored=String(retail.raw_hex!==now.raw_hex);row.dataset.worldStaticReached=String(reached.has(now.pc));
     const identity=node('td',now.pc.toString(16).padStart(4,'0')+' · '+now.mnemonic),encoded=node('td',`Retail ${retail.raw_hex}\nCurrent ${now.raw_hex}`),detail=node('td');
     if(value.schema_version==='legaia.world-script-inspection.v2')identity.append(node('p',reached.has(now.pc)?'Reached by Current static graph':'Dormant source instruction · retained Current bytes'));
     const branchEdit=branchEdits.get(now.pc);if(branchEdit)detail.append(node('p',`Branch ${branchEdit.condition}\nRetail destination ${branchEdit.retail_target_pc.toString(16).padStart(4,'0')}\nAuthored / Current destination ${branchEdit.authored_target_pc.toString(16).padStart(4,'0')}`));
+    const branchTarget=value.retail_graph.stops.length?null:worldBranchTarget(retail,sourceBytes);if(onEditBranch&&branchTarget&&branchTarget.pc<=32767&&sourceDestinations.has(branchTarget.target_pc)){const edit=node('button','Edit Destination');edit.dataset.worldBranchEdit=String(now.pc);Object.assign(edit.style,{whiteSpace:'normal',maxWidth:'100%'});edit.onclick=()=>{if(valid()&&!busy())onEditBranch(now.pc);};detail.append(edit);}
     if(target){detail.append(node('p',`Retail ${JSON.stringify(target.retail_values)}\nAuthored ${target.authored_values===null?'None':JSON.stringify(target.authored_values)}\nCurrent ${JSON.stringify(target.current_values)}`));const edit=node('button','Edit Arguments');edit.dataset.worldInstructionEdit=String(now.pc);Object.assign(edit.style,{whiteSpace:'normal',maxWidth:'100%',overflowWrap:'anywhere'});edit.onclick=()=>{if(valid()&&!busy())onEdit(now.pc);};detail.append(edit);}
     else detail.append(node('p',`Read-only SDK operands ${JSON.stringify(now.operands)}`));
     for(const edge of now.successors){const jump=node('button',`${edge.condition} → ${edge.pc.toString(16).padStart(4,'0')}`);jump.dataset.worldBranchPc=String(edge.pc);Object.assign(jump.style,{whiteSpace:'normal',maxWidth:'100%',overflowWrap:'anywhere'});jump.onclick=()=>navigate(edge.pc);detail.append(jump);}

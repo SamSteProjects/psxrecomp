@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import {qualifyWorldScriptOperands} from '../editor/world-script-animation-operands.js';
 import {qualifyWorldScriptInspection,locateWorldScriptPc} from '../editor/world-script-inspection.js';
+import {qualifyWorldBranchOptions,qualifyWorldBranchReview} from '../editor/world-script-branches.js';
 const data=Buffer.from('00002602002126fbff','hex'),current=Buffer.from('000026ffff2126fbff','hex');
-const sourceRecord={byte_offset:64,byte_length:data.length,sha256:Buffer.from(await crypto.subtle.digest('SHA-256',data)).toString('hex')};
+const sourceRecord={byte_offset:64,byte_length:data.length,sha256:Buffer.from(await crypto.subtle.digest('SHA-256',data)).toString('hex'),man_slot:{decoded_byte_length:73,compressed_bytes_consumed:83}};
 const record={id:'script://map01/worldmap/man-p0/0000',kind:'script',entry_pc:2,source_record:sourceRecord,source_instance_ids:[]};
 const row=(pc,raw,mnemonic,edges)=>({pc,length:raw.length/2,opcode:parseInt(raw.slice(0,2),16)&127,mnemonic,target_context:null,operands:{encoded_hex:raw.slice(2)},raw_hex:raw,byte_offset:64+pc,successors:edges});
 const graph={entry_pc:2,status:'decoded_supported_paths',instructions:[row(2,'260200','JMP_REL',[{pc:5,condition:'unconditional'}]),row(5,'21','NOP',[{pc:6,condition:'encoded_continuation'}]),row(6,'26fbff','JMP_REL',[{pc:2,condition:'unconditional'}])],dialogues:[],opaque_regions:[],stops:[]};
@@ -22,3 +23,11 @@ for(const mutate of [a=>a.current_graph.unreachable_source_pcs=[],a=>a.current_g
  const bad=structuredClone(snapshot);mutate(bad);await assert.rejects(()=>qualifyWorldScriptInspection(bad,record,'key','private'));
 }
 console.log('Current branch reachability, dormant ownership and seven altered graph refusals passed');
+const relative=g=>{const a=structuredClone(g);for(const f of ['instructions','dialogues','opaque_regions','unvisited_instructions','unvisited_dialogues'])for(const r of a[f]||[])r.byte_offset-=64;return a;};
+const branchTarget=(pc,operand,target)=>({pc,mnemonic:'JMP_REL',target_context:null,operand_pc:operand,width:2,condition:'unconditional',encoding:'relative_u16_wrap16',target_pc:target});
+const branchOptions={schema_version:'legaia.world-script-branches.v1',project_path:'private',source_key:'key',script_id:record.id,source_record:sourceRecord,entry_pc:2,source_instance_ids:[],retail_record_base64:data.toString('base64'),fixed_record_base64:data.toString('base64'),current_record_base64:current.toString('base64'),branch_options:{targets:[branchTarget(2,3,5),branchTarget(6,7,2)],destinations:value.branch_destinations,reason:null,source_record_sha256:sourceRecord.sha256,entry_pc:2},authored_targets:{'0002':{target_pc:2}},current_graph:relative(currentGraph),graph_offset_scope:'source_record_relative',project_changed:false,gameplay_verified:false};
+const qualified=await qualifyWorldBranchOptions(branchOptions,snapshot,record,'key','private');
+const restored={...relative(retailGraph),unreachable_source_pcs:[],unvisited_instructions:[],unvisited_dialogues:[]},review={schema_version:'legaia.world-script-branch-review.v1',project_path:'private',source_key:'key',script_id:record.id,pc:2,retail_values:{target_pc:5},current_values:{target_pc:2},proposed_values:{target_pc:5},source_instance_ids:[],shared:false,current_man_sha256:'a'.repeat(64),candidate_man_sha256:'b'.repeat(64),candidate_record_base64:data.toString('base64'),changes:[{decoded_byte_offset:67,before_byte:255,after_byte:2},{decoded_byte_offset:68,before_byte:255,after_byte:0}],compression:{decoded_size:73,original_encoded_size:83,new_encoded_size:80},candidate_graph:restored,graph_offset_scope:'source_record_relative',no_op:false,project_changed:false,gameplay_verified:false,review_key:'c'.repeat(64)};
+qualifyWorldBranchReview(review,qualified,branchOptions.branch_options.targets[0],{target_pc:5},false);
+const unrelated=structuredClone(review);unrelated.changes[0].decoded_byte_offset=0;assert.throws(()=>qualifyWorldBranchReview(unrelated,qualified,branchOptions.branch_options.targets[0],{target_pc:5},false));
+console.log('Branch controls qualify exact original ownership and reset-to-Retail Review; unrelated change refused');
