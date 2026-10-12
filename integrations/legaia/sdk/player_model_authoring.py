@@ -76,3 +76,93 @@ def current(project,**context):
     _,_,tmd=assemble_tmd(raw,context['equipped'])
     _,sources=_sources(project.disc_path);_,_,retail_tmd=assemble_tmd(sources[receipt['record']['player_index']][3],context['equipped'])
     return dict(schema_version='legaia.player-model-current.v1',project_path=str(project.root),project_source_key=context['expected_source_key'],catalog_source_key=context['catalog_source_key'],record=receipt['record'],assembly=receipt['assembly'],geometry=receipt['geometry'],binding=deepcopy(project.player_model_overrides.get(context['asset_id'])),effective_file_sha256=sha256(raw).hexdigest(),tmd_base64=b64encode(tmd).decode('ascii'),retail_tmd_base64=b64encode(retail_tmd).decode('ascii'),layer='current',read_only=True,project_changed=False,gameplay_verified=False)
+
+
+def _current_tracks(project, expected_current_sha256, action_slot, **context):
+    from importer.player_battle import action_frames
+    raw, receipt, _, _ = _snapshot(project, **context)
+    if sha256(raw).hexdigest() != expected_current_sha256:
+        raise ProjectError('PLAYER Current changed; inspect Current again')
+    if type(action_slot) is not int or not 0 <= action_slot < 12:
+        raise ProjectError('Choose an existing PLAYER action slot')
+    clip = receipt['record']['actions'][action_slot]
+    if not clip['preview_supported']:
+        raise ProjectError('Empty PLAYER action has no Current pose or clip')
+    # Model imports preserve record0. The original qualified action stream
+    # therefore drives Current geometry through its selected assembly mapping.
+    frames = action_frames(project.disc_path, receipt['record'], receipt['assembly'], clip)
+    return receipt, clip, frames
+
+
+def current_pose(project, expected_current_sha256, action_slot, frame_index, **context):
+    from importer.animation import pose_vertices
+    receipt, clip, frames = _current_tracks(project, expected_current_sha256, action_slot, **context)
+    if type(frame_index) is not int or not 0 <= frame_index < len(frames):
+        raise ProjectError('Choose an existing whole PLAYER action frame')
+    geometry = receipt['geometry']
+    transforms = frames[frame_index]['object_transforms']
+    geometry['vertices'] = pose_vertices(geometry['vertices'], geometry['objects'], transforms)
+    geometry['bounds'] = dict(min=[min(v[i] for v in geometry['vertices']) for i in range(3)],
+        max=[max(v[i] for v in geometry['vertices']) for i in range(3)])
+    geometry.update(posed=True, coordinate_system='retail_psx_actor_local_y_down')
+    geometry.pop('triangle_normals', None); geometry.pop('normal_preview', None)
+    _fresh(project, context['expected_project_path'], context['expected_source_key'])
+    return dict(schema_version='legaia.player-battle-pose.v1',
+        project_path=str(project.root), project_source_key=context['expected_source_key'],
+        catalog_source_key=context['catalog_source_key'], record=receipt['record'],
+        assembly=receipt['assembly'], geometry=geometry, clip=clip, object_transforms=transforms,
+        action_slot=action_slot, frame_index=frame_index, effective_file_sha256=expected_current_sha256,
+        layer='current', read_only=True, project_changed=False, gameplay_verified=False)
+
+
+def current_export(project, expected_current_sha256, mode, action_slot, frame_index, fps, **context):
+    import math
+    from importer.export import encode_model_glb
+    if mode not in ('object-local', 'pose', 'clip'):
+        raise ProjectError('Choose a supported PLAYER GLB export mode')
+    if mode == 'object-local':
+        if any(v is not None for v in (action_slot, frame_index, fps)):
+            raise ProjectError('Object-local export accepts no action, frame or rate')
+        raw, receipt, _, _ = _snapshot(project, **context)
+        if sha256(raw).hexdigest() != expected_current_sha256:
+            raise ProjectError('PLAYER Current changed; inspect Current again')
+        clip, frames = None, None
+    else:
+        if mode == 'pose' and fps is not None:
+            raise ProjectError('Baked pose export accepts no playback rate')
+        if mode == 'clip' and (frame_index is not None or type(fps) not in (int, float)
+                or not math.isfinite(fps) or not 1 <= fps <= 120):
+            raise ProjectError('Full clip requires interchange rate 1–120 fps and no frame')
+        receipt, clip, frames = _current_tracks(project, expected_current_sha256, action_slot, **context)
+        if mode == 'pose' and (type(frame_index) is not int or not 0 <= frame_index < len(frames)):
+            raise ProjectError('Choose an existing whole PLAYER action frame')
+    geometry = receipt['geometry']
+    geometry['source_record'] = dict(original=deepcopy(receipt['record']['source_record']),
+        current_sha256=expected_current_sha256, player_assembly=receipt['assembly'])
+    geometry['representation'] = 'current-selected-player-equipment-assembly'
+    if mode != 'object-local':
+        geometry['animation'] = dict(semantic_id=clip['semantic_id'], source_record=clip['source_record'],
+            timing=clip['timing'], runtime_state='not_observed',
+            **({'source_frame_index':frame_index} if mode == 'pose' else {}))
+        if mode == 'pose':
+            from importer.animation import pose_vertices
+            transforms = frames[frame_index]['object_transforms']
+            posed = deepcopy(geometry)
+            posed['vertices'] = pose_vertices(geometry['vertices'], geometry['objects'], transforms)
+            posed.update(posed=True, coordinate_system='retail_psx_actor_local_y_down', object_transforms=transforms)
+            posed.pop('triangle_normals', None); posed.pop('normal_preview', None)
+            geometry['frames'] = [posed]
+        else:
+            geometry['frames'] = frames
+    content, audit = encode_model_glb(geometry, 0 if mode == 'pose' else None,
+        clip_fps=fps if mode == 'clip' else None)
+    _fresh(project, context['expected_project_path'], context['expected_source_key'])
+    suffix = 'object-local' if mode == 'object-local' else f'action-{action_slot}-frame-{frame_index}' if mode == 'pose' else f'action-{action_slot}-clip'
+    return dict(schema_version='legaia.player-battle-export.v1', project_path=str(project.root),
+        project_source_key=context['expected_source_key'], catalog_source_key=context['catalog_source_key'],
+        record=receipt['record'], assembly=receipt['assembly'], mode=mode, action_slot=action_slot,
+        frame_index=frame_index, fps=fps, clip=clip,
+        filename=f'player-{receipt["record"]["player_index"]}-'+ '-'.join(str(i) for i in context['equipped'])+'-current-'+suffix+'.glb',
+        glb_base64=b64encode(content).decode('ascii'), audit=audit,
+        effective_file_sha256=expected_current_sha256, layer='current',
+        read_only=True, project_changed=False, gameplay_verified=False)

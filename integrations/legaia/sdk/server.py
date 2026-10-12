@@ -1330,6 +1330,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Stability cancellation requires the current job identity')
                     self._json(200, {'job': self.server.stability_checks.cancel(body['id'])})
                     return
+                if route in ('/api/player-model-current-pose','/api/player-model-current-export'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','expected_current_sha256','action_slot','frame_index'}
+                    if route.endswith('-export'):fields|={'mode','fps'}
+                    if set(body)!=fields:raise ProjectError('PLAYER Current inspection requires exact source, Current identity and selection fields')
+                    from .player_model_authoring import current_pose,current_export
+                    self._json(200,(current_export if route.endswith('-export') else current_pose)(self.server.project,**body))
+                    return
                 if route in ('/api/player-model-glb-export','/api/player-model-glb-review','/api/player-model-glb-apply','/api/player-model-current'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped'}
                     if route.endswith(('-review','-apply')):fields|={'binding','glb_base64'}
