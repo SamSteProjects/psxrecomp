@@ -63,3 +63,23 @@ def export(project,**context):
     suffix='unposed' if context['clip_id'] is None else f'{context["clip_id"]}-frame-{context["frame_index"]}'
     return dict(schema_version='legaia.field-equipment-export.v1',project_path=str(project.root),project_source_key=context['expected_source_key'],asset_id=context['asset_id'],equipment_byte=context['equipment_byte'],clip_id=context['clip_id'],frame_index=context['frame_index'],source_record=receipt['source_record'],equipment_variant=geometry['equipment_variant'],
         filename=f'field-party-{geometry["equipment_variant"]["party_slot"]}-equipment-{context["equipment_byte"]}-{suffix}.glb',glb_base64=b64encode(content).decode(),audit=audit,layer='retail_selected_variant',read_only=True,project_changed=False,gameplay_verified=False)
+
+
+def export_clip(project,export_fps,**context):
+    """Export all stored rigid frames at an explicit interchange rate."""
+    from math import isfinite
+    from importer.export import encode_model_glb
+    if type(export_fps) not in (int,float) or not isfinite(export_fps) or not 1<=export_fps<=120:
+        raise ProjectError('Field clip export requires an explicit rate from 1 to 120 fps')
+    if context['clip_id'] not in ('idle','walk'):
+        raise ProjectError('Field clip export requires a selected idle or walk clip')
+    receipt=preview(project,**context)
+    asset=project.assets.records[context['asset_id']]
+    animation=load_animation_preview(project.disc_path,asset,context['clip_id'],equipment_byte=context['equipment_byte'])
+    geometry=deepcopy(receipt['base_geometry'])
+    geometry['source_record']=dict(original=receipt['source_record'],equipment_variant=geometry['equipment_variant'])
+    geometry['frames']=animation.pop('frames');animation.pop('geometry');geometry['animation']=animation
+    content,audit=encode_model_glb(geometry,clip_fps=export_fps)
+    _fresh(project,context['expected_project_path'],context['expected_source_key'])
+    return dict(schema_version='legaia.field-equipment-export.v1',project_path=str(project.root),project_source_key=context['expected_source_key'],asset_id=context['asset_id'],equipment_byte=context['equipment_byte'],clip_id=context['clip_id'],frame_index=context['frame_index'],source_record=receipt['source_record'],equipment_variant=geometry['equipment_variant'],full_clip=True,export_fps=export_fps,
+        filename=f'field-party-{geometry["equipment_variant"]["party_slot"]}-equipment-{context["equipment_byte"]}-{context["clip_id"]}-clip.glb',glb_base64=b64encode(content).decode(),audit=audit,layer='retail_selected_variant',read_only=True,project_changed=False,gameplay_verified=False)

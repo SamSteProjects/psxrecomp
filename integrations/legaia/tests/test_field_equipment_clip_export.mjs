@@ -1,0 +1,5 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+import {qualifyFieldEquipment,qualifyFieldEquipmentExport} from '../editor/field-equipment.js';
+const {cases,frames,vertices}=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));let refused=0;
+for(const {context,held,value} of cases){const source=await qualifyFieldEquipment(held,context);await qualifyFieldEquipmentExport(value,source,context);for(const mutate of [v=>v.full_clip=false,v=>v.export_fps=30,v=>v.audit.frame_count++,v=>v.audit.export_fps=30,v=>v.audit.interpolation='LINEAR',v=>v.audit.timing_evidence='verified',v=>v.audit.duration_seconds=0,v=>v.audit.source_record.equipment_variant.projected_sha256='0'.repeat(64),v=>v.audit.sha256='0'.repeat(64),v=>v.filename='../wrong.glb']){const bad=structuredClone(value);mutate(bad);await assert.rejects(qualifyFieldEquipmentExport(bad,source,context));refused++;}}
+console.log(`${cases.length} field clips, ${frames} frames, ${vertices} posed vertices and ${refused} altered export refusals pass`);
