@@ -61,3 +61,8 @@ This advances the animation and model/equipment rows without closing their remai
 ## Monster Archive Checkpoint — 2026-10-12
 
 [Monster Archive Discovery](legaia-monster-archive.md) advances global battle/extended-resource coverage with 186 source-qualified object-local models and stored record provenance from PROT 867. Discovery, Asset Database registration, read-only 3D inspection and bounded source/client/browser checks pass. This is FUNCTIONAL / READ-ONLY / OFFLINE for the documented source workflow. Monster texture relocation/rendering, assembly, animation, interchange, native authoring/delivery and gameplay parity remain partial or unimplemented. Stored stats are distinct from live battle values. No runtime gate is closed; the full SDK objective remains incomplete and active.
+
+
+## Monster Pool Texture Checkpoint — 2026-10-12
+
+[Monster Source Pool Textures](legaia-monster-archive.md#source-pool-texture-inspection) advances source model/texture coverage with exact pool qualification, 186 Texture registrations, fifteen-palette inspection and independently replayed source-local material crops. The documented native/client/editor workflow is FUNCTIONAL / READ-ONLY / OFFLINE. Nine material UV ranges remain unavailable beyond their own source page; runtime placement/blending, assembly, animation, authoring/delivery and playable acceptance remain open. The full objective is incomplete and active.

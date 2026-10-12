@@ -36,7 +36,7 @@ def decode_catalog(content,disc_sha256):
         raise ImportError('Monster archive exceeds its bounded source extent')
     if not isinstance(disc_sha256,str) or len(disc_sha256)!=64 or any(c not in '0123456789abcdef' for c in disc_sha256):
         raise ImportError('Monster archive requires an immutable disc hash')
-    archive_hash=sha256(content).hexdigest();models=[];records=[];unavailable=[]
+    archive_hash=sha256(content).hexdigest();models=[];textures=[];records=[];unavailable=[]
     for index in range((len(content)+STRIDE-1)//STRIDE):
         identifier=index+1;start=index*STRIDE
         try:decoded=block(content,identifier)
@@ -61,6 +61,16 @@ def decode_catalog(content,disc_sha256):
             stored_rewards=dict(gold=struct.unpack_from('<H',data,0x44)[0],experience=struct.unpack_from('<H',data,0x46)[0],drop_item=data[0x48],drop_chance=data[0x49]),
             element_byte=data[0x1d],spell_entry_count=data[0x4a],name_offset=name_at,model_offset=model_at,texture_offset=texture_at,
             source_record=dict(source,byte_offset=0,byte_length=0x4c,sha256=sha256(data[:0x4c]).hexdigest()),reference_commit=REFERENCE_COMMIT)
+        from .monster_textures import layout
+        try:
+            pool,width=layout(data,texture_at)
+            texture_id=f'texture://legaia/monster-archive/{identifier:04d}/pool'
+            record.update(texture_status='available',texture_asset_id=texture_id)
+            textures.append(dict(semantic_id=texture_id,asset_kind='texture',name=f'Monster {identifier} Texture Pool',monster_id=identifier,
+                model_asset_id=None,width=width,height=256,bpp=4,palette_count=15,
+                source_record=dict(source,byte_offset=texture_at,byte_length=len(pool),sha256=sha256(pool).hexdigest()),
+                palette_byte_length=480,image_byte_length=len(pool)-480,preview_supported=True,reference_commit=REFERENCE_COMMIT))
+        except ImportError as e:record.update(texture_status='unsupported',texture_diagnostic=str(e))
         records.append(record)
         if model_at<0x4c or model_at+12>len(data) or struct.unpack_from('<I',data,model_at)[0]!=TMD_MAGIC:
             record['model_status']='absent_or_unsupported';continue
@@ -72,12 +82,14 @@ def decode_catalog(content,disc_sha256):
             record.update(model_status='unsupported',model_diagnostic=str(e));continue
         identifier_model=f'asset://legaia/models/monster-archive/{identifier:04d}'
         record.update(model_status='available',model_asset_id=identifier_model)
+        for texture in textures:
+            if texture['monster_id']==identifier:texture['model_asset_id']=identifier_model
         models.append(dict(semantic_id=identifier_model,asset_kind='tmd_model',name=f'Monster {identifier}'+(f' ({name})' if name else ''),monster_id=identifier,
             record_asset_id=record['semantic_id'],source_record=dict(source,byte_offset=model_at,byte_length=len(body),sha256=sha256(body).hexdigest()),
             preview_supported=True,preview_summary=dict(objects=len(geometry['objects']),vertices=len(geometry['vertices']),triangles=len(geometry['triangles'])),reference_commit=REFERENCE_COMMIT))
     catalog=dict(schema_version='legaia.monster-archive-catalog.v1',source_disc_sha256=disc_sha256,source_archive_sha256=archive_hash,
         source_archive_byte_length=len(content),source_key=sha256(('monster-archive-v1:'+disc_sha256+':'+archive_hash).encode()).hexdigest(),
-        models=models,records=records,unavailable_slots=unavailable,slot_count=(len(content)+STRIDE-1)//STRIDE,
+        models=models,textures=textures,records=records,unavailable_slots=unavailable,slot_count=(len(content)+STRIDE-1)//STRIDE,
         limitations=LIMITATIONS.copy(),reference_commit=REFERENCE_COMMIT,read_only=True,project_changed=False,gameplay_verified=False)
     validate_metadata_only(catalog);return catalog
 

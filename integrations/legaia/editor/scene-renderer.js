@@ -114,7 +114,7 @@ export class SceneRenderer {
     const normalQualified=qualifySourceNormals(preview);
     const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
     for(const vertex of vertices)for(let axis=0;axis<3;axis++){min[axis]=Math.min(min[axis],vertex[axis]);max[axis]=Math.max(max[axis],vertex[axis]);}
-    const textureData=new Map((preview.textures??[]).filter(t=>t.status==='address_match'&&t.rgba_base64).map(t=>[t.material_index,t]));
+    const textureData=new Map((preview.textures??[]).filter(t=>['address_match','source_pool_match'].includes(t.status)&&t.rgba_base64).map(t=>[t.material_index,t]));
     const groups=new Map();
     for(let index=0;index<triangles.length;index++){
       const triangle=triangles[index],material=preview.triangle_materials?.[index]??-1;

@@ -22,13 +22,13 @@ class MonsterArchiveBoundsTests(unittest.TestCase):
 class MonsterArchiveTests(unittest.TestCase):
  def test_catalog_and_source_vertex_preview(self):
   disc=os.environ['LEGAIA_DISC_BIN'];catalog=native.discover(disc)
-  self.assertEqual(catalog['slot_count'],194);self.assertEqual(len(catalog['records']),186);self.assertEqual(len(catalog['models']),186);self.assertEqual(len(catalog['unavailable_slots']),8)
+  self.assertEqual(catalog['slot_count'],194);self.assertEqual(len(catalog['records']),186);self.assertEqual(len(catalog['models']),186);self.assertEqual(len(catalog['textures']),186);self.assertEqual(len(catalog['unavailable_slots']),8)
   with _disc_context(disc) as (_,digest,_,archive):
    raw=archive.read_entry(archive.entry(867))
    for row in catalog['records']:
-    data,used=native.block(raw,row['monster_id']);self.assertEqual(row['stored_stats']['hp'],struct.unpack_from('<H',data,12)[0]);self.assertEqual(row['stored_stats']['mp'],struct.unpack_from('<H',data,16)[0]);self.assertEqual(row['source_record']['sha256'],sha256(data[:0x4c]).hexdigest())
+    data,used=native.block(raw,row['monster_id']);self.assertEqual(row['stored_stats']['hp'],struct.unpack_from('<H',data,12)[0]);self.assertEqual(row['stored_stats']['mp'],struct.unpack_from('<H',data,16)[0]);self.assertEqual(row['source_record']['sha256'],sha256(data[:0x4c]).hexdigest());pool=data[row['texture_offset']:];self.assertIn(len(pool),(16864,33248));self.assertEqual(next(t for t in catalog['textures'] if t['monster_id']==row['monster_id'])['source_record']['sha256'],sha256(pool).hexdigest())
   with tempfile.TemporaryDirectory() as root:
-   p=ProjectService(Path(root));p.disc_path=disc;p.save();context=dict(expected_project_path=str(p.root),expected_source_key=source_key(p));before=deepcopy((p._document(),p.undo_stack));values=[]
+   p=ProjectService(Path(root));p.disc_path=disc;p.save();context=dict(expected_project_path=str(p.root),expected_source_key=source_key(p));before=deepcopy((p._document(),p.undo_stack));values=[];texture_values=[]
    with http_server(p) as (_,post):
     status,report=post('/api/monster-resources',context);self.assertEqual(status,200,report)
     for identifier in (10,62,63):
@@ -39,5 +39,14 @@ class MonsterArchiveTests(unittest.TestCase):
      self.assertEqual(value['geometry']['vertices'],vertices);self.assertEqual(sha256(source).hexdigest(),value['record']['source_record']['sha256']);values.append(value)
      for changed in (dict(body,catalog_source_key='0'*64),dict(body,expected_source_key='0'*64),dict(body,asset_id='asset://legaia/models/monster-archive/0000'),dict(body,palette_index=0)):
       self.assertEqual(post('/api/monster-preview',changed)[0],400)
+    for identifier in (10,62,63):
+     for palette in (0,14):
+      body=dict(context,asset_id=f'texture://legaia/monster-archive/{identifier:04d}/pool',catalog_source_key=catalog['source_key'],palette_index=palette)
+      status,value=post('/api/monster-texture-preview',body);self.assertEqual(status,200,value);pool=base64.b64decode(value['source_pool_base64']);decoded=base64.b64decode(value['preview']['rgba_base64']);mask=base64.b64decode(value['preview']['stp_base64']);width=value['record']['width']
+      for index in range(width*256):
+       nibble=pool[480+index//2]>>((index&1)*4)&15;word=struct.unpack_from('<H',pool,palette*32+nibble*2)[0];expected=bytes([((word>>(c*5))&31)*8+(((word>>(c*5))&31)>>2) for c in range(3)]+[0 if word==0 else 255]);self.assertEqual(decoded[index*4:index*4+4],expected);self.assertEqual(mask[index],word>>15)
+      texture_values.append(value)
+     for changed in (dict(body,palette_index=True),dict(body,palette_index=15),dict(body,catalog_source_key='0'*64)):
+      self.assertEqual(post('/api/monster-texture-preview',changed)[0],400)
    self.assertEqual((p._document(),p.undo_stack),before)
-   if os.getenv('LEGAIA_MONSTER_CASES'):Path(os.environ['LEGAIA_MONSTER_CASES']).write_text(json.dumps(dict(report=report,previews=values,all_record_heads=True,source_vertices=True,unchanged=True,gameplay_verified=False)),encoding='utf-8')
+   if os.getenv('LEGAIA_MONSTER_CASES'):Path(os.environ['LEGAIA_MONSTER_CASES']).write_text(json.dumps(dict(report=report,previews=values,texture_previews=texture_values,all_record_heads=True,source_vertices=True,unchanged=True,gameplay_verified=False)),encoding='utf-8')
