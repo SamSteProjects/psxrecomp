@@ -1218,6 +1218,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/project-assets.js": ("project-assets.js", "text/javascript"),
                  "/player-model-review.js": ("player-model-review.js", "text/javascript"),
                  "/player-battle.js": ("player-battle.js", "text/javascript"),
+                 "/player-action-playback.js": ("player-action-playback.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
@@ -1329,6 +1330,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body) != {'id'}:
                         raise ProjectError('Stability cancellation requires the current job identity')
                     self._json(200, {'job': self.server.stability_checks.cancel(body['id'])})
+                    return
+                if route == '/api/player-battle-playback':
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','layer','expected_current_sha256','action_slot'}
+                    if set(body)!=fields:raise ProjectError('PLAYER playback requires exact inspected layer and selection fields')
+                    from .player_battle import playback
+                    self._json(200,playback(self.server.project,**body))
                     return
                 if route in ('/api/player-model-current-pose','/api/player-model-current-export'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','expected_current_sha256','action_slot','frame_index'}

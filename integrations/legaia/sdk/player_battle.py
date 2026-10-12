@@ -36,6 +36,36 @@ def pose(project,expected_project_path,expected_source_key,asset_id,catalog_sour
     return dict(schema_version='legaia.player-battle-pose.v1',project_path=str(project.root),project_source_key=expected_source_key,catalog_source_key=catalog_source_key,record=model,geometry=geometry,assembly=assembly,clip=clip,object_transforms=transforms,action_slot=action_slot,frame_index=frame_index,layer='retail',read_only=True,project_changed=False,gameplay_verified=False)
 
 
+def playback(project,layer,expected_current_sha256,action_slot,**context):
+    """Return one original action stream bound to the inspected geometry layer."""
+    from hashlib import sha256
+    if layer not in ('retail','current') or type(action_slot) is not int or not 0<=action_slot<12:
+        raise ProjectError('Choose a qualified PLAYER layer and stored action')
+    if layer=='current':
+        from .player_model_authoring import _snapshot
+        raw,receipt,_,_=_snapshot(project,**context)
+        effective_hash=sha256(raw).hexdigest()
+        if expected_current_sha256!=effective_hash:raise ProjectError('PLAYER Current changed; inspect Current again')
+    else:
+        if expected_current_sha256 is not None:raise ProjectError('Retail playback accepts no Current identity')
+        receipt=preview(project,**context);effective_hash=receipt['record']['source_record']['sha256']
+    model=receipt['record'];clip=model['actions'][action_slot]
+    if not clip['preview_supported']:raise ProjectError('Empty PLAYER action has no playback frames')
+    digest,sources=native._sources(project.disc_path);retail=sources[model['player_index']][3]
+    if digest!=model['source_record']['disc']['sha256'] or sha256(retail).hexdigest()!=model['source_record']['sha256']:
+        raise ProjectError('PLAYER playback Retail source changed')
+    clips,bank=native.actions(retail,model['player_index'],digest)
+    if clips[action_slot]!=clip:raise ProjectError('PLAYER playback action changed')
+    source=clip['source_record'];stream=bank[source['byte_offset']:source['byte_offset']+source['byte_length']]
+    if sha256(stream).hexdigest()!=source['sha256']:raise ProjectError('PLAYER playback stream differs from its source span')
+    _fresh(project,context['expected_project_path'],context['expected_source_key'])
+    return dict(schema_version='legaia.player-playback.v1',project_path=str(project.root),
+        project_source_key=context['expected_source_key'],catalog_source_key=context['catalog_source_key'],
+        record=model,assembly=receipt['assembly'],clip=clip,layer=layer,
+        effective_file_sha256=effective_hash,action_base64=b64encode(stream).decode('ascii'),
+        read_only=True,project_changed=False,gameplay_verified=False)
+
+
 def export(project,expected_project_path,expected_source_key,asset_id,catalog_source_key,equipped,mode,action_slot,frame_index,fps):
     import math
     from importer.export import encode_model_glb

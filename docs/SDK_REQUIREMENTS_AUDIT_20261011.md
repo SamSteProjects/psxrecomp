@@ -34,3 +34,10 @@ All five recorded runtime/precompile sources and three fixtures match their expe
 Offline implementation is still possible. The next high-value research area is provenance-qualified discovery of battle/extended model and animation formats, which current decoders explicitly leave unsupported. Establish pinned reference and retail layout evidence before registering new assets or extending codecs. Full runtime timing, visibility, audible output and cross-scene restore remain gameplay-dependent gates and are deferred under the user's current instructions.
 
 No native compilation, game launch/attach, installation, disc export or broad test campaign ran for this audit. No proprietary payload is part of the documentation change.
+
+
+## PLAYER Editor And Delivery Checkpoint — 2026-10-11
+
+The earlier Battle Discovery checkpoint above is historical. Current PLAYER coverage now includes four physically bounded equipment sources, stored action identities, selected static textures, native tagged GLB Review/Apply, retained input replay, Current inspection, Undo/Redo, Save/Open, package Build, Current interchange and local action scrubbing/playback. [PLAYER Battle Assembly](legaia-player-battle-assembly.md) records the scoped evidence and limits. Package delivery was verified in local commit `b68756dfd`; Current action/interchange integration was verified in `5d17f0d34`. The latest local playback evidence covers eight Retail/Current receipts, sixteen native reference poses, exact source spans and actual editor transport behavior. These do not qualify native action authoring, runtime timing/activation or broad gameplay parity.
+
+This advances the animation and model/equipment rows without closing their remaining runtime and unknown-format requirements. Further offline work remains possible in native animation replacement and extended battle-format discovery. No game-dependent gate is marked complete; no fresh binary or full-suite claim is added.
