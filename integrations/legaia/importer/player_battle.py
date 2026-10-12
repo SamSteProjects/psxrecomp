@@ -140,3 +140,17 @@ def pose(disc,asset_id,expected_source_key,equipped,action_slot,frame_index):
     transforms=[dict(object_index=i,part_index=part,**parts[part]) for i,part in enumerate(assembly['animation_part_indices'])]
     geometry['vertices']=pose_vertices(geometry['vertices'],geometry['objects'],transforms);geometry['bounds']=dict(min=[min(v[i] for v in geometry['vertices']) for i in range(3)],max=[max(v[i] for v in geometry['vertices']) for i in range(3)]);geometry.update(posed=True,coordinate_system='retail_psx_actor_local_y_down');geometry.pop('triangle_normals',None);geometry.pop('normal_preview',None)
     return catalog,model,geometry,assembly,clip,transforms
+
+
+def action_frames(disc,model,assembly,clip):
+    """Complete rigid object tracks for an already qualified selected assembly."""
+    digest,sources=_sources(disc);raw=sources[model['player_index']][3]
+    if digest!=model['source_record']['disc']['sha256'] or sha256(raw).hexdigest()!=model['source_record']['sha256']:raise ImportError('PLAYER action source changed before clip export')
+    current,bank=actions(raw,model['player_index'],digest)
+    if clip not in current or not clip['preview_supported']:raise ImportError('PLAYER clip is unqualified or empty')
+    if any(i>=clip['part_count'] for i in assembly['animation_part_indices']):raise ImportError('PLAYER attachment exceeds this action rig')
+    frames=[]
+    for frame in range(clip['frame_count']):
+        at=clip['source_record']['byte_offset']+2+frame*clip['part_count']*9;parts=[decode_part(bank[at+i*9:at+(i+1)*9]) for i in range(clip['part_count'])]
+        frames.append(dict(object_transforms=[dict(object_index=i,part_index=part,**parts[part]) for i,part in enumerate(assembly['animation_part_indices'])]))
+    return frames
