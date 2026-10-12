@@ -1,4 +1,4 @@
-import {showPlayerBattle,showPlayerAction} from '/player-battle.js';
+import {showPlayerBattle,showPlayerAction,showPlayerTexture} from '/player-battle.js';
 import {showBattlePackAnimationResource} from '/battle-pack-animation.js';
 import {showBattleCharacterResource} from '/battle-character-resources.js';
 import {worldAnimationBuildSource,worldAnimationBuildTarget} from '/worldmap-animation-build-navigation.js';
@@ -2028,11 +2028,12 @@ const initialAssetUsageContext=projectState=>JSON.stringify([modelUsageContext(p
 const assetDetailsTrail=createAssetDetailsTrail();
 assetDetails.addEventListener('close',()=>{if(!assetDetails.open)assetDetailsTrail.clear();});
 const assetDetailsTrailContext=()=>JSON.stringify([resourceStateKey(),state.inspector_schema,state.capabilities]);
-function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false,playerAction=null}={}){
+function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false,playerAction=null,playerEquipment=null}={}){
   if(!keepTrail)assetDetailsTrail.clear();
   assetPlacementSelection?.dispose();assetPlacementSelection=null;animationContributions?.dispose();animationContributions=null;
+  if(record.projectPlayerBattleTexture){try{showPlayerTexture({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalPlayerBattles,onModel:async(id,equipment)=>{if(busy)return;assetDetails.close();const next=await projectAssetControls.revealAsset(id);if(next)showAssetDetails(next,undefined,{playerEquipment:equipment});}});}catch(error){notify(error.message,true);}return;}
   if(record.projectPlayerBattleAnimation){try{showPlayerAction({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalPlayerBattles,onModel:async(id,action)=>{if(busy)return;assetDetails.close();const next=await projectAssetControls.revealAsset(id);if(next)showAssetDetails(next,undefined,{playerAction:action});}});}catch(error){notify(error.message,true);}return;}
-  if(record.projectPlayerBattleResource){try{showPlayerBattle({dialog:assetDetails,record,actionSlot:playerAction,getReport:()=>projectAssetControls?.sourceReport()?.globalPlayerBattles,current:()=>state.project?.path===record.projectPlayerBattleResource.projectPath&&state.project_assets_source_key===record.projectPlayerBattleResource.sourceKey,busy:()=>busy,setBusy,onError:error=>notify(error.message,true)});}catch(error){notify(error.message,true);}return;}
+  if(record.projectPlayerBattleResource){try{showPlayerBattle({dialog:assetDetails,record,actionSlot:playerAction,equipmentPreset:playerEquipment,getReport:()=>projectAssetControls?.sourceReport()?.globalPlayerBattles,current:()=>state.project?.path===record.projectPlayerBattleResource.projectPath&&state.project_assets_source_key===record.projectPlayerBattleResource.sourceKey,busy:()=>busy,setBusy,onError:error=>notify(error.message,true)});}catch(error){notify(error.message,true);}return;}
   if(record.projectBattlePackAnimation){try{showBattlePackAnimationResource({dialog:assetDetails,record,report:projectAssetControls?.sourceReport()?.globalBattlePackAnimations,onModel:async id=>{if(busy)return;assetDetails.close();const next=await projectAssetControls.revealAsset(id);if(next)showAssetDetails(next);}});}catch(error){notify(error.message,true);}return;}
   if(record.projectBattleResource){try{showBattleCharacterResource({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalBattleCharacters,current:()=>state.project?.path===record.projectBattleResource.projectPath&&state.project_assets_source_key===record.projectBattleResource.sourceKey,busy:()=>busy,setBusy,onError:error=>notify(error.message,true)});}catch(error){notify(error.message,true);}return;}
   if(record.projectWorldBehaviorResource){try{showWorldmapBehaviorResource({dialog:assetDetails,record,lookup,getReport:()=>projectAssetControls?.sourceReport()?.globalWorldBehaviorResources,getState:()=>state,busy:()=>busy,setBusy,api,onApplied:next=>{assetDetails.close();if(next&&typeof next==='object'&&next.project)state=next;render();notify('World resource edits applied. Save project to persist.');},onNavigate:next=>showAssetDetails(next,lookup),onFocus:target=>{if(!canEdit()||worldmapDraftPending)throw Error('Resolve the current World draft before resource navigation.');return worldmapGeometryControls.openScene(target);},onError:error=>notify(error.message,true)});}catch(error){notify(error.message,true);}return;}
@@ -2240,7 +2241,7 @@ async function inspectControllerAsset(record,focusFlagPc=null){
 }
 async function activateAsset(record,action=null){
   if(busy)return;
-  if(record?.projectPlayerBattleAnimation||record?.projectPlayerBattleResource||record?.projectBattleResource||record?.projectBattlePackAnimation){showAssetDetails(record);return;}
+  if(record?.projectPlayerBattleTexture||record?.projectPlayerBattleAnimation||record?.projectPlayerBattleResource||record?.projectBattleResource||record?.projectBattlePackAnimation){showAssetDetails(record);return;}
   try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
   if(record.projectWorldBehaviorResource){if(action===null)showAssetDetails(record);return;}
   if(record.projectWorldResource){if(![null,'inspect-world-resource'].includes(action)||!canEdit()||!state.capabilities?.worldmap_geometry||worldmapDraftPending)return;try{const target=qualifyWorldmapProjectResource(record,projectAssetControls?.sourceReport()?.globalWorldResources,state);if(record.type==='model')await worldmapGeometryControls.openResource(target);else showAssetDetails(record);}catch(error){notify(error.message,true);}return;}

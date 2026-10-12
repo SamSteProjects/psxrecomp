@@ -105,7 +105,9 @@ def discover(disc):
     for slot,(index,start,end,raw) in enumerate(sources):
         rows=table(raw);geometry,assembly=assemble(raw,[0]*5);source=dict(disc=dict(sha256=digest,serial='SCUS-94254'),iso_file='PROT.DAT',prot_entry_index=index,record_kind='adjacent_toc_bounded_player_file',start_lba=start,next_start_lba=end,byte_length=len(raw),sha256=sha256(raw).hexdigest(),boundary_evidence='adjacent_PROT_start_and_complete_descriptor_chain')
         clips,_=actions(raw,slot,digest)
-        models.append(dict(semantic_id=f'asset://legaia/models/player-battle/{slot:04d}',asset_kind='player_battle_model',name=f'PLAYER Battle Model {slot}',player_index=slot,source_record=source,descriptors=rows,actions=clips,default_assembly=assembly,preview_summary=dict(objects=len(geometry['objects']),vertices=len(geometry['vertices']),triangles=len(geometry['triangles'])),reference_commit=REFERENCE_COMMIT))
+        from .player_battle_textures import records
+        textures=records(raw,slot,digest)
+        models.append(dict(semantic_id=f'asset://legaia/models/player-battle/{slot:04d}',asset_kind='player_battle_model',name=f'PLAYER Battle Model {slot}',player_index=slot,source_record=source,descriptors=rows,actions=clips,textures=textures,default_assembly=assembly,preview_summary=dict(objects=len(geometry['objects']),vertices=len(geometry['vertices']),triangles=len(geometry['triangles'])),reference_commit=REFERENCE_COMMIT))
     key=sha256(('player-battle-v1:'+digest+':'+':'.join(m['source_record']['sha256'] for m in models)).encode()).hexdigest()
     result=dict(schema_version='legaia.player-battle-catalog.v1',source_disc_sha256=digest,source_key=key,models=models,reference_commit=REFERENCE_COMMIT,read_only=True,project_changed=False,gameplay_verified=False)
     validate_metadata_only(result);return result
@@ -119,6 +121,8 @@ def preview(disc,asset_id,expected_source_key,equipped):
     digest,sources=_sources(disc);raw=sources[model['player_index']][3]
     if digest!=catalog['source_disc_sha256'] or sha256(raw).hexdigest()!=model['source_record']['sha256']:raise ImportError('PLAYER file changed during preview')
     geometry,assembly=assemble(raw,equipped);geometry.update(semantic_id=asset_id,source_record=model['source_record'],reference_commit=REFERENCE_COMMIT)
+    from .player_battle_textures import reconstruct
+    geometry['textures'],assembly['texture_assembly']=reconstruct(disc,model,assembly,geometry);assembly['texture_routing']='static_authoring_projection'
     return catalog,model,geometry,assembly
 
 
