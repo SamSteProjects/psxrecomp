@@ -53,3 +53,30 @@ def validate(project,receipt):
     except (NativeError,KeyError,TypeError,ValueError) as e:raise ProjectError('Shared PNG source cannot replay its original import') from e
     if sha256(candidate).hexdigest()!=receipt['candidate_sha256']:raise ProjectError('Shared PNG source replay changed')
     return png,stp,tim,candidate
+
+
+def records(project,assets):
+    """Register active historical inputs without exposing their image payloads."""
+    from copy import deepcopy
+    from .field_texture_authoring import context
+    rows=[]
+    for asset in assets:
+        identifier=asset['semantic_id'];binding=project.texture_overrides.get(identifier)
+        if not binding or 'field_png_source' not in binding:continue
+        ctx=context(project,identifier)
+        current=project.read_texture_replacement(binding)
+        ctx.validate_replacement(identifier,current)
+        receipt=binding['field_png_source'];slot=asset['source_record']['pack_slot']
+        for kind in ('png','stp'):
+            key=receipt[kind+'_sha256']
+            if key is None:continue
+            rows.append(dict(
+                semantic_id=f'retained-texture://legaia/field-party/874/2/{slot}/{kind}/{key}',
+                name=f'Shared Field TIM {slot} Original '+('PNG Input' if kind=='png' else 'STP Mask Input'),
+                asset_kind='retained_field_png',kind=kind,layer='historical_authored_input',
+                texture_asset_id=identifier,sha256=key,byte_length=receipt[kind+'_byte_length'],
+                source_record=deepcopy(receipt),retail_source=deepcopy(asset['source_record']),
+                references=[identifier],current_tim_sha256=sha256(current).hexdigest(),
+                relationship='historical_import_input_not_final_current_texture',
+                read_only=True,gameplay_verified=False))
+    return rows

@@ -26,10 +26,21 @@ class SharedStpTests(unittest.TestCase):
    with http_server(p) as (_,post):
     current_sha=p.texture_overrides[asset]['asset_sha256']
     download_args=dict(expected_project_path=str(p.root),expected_source_key=source_key(p),asset_id=asset,expected_current_sha256=current_sha)
+    status,retained_report=post('/api/field-texture-resources',{k:v for k,v in download_args.items() if k in ('expected_project_path','expected_source_key')})
+    self.assertEqual(status,200,retained_report)
+    self.assertEqual(len(retained_report['assets']),8);self.assertEqual(len(retained_report['retained_inputs']),2)
+    self.assertEqual({row['kind'] for row in retained_report['retained_inputs']},{'png','stp'})
+    for row in retained_report['retained_inputs']:
+     self.assertEqual(row['references'],[asset]);self.assertEqual(row['source_record'],receipt)
+     self.assertEqual(row['current_tim_sha256'],current_sha)
+     self.assertEqual(row['layer'],'historical_authored_input')
+     self.assertNotIn('png_base64',row)
     before_download=deepcopy((p._document(),p.undo_stack))
+    input_downloads=[]
     for kind,expected in (('png',original_png),('stp',original_stp)):
      status,payload=post('/api/field-texture-input-download',dict(download_args,kind=kind))
      self.assertEqual(status,200,payload);self.assertEqual(base64.b64decode(payload['png_base64']),expected)
+     input_downloads.append(payload)
      self.assertEqual(payload['retained_source'],receipt);self.assertEqual(payload['layer'],'historical_authored_input')
     self.assertEqual(post('/api/field-texture-input-download',dict(download_args,kind='png',expected_current_sha256='0'*64))[0],400)
     self.assertEqual(post('/api/field-texture-input-download',dict(download_args,kind='tim'))[0],400)
@@ -57,4 +68,4 @@ class SharedStpTests(unittest.TestCase):
    with self.assertRaises(ProjectError):validate_owner(p,wrong,asset)
    wrong['field_png_source']=[]
    with self.assertRaises(ProjectError):validate_owner(p,wrong,asset)
-   if os.getenv('LEGAIA_SHARED_STP_CASES'):Path(os.environ['LEGAIA_SHARED_STP_CASES']).write_text(json.dumps(dict(report=report,inspection=inspection,review=r,png_base64=e['png_base64'],mask_base64=base64.b64encode(edited).decode(),original_mask_base64=e['stp_png_base64'],pixel_index=index//4,expected_stp=int(new!=0),history=True,save_open=True,changed_mask_apply_refused=True,gameplay_verified=False)),encoding='utf-8')
+   if os.getenv('LEGAIA_SHARED_STP_CASES'):Path(os.environ['LEGAIA_SHARED_STP_CASES']).write_text(json.dumps(dict(retained_report=retained_report,input_downloads=input_downloads,report=report,inspection=inspection,review=r,png_base64=e['png_base64'],mask_base64=base64.b64encode(edited).decode(),original_mask_base64=e['stp_png_base64'],pixel_index=index//4,expected_stp=int(new!=0),history=True,save_open=True,changed_mask_apply_refused=True,gameplay_verified=False)),encoding='utf-8')

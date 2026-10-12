@@ -15,6 +15,10 @@ class SharedPngTests(unittest.TestCase):
    with http_server(p) as (_,post):
     _,report=post('/api/field-texture-resources',{k:v for k,v in ctx().items() if k not in ('asset_id','palette_index')});_,inspection=post('/api/field-texture-inspect',ctx());body=dict(ctx(),expected_current_sha256=inspection['palette']['effective_sha256']);status,export=post('/api/field-texture-png-download',body);self.assertEqual(status,200,export);original=base64.b64decode(export['png_base64']);pixels=decode_png(original);self.assertEqual(pixels['rgba'],base64.b64decode(inspection['rgba_base64']));rgba=bytearray(pixels['rgba']);rgba[:4]=bytes([255,0,0,255]);edited=_encode_png(pixels['width'],pixels['height'],bytes(rgba));args=dict(body,png_base64=base64.b64encode(edited).decode(),palette_mode='rebuild');held=deepcopy((p._document(),p.undo_stack));status,r=post('/api/field-texture-png-review',args);self.assertEqual(status,200,r);self.assertEqual((p._document(),p.undo_stack),held);self.assertGreater(r['changes']['total_change_count'],0);self.assertEqual(post('/api/field-texture-png-apply',dict(args,review_key='0'*64))[0],400);status,result=post('/api/field-texture-png-apply',dict(args,review_key=r['review_key']));self.assertEqual(status,200,result);self.assertEqual(len(p.undo_stack),1);self.assertEqual(p.read_texture_replacement(p.texture_overrides[asset]),base64.b64decode(r['candidate_tim_base64']));self.assertEqual(post('/api/field-texture-png-apply',dict(args,review_key=r['review_key']))[0],400)
    after=deepcopy(p._document());p.undo();self.assertEqual(p._document(),held[0]);p.redo();p.save();p=ProjectService.open(p.root);self.assertEqual(p._document(),after)
+   from sdk.field_texture_authoring import resources
+   retained_report=resources(p,str(p.root),source_key(p))
+   self.assertEqual(len(retained_report['retained_inputs']),1)
+   self.assertEqual(retained_report['retained_inputs'][0]['kind'],'png')
    from sdk.field_texture_sources import validate,path
    from sdk.build import build_project
    from importer.pipeline import import_scene

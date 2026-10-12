@@ -41,8 +41,11 @@ def resources(project,expected_project_path,expected_source_key):
         ctx=load_field_texture_authoring_context(project.disc_path);assets=[]
         for tim,source in ctx._catalog.textures:
             row=_metadata(ctx._catalog,tim,source);row.update(name=f'Shared Field TIM {source["pack_slot"]}',scope='global_field_party',limitations=list(LIMITATIONS),original_sha256=sha256(ctx.original_tim(source['semantic_id'])).hexdigest());assets.append(row)
+    from .field_texture_sources import records as input_records
+    with _disc_context(project.disc_path):
+        inputs=input_records(project,assets)
     _fresh(project,expected_project_path,expected_source_key)
-    return dict(schema_version='legaia.field-texture-resources.v1',project_path=str(project.root),project_source_key=expected_source_key,assets=assets,disc_sha256=ctx._digest,layer='retail',read_only=True,project_changed=False,gameplay_verified=False)
+    return dict(retained_inputs=inputs,schema_version='legaia.field-texture-resources.v1',project_path=str(project.root),project_source_key=expected_source_key,assets=assets,disc_sha256=ctx._digest,layer='retail',read_only=True,project_changed=False,gameplay_verified=False)
 
 
 def _snapshot(project,asset_id,expected_project_path,expected_source_key):
