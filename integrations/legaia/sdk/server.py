@@ -1220,6 +1220,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/player-battle.js": ("player-battle.js", "text/javascript"),
                  "/player-action-playback.js": ("player-action-playback.js", "text/javascript"),
                  "/player-action-editor.js": ("player-action-editor.js", "text/javascript"),
+                 "/player-action-timeline.js": ("player-action-timeline.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
