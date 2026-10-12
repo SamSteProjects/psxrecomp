@@ -1,4 +1,4 @@
-import {showMonster,showMonsterTexture,disposeMonster} from '/monster-archive.js';
+import {showMonster,showMonsterTexture,showMonsterAnimation,disposeMonster} from '/monster-archive.js';
 import {showFieldTexture,showFieldTextureInput,disposeFieldTexture} from '/field-textures.js';
 import {mountFieldEquipment} from './field-equipment.js';
 let fieldEquipmentControls=null;
@@ -2032,13 +2032,14 @@ const initialAssetUsageContext=projectState=>JSON.stringify([modelUsageContext(p
 const assetDetailsTrail=createAssetDetailsTrail();
 assetDetails.addEventListener('close',()=>{if(!assetDetails.open)assetDetailsTrail.clear();});
 const assetDetailsTrailContext=()=>JSON.stringify([resourceStateKey(),state.inspector_schema,state.capabilities]);
-function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false,playerAction=null,playerEquipment=null}={}){
+function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false,playerAction=null,playerEquipment=null,monsterClip=null}={}){
   disposeFieldTexture(assetDetails);disposeMonster(assetDetails);
   fieldEquipmentControls?.dispose();fieldEquipmentControls=null;
   if(!keepTrail)assetDetailsTrail.clear();
   assetPlacementSelection?.dispose();assetPlacementSelection=null;animationContributions?.dispose();animationContributions=null;
+  if(record.projectMonsterAnimation){try{showMonsterAnimation({dialog:assetDetails,record,current:()=>state.project?.path===record.projectMonsterAnimation.projectPath&&state.project_assets_source_key===record.projectMonsterAnimation.sourceKey,busy:()=>busy,getReport:()=>projectAssetControls?.sourceReport()?.globalMonsters,onModel:async(id,clip)=>{if(busy)return;assetDetails.close();const next=await projectAssetControls.revealAsset(id);if(next)showAssetDetails(next,undefined,{monsterClip:clip});}});}catch(error){notify(error.message,true);}return;}
   if(record.projectMonsterTexture){try{showMonsterTexture({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalMonsters,current:()=>state.project?.path===record.projectMonsterTexture.projectPath&&state.project_assets_source_key===record.projectMonsterTexture.sourceKey,busy:()=>busy,onError:error=>notify(error.message,true)});}catch(error){notify(error.message,true);}return;}
-  if(record.projectMonster){try{showMonster({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalMonsters,current:()=>state.project?.path===record.projectMonster.projectPath&&state.project_assets_source_key===record.projectMonster.sourceKey,busy:()=>busy,onError:error=>notify(error.message,true)});}catch(error){notify(error.message,true);}return;}
+  if(record.projectMonster){try{showMonster({dialog:assetDetails,record,initialClip:monsterClip,getReport:()=>projectAssetControls?.sourceReport()?.globalMonsters,current:()=>state.project?.path===record.projectMonster.projectPath&&state.project_assets_source_key===record.projectMonster.sourceKey,busy:()=>busy,onError:error=>notify(error.message,true)});}catch(error){notify(error.message,true);}return;}
   if(record.projectFieldTextureInput){try{showFieldTextureInput({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalFieldTextures,current:()=>state.project?.path===record.projectFieldTextureInput.projectPath&&state.project_assets_source_key===record.projectFieldTextureInput.sourceKey,busy:()=>busy,onError:error=>notify(error.message,true),onTexture:async id=>{if(busy)return;assetDetails.close();const next=await projectAssetControls.revealAsset(id);if(next)showAssetDetails(next);}});}catch(error){notify(error.message,true);}return;}
   if(record.projectFieldTexture){try{showFieldTexture({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalFieldTextures,current:()=>state.project?.path===record.projectFieldTexture.projectPath&&state.project_assets_source_key===record.projectFieldTexture.sourceKey,busy:()=>busy,setBusy,onError:error=>notify(error.message,true),onApplied:next=>{assetDetails.close();state=next;render();}});}catch(error){notify(error.message,true);}return;}
   if(record.projectPlayerMotionInput){try{showPlayerMotionInput({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalPlayerBattles,onModel:async(id,action)=>{if(busy)return;assetDetails.close();const next=await projectAssetControls.revealAsset(id);if(next)showAssetDetails(next,undefined,{playerAction:action});}});}catch(error){notify(error.message,true);}return;}

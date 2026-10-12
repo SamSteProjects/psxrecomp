@@ -58,3 +58,28 @@ def texture_preview(project,expected_project_path,expected_source_key,asset_id,c
     return dict(schema_version='legaia.monster-texture-preview.v1',project_path=str(project.root),project_source_key=expected_source_key,
         catalog_source_key=catalog_source_key,record=record,preview=value,source_pool_base64=b64encode(pool).decode(),
         layer='retail',read_only=True,project_changed=False,gameplay_verified=False)
+
+
+def pose(project,expected_project_path,expected_source_key,asset_id,catalog_source_key,animation_id,frame_index):
+    from copy import deepcopy
+    from importer.pipeline import _disc_context
+    from importer.monster_motion import frame
+    from importer.animation import pose_vertices
+    _fresh(project,expected_project_path,expected_source_key)
+    base=preview(project,expected_project_path,expected_source_key,asset_id,catalog_source_key)
+    try:
+        with _disc_context(project.disc_path) as (_,digest,_,archive):
+            raw=archive.read_entry(archive.entry(native.ENTRY));catalog=native.decode_catalog(raw,digest)
+            if catalog['source_key']!=catalog_source_key:raise NativeError('Monster motion catalog changed')
+            clip=next((r for r in catalog['animations'] if r['semantic_id']==animation_id),None)
+            if clip is None or clip['model_asset_id']!=asset_id:raise NativeError('Monster animation belongs to another model or source')
+            data,_=native.block(raw,clip['monster_id']);transforms,stream=frame(data,clip,frame_index)
+        geometry=deepcopy(base['geometry']);geometry['vertices']=pose_vertices(geometry['vertices'],geometry['objects'],transforms)
+    except NativeError as e:raise ProjectError(str(e)) from e
+    geometry.pop('triangle_normals',None);geometry.pop('normal_preview',None)
+    geometry.update(posed=True,coordinate_system='retail_psx_actor_local_y_down',bounds=dict(min=[min(v[i] for v in geometry['vertices']) for i in range(3)],max=[max(v[i] for v in geometry['vertices']) for i in range(3)]))
+    _disc(project,catalog);_fresh(project,expected_project_path,expected_source_key)
+    return dict(schema_version='legaia.monster-pose.v1',project_path=str(project.root),project_source_key=expected_source_key,
+        catalog_source_key=catalog_source_key,base_preview=base,geometry=geometry,clip=clip,object_transforms=transforms,
+        source_motion_base64=b64encode(stream).decode(),source_entry_base64=b64encode(data[clip['source_record']['entry_offset']:clip['source_record']['entry_end']]).decode(),animation_id=animation_id,frame_index=frame_index,
+        layer='retail_stored_pose',read_only=True,project_changed=False,gameplay_verified=False)

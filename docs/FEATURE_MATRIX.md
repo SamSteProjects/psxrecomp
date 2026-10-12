@@ -10789,3 +10789,8 @@ World Source Interaction Script Inspector — read-only source P0 graph inspecti
 ## Monster Pool Texture Checkpoint — 2026-10-12
 
 [Monster Source Pool Textures](legaia-monster-archive.md#source-pool-texture-inspection) advances source model/texture coverage with exact pool qualification, 186 Texture registrations, fifteen-palette inspection and independently replayed source-local material crops. The documented native/client/editor workflow is FUNCTIONAL / READ-ONLY / OFFLINE. Nine material UV ranges remain unavailable beyond their own source page; runtime placement/blending, assembly, animation, authoring/delivery and playable acceptance remain open. The full objective is incomplete and active.
+
+
+## Stored Monster Motion Checkpoint — 2026-10-12
+
+[Stored Monster Motion Inspector](legaia-monster-archive.md#stored-monster-motion-inspector) advances animation registration, source association and textured pose inspection with 1,811 stored entry identities and 1,803 qualified model/part mappings. Native/channel/matrix/client/editor checks pass at the documented scope. This is FUNCTIONAL / READ-ONLY / OFFLINE for selected stored frames. Eight unmatched mappings, native cadence/activation, timed/interchange motion, authoring/delivery and gameplay acceptance remain open. Source normals and Retail versus stored-pose layers remain distinct; the full SDK objective is incomplete and active.

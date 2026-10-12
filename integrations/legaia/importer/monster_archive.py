@@ -15,7 +15,7 @@ STRIDE=0x14000
 MAX_DECODED=STRIDE*8
 LIMITATIONS=[
  'Stored monster record values, not runtime-boosted battle stats or confirmed live actors.',
- 'Object-local TMD only; assembly, texture relocation, motion, activation and equipment are not inferred.',
+ 'Stored model/pool/action sources; runtime assembly, VRAM relocation, cadence, activation and equipment remain unobserved.',
  'Actual compressed consumption is qualified against the archive; fixed slot boundaries do not establish writable capacity.',
 ]
 
@@ -36,7 +36,7 @@ def decode_catalog(content,disc_sha256):
         raise ImportError('Monster archive exceeds its bounded source extent')
     if not isinstance(disc_sha256,str) or len(disc_sha256)!=64 or any(c not in '0123456789abcdef' for c in disc_sha256):
         raise ImportError('Monster archive requires an immutable disc hash')
-    archive_hash=sha256(content).hexdigest();models=[];textures=[];records=[];unavailable=[]
+    archive_hash=sha256(content).hexdigest();models=[];textures=[];animations=[];records=[];unavailable=[]
     for index in range((len(content)+STRIDE-1)//STRIDE):
         identifier=index+1;start=index*STRIDE
         try:decoded=block(content,identifier)
@@ -87,9 +87,12 @@ def decode_catalog(content,disc_sha256):
         models.append(dict(semantic_id=identifier_model,asset_kind='tmd_model',name=f'Monster {identifier}'+(f' ({name})' if name else ''),monster_id=identifier,
             record_asset_id=record['semantic_id'],source_record=dict(source,byte_offset=model_at,byte_length=len(body),sha256=sha256(body).hexdigest()),
             preview_supported=True,preview_summary=dict(objects=len(geometry['objects']),vertices=len(geometry['vertices']),triangles=len(geometry['triangles'])),reference_commit=REFERENCE_COMMIT))
+        from .monster_motion import records as motion_records
+        try:animations.extend(motion_records(data,record,models[-1]))
+        except ImportError as e:record.update(animation_status='unsupported_table',animation_diagnostic=str(e))
     catalog=dict(schema_version='legaia.monster-archive-catalog.v1',source_disc_sha256=disc_sha256,source_archive_sha256=archive_hash,
         source_archive_byte_length=len(content),source_key=sha256(('monster-archive-v1:'+disc_sha256+':'+archive_hash).encode()).hexdigest(),
-        models=models,textures=textures,records=records,unavailable_slots=unavailable,slot_count=(len(content)+STRIDE-1)//STRIDE,
+        models=models,textures=textures,animations=animations,records=records,unavailable_slots=unavailable,slot_count=(len(content)+STRIDE-1)//STRIDE,
         limitations=LIMITATIONS.copy(),reference_commit=REFERENCE_COMMIT,read_only=True,project_changed=False,gameplay_verified=False)
     validate_metadata_only(catalog);return catalog
 
