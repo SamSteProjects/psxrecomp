@@ -1,6 +1,6 @@
 # PLAYER Action GLB Import
 
-In progress — 2026-10-11. This workflow is under construction. The native converter is implemented and checked; editor Review/Proposed/Apply, retained GLB inputs and full persistence/Build integration are not yet delivered.
+Offline checks passed — 2026-10-11. Existing-layout PLAYER motion GLB import now reaches editor Review/Proposed/Apply, retained-input validation, history/persistence, Current sampling and private native package delivery. Gameplay timing, activation and playable behavior remain unverified.
 
 ## Native Conversion
 
@@ -16,8 +16,14 @@ All 38 supported retail actions across four source files and 605 frames round-tr
 
 Private evidence: `local-output/sdk-20260909/player-native-model-authoring-20261011/glb-action-import-proof.json`. Tests: `test_player_animation_glb.py`, `test_animation_glb.py`, `test_animation_clip_export.py`. Proprietary source data and derived files stay private.
 
-## Remaining Workflow
+## Review, Retained Inputs And Native Delivery
 
-Integrate fresh Current inspection and model/action ownership with a source-bound GLB review receipt, proposed playback, exact Apply seal, retained immutable GLB inputs, normal history and Save/Open, then verify Current and composed package Build. Authoring remains incomplete until those editor steps are implemented and checked. Native cadence/activation and playable behavior require later gameplay verification.
+The editor exposes PLAYER Motion GLB and Interchange FPS inside Native PLAYER Action Channels after Current model/action inspection. Review converts the selected existing action; Preview Proposed PLAYER Action samples the unsaved native result in the current model viewport and timeline. Apply Reviewed PLAYER Action uses the exact fresh Review identity and creates one normal history step. Source/selection/file/rate changes withdraw the reviewed operation. No-op imports cannot Apply.
 
-No Build, recomp compilation, install, game or attachment ran. Full SDK goal remains active.
+Exact routes `/api/player-action-glb-review` and `/api/player-action-glb-apply` bind project/source/catalog, equipment, action, inspected Current file/action hashes, complete GLB bytes, FPS and optional file-animation/node mapping. The normal native canonical ledger remains the saved Current truth. Fresh Apply regenerates the import and compares the complete receipt seal; old or altered inputs refuse before publishing state.
+
+The latest imported GLB for each owned action is retained byte-exact at `Authored/PLAYER/ActionInputs/{sha256}.glb`. Its pre-import native baseline stays in the immutable ActionSources cache. Saved metadata records complete hashes/sizes, sampling/mapping choices and replay-receipt digest. Open and subsequent Current/Build validation check those files and independently replay the original import. Later numeric edits preserve this historical import evidence while changing the canonical channel ledger; the retained GLB is not silently presented as the final action after later edits. Undo/Redo retains files needed by historical states. Removing the entire action owner withdraws its active import metadata. Inputs are limited to 4 MiB per GLB and a combined 64 MiB active GLB/baseline project budget.
+
+Focused HTTP/service checks pass unsaved Review, stale Apply refusal, one-step Apply, exact retained bytes, Undo/Redo, Save/Open, Current pose, later numeric edits retaining provenance and native package delivery. Tampering retained GLB bytes blocks Open. Client verification replays the reported sparse edits against the independently decoded Current action bytes and rejects eight altered input/receipt/proposed envelopes; it does not independently implement a second glTF hierarchy sampler. Eight existing Project/World checks pass. Private evidence: `local-output/sdk-20260909/player-native-model-authoring-20261011/glb-action-workflow-cases.json`.
+
+Actual muted Edge editor passes edited GLB Review, unsaved Proposed preview/export gating, one-step Apply alongside an authored native model, Current action/pose witnesses, Undo/Redo and Save/Open. Wide/400-pixel captures were inspected; no page errors, commands or scene navigation occurred. Private evidence: `local-output/sdk-20260909/player-native-model-authoring-20261011/action-glb-browser-proof.json`. The native workflow remains existing-layout rigid motion: new actions, anatomical skin/retargeting and verified runtime timing are not supplied. A private data-package Build ran; no recomp compilation, installation, game, runtime attachment or disc export ran. Full SDK goal remains active.

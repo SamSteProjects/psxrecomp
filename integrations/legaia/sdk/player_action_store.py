@@ -51,6 +51,7 @@ def compose(raw,identifier,binding):
 
 def validate(project,values,*,replays=None):
     if not isinstance(values,dict) or len(values)>4:raise ProjectError('PLAYER actions require at most four file owners')
+    input_bytes=0
     for identifier,b in values.items():
         if (not isinstance(identifier,str) or not re.fullmatch('asset://legaia/models/player-battle/000[0-3]',identifier)
                 or not isinstance(b,dict) or set(b)!={'schema_version','asset_id','source_record','actions','current_sha256'}
@@ -66,8 +67,13 @@ def validate(project,values,*,replays=None):
         if not isinstance(b['actions'],dict) or not 1<=len(b['actions'])<=12:raise ProjectError('PLAYER action ledger must own existing action slots')
         for key,value in b['actions'].items():
             if (not isinstance(key,str) or not re.fullmatch('000[0-9]|001[01]',key) or not isinstance(value,dict)
-                    or set(value)!={'source_action_sha256','edits'} or not isinstance(value['edits'],list)
+                    or set(value)-{'source_action_sha256','edits','glb_import'} or not {'source_action_sha256','edits'}<=set(value) or not isinstance(value['edits'],list)
                     or not value['edits'] or len(value['edits'])>4096):raise ProjectError('PLAYER action ledger requires bounded typed channel edits')
+            if 'glb_import' in value:
+                from .player_action_glb import validate_input
+                validate_input(project,raw,int(identifier[-1]),int(key),value['glb_import'])
+                input_bytes+=value['glb_import']['glb_byte_length']+value['glb_import']['source_file_byte_length']
+                if input_bytes>64*1024*1024:raise ProjectError('PLAYER retained motion inputs exceed the 64 MiB project budget')
         try:current,reports=compose(raw,identifier,b)
         except (RetailImportError,KeyError,TypeError,ValueError) as e:raise ProjectError('PLAYER action ledger cannot reproduce its native Current file') from e
         if sha256(current).hexdigest()!=b['current_sha256'] or current==raw:raise ProjectError('PLAYER action Current hash changed or has no native edits')

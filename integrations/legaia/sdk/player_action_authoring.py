@@ -49,7 +49,7 @@ def prepare_review(project,action_slot,expected_current_sha256,expected_action_s
                 if not axes:target.pop(field,None)
         if set(target)=={'frame_index','part_index'}:merged.pop(pair)
     if len(merged)>4096:raise ProjectError('PLAYER action stored ledger exceeds 4096 part-frame edits')
-    if merged:value['actions'][key]=dict(source_action_sha256=original['source_record']['sha256'],edits=[merged[k] for k in sorted(merged)])
+    if merged:value['actions'][key]=dict(source_action_sha256=original['source_record']['sha256'],edits=[merged[k] for k in sorted(merged)],**({'glb_import':deepcopy(value['actions'][key]['glb_import'])} if 'glb_import' in value['actions'].get(key,{}) else {}))
     else:value['actions'].pop(key,None)
     if value['actions']:
         candidate,reports=compose(retail,record['semantic_id'],value);value['current_sha256']=sha256(candidate).hexdigest()

@@ -1284,7 +1284,7 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/worldmap-replacement-review", "/api/worldmap-replacement-apply", "/api/text-json-preview", "/api/text-json-import") else 32768
-            if urlsplit(self.path).path in ('/api/player-model-glb-review','/api/player-model-glb-apply'):
+            if urlsplit(self.path).path in ('/api/player-model-glb-review','/api/player-model-glb-apply','/api/player-action-glb-review','/api/player-action-glb-apply'):
                 request_limit = 8 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/worldmap-clip-channel-review','/api/worldmap-clip-channel-apply','/api/worldmap-animation-edit-review','/api/worldmap-animation-edit-apply'):
                 request_limit = 1024 * 1024
@@ -1355,6 +1355,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!=fields:raise ProjectError('PLAYER action restoration requires exact Current and Review identities')
                     from .player_action_authoring import review_restore,apply_restore
                     result=(apply_restore if route.endswith('-apply') else review_restore)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),player_action_apply=result) if route.endswith('-apply') else result)
+                    return
+                if route in ('/api/player-action-glb-review','/api/player-action-glb-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','action_slot','expected_current_sha256','expected_action_sha256','glb_base64','fps','animation_index','object_node_indices'}
+                    if route.endswith('-apply'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('PLAYER GLB motion requires exact inspected source, input and Review fields')
+                    from .player_action_glb import review,apply
+                    result=(apply if route.endswith('-apply') else review)(self.server.project,**body)
                     self._json(200,dict(self.server.state(),player_action_apply=result) if route.endswith('-apply') else result)
                     return
                 if route in ('/api/player-action-inspect','/api/player-action-review','/api/player-action-apply'):

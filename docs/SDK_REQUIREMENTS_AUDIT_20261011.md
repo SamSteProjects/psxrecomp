@@ -46,3 +46,8 @@ This advances the animation and model/equipment rows without closing their remai
 ## Native PLAYER Action Workflow Checkpoint — 2026-10-11
 
 [Native Action Editor And Build](legaia-player-battle-assembly.md#native-action-editor-and-build) now covers numeric existing-layout PLAYER channels through fresh Review, unsaved Proposed pose, Apply/history/persistence, authored Current sampling/export and composed native package readback. Separate model and action projection ownership prevents record0/pool replacement conflicts. This advances eventual animation replacement for the bounded nine-byte PLAYER format; it does not close action allocation/interchange import, unknown extended formats, native cadence/activation or gameplay requirements. Runtime/release gates remain deferred.
+
+
+## PLAYER Motion Interchange Checkpoint — 2026-10-11
+
+[PLAYER Action GLB Import](legaia-player-action-glb.md) now extends existing-layout motion replacement through editor Review/Proposed/Apply, retained GLB/native-baseline replay, history/persistence, Current sampling and private package delivery. This supersedes earlier statements that PLAYER action interchange import is absent. The native converter round-trips 38 supported actions/605 frames and preserves full twelve-bit rotation precision; attachment aliases cannot disagree. Actual muted Edge editor and scoped source/client/package checks pass. New action allocation, anatomical skin/retargeting, runtime activation/cadence and playable acceptance remain open. No current executable/full regression or gameplay claim is added; the full goal remains incomplete and active.
