@@ -1294,6 +1294,8 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/worldmap-replacement-review", "/api/worldmap-replacement-apply", "/api/text-json-preview", "/api/text-json-import") else 32768
+            if urlsplit(self.path).path in ('/api/field-texture-file-review','/api/field-texture-file-apply'):
+                request_limit=2*1024*1024
             if urlsplit(self.path).path in ('/api/player-model-glb-review','/api/player-model-glb-apply','/api/player-action-glb-review','/api/player-action-glb-apply'):
                 request_limit = 8 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/worldmap-clip-channel-review','/api/worldmap-clip-channel-apply','/api/worldmap-animation-edit-review','/api/worldmap-animation-edit-apply'):
@@ -2196,6 +2198,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Rectangle fill requires texture, image bounds, index and inspected hash')
                     self.server.project.set_texture_index_rectangle(body['asset_id'],body['x'],body['y'],body['width'],body['height'],body['palette_entry'],body['expected_sha256'])
                     self._json(200,self.server.state())
+                    return
+                if route in ('/api/field-texture-download','/api/field-texture-file-review','/api/field-texture-file-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','expected_current_sha256'}
+                    if route.endswith('-download'):fields.add('layer')
+                    else:fields|={'palette_index','tim_base64'}
+                    if route.endswith('-apply'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Shared TIM file operation requires exact source, input and Review fields')
+                    from .field_texture_authoring import download,review_file,apply_file
+                    result=(download if route.endswith('-download') else apply_file if route.endswith('-apply') else review_file)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),field_texture_apply=result) if route.endswith('-apply') else result)
                     return
                 if route in ('/api/field-texture-resources','/api/field-texture-inspect','/api/field-texture-review','/api/field-texture-apply'):
                     fields={'expected_project_path','expected_source_key'}

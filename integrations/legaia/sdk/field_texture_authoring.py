@@ -99,3 +99,41 @@ def compose_catalog(project,catalog):
             content=project.read_texture_replacement(binding);ctx.validate_replacement(identifier,content);replacements[identifier]=parse_tim(content)
     result.textures=[(replacements.get(source['semantic_id'],tim),source) for tim,source in result.textures]
     return result,bindings
+
+
+
+def download(project,asset_id,layer,expected_current_sha256,expected_project_path,expected_source_key):
+    from .battle_character_resources import _fresh
+    from base64 import b64encode
+    if layer not in ('retail','current'):raise ProjectError('Choose Retail or Current shared TIM')
+    ctx,original,current=_snapshot(project,asset_id,expected_project_path,expected_source_key)
+    if sha256(current).hexdigest()!=expected_current_sha256:raise ProjectError('Shared TIM changed; inspect again')
+    content=original if layer=='retail' else current;_fresh(project,expected_project_path,expected_source_key)
+    return dict(schema_version='legaia.field-texture-download.v1',project_path=str(project.root),project_source_key=expected_source_key,asset_id=asset_id,layer=layer,sha256=sha256(content).hexdigest(),byte_length=len(content),filename=f'shared-field-{asset_id[-1]}-{layer}.tim',tim_base64=b64encode(content).decode(),read_only=True,project_changed=False,gameplay_verified=False)
+
+
+def review_file(project,asset_id,palette_index,tim_base64,expected_current_sha256,expected_project_path,expected_source_key):
+    from .battle_character_resources import _fresh
+    from .project import digest
+    from importer.texture_authoring import texture_payload_changes
+    from base64 import b64decode,b64encode
+    if project.mode!='edit':raise ProjectError('Shared TIM replacement requires Edit mode')
+    if not isinstance(tim_base64,str) or not 1<=len(tim_base64)<=1400000:raise ProjectError('Shared TIM file must be at most 1 MiB')
+    try:candidate=b64decode(tim_base64,validate=True)
+    except (ValueError,TypeError) as e:raise ProjectError('Shared TIM requires exact base64 bytes') from e
+    if not 1<=len(candidate)<=1024*1024:raise ProjectError('Shared TIM file must be at most 1 MiB')
+    ctx,original,current=_snapshot(project,asset_id,expected_project_path,expected_source_key)
+    if sha256(current).hexdigest()!=expected_current_sha256:raise ProjectError('Shared TIM changed; inspect again')
+    project.texture_palette_source(asset_id,palette_index);ctx.validate_replacement(asset_id,candidate)
+    edits={i:project.read_texture_replacement(b) for i,b in project.texture_overrides.items() if owns(i)};edits[asset_id]=candidate;ctx.patch(edits)
+    result=dict(schema_version='legaia.field-texture-file-review.v1',project_path=str(project.root),project_source_key=expected_source_key,asset_id=asset_id,palette_index=palette_index,input_sha256=sha256(candidate).hexdigest(),input_byte_length=len(candidate),source_sha256=sha256(original).hexdigest(),current_sha256=sha256(current).hexdigest(),candidate_sha256=sha256(candidate).hexdigest(),candidate_tim_base64=b64encode(candidate).decode(),changes=texture_payload_changes(current,candidate),layer='proposed',persistence='not_applied',read_only=True,project_changed=False,gameplay_verified=False)
+    result['review_key']=digest(result);_fresh(project,expected_project_path,expected_source_key);return result
+
+
+def apply_file(project,review_key,**args):
+    from base64 import b64decode
+    result=review_file(project,**args)
+    if result['review_key']!=review_key:raise ProjectError('Shared TIM replacement Apply requires its exact fresh Review')
+    if result['current_sha256']==result['candidate_sha256']:raise ProjectError('Shared TIM replacement has no native change')
+    project.set_texture_replacement(args['asset_id'],b64decode(result['candidate_tim_base64']))
+    return dict(schema_version='legaia.field-texture-apply.v1',history_steps=1,project_changed=True,gameplay_verified=False)
