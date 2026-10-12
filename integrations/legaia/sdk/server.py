@@ -1327,6 +1327,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Stability cancellation requires the current job identity')
                     self._json(200, {'job': self.server.stability_checks.cancel(body['id'])})
                     return
+                if route == '/api/player-battle-pose':
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','action_slot','frame_index'}
+                    if set(body)!=fields:raise ProjectError('PLAYER pose requires exact source, equipment, action and frame fields')
+                    from .player_battle import pose
+                    self._json(200,pose(self.server.project,**body))
+                    return
                 if route in ('/api/player-battle-resources','/api/player-battle-preview'):
                     fields={'expected_project_path','expected_source_key'}
                     if route.endswith('-preview'):fields|={'asset_id','catalog_source_key','equipped'}

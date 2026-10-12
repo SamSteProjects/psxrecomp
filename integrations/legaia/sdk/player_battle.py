@@ -19,3 +19,11 @@ def preview(project,expected_project_path,expected_source_key,asset_id,catalog_s
     except RetailImportError as e:raise ProjectError(str(e)) from e
     _disc(project,catalog);_fresh(project,expected_project_path,expected_source_key)
     return dict(schema_version='legaia.player-battle-preview.v1',project_path=str(project.root),project_source_key=expected_source_key,catalog_source_key=catalog_source_key,record=model,geometry=geometry,assembly=assembly,layer='retail',read_only=True,project_changed=False,gameplay_verified=False)
+
+
+def pose(project,expected_project_path,expected_source_key,asset_id,catalog_source_key,equipped,action_slot,frame_index):
+    _fresh(project,expected_project_path,expected_source_key)
+    try:catalog,model,geometry,assembly,clip,transforms=native.pose(project.disc_path,asset_id,catalog_source_key,equipped,action_slot,frame_index)
+    except RetailImportError as e:raise ProjectError(str(e)) from e
+    _disc(project,catalog);_fresh(project,expected_project_path,expected_source_key)
+    return dict(schema_version='legaia.player-battle-pose.v1',project_path=str(project.root),project_source_key=expected_source_key,catalog_source_key=catalog_source_key,record=model,geometry=geometry,assembly=assembly,clip=clip,object_transforms=transforms,action_slot=action_slot,frame_index=frame_index,layer='retail',read_only=True,project_changed=False,gameplay_verified=False)

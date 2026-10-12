@@ -8,8 +8,32 @@ import struct
 from .core import ImportError,decompress_lzs,validate_metadata_only
 from .pipeline import _disc_context,REFERENCE_COMMIT
 from .assets import decode_tmd
+from .animation import pose_vertices
 
 DATA_BASE=0x8000
+
+
+def actions(raw,slot,digest):
+    """Twelve stored action slots; empty streams stay explicit, not playable."""
+    if type(slot) is not int or not 0<=slot<4:raise ImportError('PLAYER source slot is unqualified')
+    table(raw);desc,ca,cb,budget=struct.unpack_from('<4I',raw);bank,used=decompress_lzs(raw[16:desc],budget)
+    if len(bank)<96:raise ImportError('PLAYER record0 action header is truncated')
+    offsets=list(struct.unpack_from('<12I',bank));art,sibling=struct.unpack_from('<2I',bank,0x58)
+    if offsets[0]!=96 or any(a>=b for a,b in zip(offsets,offsets[1:])) or not offsets[-1]<art<ca<cb<budget:raise ImportError('PLAYER action offsets overlap another record0 region')
+    clips=[]
+    for index,offset in enumerate(offsets):
+        bound=offsets[index+1] if index<11 else art;stream=offset+0xac
+        if stream+2>bound or bank[offset]!=index:raise ImportError('PLAYER action tag or stream header differs from its slot')
+        parts,frames=bank[stream:stream+2];end=stream+2+parts*frames*9
+        if bool(parts)!=bool(frames) or parts>64 or end>bound:raise ImportError('PLAYER action stream exceeds its source entry')
+        clips.append(dict(semantic_id=f'animation://legaia/player-battle/{slot:04d}/action/{index:04d}',asset_kind='animation',name=f'PLAYER {slot} Action {index}',action_slot=index,model_asset_id=f'asset://legaia/models/player-battle/{slot:04d}',part_count=parts,frame_count=frames,rate_byte=bank[offset+0x78],preview_supported=bool(parts),status='available' if parts else 'empty',reference_commit=REFERENCE_COMMIT,source_record=dict(disc=dict(sha256=digest,serial='SCUS-94254'),source_entry_sha256=sha256(raw).hexdigest(),prot_entry_index=863+slot,record_kind='decoded_player_record0_action',compressed_stream_offset=16,compressed_bytes_consumed=used,compressed_sha256=sha256(raw[16:16+used]).hexdigest(),containing_sha256=sha256(bank).hexdigest(),containing_size=len(bank),entry_offset=offset,entry_end=bound,byte_offset=stream,byte_length=end-stream,sha256=sha256(bank[stream:end]).hexdigest()),timing='rate_byte_preserved_runtime_cadence_not_observed',runtime_state='not_observed'))
+    return clips,bank
+
+
+def decode_part(data):
+    if len(data)!=9:raise ImportError('PLAYER pose part requires nine bytes')
+    v=[data[0]|((data[2]&15)<<8),data[1]|((data[2]>>4)<<8),data[3]|((data[5]&15)<<8),data[4]|((data[5]>>4)<<8),data[6]|((data[8]&15)<<8),data[7]|((data[8]>>4)<<8)]
+    return dict(translation=[n-4096 if n&2048 else n for n in v[:3]],rotation_psx=v[3:])
 
 
 def table(raw):
@@ -80,7 +104,8 @@ def discover(disc):
     digest,sources=_sources(disc);models=[]
     for slot,(index,start,end,raw) in enumerate(sources):
         rows=table(raw);geometry,assembly=assemble(raw,[0]*5);source=dict(disc=dict(sha256=digest,serial='SCUS-94254'),iso_file='PROT.DAT',prot_entry_index=index,record_kind='adjacent_toc_bounded_player_file',start_lba=start,next_start_lba=end,byte_length=len(raw),sha256=sha256(raw).hexdigest(),boundary_evidence='adjacent_PROT_start_and_complete_descriptor_chain')
-        models.append(dict(semantic_id=f'asset://legaia/models/player-battle/{slot:04d}',asset_kind='player_battle_model',name=f'PLAYER Battle Model {slot}',player_index=slot,source_record=source,descriptors=rows,default_assembly=assembly,preview_summary=dict(objects=len(geometry['objects']),vertices=len(geometry['vertices']),triangles=len(geometry['triangles'])),reference_commit=REFERENCE_COMMIT))
+        clips,_=actions(raw,slot,digest)
+        models.append(dict(semantic_id=f'asset://legaia/models/player-battle/{slot:04d}',asset_kind='player_battle_model',name=f'PLAYER Battle Model {slot}',player_index=slot,source_record=source,descriptors=rows,actions=clips,default_assembly=assembly,preview_summary=dict(objects=len(geometry['objects']),vertices=len(geometry['vertices']),triangles=len(geometry['triangles'])),reference_commit=REFERENCE_COMMIT))
     key=sha256(('player-battle-v1:'+digest+':'+':'.join(m['source_record']['sha256'] for m in models)).encode()).hexdigest()
     result=dict(schema_version='legaia.player-battle-catalog.v1',source_disc_sha256=digest,source_key=key,models=models,reference_commit=REFERENCE_COMMIT,read_only=True,project_changed=False,gameplay_verified=False)
     validate_metadata_only(result);return result
@@ -95,3 +120,19 @@ def preview(disc,asset_id,expected_source_key,equipped):
     if digest!=catalog['source_disc_sha256'] or sha256(raw).hexdigest()!=model['source_record']['sha256']:raise ImportError('PLAYER file changed during preview')
     geometry,assembly=assemble(raw,equipped);geometry.update(semantic_id=asset_id,source_record=model['source_record'],reference_commit=REFERENCE_COMMIT)
     return catalog,model,geometry,assembly
+
+
+def pose(disc,asset_id,expected_source_key,equipped,action_slot,frame_index):
+    catalog,model,geometry,assembly=preview(disc,asset_id,expected_source_key,equipped)
+    if type(action_slot) is not int or not 0<=action_slot<12:raise ImportError('Choose an existing PLAYER action slot')
+    clip=model['actions'][action_slot]
+    if not clip['preview_supported'] or type(frame_index) is not int or not 0<=frame_index<clip['frame_count']:raise ImportError('Choose a supported PLAYER action and native frame')
+    digest,sources=_sources(disc);raw=sources[model['player_index']][3]
+    if digest!=catalog['source_disc_sha256'] or sha256(raw).hexdigest()!=model['source_record']['sha256']:raise ImportError('PLAYER action source changed during preview')
+    current,bank=actions(raw,model['player_index'],digest)
+    if current[action_slot]!=clip:raise ImportError('PLAYER action record changed')
+    at=clip['source_record']['byte_offset']+2+frame_index*clip['part_count']*9;parts=[decode_part(bank[at+i*9:at+(i+1)*9]) for i in range(clip['part_count'])]
+    if any(i>=len(parts) for i in assembly['animation_part_indices']):raise ImportError('PLAYER equipment attachment points outside this action rig')
+    transforms=[dict(object_index=i,part_index=part,**parts[part]) for i,part in enumerate(assembly['animation_part_indices'])]
+    geometry['vertices']=pose_vertices(geometry['vertices'],geometry['objects'],transforms);geometry['bounds']=dict(min=[min(v[i] for v in geometry['vertices']) for i in range(3)],max=[max(v[i] for v in geometry['vertices']) for i in range(3)]);geometry.update(posed=True,coordinate_system='retail_psx_actor_local_y_down');geometry.pop('triangle_normals',None);geometry.pop('normal_preview',None)
+    return catalog,model,geometry,assembly,clip,transforms
