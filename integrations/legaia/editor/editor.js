@@ -1,3 +1,5 @@
+import {mountFieldEquipment} from './field-equipment.js';
+let fieldEquipmentControls=null;
 import {showPlayerBattle,showPlayerAction,showPlayerTexture} from '/player-battle.js';
 import {showBattlePackAnimationResource} from '/battle-pack-animation.js';
 import {showBattleCharacterResource} from '/battle-character-resources.js';
@@ -2029,6 +2031,7 @@ const assetDetailsTrail=createAssetDetailsTrail();
 assetDetails.addEventListener('close',()=>{if(!assetDetails.open)assetDetailsTrail.clear();});
 const assetDetailsTrailContext=()=>JSON.stringify([resourceStateKey(),state.inspector_schema,state.capabilities]);
 function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false,playerAction=null,playerEquipment=null}={}){
+  fieldEquipmentControls?.dispose();fieldEquipmentControls=null;
   if(!keepTrail)assetDetailsTrail.clear();
   assetPlacementSelection?.dispose();assetPlacementSelection=null;animationContributions?.dispose();animationContributions=null;
   if(record.projectPlayerBattleTexture){try{showPlayerTexture({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalPlayerBattles,onModel:async(id,equipment)=>{if(busy)return;assetDetails.close();const next=await projectAssetControls.revealAsset(id);if(next)showAssetDetails(next,undefined,{playerEquipment:equipment});}});}catch(error){notify(error.message,true);}return;}
@@ -2047,6 +2050,7 @@ function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false,play
     back.onclick=()=>{if(busy||!assetDetails.open||!assetDetails.contains(back))return;try{const target=assetDetailsTrail.back(assetDetailsTrailContext());if(target)showAssetDetails(target.record,target.lookup,{keepTrail:true});}catch(error){notify(error.message,true);}};
   }
   const exportCurrent=()=>assetDetails.open&&exportContext===resourceStateKey()&&JSON.stringify(lookup().find(item=>item.id===record.id))===exportSnapshot;
+  if(/^asset:\/\/legaia\/models\/global-special\/00f[0-2]$/.test(record.id))fieldEquipmentControls=mountFieldEquipment({host:assetDetails,assetId:record.id,getContext:()=>({projectPath:state.project.path,sourceKey:state.project_assets_source_key}),current:exportCurrent,busy:()=>busy,onError:error=>notify(error.message,true)});
   const evidence=document.createElement('div');evidence.className='dialog-actions';evidence.style.flexWrap='wrap';
   try{mountAssetRecordDownload(evidence,{record,getState:()=>state,current:exportCurrent,busy:()=>busy,getGlobalWorldmap:()=>projectAssetControls?.sourceReport()?.globalWorldmap??null,onError:error=>notify(error.message,true)});}catch(error){const note=document.createElement('p');note.className='field-note';note.textContent=error.message;evidence.append(note);}
   try{mountAssetMetadataComparison(evidence,{record,getState:()=>state,current:exportCurrent,busy:()=>busy,pin:assetMetadataPin,onError:error=>notify(error.message,true)});}catch(error){const note=document.createElement('p');note.className='field-note';note.textContent=error.message;evidence.append(note);}
