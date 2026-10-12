@@ -1177,7 +1177,10 @@ class ProjectService:
         if world or field: fields |= {"source_disc_sha256", "source_sha256"}
         if isinstance(binding, dict) and binding.get('format') == 'tim-image-layout-v1':
             fields |= {'source_sha256', 'image_layout'}
-        if (not isinstance(binding, dict) or set(binding) not in (fields, fields | {'glb_source'})
+        allowed_fields = (fields, fields | {'glb_source'})
+        if field:
+            allowed_fields += (fields | {'field_png_source'}, fields | {'field_png_source', 'glb_source'})
+        if (not isinstance(binding, dict) or set(binding) not in allowed_fields
                 or binding["format"] not in ("tim","tim-image-layout-v1") or type(binding["byte_length"]) is not int
                 or not 1 <= binding["byte_length"] <= 1024 * 1024
                 or not isinstance(binding["asset_sha256"], str) or len(binding["asset_sha256"]) != 64
@@ -1185,7 +1188,11 @@ class ProjectService:
                 or not isinstance(binding["source_scene_id"], str) or binding["source_scene_id"] not in self.imports and not world and not field):
             raise ProjectError("Invalid authored TIM content reference")
         if world: validate_world_texture(self, binding)
-        if field: validate_field_texture(self,binding)
+        if field:
+            validate_field_texture(self,binding)
+            if 'field_png_source' in binding:
+                from .field_texture_sources import validate as validate_field_source
+                validate_field_source(self,binding['field_png_source'])
         if binding['format']=='tim-image-layout-v1':
             from .texture_resize import validate_binding
             validate_binding(binding)
@@ -1419,7 +1426,7 @@ class ProjectService:
                              palette_index: int = 0) -> dict:
         return self._prepare_texture_file(asset_id,content,format,palette_index)[1]
 
-    def set_texture_replacement(self, asset_id: str, content: bytes, *, glb_source: dict | None = None, glb_content: bytes | None = None, image_allocation: bool = False) -> None:
+    def set_texture_replacement(self, asset_id: str, content: bytes, *, glb_source: dict | None = None, glb_content: bytes | None = None, image_allocation: bool = False, field_png_source: dict | None = None) -> None:
         if self.mode != "edit":
             raise ProjectError("Texture authoring requires Edit mode")
         if not isinstance(asset_id, str) or not asset_id.startswith("texture://") or len(asset_id) > 512:
@@ -1456,6 +1463,13 @@ class ProjectService:
                 source_sha256=hashlib.sha256(context.original_tim(asset_id)).hexdigest())
         if field:
             binding.update(source_scene_id=FIELD_TEXTURE_OWNER,source_disc_sha256=context._source(asset_id)['disc']['sha256'],source_sha256=hashlib.sha256(context.original_tim(asset_id)).hexdigest())
+        if field_png_source is not None:
+            if not field:raise ProjectError('Shared PNG sources require shared bank ownership')
+            if not isinstance(field_png_source,dict) or field_png_source.get('asset_id')!=asset_id:
+                raise ProjectError('Shared PNG source belongs to another TIM')
+            binding['field_png_source']=deepcopy(field_png_source)
+        elif field and existing and 'field_png_source' in existing:
+            binding['field_png_source']=deepcopy(existing['field_png_source'])
         from .texture_resize import image_layout
         if allocated and image_layout(original)!=image_layout(content):
             binding.update(format='tim-image-layout-v1',source_sha256=hashlib.sha256(original).hexdigest(),image_layout=image_layout(content))

@@ -2200,6 +2200,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self.server.project.set_texture_index_rectangle(body['asset_id'],body['x'],body['y'],body['width'],body['height'],body['palette_entry'],body['expected_sha256'])
                     self._json(200,self.server.state())
                     return
+                if route == '/api/field-texture-input-download':
+                    if set(body)!={'expected_project_path','expected_source_key','asset_id','expected_current_sha256','kind'}:
+                        raise ProjectError('Retained shared PNG download requires exact source and Current fields')
+                    from .field_texture_authoring import download_retained_png
+                    self._json(200,download_retained_png(self.server.project,**body))
+                    return
                 if route in ('/api/field-texture-png-download','/api/field-texture-png-review','/api/field-texture-png-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','expected_current_sha256','palette_index'}
                     if not route.endswith('-download'):fields|={'palette_mode','png_base64'}

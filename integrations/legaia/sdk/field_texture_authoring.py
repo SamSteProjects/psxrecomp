@@ -11,6 +11,7 @@ def owns(identifier):
 def validate(project,binding,identifier=None):
     if (not isinstance(binding,dict) or binding.get('source_scene_id')!=OWNER or binding.get('format')!='tim' or identifier is not None and not owns(identifier)
         or any(not isinstance(binding.get(k),str) or not re.fullmatch('[a-f0-9]{64}',binding[k]) for k in ('source_disc_sha256','source_sha256'))):raise ProjectError('Shared field TIM binding requires canonical bank ownership and immutable Retail hashes')
+    if identifier is not None and 'field_png_source' in binding and (not isinstance(binding['field_png_source'],dict) or binding['field_png_source'].get('asset_id')!=identifier):raise ProjectError('Shared PNG input belongs to another TIM')
     identities={d['source']['disc_identity'] for d in project.imports.values()}
     if identities and identities!={'sha256:'+binding['source_disc_sha256']}:raise ProjectError('Shared field TIM binding differs from imported disc')
 
@@ -23,6 +24,7 @@ def context(project,identifier):
     if identities and identities!={'sha256:'+disc}:raise ProjectError('Shared field TIM source differs from imported disc')
     binding=project.texture_overrides.get(identifier)
     if binding:
+        if 'field_png_source' in binding and (not isinstance(binding['field_png_source'],dict) or binding['field_png_source'].get('asset_id')!=identifier):raise ProjectError('Shared PNG source belongs to another TIM')
         validate(project,binding,identifier)
         if binding['source_disc_sha256']!=disc or binding['source_sha256']!=sha256(original).hexdigest():raise ProjectError('Shared field TIM Retail identity changed')
     return result
@@ -55,7 +57,7 @@ def inspect(project,asset_id,palette_index,expected_project_path,expected_source
     from importer.textures import parse_tim,decode_tim
     from base64 import b64encode
     ctx,original,current=_snapshot(project,asset_id,expected_project_path,expected_source_key);source=project.texture_palette_source(asset_id,palette_index);pixels=decode_tim(parse_tim(current),palette_index);_fresh(project,expected_project_path,expected_source_key)
-    return dict(schema_version='legaia.field-texture-inspection.v1',project_path=str(project.root),project_source_key=expected_source_key,source_record=ctx._source(asset_id),palette=source,current_tim_base64=b64encode(current).decode(),rgba_base64=b64encode(pixels['rgba']).decode(),width=pixels['width'],height=pixels['height'],layer='current',read_only=True,project_changed=False,gameplay_verified=False)
+    return dict(schema_version='legaia.field-texture-inspection.v1',project_path=str(project.root),project_source_key=expected_source_key,source_record=ctx._source(asset_id),palette=source,current_tim_base64=b64encode(current).decode(),rgba_base64=b64encode(pixels['rgba']).decode(),width=pixels['width'],height=pixels['height'],retained_source=project.texture_overrides.get(asset_id,{}).get('field_png_source'),layer='current',read_only=True,project_changed=False,gameplay_verified=False)
 
 
 def review(project,asset_id,palette_index,entry_index,word,expected_current_sha256,expected_project_path,expected_source_key):
@@ -181,5 +183,24 @@ def apply_png(project,review_key,**args):
     result=review_png(project,**args)
     if result['review_key']!=review_key:raise ProjectError('Shared PNG Apply requires its exact fresh Review')
     if result['current_sha256']==result['candidate_sha256']:raise ProjectError('Shared PNG has no quantized native changes')
-    project.set_texture_replacement(args['asset_id'],b64decode(result['candidate_tim_base64']))
-    return dict(schema_version='legaia.field-texture-apply.v1',history_steps=1,project_changed=True,gameplay_verified=False)
+    from .field_texture_sources import retain
+    png=b64decode(args['png_base64']);stp=b64decode(args['stp_png_base64']) if args.get('stp_png_base64') else None
+    _,_,tim=_snapshot(project,args['asset_id'],args['expected_project_path'],args['expected_source_key'])
+    receipt=dict(asset_id=args['asset_id'],schema_version='legaia.field-texture-png-source.v1',png_sha256=retain(project,png,'png'),png_byte_length=len(png),stp_sha256=retain(project,stp,'png') if stp is not None else None,stp_byte_length=len(stp) if stp is not None else None,tim_sha256=retain(project,tim,'tim'),tim_byte_length=len(tim),palette_index=args['palette_index'],palette_mode=args['palette_mode'],candidate_sha256=result['candidate_sha256'])
+    project.set_texture_replacement(args['asset_id'],b64decode(result['candidate_tim_base64']),field_png_source=receipt)
+    return dict(schema_version='legaia.field-texture-apply.v1',history_steps=1,project_changed=True,retained_source=receipt,gameplay_verified=False)
+
+
+def download_retained_png(project,asset_id,expected_project_path,expected_source_key,expected_current_sha256,kind):
+    from .field_texture_sources import validate as replay
+    from .battle_character_resources import _fresh
+    from base64 import b64encode
+    if kind not in ('png','stp'):raise ProjectError('Choose original PNG or STP mask')
+    _,_,current=_snapshot(project,asset_id,expected_project_path,expected_source_key)
+    if sha256(current).hexdigest()!=expected_current_sha256:raise ProjectError('Shared TIM changed; inspect again')
+    receipt=project.texture_overrides.get(asset_id,{}).get('field_png_source')
+    if receipt is None:raise ProjectError('This shared TIM has no retained PNG import')
+    png,stp,_,_=replay(project,receipt);content=png if kind=='png' else stp
+    if content is None:raise ProjectError('This PNG import used no explicit STP mask')
+    _fresh(project,expected_project_path,expected_source_key)
+    return dict(schema_version='legaia.field-texture-input-download.v1',project_path=str(project.root),project_source_key=expected_source_key,asset_id=asset_id,current_sha256=expected_current_sha256,kind=kind,sha256=sha256(content).hexdigest(),byte_length=len(content),png_base64=b64encode(content).decode(),filename=f'shared-field-{asset_id[-1]}-original-{kind}.png',retained_source=receipt,layer='historical_authored_input',read_only=True,project_changed=False,gameplay_verified=False)
