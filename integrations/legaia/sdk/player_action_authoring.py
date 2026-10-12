@@ -104,3 +104,33 @@ def apply_restore(project,review_key,**args):
     if result['review_key']!=review_key:raise ProjectError('PLAYER restore Apply requires its exact fresh restore Review')
     publish(project,record,retail,result['binding'])
     return dict(schema_version='legaia.player-action-apply.v1',binding=result['binding'],history_steps=1,project_changed=True,gameplay_verified=False)
+
+
+def prepare_range(project,action_slot,expected_current_sha256,expected_action_sha256,range_spec,**context):
+    _,_,current,clip,bank,_,_=_snapshot(project,action_slot,**context)
+    if sha256(current).hexdigest()!=expected_current_sha256 or clip['source_record']['sha256']!=expected_action_sha256:
+        raise ProjectError('PLAYER range Current changed; inspect again')
+    if not isinstance(range_spec,dict) or set(range_spec)!={'frame_start','frame_end','part_index','field','axis','mode','value'}:
+        raise ProjectError('PLAYER range requires exact frame/part/channel/mode/value fields')
+    start,end,part,value=(range_spec[k] for k in ('frame_start','frame_end','part_index','value'))
+    field,axis,mode=(range_spec[k] for k in ('field','axis','mode'))
+    if any(type(v) is not int for v in (start,end,part,value)) or not 0<=start<=end<clip['frame_count'] or not 0<=part<clip['part_count'] or field not in ('translation','rotation_psx') or axis not in ('x','y','z') or mode not in ('set','offset'):
+        raise ProjectError('PLAYER range must name stored whole frames/part and an exact integer channel operation')
+    low,high=(-2048,2047) if field=='translation' else (0,4095);edits=[]
+    for frame in range(start,end+1):
+        at=clip['source_record']['byte_offset']+2+(frame*clip['part_count']+part)*9;before=decode_part(bank[at:at+9])[field]['xyz'.index(axis)];after=value if mode=='set' else before+value
+        if not low<=after<=high:raise ProjectError('PLAYER range result exceeds native bounds; no wrapping or clamping is applied')
+        edits.append(dict(frame_index=frame,part_index=part,**{field:{axis:after}}))
+    record,retail,result=prepare_review(project,action_slot=action_slot,expected_current_sha256=expected_current_sha256,expected_action_sha256=expected_action_sha256,edits=edits,**context)
+    result.update(operation='native_channel_range',range_spec=deepcopy(range_spec));result['review_key']=digest({k:v for k,v in result.items() if k!='review_key'})
+    return record,retail,result
+
+
+def review_range(project,**args):return prepare_range(project,**args)[2]
+
+
+def apply_range(project,review_key,**args):
+    record,retail,result=prepare_range(project,**args)
+    if result['review_key']!=review_key or not result['projection']['channels']:raise ProjectError('PLAYER range Apply requires a fresh changed Review')
+    publish(project,record,retail,result['binding'])
+    return dict(schema_version='legaia.player-action-apply.v1',binding=result['binding'],history_steps=1,project_changed=True,gameplay_verified=False)

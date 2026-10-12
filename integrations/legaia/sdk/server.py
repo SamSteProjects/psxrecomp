@@ -1333,6 +1333,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Stability cancellation requires the current job identity')
                     self._json(200, {'job': self.server.stability_checks.cancel(body['id'])})
                     return
+                if route in ('/api/player-action-range-review','/api/player-action-range-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','action_slot','expected_current_sha256','expected_action_sha256','range_spec'}
+                    if route.endswith('-apply'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('PLAYER range requires exact Current, operation and Review fields')
+                    from .player_action_authoring import review_range,apply_range
+                    result=(apply_range if route.endswith('-apply') else review_range)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),player_action_apply=result) if route.endswith('-apply') else result)
+                    return
                 if route in ('/api/player-action-restore-review','/api/player-action-restore-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','action_slot','expected_current_sha256','expected_action_sha256'}
                     if route.endswith('-apply'):fields.add('review_key')
