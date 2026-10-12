@@ -8,6 +8,7 @@ from importer.assets import load_model_source
 from importer.field_equipment import project_field_equipment
 from importer.textures import TextureCatalog,load_asset_texture_catalog,associate_material
 from copy import deepcopy
+from hashlib import sha256
 
 
 def _textures(project,asset,geometry):
@@ -29,32 +30,39 @@ def _textures(project,asset,geometry):
         geometry['textures'].append(dict(result,material_index=index))
 
 
-def preview(project,expected_project_path,expected_source_key,asset_id,equipment_byte,clip_id,frame_index):
+def preview(project,expected_project_path,expected_source_key,asset_id,equipment_byte,clip_id,frame_index,model_layer='retail'):
     _fresh(project,expected_project_path,expected_source_key)
     asset=project.assets.records.get(asset_id)
     if asset is None:raise ProjectError('Field equipment model must be registered in the imported project')
-    base=load_field_equipment_preview(project.disc_path,asset,equipment_byte)
-    original=load_model_source(project.disc_path,asset)
-    projected,_=project_field_equipment(original,base['equipment_variant']['party_slot'],equipment_byte)
+    if model_layer not in ('retail','current'):raise ProjectError('Choose Retail or Current field model layer')
+    original=load_model_source(project.disc_path,asset);effective=original;binding=None
+    if model_layer=='current':
+        binding=project.model_overrides.get(asset_id)
+        if binding:
+            effective=project.read_model_replacement(asset_id,binding)
+            project._model_candidate_changes(asset_id,original,effective)
+    from importer.field_equipment import decode_field_equipment_preview
+    base=decode_field_equipment_preview(effective,asset,equipment_byte)
+    projected,_=project_field_equipment(effective,base['equipment_variant']['party_slot'],equipment_byte)
     _textures(project,asset,base)
     if clip_id is None:
         if frame_index is not None:raise ProjectError('Unposed field equipment accepts no native frame')
         geometry=base;animation=None
     else:
         if clip_id not in ('idle','walk') or type(frame_index) is not int:raise ProjectError('Choose a qualified field idle/walk clip and whole frame')
-        animation=load_animation_preview(project.disc_path,asset,clip_id,equipment_byte=equipment_byte)
+        animation=load_animation_preview(project.disc_path,asset,clip_id,equipment_byte=equipment_byte,model_source=effective)
         if not 0<=frame_index<len(animation['frames']):raise ProjectError('Field equipment frame exceeds the stored clip')
         geometry=animation.pop('geometry');posed=animation.pop('frames')[frame_index];geometry.update(posed);geometry.pop('triangle_normals',None);geometry.pop('normal_preview',None)
         for key in ('texture_scope','texture_catalog','textures'):geometry[key]=base[key]
     _fresh(project,expected_project_path,expected_source_key)
     return dict(schema_version='legaia.field-equipment-preview.v1',project_path=str(project.root),project_source_key=expected_source_key,asset_id=asset_id,equipment_byte=equipment_byte,clip_id=clip_id,frame_index=frame_index,
-        geometry=geometry,base_geometry=base,source_record=asset['source_record'],source_tmd_base64=b64encode(original).decode(),projected_tmd_base64=b64encode(projected).decode(),animation=animation,layer='retail_selected_variant',read_only=True,project_changed=False,gameplay_verified=False)
+        geometry=geometry,base_geometry=base,source_record=asset['source_record'],**(dict(model_layer=model_layer,model_binding=deepcopy(binding),retail_model_sha256=sha256(original).hexdigest()) if model_layer=='current' else {}),source_tmd_base64=b64encode(effective).decode(),projected_tmd_base64=b64encode(projected).decode(),animation=animation,layer='current_model_selected_variant' if model_layer=='current' else 'retail_selected_variant',read_only=True,project_changed=False,gameplay_verified=False)
 
 
 def export(project,**context):
     from importer.export import encode_model_glb
     receipt=preview(project,**context);geometry=deepcopy(receipt['base_geometry'])
-    geometry['source_record']=dict(original=receipt['source_record'],equipment_variant=geometry['equipment_variant'])
+    geometry['source_record']=_export_source(receipt)
     if context['clip_id'] is not None:
         geometry['animation']=dict(receipt['animation'],source_frame_index=context['frame_index'])
         geometry['frames']=[receipt['geometry']]
@@ -62,7 +70,7 @@ def export(project,**context):
     _fresh(project,context['expected_project_path'],context['expected_source_key'])
     suffix='unposed' if context['clip_id'] is None else f'{context["clip_id"]}-frame-{context["frame_index"]}'
     return dict(schema_version='legaia.field-equipment-export.v1',project_path=str(project.root),project_source_key=context['expected_source_key'],asset_id=context['asset_id'],equipment_byte=context['equipment_byte'],clip_id=context['clip_id'],frame_index=context['frame_index'],source_record=receipt['source_record'],equipment_variant=geometry['equipment_variant'],
-        filename=f'field-party-{geometry["equipment_variant"]["party_slot"]}-equipment-{context["equipment_byte"]}-{suffix}.glb',glb_base64=b64encode(content).decode(),audit=audit,layer='retail_selected_variant',read_only=True,project_changed=False,gameplay_verified=False)
+        filename=('current-model-' if context.get('model_layer')=='current' else '')+f'field-party-{geometry["equipment_variant"]["party_slot"]}-equipment-{context["equipment_byte"]}-{suffix}.glb',glb_base64=b64encode(content).decode(),audit=audit,layer=receipt['layer'],**({k:receipt[k] for k in ('model_layer','model_binding','retail_model_sha256')} if 'model_layer' in receipt else {}),read_only=True,project_changed=False,gameplay_verified=False)
 
 
 def export_clip(project,export_fps,**context):
@@ -75,11 +83,17 @@ def export_clip(project,export_fps,**context):
         raise ProjectError('Field clip export requires a selected idle or walk clip')
     receipt=preview(project,**context)
     asset=project.assets.records[context['asset_id']]
-    animation=load_animation_preview(project.disc_path,asset,context['clip_id'],equipment_byte=context['equipment_byte'])
+    animation=load_animation_preview(project.disc_path,asset,context['clip_id'],equipment_byte=context['equipment_byte'],model_source=project.read_model_replacement(context['asset_id'],receipt['model_binding']) if receipt.get('model_binding') else None)
     geometry=deepcopy(receipt['base_geometry'])
-    geometry['source_record']=dict(original=receipt['source_record'],equipment_variant=geometry['equipment_variant'])
+    geometry['source_record']=_export_source(receipt)
     geometry['frames']=animation.pop('frames');animation.pop('geometry');geometry['animation']=animation
     content,audit=encode_model_glb(geometry,clip_fps=export_fps)
     _fresh(project,context['expected_project_path'],context['expected_source_key'])
     return dict(schema_version='legaia.field-equipment-export.v1',project_path=str(project.root),project_source_key=context['expected_source_key'],asset_id=context['asset_id'],equipment_byte=context['equipment_byte'],clip_id=context['clip_id'],frame_index=context['frame_index'],source_record=receipt['source_record'],equipment_variant=geometry['equipment_variant'],full_clip=True,export_fps=export_fps,
-        filename=f'field-party-{geometry["equipment_variant"]["party_slot"]}-equipment-{context["equipment_byte"]}-{context["clip_id"]}-clip.glb',glb_base64=b64encode(content).decode(),audit=audit,layer='retail_selected_variant',read_only=True,project_changed=False,gameplay_verified=False)
+        filename=('current-model-' if context.get('model_layer')=='current' else '')+f'field-party-{geometry["equipment_variant"]["party_slot"]}-equipment-{context["equipment_byte"]}-{context["clip_id"]}-clip.glb',glb_base64=b64encode(content).decode(),audit=audit,layer=receipt['layer'],**({k:receipt[k] for k in ('model_layer','model_binding','retail_model_sha256')} if 'model_layer' in receipt else {}),read_only=True,project_changed=False,gameplay_verified=False)
+
+
+def _export_source(receipt):
+    result=dict(original=receipt['source_record'],equipment_variant=receipt['geometry']['equipment_variant'])
+    if receipt.get('model_layer')=='current':result.update(model_layer='current',model_binding=receipt['model_binding'],retail_model_sha256=receipt['retail_model_sha256'])
+    return result

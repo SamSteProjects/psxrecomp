@@ -1334,12 +1334,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Stability cancellation requires the current job identity')
                     self._json(200, {'job': self.server.stability_checks.cancel(body['id'])})
                     return
-                if route in ('/api/field-equipment-preview','/api/field-equipment-export','/api/field-equipment-clip-export'):
+                if route in ('/api/field-equipment-preview','/api/field-equipment-export','/api/field-equipment-clip-export','/api/field-equipment-current-preview','/api/field-equipment-current-export','/api/field-equipment-current-clip-export'):
                     fields={'expected_project_path','expected_source_key','asset_id','equipment_byte','clip_id','frame_index'}
-                    if route=='/api/field-equipment-clip-export':fields.add('export_fps')
+                    if route.endswith('-clip-export'):fields.add('export_fps')
                     if set(body)!=fields:raise ProjectError('Field equipment preview requires exact source and explicit variant/frame fields')
                     from .field_equipment import preview,export,export_clip
-                    self._json(200,(export_clip if route=='/api/field-equipment-clip-export' else export if route.endswith('-export') else preview)(self.server.project,**body))
+                    self._json(200,(export_clip if route.endswith('-clip-export') else export if route.endswith('-export') else preview)(self.server.project,**body,**({'model_layer':'current'} if '-current-' in route else {})))
                     return
                 if route in ('/api/player-action-range-review','/api/player-action-range-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','action_slot','expected_current_sha256','expected_action_sha256','range_spec'}

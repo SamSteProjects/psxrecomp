@@ -27,14 +27,18 @@ def project_field_equipment(raw,slot,equip_byte):
         runtime_equipment='not_observed',authored=False,gameplay_verified=False)
 
 
-def load_field_equipment_preview(disc,asset,equip_byte):
+def decode_field_equipment_preview(raw,asset,equip_byte):
     ids=[f'asset://legaia/models/global-special/{0xf0+i:04x}' for i in range(3)]
     source=asset.get('source_record',{})
     if asset.get('semantic_id') not in ids or source.get('prot_entry_index')!=874 or source.get('container_section')!=0 or source.get('pack_slot')!=ids.index(asset['semantic_id']):raise ImportError('Field equipment requires its qualified global party source')
-    raw=load_model_source(disc,asset);projected,proof=project_field_equipment(raw,ids.index(asset['semantic_id']),equip_byte);g=decode_tmd(projected)
+    projected,proof=project_field_equipment(raw,ids.index(asset['semantic_id']),equip_byte);g=decode_tmd(projected)
     objects=g['objects'][:10];vertices=sum(o['vertex_count'] for o in objects);triangles=sum(o['triangle_count'] for o in objects)
     g['objects']=objects;g['vertices']=g['vertices'][:vertices]
     for key in ('triangles','triangle_colors','triangle_uvs','triangle_materials','triangle_normals'):g[key]=g[key][:triangles]
     g['bounds']=dict(min=[min(v[i] for v in g['vertices']) for i in range(3)],max=[max(v[i] for v in g['vertices']) for i in range(3)])
     g.update(semantic_id=asset['semantic_id'],source_record=source,equipment_variant=proof)
     return g
+
+
+def load_field_equipment_preview(disc,asset,equip_byte):
+    return decode_field_equipment_preview(load_model_source(disc,asset),asset,equip_byte)

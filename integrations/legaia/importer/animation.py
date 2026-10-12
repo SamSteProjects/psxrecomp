@@ -180,13 +180,18 @@ def _source(disc: Any, asset: dict[str, Any], clip_id: str):
         return decoded, source, slot
 
 
-def load_animation_preview(disc: Any, asset: dict[str, Any], clip_id: str = "idle", *, equipment_byte=None) -> dict[str, Any]:
+def load_animation_preview(disc: Any, asset: dict[str, Any], clip_id: str = "idle", *, equipment_byte=None, model_source=None) -> dict[str, Any]:
     """Decode the entire supported clip once for browser-side scrub/play."""
     decoded, source, slot = _source(disc, asset, clip_id)
     if equipment_byte is not None:
         from .field_equipment import load_field_equipment_preview
-        geometry=load_field_equipment_preview(disc,asset,equipment_byte)
-    else:geometry = deepcopy(load_model_preview(disc, asset))
+        if model_source is not None:
+            from .field_equipment import decode_field_equipment_preview
+            geometry=decode_field_equipment_preview(model_source,asset,equipment_byte)
+        else:geometry=load_field_equipment_preview(disc,asset,equipment_byte)
+    else:
+        if model_source is not None:raise ImportError('Authored field model sampling requires explicit equipment selection')
+        geometry = deepcopy(load_model_preview(disc, asset))
     objects = geometry["objects"][:decoded["bone_count"]]
     vertex_count = sum(obj["vertex_count"] for obj in objects)
     triangle_count = sum(obj["triangle_count"] for obj in objects)
