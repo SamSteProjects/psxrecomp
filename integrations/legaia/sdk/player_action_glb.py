@@ -67,3 +67,32 @@ def apply(project,review_key,**args):
     else:atomic_write(path,content)
     publish(project,record,retail,result['binding'])
     return dict(schema_version='legaia.player-action-apply.v1',binding=result['binding'],retained_input=result['retained_input'],history_steps=1,project_changed=True,gameplay_verified=False)
+
+
+def input_records(project,catalog):
+    """Register active historical inputs separately from native Current motion."""
+    from .player_action_store import validate
+    validate(project,project.player_action_overrides)
+    records=[];models={m['semantic_id']:m for m in catalog['models']}
+    for asset,binding in sorted(project.player_action_overrides.items()):
+        model=models.get(asset)
+        if model is None or binding['source_record']!=model['source_record']:raise ProjectError('PLAYER motion input source differs from discovered Retail owner')
+        for action,value in sorted(binding['actions'].items()):
+            evidence=value.get('glb_import')
+            if evidence is None:continue
+            clip=model['actions'][int(action)];key=evidence['glb_sha256']
+            records.append(dict(semantic_id=f'retained-animation://legaia/player-battle/{model["player_index"]:04d}/action/{action}/glb/{key}',asset_kind='retained_player_motion_glb',name=f'PLAYER {model["player_index"]} Action {int(action)} Motion Input',model_asset_id=asset,action_asset_id=clip['semantic_id'],action_slot=int(action),layer='retained_authored_input',source_record=deepcopy(evidence),retail_source=deepcopy(clip['source_record']),references=[asset,clip['semantic_id']],current_action_file_sha256=binding['current_sha256'],relationship='historical_import_input_not_final_current_action',read_only=True,gameplay_verified=False))
+    return records
+
+
+def export_input(project,expected_project_path,expected_source_key,asset_id):
+    from .player_battle import resources
+    from .battle_character_resources import _fresh
+    from base64 import b64encode
+    report=resources(project,expected_project_path,expected_source_key)
+    record=next((r for r in report['retained_motion_inputs'] if r['semantic_id']==asset_id),None)
+    if record is None:raise ProjectError('PLAYER motion input is no longer registered; refresh project assets')
+    content=_input_path(project,record['source_record']['glb_sha256']).read_bytes()
+    if sha256(content).hexdigest()!=record['source_record']['glb_sha256']:raise ProjectError('PLAYER retained motion input changed during download')
+    _fresh(project,expected_project_path,expected_source_key)
+    return dict(schema_version='legaia.player-motion-input-export.v1',project_path=str(project.root),project_source_key=expected_source_key,record=record,filename=f'player-motion-{record["action_slot"]}-{sha256(content).hexdigest()}.glb',glb_base64=b64encode(content).decode(),read_only=True,project_changed=False,gameplay_verified=False)

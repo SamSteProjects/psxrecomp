@@ -17,7 +17,9 @@ def resources(project,expected_project_path,expected_source_key):
     try:catalog=native.discover(project.disc_path)
     except RetailImportError as e:raise ProjectError(str(e)) from e
     _disc(project,catalog);_fresh(project,expected_project_path,expected_source_key)
-    return dict(schema_version='legaia.player-battle-resources.v1',project_path=str(project.root),project_source_key=expected_source_key,catalog=catalog,layer='retail',read_only=True,project_changed=False,gameplay_verified=False)
+    from .player_action_glb import input_records
+    inputs=input_records(project,catalog);_fresh(project,expected_project_path,expected_source_key)
+    return dict(retained_motion_inputs=inputs,schema_version='legaia.player-battle-resources.v1',project_path=str(project.root),project_source_key=expected_source_key,catalog=catalog,layer='retail',read_only=True,project_changed=False,gameplay_verified=False)
 
 
 def preview(project,expected_project_path,expected_source_key,asset_id,catalog_source_key,equipped):

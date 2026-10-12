@@ -1,0 +1,7 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+import {decodePlayerBattles,playerBattleProjectRecords,qualifyPlayerMotionInputExport} from '../editor/player-battle.js';
+const {report,receipt}=JSON.parse(fs.readFileSync(process.argv[2],'utf8')),expected={projectPath:report.project_path,sourceKey:report.project_source_key};
+const r=await decodePlayerBattles(report,expected),records=playerBattleProjectRecords(r),input=records.find(r=>r.projectPlayerMotionInput);assert(input);assert.equal(records.filter(r=>r.id===input.data.model_asset_id).length,1);assert.equal(records.filter(r=>r.id===input.data.action_asset_id).length,1);await qualifyPlayerMotionInputExport(receipt,r,input);let refused=0;
+for(const change of [v=>v.retained_motion_inputs[0].semantic_id+='x',v=>v.retained_motion_inputs[0].layer='retail',v=>v.retained_motion_inputs[0].references=[],v=>v.retained_motion_inputs[0].source_record.fps=0,v=>v.retained_motion_inputs[0].retail_source.sha256='0'.repeat(64),v=>v.retained_motion_inputs.push(v.retained_motion_inputs[0])]){const v=structuredClone(report);change(v);await assert.rejects(decodePlayerBattles(v,expected));refused++;}
+for(const change of [v=>v.filename='../wrong.glb',v=>v.glb_base64=v.glb_base64.slice(4),v=>v.project_source_key='0'.repeat(64)]){const v=structuredClone(receipt);change(v);await assert.rejects(qualifyPlayerMotionInputExport(v,r,input));refused++;}
+console.log(`Retained motion registration and ${refused} altered metadata/download refusals pass`);

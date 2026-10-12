@@ -1357,6 +1357,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     result=(apply_restore if route.endswith('-apply') else review_restore)(self.server.project,**body)
                     self._json(200,dict(self.server.state(),player_action_apply=result) if route.endswith('-apply') else result)
                     return
+                if route == '/api/player-motion-input-export':
+                    if set(body)!={'expected_project_path','expected_source_key','asset_id'}:raise ProjectError('PLAYER motion input download requires exact fresh project and asset identities')
+                    from .player_action_glb import export_input
+                    self._json(200,export_input(self.server.project,**body))
+                    return
                 if route in ('/api/player-action-glb-review','/api/player-action-glb-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','action_slot','expected_current_sha256','expected_action_sha256','glb_base64','fps','animation_index','object_node_indices'}
                     if route.endswith('-apply'):fields.add('review_key')
