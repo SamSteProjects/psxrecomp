@@ -1216,6 +1216,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-placement-yaw.js": ("worldmap-placement-yaw.js", "text/javascript"),
                  "/worldmap-scene.js": ("worldmap-scene.js", "text/javascript"),
                  "/project-assets.js": ("project-assets.js", "text/javascript"),
+                 "/player-model-review.js": ("player-model-review.js", "text/javascript"),
                  "/player-battle.js": ("player-battle.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
@@ -1279,6 +1280,8 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/worldmap-replacement-review", "/api/worldmap-replacement-apply", "/api/text-json-preview", "/api/text-json-import") else 32768
+            if urlsplit(self.path).path == '/api/player-model-glb-review':
+                request_limit = 8 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/worldmap-clip-channel-review','/api/worldmap-clip-channel-apply','/api/worldmap-animation-edit-review','/api/worldmap-animation-edit-apply'):
                 request_limit = 1024 * 1024
             if urlsplit(self.path).path in ('/api/worldmap-model-glb-review','/api/worldmap-model-glb-apply','/api/worldmap-animation-glb-review','/api/worldmap-animation-glb-apply'):
@@ -1326,6 +1329,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body) != {'id'}:
                         raise ProjectError('Stability cancellation requires the current job identity')
                     self._json(200, {'job': self.server.stability_checks.cancel(body['id'])})
+                    return
+                if route in ('/api/player-model-glb-export','/api/player-model-glb-review'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped'}
+                    if route.endswith('-review'):fields|={'binding','glb_base64'}
+                    if set(body)!=fields:raise ProjectError('PLAYER GLB authoring requires exact source, selection and binding fields')
+                    from .player_model_authoring import export,review
+                    self._json(200,(review if route.endswith('-review') else export)(self.server.project,**body))
                     return
                 if route == '/api/player-battle-export':
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','mode','action_slot','frame_index','fps'}

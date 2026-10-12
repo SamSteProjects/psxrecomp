@@ -57,7 +57,11 @@ def reconstruct(disc,model,assembly,geometry):
     from .player_battle import _sources
     digest,sources=_sources(disc);raw=sources[model['player_index']][3];proof=placement(disc)
     if digest!=model['source_record']['disc']['sha256'] or sha256(raw).hexdigest()!=model['source_record']['sha256'] or proof['disc_sha256']!=digest:raise ImportError('PLAYER texture source changed')
-    blocks=uploads(raw,model['player_index'],assembly,digest)
+    return reconstruct_source(raw,model['player_index'],digest,assembly,geometry,proof)
+
+
+def reconstruct_source(raw,slot,digest,assembly,geometry,proof):
+    blocks=uploads(raw,slot,assembly,digest)
     # Proven loader order, not an unordered union of conflicting palette uploads.
     owners={};words={}
     for i,b in enumerate(blocks):
