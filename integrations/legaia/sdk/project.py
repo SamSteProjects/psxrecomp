@@ -136,6 +136,7 @@ class ProjectService:
         self.texture_overrides: dict[str, dict] = {}
         self.texture_additions: dict[str, dict] = {}
         self.model_overrides: dict[str, dict] = {}
+        self.player_model_overrides: dict[str, dict] = {}
         self.audio_overrides: dict[str, dict] = {}
         self.audio_sequence_replacements: dict[str, dict] = {}
         self.audio_bank_overrides: dict[str, dict] = {}
@@ -241,6 +242,7 @@ class ProjectService:
                 **({"audio_sequence_replacements": deepcopy(self.audio_sequence_replacements)} if self.audio_sequence_replacements else {}),
                 **({"audio_overrides": deepcopy(self.audio_overrides)} if self.audio_overrides else {}),
                 **({"audio_bank_overrides": deepcopy(self.audio_bank_overrides)} if self.audio_bank_overrides else {}),
+                **({"player_model_overrides": deepcopy(self.player_model_overrides)} if self.player_model_overrides else {}),
                 **({"model_overrides": deepcopy(self.model_overrides)} if self.model_overrides else {})}
 
     @property
@@ -281,7 +283,7 @@ class ProjectService:
                   "authored": "Scene and game-data edits", "actor_templates": "Actor presets",
                   "texture_additions": "New texture slots", "texture_overrides": "Texture replacements", "model_overrides": "Model content", "audio_sequence_replacements": "Audio sequence replacements", "audio_overrides": "Audio sequence operands", "audio_bank_overrides": "Audio bank parameters", "audio_sample_sources": "Retained WAV inputs", "audio_midi_sources": "Retained MIDI inputs", "audio_sample_overrides": "Native audio samples",
                   "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "worldmap_selection_sets": "Saved world selections", "scene_views": "Saved scene views", "animation_labels": "Animation display names", "model_vertex_groups": "Saved model vertex groups", "script_bookmarks": "Saved script bookmarks",
-                  "model_sources": "Retained model inputs", "animation_sources": "Retained animation inputs"}
+                  "player_model_overrides": "PLAYER native models", "model_sources": "Retained model inputs", "animation_sources": "Retained animation inputs"}
         return [label for key, label in labels.items()
                 if digest(document.get(key)) != self.saved_sections.get(key)]
 
@@ -291,7 +293,7 @@ class ProjectService:
         self.saved_document = deepcopy(document)
         self.saved_sections = {key: digest(document.get(key)) for key in
                                ("name", "retail_source", "imports", "active_scene",
-                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_sequence_replacements", "audio_bank_overrides", "audio_sample_sources", "audio_midi_sources", "audio_sample_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "worldmap_selection_sets", "scene_views", "animation_labels", "model_vertex_groups", "script_bookmarks", "model_sources", "animation_sources")}
+                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_sequence_replacements", "audio_bank_overrides", "audio_sample_sources", "audio_midi_sources", "audio_sample_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "worldmap_selection_sets", "scene_views", "animation_labels", "model_vertex_groups", "script_bookmarks", "model_sources", "animation_sources", "player_model_overrides")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):
@@ -3402,6 +3404,11 @@ class ProjectService:
             from .audio_sample_sources import validate_files
             validate_files(self,value);self.audio_sample_sources=value
             source.pop();target.append(entry);return
+        if source[-1].get('target') == 'player_model_overrides':
+            entry=source[-1];value=deepcopy(entry[field])
+            from .player_model_store import validate
+            validate(self,value);self.player_model_overrides=value
+            source.pop();target.append(entry);return
         if source[-1].get('target') == 'model_sources':
             entry=source[-1];value=deepcopy(entry[field])
             from .model_glb_sources import validate_files
@@ -3521,6 +3528,8 @@ class ProjectService:
                 raise ProjectError("Imported evidence cache was modified; refusing to save")
         from .animation_sources import validate_files
         validate_files(self,self.animation_sources)
+        from .player_model_store import validate as validate_player_models
+        validate_player_models(self,self.player_model_overrides)
         from .model_glb_sources import validate_files as validate_model_sources
         validate_model_sources(self,self.model_sources)
         from .audio_sample_sources import validate_files as validate_wav_sources
@@ -3546,6 +3555,8 @@ class ProjectService:
         if not isinstance(raw.get("imports"), list) or not isinstance(raw.get("authored", {}), dict) or not isinstance(raw.get("retail_source", {}), dict):
             raise ProjectError("Invalid project collection fields")
         result = cls(path.parent, raw["name"])
+        from .player_model_store import validate as validate_player_models
+        result.player_model_overrides=validate_player_models(result,raw.get("player_model_overrides",{}))
         from .animation_sources import validate_collection, validate_files
         result.animation_sources=validate_collection(raw.get('animation_sources',{}))
         validate_files(result,result.animation_sources)

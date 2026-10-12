@@ -1280,7 +1280,7 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/worldmap-replacement-review", "/api/worldmap-replacement-apply", "/api/text-json-preview", "/api/text-json-import") else 32768
-            if urlsplit(self.path).path == '/api/player-model-glb-review':
+            if urlsplit(self.path).path in ('/api/player-model-glb-review','/api/player-model-glb-apply'):
                 request_limit = 8 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/worldmap-clip-channel-review','/api/worldmap-clip-channel-apply','/api/worldmap-animation-edit-review','/api/worldmap-animation-edit-apply'):
                 request_limit = 1024 * 1024
@@ -1330,12 +1330,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Stability cancellation requires the current job identity')
                     self._json(200, {'job': self.server.stability_checks.cancel(body['id'])})
                     return
-                if route in ('/api/player-model-glb-export','/api/player-model-glb-review'):
+                if route in ('/api/player-model-glb-export','/api/player-model-glb-review','/api/player-model-glb-apply','/api/player-model-current'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped'}
-                    if route.endswith('-review'):fields|={'binding','glb_base64'}
+                    if route.endswith(('-review','-apply')):fields|={'binding','glb_base64'}
+                    if route.endswith('-apply'):fields.add('review_key')
                     if set(body)!=fields:raise ProjectError('PLAYER GLB authoring requires exact source, selection and binding fields')
-                    from .player_model_authoring import export,review
-                    self._json(200,(review if route.endswith('-review') else export)(self.server.project,**body))
+                    from .player_model_authoring import export,review,apply,current
+                    action=review if route.endswith('-review') else apply if route.endswith('-apply') else current if route.endswith('-current') else export
+                    result=action(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),player_model_apply=result) if route.endswith('-apply') else result)
                     return
                 if route == '/api/player-battle-export':
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','mode','action_slot','frame_index','fps'}

@@ -41,6 +41,7 @@ def authored_state_key(project) -> str:
                                 "textures": getattr(project, "texture_overrides", {}),
                                 "texture_additions": getattr(project, "texture_additions", {}),
                                 "models": getattr(project, "model_overrides", {}),
+                                **({"player_models": project.player_model_overrides} if getattr(project,"player_model_overrides",{}) else {}),
                                 **({"audio": project.audio_overrides} if getattr(project, "audio_overrides", {}) else {}),
                                 **({"audio_sequence_replacements": project.audio_sequence_replacements} if getattr(project,"audio_sequence_replacements",{}) else {}),
                                 **({"audio_bank": project.audio_bank_overrides} if getattr(project, "audio_bank_overrides", {}) else {}),
@@ -554,6 +555,8 @@ def build_project(project, output_dir: Path | str | None = None) -> dict:
 
 
 def _build_project(project, output_dir, *, review_only=False) -> dict:
+    if getattr(project,'player_model_overrides',{}):
+        raise BuildError('PLAYER native model overrides are saved, but their package Build integration is still in progress; refusing to omit authored changes')
     from .build_stability_sources import capture as capture_stability_sources
     stability_sources = capture_stability_sources()
     draft_scenes = set()
