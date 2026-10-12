@@ -150,7 +150,7 @@ def download_png(project,asset_id,palette_index,expected_current_sha256,expected
     return dict(schema_version='legaia.field-texture-png-download.v1',project_path=str(project.root),project_source_key=expected_source_key,asset_id=asset_id,palette_index=palette_index,current_sha256=expected_current_sha256,png_sha256=sha256(png).hexdigest(),stp_sha256=sha256(stp).hexdigest(),png_base64=b64encode(png).decode(),stp_png_base64=b64encode(stp).decode(),profile=profile,filename=f'shared-field-{asset_id[-1]}-palette-{palette_index}.png',layer='current',read_only=True,project_changed=False,gameplay_verified=False)
 
 
-def review_png(project,asset_id,palette_index,palette_mode,png_base64,expected_current_sha256,expected_project_path,expected_source_key):
+def review_png(project,asset_id,palette_index,palette_mode,png_base64,expected_current_sha256,expected_project_path,expected_source_key,stp_png_base64=None):
     from base64 import b64decode,b64encode
     from importer.texture_png import export_texture_png,import_texture_png
     from .battle_character_resources import _fresh
@@ -163,10 +163,16 @@ def review_png(project,asset_id,palette_index,palette_mode,png_base64,expected_c
     _,_,current=_snapshot(project,asset_id,expected_project_path,expected_source_key)
     if sha256(current).hexdigest()!=expected_current_sha256:raise ProjectError('Shared TIM changed; inspect again')
     _,_,profile=export_texture_png(current,palette_index)
-    candidate,analysis=import_texture_png(current,png,profile,palette_mode)
+    stp=None
+    if stp_png_base64 is not None:
+        if not isinstance(stp_png_base64,str) or not 1<=len(stp_png_base64)<=11200000:raise ProjectError('Shared STP PNG must be at most 8 MiB')
+        try:stp=b64decode(stp_png_base64,validate=True)
+        except (ValueError,TypeError) as e:raise ProjectError('Shared STP PNG requires exact base64 bytes') from e
+        if not 1<=len(stp)<=8*1024*1024:raise ProjectError('Shared STP PNG must be at most 8 MiB')
+    candidate,analysis=import_texture_png(current,png,profile,palette_mode,stp)
     # Reuse complete native/header/capacity Review, not a PNG-only acceptance.
     result=review_file(project,asset_id,palette_index,b64encode(candidate).decode(),expected_current_sha256,expected_project_path,expected_source_key)
-    result.update(schema_version='legaia.field-texture-png-review.v1',png_sha256=sha256(png).hexdigest(),png_byte_length=len(png),palette_mode=palette_mode,quantization=analysis['quantization'],stp_policy='preserve_current_flags_with_converter_transparent_black_rules')
+    result.update(schema_version='legaia.field-texture-png-review.v1',png_sha256=sha256(png).hexdigest(),png_byte_length=len(png),palette_mode=palette_mode,quantization=analysis['quantization'],stp_policy='explicit_mask_with_converter_transparent_black_rules' if stp is not None else 'preserve_current_flags_with_converter_transparent_black_rules',**(dict(stp_png_sha256=sha256(stp).hexdigest(),stp_png_byte_length=len(stp)) if stp is not None else {}))
     result.pop('review_key');result['review_key']=digest(result);_fresh(project,expected_project_path,expected_source_key);return result
 
 

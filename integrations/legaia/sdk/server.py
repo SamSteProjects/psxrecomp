@@ -1295,7 +1295,7 @@ class EditorHandler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/worldmap-replacement-review", "/api/worldmap-replacement-apply", "/api/text-json-preview", "/api/text-json-import") else 32768
             if urlsplit(self.path).path in ('/api/field-texture-png-review','/api/field-texture-png-apply'):
-                request_limit=12*1024*1024
+                request_limit=24*1024*1024
             if urlsplit(self.path).path in ('/api/field-texture-file-review','/api/field-texture-file-apply'):
                 request_limit=2*1024*1024
             if urlsplit(self.path).path in ('/api/player-model-glb-review','/api/player-model-glb-apply','/api/player-action-glb-review','/api/player-action-glb-apply'):
@@ -2204,7 +2204,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                     fields={'expected_project_path','expected_source_key','asset_id','expected_current_sha256','palette_index'}
                     if not route.endswith('-download'):fields|={'palette_mode','png_base64'}
                     if route.endswith('-apply'):fields.add('review_key')
-                    if set(body)!=fields:raise ProjectError('Shared PNG requires exact source, sampling and Review fields')
+                    if set(body) not in (fields,fields|{'stp_png_base64'}):raise ProjectError('Shared PNG requires exact source, sampling and Review fields')
+                    if route.endswith('-download') and 'stp_png_base64' in body:raise ProjectError('Shared PNG download accepts no uploaded STP mask')
                     from .field_texture_authoring import download_png,review_png,apply_png
                     result=(download_png if route.endswith('-download') else apply_png if route.endswith('-apply') else review_png)(self.server.project,**body)
                     self._json(200,dict(self.server.state(),field_texture_apply=result) if route.endswith('-apply') else result)
