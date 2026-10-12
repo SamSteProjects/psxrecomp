@@ -591,8 +591,8 @@ def pose_alignment_config(value, frame_count=4096):
     return dict(mode='native_reference_local', source_frame_index=frame, reference_seconds=float(seconds))
 
 
-def _source_quaternion(angles):
-    x, y, z = [value * _TICK / 2 for value in angles]
+def _source_quaternion(angles, tick=_TICK):
+    x, y, z = [value * tick / 2 for value in angles]
     sx, cx, sy, cy, sz, cz = math.sin(x), math.cos(x), math.sin(y), math.cos(y), math.sin(z), math.cos(z)
     return [sx * cy * cz - cx * sy * sz, cx * sy * cz + sx * cy * sz,
             cx * cy * sz - sx * sy * cz, cx * cy * cz + sx * sy * sz]
@@ -613,10 +613,12 @@ def _nearest(value):
     return math.floor(value + 0.5) if value >= 0 else math.ceil(value - 0.5)
 
 
-def _quantize_rotation(glb_q, baseline_angles):
+def _quantize_rotation(glb_q, baseline_angles, *, rotation_step=16, maximum_degrees=MAX_ANGULAR_ERROR_DEGREES):
+    if rotation_step not in (1,16):raise ImportError('Unsupported native rotation precision')
+    count=4096//rotation_step;tick=math.tau/count
     q = [-glb_q[0], glb_q[1], -glb_q[2], glb_q[3]]
-    baseline = [v // 16 for v in baseline_angles]
-    baseline_q = _source_quaternion(baseline)
+    baseline = [v // rotation_step for v in baseline_angles]
+    baseline_q = _source_quaternion(baseline,tick)
     if _orientation_error(q, baseline_q) <= ANGLE_EQUIVALENCE_RADIANS:
         return list(baseline_angles), math.degrees(_orientation_error(q, baseline_q))
     x, y, z, w = q
@@ -624,7 +626,7 @@ def _quantize_rotation(glb_q, baseline_angles):
     r21, r22 = 2 * (y * z + w * x), 1 - 2 * (x * x + y * y)
     r01, r11 = 2 * (x * y - w * z), 1 - 2 * (x * x + z * z)
     ey = math.asin(max(-1.0, min(1.0, -r20)))
-    source = [v * _TICK for v in baseline]
+    source = [v * tick for v in baseline]
     if abs(math.cos(ey)) <= 1e-6:
         sign = 1 if ey >= 0 else -1
         delta = math.atan2(sign * r01, r11)
@@ -636,23 +638,23 @@ def _quantize_rotation(glb_q, baseline_angles):
         branches = ([ex, ey, ez], [ex + math.pi, math.pi - ey, ez + math.pi])
         chosen = min(branches, key=lambda branch: (
             sum(_wrap(v - old) ** 2 for v, old in zip(branch, source)), tuple(branch)))
-    rounded = [_nearest(v / _TICK) % 256 for v in chosen]
+    rounded = [_nearest(v / tick) % count for v in chosen]
     candidates = []
     for dx in (-1, 0, 1):
         for dy in (-1, 0, 1):
             for dz in (-1, 0, 1):
-                ticks = [(v + d) % 256 for v, d in zip(rounded, (dx, dy, dz))]
-                error = _orientation_error(q, _source_quaternion(ticks))
-                distance = sum(min((v - old) % 256, (old - v) % 256) ** 2 for v, old in zip(ticks, baseline))
+                ticks = [(v + d) % count for v, d in zip(rounded, (dx, dy, dz))]
+                error = _orientation_error(q, _source_quaternion(ticks,tick))
+                distance = sum(min((v - old) % count, (old - v) % count) ** 2 for v, old in zip(ticks, baseline))
                 candidates.append((error, distance, ticks))
     minimum_error = min(row[0] for row in candidates)
     # Equivalent numerical minima use source proximity, then byte order.
     error, _, ticks = min((row for row in candidates if row[0] <= minimum_error + 1e-12),
                           key=lambda row: (row[1], row[2]))
     degrees = math.degrees(error)
-    if degrees > MAX_ANGULAR_ERROR_DEGREES:
-        raise ImportError("Animation rotation exceeds the 2.2 degree quantization error bound")
-    return [v * 16 for v in ticks], degrees
+    if degrees > maximum_degrees:
+        raise ImportError(f"Animation rotation exceeds the {maximum_degrees} degree quantization error bound")
+    return [v * rotation_step for v in ticks], degrees
 
 
 def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animation_index: int | None = None, object_node_indices: list[int] | None = None, external_sampling: dict | None = None, external_skin_index: int | None = None, external_pose_alignment: dict | None = None, external_pose_blend: dict | None = None) -> tuple[bytes, dict]:
