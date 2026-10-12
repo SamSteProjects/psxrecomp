@@ -180,10 +180,13 @@ def _source(disc: Any, asset: dict[str, Any], clip_id: str):
         return decoded, source, slot
 
 
-def load_animation_preview(disc: Any, asset: dict[str, Any], clip_id: str = "idle") -> dict[str, Any]:
+def load_animation_preview(disc: Any, asset: dict[str, Any], clip_id: str = "idle", *, equipment_byte=None) -> dict[str, Any]:
     """Decode the entire supported clip once for browser-side scrub/play."""
     decoded, source, slot = _source(disc, asset, clip_id)
-    geometry = deepcopy(load_model_preview(disc, asset))
+    if equipment_byte is not None:
+        from .field_equipment import load_field_equipment_preview
+        geometry=load_field_equipment_preview(disc,asset,equipment_byte)
+    else:geometry = deepcopy(load_model_preview(disc, asset))
     objects = geometry["objects"][:decoded["bone_count"]]
     vertex_count = sum(obj["vertex_count"] for obj in objects)
     triangle_count = sum(obj["triangle_count"] for obj in objects)
@@ -221,7 +224,7 @@ def load_animation_preview(disc: Any, asset: dict[str, Any], clip_id: str = "idl
                      "channels": [{"semantic_id": f"{skeleton_id}/channels/{i:02d}",
                                    "object_index": i, "parent_index": None} for i in range(decoded["bone_count"])]},
         "limitations": ["Analytic rigid transforms approximate GTE fixed-point rounding.",
-                        "Disc group descriptors are used; live equipment descriptor swaps are not reconstructed." if slot < 3 else "Reference association only; scripted activation, scale, visibility and auxiliary gameplay role are not reconstructed.",
+                        ("Explicit source-selected field equipment descriptor variant; live equipment is not observed." if equipment_byte is not None else "Disc group descriptors are used; live equipment descriptor swaps are not reconstructed.") if slot < 3 else "Reference association only; scripted activation, scale, visibility and auxiliary gameplay role are not reconstructed.",
                         "Scene actor animation IDs, scripted transitions and battle animation banks are unsupported.",
                         "Reference-derived clip identity and cadence have not been verified in a live runtime by this importer."],
     }

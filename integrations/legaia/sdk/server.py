@@ -1333,6 +1333,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Stability cancellation requires the current job identity')
                     self._json(200, {'job': self.server.stability_checks.cancel(body['id'])})
                     return
+                if route == '/api/field-equipment-preview':
+                    fields={'expected_project_path','expected_source_key','asset_id','equipment_byte','clip_id','frame_index'}
+                    if set(body)!=fields:raise ProjectError('Field equipment preview requires exact source and explicit variant/frame fields')
+                    from .field_equipment import preview
+                    self._json(200,preview(self.server.project,**body))
+                    return
                 if route in ('/api/player-action-range-review','/api/player-action-range-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','action_slot','expected_current_sha256','expected_action_sha256','range_spec'}
                     if route.endswith('-apply'):fields.add('review_key')
