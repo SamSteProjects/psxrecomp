@@ -71,6 +71,7 @@ def validate(project,values,*,replays=None):
         try:current,reports=compose(raw,identifier,b)
         except (RetailImportError,KeyError,TypeError,ValueError) as e:raise ProjectError('PLAYER action ledger cannot reproduce its native Current file') from e
         if sha256(current).hexdigest()!=b['current_sha256'] or current==raw:raise ProjectError('PLAYER action Current hash changed or has no native edits')
+        if any(not report['channels'] for report in reports):raise ProjectError('PLAYER action ledger contains an unmodified action owner')
         if replays is not None:replays[identifier]=(current,reports)
     return deepcopy(values)
 

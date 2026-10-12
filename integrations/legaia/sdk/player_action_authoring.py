@@ -74,3 +74,33 @@ def apply(project,review_key,**args):
     if not result['projection']['channels']:raise ProjectError('PLAYER action Apply has no native changes')
     publish(project,record,retail,result['binding'])
     return dict(schema_version='legaia.player-action-apply.v1',binding=result['binding'],history_steps=1,project_changed=True,gameplay_verified=False)
+
+
+def prepare_restore(project,action_slot,expected_current_sha256,expected_action_sha256,**context):
+    record,_,current,clip,_,original,original_bank=_snapshot(project,action_slot,**context)
+    if sha256(current).hexdigest()!=expected_current_sha256 or clip['source_record']['sha256']!=expected_action_sha256:
+        raise ProjectError('PLAYER action Current changed; inspect again before restoring')
+    binding=project.player_action_overrides.get(record['semantic_id'])
+    held=binding.get('actions',{}).get(f'{action_slot:04d}') if binding else None
+    if not held:raise ProjectError('Selected PLAYER action has no authored channels to restore')
+    edits=[]
+    for edit in held['edits']:
+        frame,part=edit['frame_index'],edit['part_index'];at=original['source_record']['byte_offset']+2+(frame*clip['part_count']+part)*9
+        source=decode_part(original_bank[at:at+9]);edits.append(dict(frame_index=frame,part_index=part,
+            **{field:{axis:source[field]['xyz'.index(axis)] for axis in edit[field]} for field in ('translation','rotation_psx') if field in edit}))
+    record,retail,result=prepare_review(project,action_slot=action_slot,expected_current_sha256=expected_current_sha256,
+        expected_action_sha256=expected_action_sha256,edits=edits,**context)
+    if result['proposed_action_base64']!=b64encode(original_bank[original['source_record']['byte_offset']:original['source_record']['byte_offset']+original['source_record']['byte_length']]).decode():
+        raise ProjectError('PLAYER action restore differs from its complete Retail stream')
+    result['operation']='restore_retail_action';result['review_key']=digest({k:v for k,v in result.items() if k!='review_key'})
+    return record,retail,result
+
+
+def review_restore(project,**args):return prepare_restore(project,**args)[2]
+
+
+def apply_restore(project,review_key,**args):
+    record,retail,result=prepare_restore(project,**args)
+    if result['review_key']!=review_key:raise ProjectError('PLAYER restore Apply requires its exact fresh restore Review')
+    publish(project,record,retail,result['binding'])
+    return dict(schema_version='legaia.player-action-apply.v1',binding=result['binding'],history_steps=1,project_changed=True,gameplay_verified=False)
