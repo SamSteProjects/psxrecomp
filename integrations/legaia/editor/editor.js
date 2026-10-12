@@ -1,3 +1,4 @@
+import {showFieldTexture} from '/field-textures.js';
 import {mountFieldEquipment} from './field-equipment.js';
 let fieldEquipmentControls=null;
 import {showPlayerBattle,showPlayerAction,showPlayerTexture,showPlayerMotionInput} from '/player-battle.js';
@@ -2034,6 +2035,7 @@ function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false,play
   fieldEquipmentControls?.dispose();fieldEquipmentControls=null;
   if(!keepTrail)assetDetailsTrail.clear();
   assetPlacementSelection?.dispose();assetPlacementSelection=null;animationContributions?.dispose();animationContributions=null;
+  if(record.projectFieldTexture){try{showFieldTexture({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalFieldTextures,current:()=>state.project?.path===record.projectFieldTexture.projectPath&&state.project_assets_source_key===record.projectFieldTexture.sourceKey,busy:()=>busy,setBusy,onError:error=>notify(error.message,true),onApplied:next=>{assetDetails.close();state=next;render();}});}catch(error){notify(error.message,true);}return;}
   if(record.projectPlayerMotionInput){try{showPlayerMotionInput({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalPlayerBattles,onModel:async(id,action)=>{if(busy)return;assetDetails.close();const next=await projectAssetControls.revealAsset(id);if(next)showAssetDetails(next,undefined,{playerAction:action});}});}catch(error){notify(error.message,true);}return;}
   if(record.projectPlayerBattleTexture){try{showPlayerTexture({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalPlayerBattles,onModel:async(id,equipment)=>{if(busy)return;assetDetails.close();const next=await projectAssetControls.revealAsset(id);if(next)showAssetDetails(next,undefined,{playerEquipment:equipment});}});}catch(error){notify(error.message,true);}return;}
   if(record.projectPlayerBattleAnimation){try{showPlayerAction({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalPlayerBattles,onModel:async(id,action)=>{if(busy)return;assetDetails.close();const next=await projectAssetControls.revealAsset(id);if(next)showAssetDetails(next,undefined,{playerAction:action});}});}catch(error){notify(error.message,true);}return;}
@@ -2246,7 +2248,7 @@ async function inspectControllerAsset(record,focusFlagPc=null){
 }
 async function activateAsset(record,action=null){
   if(busy)return;
-  if(record?.projectPlayerMotionInput||record?.projectPlayerBattleTexture||record?.projectPlayerBattleAnimation||record?.projectPlayerBattleResource||record?.projectBattleResource||record?.projectBattlePackAnimation){showAssetDetails(record);return;}
+  if(record?.projectFieldTexture||record?.projectPlayerMotionInput||record?.projectPlayerBattleTexture||record?.projectPlayerBattleAnimation||record?.projectPlayerBattleResource||record?.projectBattleResource||record?.projectBattlePackAnimation){showAssetDetails(record);return;}
   try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
   if(record.projectWorldBehaviorResource){if(action===null)showAssetDetails(record);return;}
   if(record.projectWorldResource){if(![null,'inspect-world-resource'].includes(action)||!canEdit()||!state.capabilities?.worldmap_geometry||worldmapDraftPending)return;try{const target=qualifyWorldmapProjectResource(record,projectAssetControls?.sourceReport()?.globalWorldResources,state);if(record.type==='model')await worldmapGeometryControls.openResource(target);else showAssetDetails(record);}catch(error){notify(error.message,true);}return;}
@@ -5883,7 +5885,7 @@ worldPlacementControls=mountWorldPlacements({after:$('resource-refresh'),getStat
 
 const projectAssetHost=document.createElement('div');projectAssetHost.style.gridColumn='1 / -1';assetTools.prepend(projectAssetHost);
 projectAssetControls=mountProjectAssets({host:projectAssetHost,getContext:projectAssetContext,busy:()=>busy,setBusy,
-  getUnavailableReason:()=>state.project_assets_unavailable_reason,battleResources:()=>state.capabilities?.worldmap_geometry===true,globalWorldmap:()=>state.capabilities?.worldmap_placements===true,globalResources:()=>state.capabilities?.worldmap_geometry===true,
+  getUnavailableReason:()=>state.project_assets_unavailable_reason,fieldTextures:()=>state.capabilities?.worldmap_geometry===true,battleResources:()=>state.capabilities?.worldmap_geometry===true,globalWorldmap:()=>state.capabilities?.worldmap_placements===true,globalResources:()=>state.capabilities?.worldmap_geometry===true,
   onChange:()=>{assetPageSignature=null;renderAssets();},onError:error=>notify(error.message,true)});
 
 mountSceneToolDrawer({toolbar:document.querySelector('.viewport-toolbar'),viewport:$('viewport-wrap'),keep:[sceneRuler.bar,npcGroundPlacement.bar,groundPositionBar,npcCreationBar,runRibbon,fieldNote,scenePoseBar,actorGroupTools,scriptTargetTools,transitionArrivalTools,npcArrivalTools,historicalTools],onToggle:()=>{cancelViewportGesture();resize();}});

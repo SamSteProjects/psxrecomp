@@ -1222,6 +1222,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/player-action-editor.js": ("player-action-editor.js", "text/javascript"),
                  "/player-action-timeline.js": ("player-action-timeline.js", "text/javascript"),
                  "/field-equipment.js": ("field-equipment.js", "text/javascript"),
+                 "/field-textures.js": ("field-textures.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
@@ -2186,6 +2187,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Rectangle fill requires texture, image bounds, index and inspected hash')
                     self.server.project.set_texture_index_rectangle(body['asset_id'],body['x'],body['y'],body['width'],body['height'],body['palette_entry'],body['expected_sha256'])
                     self._json(200,self.server.state())
+                    return
+                if route in ('/api/field-texture-resources','/api/field-texture-inspect','/api/field-texture-review','/api/field-texture-apply'):
+                    fields={'expected_project_path','expected_source_key'}
+                    if not route.endswith('-resources'):fields|={'asset_id','palette_index'}
+                    if route.endswith(('-review','-apply')):fields|={'entry_index','word','expected_current_sha256'}
+                    if route.endswith('-apply'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Shared field texture requires exact source, palette and Review context')
+                    from .field_texture_authoring import resources,inspect,review,apply
+                    action=resources if route.endswith('-resources') else inspect if route.endswith('-inspect') else review if route.endswith('-review') else apply
+                    result=action(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),field_texture_apply=result) if route.endswith('-apply') else result)
                     return
                 if route == '/api/texture-palette-source':
                     if set(body) != {'asset_id','palette_index'} or not isinstance(body['asset_id'], str):
