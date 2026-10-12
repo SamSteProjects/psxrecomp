@@ -7,6 +7,7 @@ from base64 import b64encode
 from importer.assets import load_model_source
 from importer.field_equipment import project_field_equipment
 from importer.textures import TextureCatalog,load_asset_texture_catalog,associate_material
+from copy import deepcopy
 
 
 def _textures(project,asset,geometry):
@@ -48,3 +49,17 @@ def preview(project,expected_project_path,expected_source_key,asset_id,equipment
     _fresh(project,expected_project_path,expected_source_key)
     return dict(schema_version='legaia.field-equipment-preview.v1',project_path=str(project.root),project_source_key=expected_source_key,asset_id=asset_id,equipment_byte=equipment_byte,clip_id=clip_id,frame_index=frame_index,
         geometry=geometry,base_geometry=base,source_record=asset['source_record'],source_tmd_base64=b64encode(original).decode(),projected_tmd_base64=b64encode(projected).decode(),animation=animation,layer='retail_selected_variant',read_only=True,project_changed=False,gameplay_verified=False)
+
+
+def export(project,**context):
+    from importer.export import encode_model_glb
+    receipt=preview(project,**context);geometry=deepcopy(receipt['base_geometry'])
+    geometry['source_record']=dict(original=receipt['source_record'],equipment_variant=geometry['equipment_variant'])
+    if context['clip_id'] is not None:
+        geometry['animation']=dict(receipt['animation'],source_frame_index=context['frame_index'])
+        geometry['frames']=[receipt['geometry']]
+    content,audit=encode_model_glb(geometry,0 if context['clip_id'] is not None else None)
+    _fresh(project,context['expected_project_path'],context['expected_source_key'])
+    suffix='unposed' if context['clip_id'] is None else f'{context["clip_id"]}-frame-{context["frame_index"]}'
+    return dict(schema_version='legaia.field-equipment-export.v1',project_path=str(project.root),project_source_key=context['expected_source_key'],asset_id=context['asset_id'],equipment_byte=context['equipment_byte'],clip_id=context['clip_id'],frame_index=context['frame_index'],source_record=receipt['source_record'],equipment_variant=geometry['equipment_variant'],
+        filename=f'field-party-{geometry["equipment_variant"]["party_slot"]}-equipment-{context["equipment_byte"]}-{suffix}.glb',glb_base64=b64encode(content).decode(),audit=audit,layer='retail_selected_variant',read_only=True,project_changed=False,gameplay_verified=False)
