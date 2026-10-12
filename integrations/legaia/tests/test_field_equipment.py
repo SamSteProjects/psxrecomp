@@ -1,4 +1,4 @@
-import os,struct,tempfile,unittest
+import os,struct,tempfile,unittest,base64,json
 from copy import deepcopy
 from pathlib import Path
 from importer.pipeline import import_scene
@@ -8,11 +8,44 @@ from importer.animation import load_animation_preview
 from importer.core import ImportError
 from sdk.project import ProjectService
 from sdk.project_assets import source_key
+from sdk.field_equipment import preview as sdk_preview
+from importer.textures import TextureCatalog,load_asset_texture_catalog
 from test_model_primitive_workflow import http_server
 
 
 @unittest.skipUnless(os.getenv('LEGAIA_DISC_BIN'),'Retail disc is private')
 class FieldEquipmentTests(unittest.TestCase):
+    def test_selected_material_pixels_from_original_upload_words(self):
+        with tempfile.TemporaryDirectory() as root:
+            p=ProjectService(Path(root));p.disc_path=os.environ['LEGAIA_DISC_BIN'];p.import_metadata(import_scene(p.disc_path,'town01'));pixels=matches=0;cases=[]
+            for slot in range(3):
+                asset=p.assets.records[f'asset://legaia/models/global-special/{0xf0+slot:04x}'];catalog=load_asset_texture_catalog(p.disc_path,asset,TextureCatalog('unused',asset['source_record']['disc']['sha256']))
+                # Rasterize immutable original words independently of association.
+                words={}
+                for block,_ in catalog.boot_uploads:
+                    for y in range(block.height):
+                        for x in range(block.width_words):
+                            if block.x+x<1024 and block.y+y<512:words[block.x+x,block.y+y]=struct.unpack_from('<H',block.data,(y*block.width_words+x)*2)[0]
+                for tim,_ in catalog.textures:
+                    for block,flat in ((tim.image,False),(tim.clut,True)):
+                        w,h=(block.width_words*block.height,1) if flat else (block.width_words,block.height)
+                        for y in range(h):
+                            for x in range(w):words[block.x+x,block.y+y]=struct.unpack_from('<H',block.data,(y*w+x)*2)[0]
+                for byte in (0,1):
+                    for clip in (None,'idle','walk'):
+                        context=dict(projectPath=str(p.root),sourceKey=source_key(p),assetId=asset['semantic_id'],equipmentByte=byte,clipId=clip,frameIndex=0 if clip else None);value=sdk_preview(p,expected_project_path=context['projectPath'],expected_source_key=context['sourceKey'],asset_id=context['assetId'],equipment_byte=byte,clip_id=clip,frame_index=context['frameIndex']);cases.append(dict(context=context,value=value))
+                        for t in value['geometry']['textures']:
+                            if t['status']!='address_match':continue
+                            m=value['geometry']['materials'][t['material_index']];page,clut=m['tpage'],m['clut'];bpp=(4,8,16)[(page>>7)&3];px,py=(page&15)*64,((page>>4)&1)*256;cx,cy=(clut&63)*16,(clut>>6)&511;rgba=base64.b64decode(t['rgba_base64']);stp=base64.b64decode(t['stp_base64']);count=0
+                            for v in range(t['uv_origin'][1],t['uv_origin'][1]+t['height']):
+                                for u in range(t['uv_origin'][0],t['uv_origin'][0]+t['width']):
+                                    word=words[px+u*bpp//16,py+v]
+                                    if bpp<16:word=words[cx+((word>>((u%(16//bpp))*bpp))&((1<<bpp)-1)),cy]
+                                    channels=[(word>>shift)&31 for shift in (0,5,10)];expected=bytes([*(n*8+n//4 for n in channels),0 if word==0 else 255]);self.assertEqual(rgba[count*4:count*4+4],expected);self.assertEqual(stp[count],word>>15);count+=1
+                            pixels+=count;matches+=1
+            self.assertGreater(matches,0)
+            output=os.getenv('LEGAIA_FIELD_TEXTURE_CASES')
+            if output:Path(output).write_text(json.dumps(cases),encoding='utf-8');Path(output).with_name('texture-proof.json').write_text(json.dumps(dict(matches=matches,pixels=pixels,original_word_readback=True,gameplay_verified=False),indent=2),encoding='utf-8')
     def test_all_party_template_copies_and_native_poses(self):
         disc=os.environ['LEGAIA_DISC_BIN'];document=import_scene(disc,'town01')
         for slot,target in enumerate((0,3,5)):
