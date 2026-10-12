@@ -1172,7 +1172,9 @@ class ProjectService:
         fields = {"asset_sha256", "byte_length", "format", "source_scene_id"}
         from .worldmap_texture_authoring import OWNERS, validate as validate_world_texture
         world = isinstance(binding, dict) and isinstance(binding.get("source_scene_id"), str) and binding["source_scene_id"] in OWNERS
-        if world: fields |= {"source_disc_sha256", "source_sha256"}
+        from .field_texture_authoring import OWNER as FIELD_TEXTURE_OWNER,validate as validate_field_texture
+        field=isinstance(binding,dict) and binding.get('source_scene_id')==FIELD_TEXTURE_OWNER
+        if world or field: fields |= {"source_disc_sha256", "source_sha256"}
         if isinstance(binding, dict) and binding.get('format') == 'tim-image-layout-v1':
             fields |= {'source_sha256', 'image_layout'}
         if (not isinstance(binding, dict) or set(binding) not in (fields, fields | {'glb_source'})
@@ -1180,9 +1182,10 @@ class ProjectService:
                 or not 1 <= binding["byte_length"] <= 1024 * 1024
                 or not isinstance(binding["asset_sha256"], str) or len(binding["asset_sha256"]) != 64
                 or any(c not in "0123456789abcdef" for c in binding["asset_sha256"])
-                or not isinstance(binding["source_scene_id"], str) or binding["source_scene_id"] not in self.imports and not world):
+                or not isinstance(binding["source_scene_id"], str) or binding["source_scene_id"] not in self.imports and not world and not field):
             raise ProjectError("Invalid authored TIM content reference")
         if world: validate_world_texture(self, binding)
+        if field: validate_field_texture(self,binding)
         if binding['format']=='tim-image-layout-v1':
             from .texture_resize import validate_binding
             validate_binding(binding)
@@ -1242,6 +1245,8 @@ class ProjectService:
         return result
 
     def _texture_context(self, asset_id: str):
+        from .field_texture_authoring import owns,context as field_context
+        if owns(asset_id):return field_context(self,asset_id)
         from .worldmap_texture_authoring import scene_for, context as world_context
         if scene_for(asset_id): return world_context(self, asset_id)
         from importer.texture_authoring import load_texture_authoring_context
@@ -1426,8 +1431,10 @@ class ProjectService:
         context=self._texture_context(asset_id)
         from .worldmap_texture_authoring import scene_for
         world_scene=scene_for(asset_id)
-        if world_scene and image_allocation:
-            raise ProjectError("World TIM authoring preserves the existing image and palette layout")
+        from .field_texture_authoring import owns,OWNER as FIELD_TEXTURE_OWNER
+        field=owns(asset_id)
+        if (world_scene or field) and image_allocation:
+            raise ProjectError("Shared field TIM authoring preserves the existing image and palette layout" if field else "World TIM authoring preserves the existing image and palette layout")
         existing=self.texture_overrides.get(asset_id)
         allocated=image_allocation or bool(existing and existing['format']=='tim-image-layout-v1')
         original=context.original_tim(asset_id) if allocated else None
@@ -1447,6 +1454,8 @@ class ProjectService:
             binding.update(source_scene_id=f"worldmap://{world_scene}/textures",
                 source_disc_sha256=context._source(asset_id)["disc"]["sha256"],
                 source_sha256=hashlib.sha256(context.original_tim(asset_id)).hexdigest())
+        if field:
+            binding.update(source_scene_id=FIELD_TEXTURE_OWNER,source_disc_sha256=context._source(asset_id)['disc']['sha256'],source_sha256=hashlib.sha256(context.original_tim(asset_id)).hexdigest())
         from .texture_resize import image_layout
         if allocated and image_layout(original)!=image_layout(content):
             binding.update(format='tim-image-layout-v1',source_sha256=hashlib.sha256(original).hexdigest(),image_layout=image_layout(content))
@@ -3831,11 +3840,19 @@ class ProjectService:
             result._validate_texture_binding(binding)
             from .worldmap_texture_authoring import OWNERS, validate as validate_world_texture
             scene = OWNERS.get(binding["source_scene_id"])
-            if scene: validate_world_texture(result,binding,identifier)
+            from .field_texture_authoring import OWNER as FIELD_TEXTURE_OWNER,validate as validate_field_texture,context as field_context
+            field=binding['source_scene_id']==FIELD_TEXTURE_OWNER
+            if field:
+                validate_field_texture(result,binding,identifier);scene='legaia/field-party/874/2'
+            elif scene: validate_world_texture(result,binding,identifier)
             else: scene = result.imports[binding["source_scene_id"]]["scene"]["name"]
             if not isinstance(identifier, str) or len(identifier) > 512 or not identifier.startswith(f"texture://{scene}/"):
                 raise ProjectError("Texture reference does not belong to its imported scene")
             result.read_texture_replacement(binding)
+            if field:
+                ctx=field_context(result,identifier)
+                if binding['source_disc_sha256']!=ctx._digest or binding['source_sha256']!=hashlib.sha256(ctx.original_tim(identifier)).hexdigest():raise ProjectError('Shared field TIM original source changed during Open')
+                ctx.validate_replacement(identifier,result.read_texture_replacement(binding))
             if 'glb_byte_length' in binding.get('glb_source',{}):result.read_texture_glb_source(binding)
         result.texture_overrides = deepcopy(textures)
         result.texture_additions = deepcopy(raw.get("texture_additions", {}))

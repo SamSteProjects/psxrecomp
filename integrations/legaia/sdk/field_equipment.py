@@ -11,8 +11,24 @@ from copy import deepcopy
 from hashlib import sha256
 
 
-def _textures(project,asset,geometry):
+def _textures(project,asset,geometry,*,current=False):
     catalog=load_asset_texture_catalog(project.disc_path,asset,TextureCatalog('field-equipment',asset['source_record']['disc']['sha256']))
+    bindings={}
+    if current:
+        from .field_texture_authoring import owns,context,validate
+        from importer.textures import parse_tim
+        bindings={k:deepcopy(v) for k,v in project.texture_overrides.items() if owns(k)}
+        if bindings:
+            catalog=deepcopy(catalog);replacements={}
+            from importer.pipeline import _disc_context
+            with _disc_context(project.disc_path):
+                ctx=context(project,next(iter(bindings)))
+                for identifier,binding in bindings.items():
+                    validate(project,binding,identifier)
+                    if binding['source_disc_sha256']!=ctx._digest or binding['source_sha256']!=sha256(ctx.original_tim(identifier)).hexdigest():raise ProjectError('Shared Current TIM original source changed')
+                    content=project.read_texture_replacement(binding);ctx.validate_replacement(identifier,content);replacements[identifier]=parse_tim(content)
+            catalog.textures=[(replacements.get(source['semantic_id'],tim),source) for tim,source in catalog.textures]
+    geometry['texture_layer']='current' if current else 'retail';geometry['texture_bindings']=bindings
     geometry['texture_catalog']=catalog.metadata();geometry['texture_scope']='field_party';geometry['textures']=[];budget=2*1024*1024
     for index,material in enumerate(geometry['materials']):
         if not material.get('textured'):
@@ -44,7 +60,7 @@ def preview(project,expected_project_path,expected_source_key,asset_id,equipment
     from importer.field_equipment import decode_field_equipment_preview
     base=decode_field_equipment_preview(effective,asset,equipment_byte)
     projected,_=project_field_equipment(effective,base['equipment_variant']['party_slot'],equipment_byte)
-    _textures(project,asset,base)
+    _textures(project,asset,base,current=model_layer=='current')
     if clip_id is None:
         if frame_index is not None:raise ProjectError('Unposed field equipment accepts no native frame')
         geometry=base;animation=None
@@ -53,7 +69,7 @@ def preview(project,expected_project_path,expected_source_key,asset_id,equipment
         animation=load_animation_preview(project.disc_path,asset,clip_id,equipment_byte=equipment_byte,model_source=effective)
         if not 0<=frame_index<len(animation['frames']):raise ProjectError('Field equipment frame exceeds the stored clip')
         geometry=animation.pop('geometry');posed=animation.pop('frames')[frame_index];geometry.update(posed);geometry.pop('triangle_normals',None);geometry.pop('normal_preview',None)
-        for key in ('texture_scope','texture_catalog','textures'):geometry[key]=base[key]
+        for key in ('texture_scope','texture_catalog','textures','texture_layer','texture_bindings'):geometry[key]=base[key]
     _fresh(project,expected_project_path,expected_source_key)
     return dict(schema_version='legaia.field-equipment-preview.v1',project_path=str(project.root),project_source_key=expected_source_key,asset_id=asset_id,equipment_byte=equipment_byte,clip_id=clip_id,frame_index=frame_index,
         geometry=geometry,base_geometry=base,source_record=asset['source_record'],**(dict(model_layer=model_layer,model_binding=deepcopy(binding),retail_model_sha256=sha256(original).hexdigest()) if model_layer=='current' else {}),source_tmd_base64=b64encode(effective).decode(),projected_tmd_base64=b64encode(projected).decode(),animation=animation,layer='current_model_selected_variant' if model_layer=='current' else 'retail_selected_variant',read_only=True,project_changed=False,gameplay_verified=False)
@@ -95,5 +111,5 @@ def export_clip(project,export_fps,**context):
 
 def _export_source(receipt):
     result=dict(original=receipt['source_record'],equipment_variant=receipt['geometry']['equipment_variant'])
-    if receipt.get('model_layer')=='current':result.update(model_layer='current',model_binding=receipt['model_binding'],retail_model_sha256=receipt['retail_model_sha256'])
+    if receipt.get('model_layer')=='current':result.update(model_layer='current',model_binding=receipt['model_binding'],retail_model_sha256=receipt['retail_model_sha256'],texture_layer=receipt['base_geometry']['texture_layer'],texture_bindings=receipt['base_geometry']['texture_bindings'])
     return result

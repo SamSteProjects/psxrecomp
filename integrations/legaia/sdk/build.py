@@ -844,7 +844,9 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
 
     texture_edits = {}
     world_texture_edits = {}
+    field_texture_edits = {}
     from .worldmap_texture_authoring import OWNERS as WORLD_TEXTURE_OWNERS, validate as validate_world_texture
+    from .field_texture_authoring import OWNER as FIELD_TEXTURE_OWNER,validate as validate_field_texture
     texture_overrides = getattr(project, "texture_overrides", {})
     if not isinstance(texture_overrides, dict) or len(texture_overrides) > 128:
         raise BuildError("Texture overrides must be a bounded mapping of resource identities")
@@ -856,7 +858,10 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             if 'glb_byte_length' in binding.get('glb_source',{}):ProjectService.read_texture_glb_source(project,binding)
         except ProjectError as exc:
             raise BuildError('Texture override requires a verified private TIM binding and imported source scene') from exc
-        if binding["source_scene_id"] in WORLD_TEXTURE_OWNERS:
+        if binding['source_scene_id']==FIELD_TEXTURE_OWNER:
+            validate_field_texture(project,binding,identifier)
+            field_texture_edits.setdefault(FIELD_TEXTURE_OWNER,{})[identifier]=binding
+        elif binding["source_scene_id"] in WORLD_TEXTURE_OWNERS:
             validate_world_texture(project,binding,identifier)
             world_texture_edits.setdefault(binding["source_scene_id"], {})[identifier] = binding
         else:
@@ -1359,9 +1364,15 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             })
             for change in changes:
                 audit_edits.append({"scene": scene, "semantic_id": f"scene://{scene}/actors/man-p1/{change['record_index']:04d}", **change})
-        for scene_id, bindings in sorted({**texture_edits, **world_texture_edits}.items()):
+        for scene_id, bindings in sorted({**texture_edits, **world_texture_edits, **field_texture_edits}.items()):
             from importer.texture_authoring import load_texture_authoring_context
-            if scene_id in WORLD_TEXTURE_OWNERS:
+            if scene_id==FIELD_TEXTURE_OWNER:
+                from .field_texture_authoring import context as field_texture_context
+                scene='global-field-party';context=field_texture_context(project,next(iter(bindings)))
+                for identifier,binding in bindings.items():
+                    validate_field_texture(project,binding,identifier)
+                    if binding['source_disc_sha256']!=disc_hash or binding['source_sha256']!=_hash(context.original_tim(identifier)):raise BuildError('Shared field TIM original source changed during Build')
+            elif scene_id in WORLD_TEXTURE_OWNERS:
                 from .worldmap_texture_authoring import context as world_texture_context
                 scene = WORLD_TEXTURE_OWNERS[scene_id]
                 context = world_texture_context(project,next(iter(bindings)))
