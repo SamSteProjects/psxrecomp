@@ -121,6 +121,7 @@ def _merge_trigger_script_patch(original, current, changed, audit, scene, bindin
 def package_change_kinds(edits) -> list[str]:
     """Describe emitted audit scopes, without inferring unexecuted game behavior."""
     labels = {
+        'PLAYER-native-model-pools-only': 'PLAYER native models',
         'world-animation-channel-content-only': 'World animation channels',
         'world-script-animation-operands-only': 'World script animation operands',
         'world-script-effect-color-operands-only': 'World script effect colors',
@@ -251,6 +252,8 @@ def build_report(audit) -> dict:
                            if field == 'texture.tim' and 'payload_changes' in change else {}),
                         **({'coordinate_changes': [dict(row) for row in change['coordinate_changes']]}
                            if field == 'model.shape' and 'coordinate_changes' in change else {}),
+                        **({key: change[key] for key in ('prot_entry_index', 'byte_length', 'retained_input_count', 'changed_byte_count')}
+                           if change.get('scope') == 'PLAYER-native-model-pools-only' else {}),
                         **({"affected_grid_cell_count":len(change["affected_grid_cells"])}
                            if "affected_grid_cells" in change else {}),
                         **({key: deepcopy(change[key]) for key in ('record_index', 'source_record_sha256', 'affected_source_entities') if key in change}
@@ -555,8 +558,6 @@ def build_project(project, output_dir: Path | str | None = None) -> dict:
 
 
 def _build_project(project, output_dir, *, review_only=False) -> dict:
-    if getattr(project,'player_model_overrides',{}):
-        raise BuildError('PLAYER native model overrides are saved, but their package Build integration is still in progress; refusing to omit authored changes')
     from .build_stability_sources import capture as capture_stability_sources
     stability_sources = capture_stability_sources()
     draft_scenes = set()
@@ -879,6 +880,10 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     audit_edits = []
     npc_candidates = {}
     with _disc_context(project.disc_path) as (_image, disc_hash, mapping, archive):
+        from .player_model_build import prepare as prepare_player_models
+        player_overlays, player_changes = prepare_player_models(project, archive, disc_hash)
+        overlays.extend(player_overlays)
+        audit_edits.extend(player_changes)
         from .worldmap_build import prepare_worldmap_overlay
         worldmap_overlays, worldmap_changes = prepare_worldmap_overlay(project, _image, disc_hash)
         overlays.extend(worldmap_overlays)

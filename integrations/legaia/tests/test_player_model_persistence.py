@@ -24,7 +24,7 @@ class PlayerModelPersistenceTests(unittest.TestCase):
                 if first is None:first=deepcopy(p.player_model_overrides)
             self.assertEqual(len(p.undo_stack),2);after=deepcopy(p.player_model_overrides);current(p,**ctx());p.undo();self.assertEqual(p.player_model_overrides,first);p.undo();self.assertEqual(p._document(),retail_doc);p.redo();p.redo();self.assertEqual(p.player_model_overrides,after)
             from sdk.build import build_project,BuildError
-            with self.assertRaisesRegex(BuildError,'refusing to omit'):build_project(p)
+            with self.assertRaisesRegex(BuildError,'verified imported scene'):build_project(p)
             p.save();opened=ProjectService.open(p.root);self.assertEqual(opened.player_model_overrides,after);self.assertFalse(opened.dirty)
             c=dict(expected_project_path=str(opened.root),expected_source_key=source_key(opened),asset_id=asset,catalog_source_key=catalog['source_key'],equipped=[0]*5);value=current(opened,**c);self.assertEqual(value['effective_file_sha256'],after[asset]['current_sha256'])
             source=after[asset]['inputs'][0];path=opened.root/'Authored'/'PLAYER'/'Inputs'/(source['sha256']+'.glb');raw=path.read_bytes();path.write_bytes(raw[:-1]+bytes([raw[-1]^1]))
