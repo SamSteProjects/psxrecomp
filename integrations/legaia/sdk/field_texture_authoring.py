@@ -137,3 +137,43 @@ def apply_file(project,review_key,**args):
     if result['current_sha256']==result['candidate_sha256']:raise ProjectError('Shared TIM replacement has no native change')
     project.set_texture_replacement(args['asset_id'],b64decode(result['candidate_tim_base64']))
     return dict(schema_version='legaia.field-texture-apply.v1',history_steps=1,project_changed=True,gameplay_verified=False)
+
+
+
+def download_png(project,asset_id,palette_index,expected_current_sha256,expected_project_path,expected_source_key):
+    from importer.texture_png import export_texture_png
+    from base64 import b64encode
+    from .battle_character_resources import _fresh
+    _,_,current=_snapshot(project,asset_id,expected_project_path,expected_source_key)
+    if sha256(current).hexdigest()!=expected_current_sha256:raise ProjectError('Shared TIM changed; inspect again')
+    png,stp,profile=export_texture_png(current,palette_index);_fresh(project,expected_project_path,expected_source_key)
+    return dict(schema_version='legaia.field-texture-png-download.v1',project_path=str(project.root),project_source_key=expected_source_key,asset_id=asset_id,palette_index=palette_index,current_sha256=expected_current_sha256,png_sha256=sha256(png).hexdigest(),stp_sha256=sha256(stp).hexdigest(),png_base64=b64encode(png).decode(),stp_png_base64=b64encode(stp).decode(),profile=profile,filename=f'shared-field-{asset_id[-1]}-palette-{palette_index}.png',layer='current',read_only=True,project_changed=False,gameplay_verified=False)
+
+
+def review_png(project,asset_id,palette_index,palette_mode,png_base64,expected_current_sha256,expected_project_path,expected_source_key):
+    from base64 import b64decode,b64encode
+    from importer.texture_png import export_texture_png,import_texture_png
+    from .battle_character_resources import _fresh
+    from .project import digest
+    if not isinstance(png_base64,str) or not 1<=len(png_base64)<=11200000:raise ProjectError('Shared PNG must be at most 8 MiB')
+    try:png=b64decode(png_base64,validate=True)
+    except (ValueError,TypeError) as e:raise ProjectError('Shared PNG requires exact base64 bytes') from e
+    if not 1<=len(png)<=8*1024*1024:raise ProjectError('Shared PNG must be at most 8 MiB')
+    if palette_mode not in ('existing','rebuild'):raise ProjectError('Choose existing palette or rebuild selected palette')
+    _,_,current=_snapshot(project,asset_id,expected_project_path,expected_source_key)
+    if sha256(current).hexdigest()!=expected_current_sha256:raise ProjectError('Shared TIM changed; inspect again')
+    _,_,profile=export_texture_png(current,palette_index)
+    candidate,analysis=import_texture_png(current,png,profile,palette_mode)
+    # Reuse complete native/header/capacity Review, not a PNG-only acceptance.
+    result=review_file(project,asset_id,palette_index,b64encode(candidate).decode(),expected_current_sha256,expected_project_path,expected_source_key)
+    result.update(schema_version='legaia.field-texture-png-review.v1',png_sha256=sha256(png).hexdigest(),png_byte_length=len(png),palette_mode=palette_mode,quantization=analysis['quantization'],stp_policy='preserve_current_flags_with_converter_transparent_black_rules')
+    result.pop('review_key');result['review_key']=digest(result);_fresh(project,expected_project_path,expected_source_key);return result
+
+
+def apply_png(project,review_key,**args):
+    from base64 import b64decode
+    result=review_png(project,**args)
+    if result['review_key']!=review_key:raise ProjectError('Shared PNG Apply requires its exact fresh Review')
+    if result['current_sha256']==result['candidate_sha256']:raise ProjectError('Shared PNG has no quantized native changes')
+    project.set_texture_replacement(args['asset_id'],b64decode(result['candidate_tim_base64']))
+    return dict(schema_version='legaia.field-texture-apply.v1',history_steps=1,project_changed=True,gameplay_verified=False)
