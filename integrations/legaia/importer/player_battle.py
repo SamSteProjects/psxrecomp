@@ -54,7 +54,7 @@ def table(raw):
     return rows
 
 
-def assemble(raw,equipped):
+def assemble_tmd(raw,equipped):
     rows=table(raw)
     if not isinstance(equipped,list) or len(equipped)!=5 or any(type(v) is not int or not 0<=v<=255 for v in equipped):raise ImportError('PLAYER selection requires five item-ID bytes')
     selected=[];entries=[];pool=bytearray();tags=[];bones=[];object_sources=[];extra_a=extra_b=0;attach=[]
@@ -79,14 +79,19 @@ def assemble(raw,equipped):
             elif i==n:tag=200+extra_a;extra_a+=1;attach.append(last)
             else:tag=100+extra_b;extra_b+=1
             tags.append(tag);object_sources.append(dict(section_index=section,record_index=r['record_index'],source_object_index=i))
-        pool.extend(d[stop:stop+length]);selected.append(dict(r,requested_item_id=want,fallback=r['item_id']!=want,decoded_byte_length=len(d),decoded_sha256=sha256(d).hexdigest(),compressed_bytes_consumed=used,compressed_sha256=sha256(raw[at:at+4+used]).hexdigest(),loader_frame_offset=frame,attach_record_count=attach_count,tmd_body_end=body_end,upload_flag=upload_flag,swing_record_offsets=[swing_a,swing_b]))
+        pool_start=len(pool);pool.extend(d[stop:stop+length]);selected.append(dict(r,merged_pool_offset=12+24*28+pool_start,pool_byte_length=length,decoded_pool_offset=stop,requested_item_id=want,fallback=r['item_id']!=want,decoded_byte_length=len(d),decoded_sha256=sha256(d).hexdigest(),compressed_bytes_consumed=used,compressed_sha256=sha256(raw[at:at+4+used]).hexdigest(),loader_frame_offset=frame,attach_record_count=attach_count,tmd_body_end=body_end,upload_flag=upload_flag,swing_record_offsets=[swing_a,swing_b]))
     # Selection sort retains the retail permutation even with equal tags.
     for i in range(len(tags)):
         j=min(range(i,len(tags)),key=lambda j:tags[j])
         for array in (entries,tags,bones,object_sources):array[i],array[j]=array[j],array[i]
     tmd=struct.pack('<3I',0x80000002,0,len(entries))+b''.join(struct.pack('<7I',*e) for e in entries)+bytes((24-len(entries))*28)+pool
     geometry=decode_tmd(tmd)
-    return geometry,dict(equipped=equipped.copy(),sections=selected,bone_tags=tags,animation_part_indices=bones,attach_bones=attach,object_sources=object_sources,tmd_sha256=sha256(tmd).hexdigest(),tmd_byte_length=len(tmd),texture_routing='unresolved',animation_source='PLAYER record0, not PROT1203',runtime_registration='not_applied')
+    return geometry,dict(equipped=equipped.copy(),sections=selected,bone_tags=tags,animation_part_indices=bones,attach_bones=attach,object_sources=object_sources,tmd_sha256=sha256(tmd).hexdigest(),tmd_byte_length=len(tmd),texture_routing='unresolved',animation_source='PLAYER record0, not PROT1203',runtime_registration='not_applied'),tmd
+
+
+def assemble(raw,equipped):
+    geometry,assembly,_=assemble_tmd(raw,equipped)
+    return geometry,assembly
 
 
 def _sources(disc):
