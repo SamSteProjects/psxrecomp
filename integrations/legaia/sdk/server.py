@@ -1232,6 +1232,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/player-action-timeline.js": ("player-action-timeline.js", "text/javascript"),
                  "/field-equipment.js": ("field-equipment.js", "text/javascript"),
                  "/field-textures.js": ("field-textures.js", "text/javascript"),
+                 "/monster-archive.js": ("monster-archive.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
@@ -1454,6 +1455,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!=fields:raise ProjectError('Pack animation inspection requires exact project, source and frame fields')
                     from .battle_character_resources import animations,pose
                     self._json(200,(pose if route.endswith('-pose') else animations)(self.server.project,**body))
+                    return
+                if route in ('/api/monster-resources','/api/monster-preview'):
+                    fields={'expected_project_path','expected_source_key'}
+                    if route.endswith('-preview'):fields|={'asset_id','catalog_source_key'}
+                    if set(body)!=fields:raise ProjectError('Monster inspection requires exact project and source fields')
+                    from .monster_archive import resources,preview
+                    self._json(200,(preview if route.endswith('-preview') else resources)(self.server.project,**body))
                     return
                 if route in ('/api/battle-character-resources','/api/battle-character-preview'):
                     fields={'expected_project_path','expected_source_key'}

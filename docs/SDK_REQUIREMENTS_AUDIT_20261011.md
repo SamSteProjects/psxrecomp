@@ -56,3 +56,8 @@ This advances the animation and model/equipment rows without closing their remai
 ## Shared Texture Input Assets Checkpoint — 2026-10-12
 
 [Shared PNG Input Assets](legaia-field-texture-authoring.md#shared-png-input-assets) advances the Asset Database and texture workflow requirements: active original images/masks now have stable historical identities, source-qualified metadata, matching native references and read-only inspector recovery/navigation. Native replay, package readback, client refusal checks and actual editor recovery pass at the documented scope. Retail, historical input and final Current pixels remain distinct. This closes the active shared-input registration gap recorded in the earlier texture checkpoints; it does not establish archive-library management, growing layout allocation, native blending, runtime appearance or playable delivery. Full objective remains incomplete and active, with gameplay-dependent gates deferred.
+
+
+## Monster Archive Checkpoint — 2026-10-12
+
+[Monster Archive Discovery](legaia-monster-archive.md) advances global battle/extended-resource coverage with 186 source-qualified object-local models and stored record provenance from PROT 867. Discovery, Asset Database registration, read-only 3D inspection and bounded source/client/browser checks pass. This is FUNCTIONAL / READ-ONLY / OFFLINE for the documented source workflow. Monster texture relocation/rendering, assembly, animation, interchange, native authoring/delivery and gameplay parity remain partial or unimplemented. Stored stats are distinct from live battle values. No runtime gate is closed; the full SDK objective remains incomplete and active.

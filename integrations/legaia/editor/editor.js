@@ -1,3 +1,4 @@
+import {showMonster,disposeMonster} from '/monster-archive.js';
 import {showFieldTexture,showFieldTextureInput,disposeFieldTexture} from '/field-textures.js';
 import {mountFieldEquipment} from './field-equipment.js';
 let fieldEquipmentControls=null;
@@ -2032,10 +2033,11 @@ const assetDetailsTrail=createAssetDetailsTrail();
 assetDetails.addEventListener('close',()=>{if(!assetDetails.open)assetDetailsTrail.clear();});
 const assetDetailsTrailContext=()=>JSON.stringify([resourceStateKey(),state.inspector_schema,state.capabilities]);
 function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false,playerAction=null,playerEquipment=null}={}){
-  disposeFieldTexture(assetDetails);
+  disposeFieldTexture(assetDetails);disposeMonster(assetDetails);
   fieldEquipmentControls?.dispose();fieldEquipmentControls=null;
   if(!keepTrail)assetDetailsTrail.clear();
   assetPlacementSelection?.dispose();assetPlacementSelection=null;animationContributions?.dispose();animationContributions=null;
+  if(record.projectMonster){try{showMonster({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalMonsters,current:()=>state.project?.path===record.projectMonster.projectPath&&state.project_assets_source_key===record.projectMonster.sourceKey,busy:()=>busy,onError:error=>notify(error.message,true)});}catch(error){notify(error.message,true);}return;}
   if(record.projectFieldTextureInput){try{showFieldTextureInput({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalFieldTextures,current:()=>state.project?.path===record.projectFieldTextureInput.projectPath&&state.project_assets_source_key===record.projectFieldTextureInput.sourceKey,busy:()=>busy,onError:error=>notify(error.message,true),onTexture:async id=>{if(busy)return;assetDetails.close();const next=await projectAssetControls.revealAsset(id);if(next)showAssetDetails(next);}});}catch(error){notify(error.message,true);}return;}
   if(record.projectFieldTexture){try{showFieldTexture({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalFieldTextures,current:()=>state.project?.path===record.projectFieldTexture.projectPath&&state.project_assets_source_key===record.projectFieldTexture.sourceKey,busy:()=>busy,setBusy,onError:error=>notify(error.message,true),onApplied:next=>{assetDetails.close();state=next;render();}});}catch(error){notify(error.message,true);}return;}
   if(record.projectPlayerMotionInput){try{showPlayerMotionInput({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalPlayerBattles,onModel:async(id,action)=>{if(busy)return;assetDetails.close();const next=await projectAssetControls.revealAsset(id);if(next)showAssetDetails(next,undefined,{playerAction:action});}});}catch(error){notify(error.message,true);}return;}
@@ -5887,7 +5889,7 @@ worldPlacementControls=mountWorldPlacements({after:$('resource-refresh'),getStat
 
 const projectAssetHost=document.createElement('div');projectAssetHost.style.gridColumn='1 / -1';assetTools.prepend(projectAssetHost);
 projectAssetControls=mountProjectAssets({host:projectAssetHost,getContext:projectAssetContext,busy:()=>busy,setBusy,
-  getUnavailableReason:()=>state.project_assets_unavailable_reason,backgroundDiscovery:true,fieldTextures:()=>state.capabilities?.worldmap_geometry===true,battleResources:()=>state.capabilities?.worldmap_geometry===true,globalWorldmap:()=>state.capabilities?.worldmap_placements===true,globalResources:()=>state.capabilities?.worldmap_geometry===true,
+  getUnavailableReason:()=>state.project_assets_unavailable_reason,backgroundDiscovery:true,monsterResources:()=>state.capabilities?.worldmap_geometry===true,fieldTextures:()=>state.capabilities?.worldmap_geometry===true,battleResources:()=>state.capabilities?.worldmap_geometry===true,globalWorldmap:()=>state.capabilities?.worldmap_placements===true,globalResources:()=>state.capabilities?.worldmap_geometry===true,
   onChange:()=>{assetPageSignature=null;renderAssets();},onError:error=>notify(error.message,true)});
 
 mountSceneToolDrawer({toolbar:document.querySelector('.viewport-toolbar'),viewport:$('viewport-wrap'),keep:[sceneRuler.bar,npcGroundPlacement.bar,groundPositionBar,npcCreationBar,runRibbon,fieldNote,scenePoseBar,actorGroupTools,scriptTargetTools,transitionArrivalTools,npcArrivalTools,historicalTools],onToggle:()=>{cancelViewportGesture();resize();}});

@@ -10779,3 +10779,8 @@ World Source Object Bind Inspector — read-only retail-at-Current-anchor inspec
 World Placed-Object Animation Preview — read-only source ANM frames on the selected Current model instance, including rigid normals, temporary scene preview, export guard and clean return. Five nonzero source bindings qualify; timing, looping, authored World ANM, registered animation identities and live script behavior remain partial/unknown. See [animation workflow](legaia-worldmap-object-animation.md).
 
 World Source Interaction Script Inspector — read-only source P0 graph inspection from Current placed-object binds, with qualified consumer/entry/byte coverage and an instruction table. Central AssetDatabase registration and writable/full-editor P0 workflows remain partial; runtime execution and live PC are unknown. See [source script workflow](legaia-worldmap-object-script.md).
+
+
+## Monster Archive Checkpoint — 2026-10-12
+
+[Monster Archive Discovery](legaia-monster-archive.md) advances global battle/extended-resource coverage with 186 source-qualified object-local models and stored record provenance from PROT 867. Discovery, Asset Database registration, read-only 3D inspection and bounded source/client/browser checks pass. This is FUNCTIONAL / READ-ONLY / OFFLINE for the documented source workflow. Monster texture relocation/rendering, assembly, animation, interchange, native authoring/delivery and gameplay parity remain partial or unimplemented. Stored stats are distinct from live battle values. No runtime gate is closed; the full SDK objective remains incomplete and active.
