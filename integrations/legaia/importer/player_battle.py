@@ -151,7 +151,12 @@ def action_frames(disc,model,assembly,clip):
     """Complete rigid object tracks for an already qualified selected assembly."""
     digest,sources=_sources(disc);raw=sources[model['player_index']][3]
     if digest!=model['source_record']['disc']['sha256'] or sha256(raw).hexdigest()!=model['source_record']['sha256']:raise ImportError('PLAYER action source changed before clip export')
-    current,bank=actions(raw,model['player_index'],digest)
+    return action_frames_source(raw,model['player_index'],digest,assembly,clip)
+
+
+def action_frames_source(raw,player_index,digest,assembly,clip):
+    """Map a qualified Retail or authored action file into selected object tracks."""
+    current,bank=actions(raw,player_index,digest)
     if clip not in current or not clip['preview_supported']:raise ImportError('PLAYER clip is unqualified or empty')
     if any(i>=clip['part_count'] for i in assembly['animation_part_indices']):raise ImportError('PLAYER attachment exceeds this action rig')
     frames=[]

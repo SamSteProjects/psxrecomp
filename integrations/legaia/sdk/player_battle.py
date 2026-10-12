@@ -56,13 +56,17 @@ def playback(project,layer,expected_current_sha256,action_slot,**context):
         raise ProjectError('PLAYER playback Retail source changed')
     clips,bank=native.actions(retail,model['player_index'],digest)
     if clips[action_slot]!=clip:raise ProjectError('PLAYER playback action changed')
-    source=clip['source_record'];stream=bank[source['byte_offset']:source['byte_offset']+source['byte_length']]
+    current_clip=None
+    if layer=='current':
+        action_file=receipt['_action_file']
+        clips,bank=native.actions(action_file,model['player_index'],digest);current_clip=clips[action_slot]
+    source=(current_clip or clip)['source_record'];stream=bank[source['byte_offset']:source['byte_offset']+source['byte_length']]
     if sha256(stream).hexdigest()!=source['sha256']:raise ProjectError('PLAYER playback stream differs from its source span')
     _fresh(project,context['expected_project_path'],context['expected_source_key'])
     return dict(schema_version='legaia.player-playback.v1',project_path=str(project.root),
         project_source_key=context['expected_source_key'],catalog_source_key=context['catalog_source_key'],
         record=model,assembly=receipt['assembly'],clip=clip,layer=layer,
-        effective_file_sha256=effective_hash,action_base64=b64encode(stream).decode('ascii'),
+        effective_file_sha256=effective_hash,current_clip=current_clip,action_base64=b64encode(stream).decode('ascii'),
         read_only=True,project_changed=False,gameplay_verified=False)
 
 

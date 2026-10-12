@@ -20,6 +20,13 @@ def _snapshot(project,expected_project_path,expected_source_key,asset_id,catalog
     source=receipt['record']['source_record'];_,sources=_sources(project.disc_path);retail=sources[receipt['record']['player_index']][3]
     from .player_model_store import effective
     raw=effective(project,receipt['record'],retail)
+    from .player_action_store import effective as effective_actions
+    from importer.player_battle import actions
+    action_file,_=effective_actions(project,receipt['record'],retail)
+    receipt['_action_file']=action_file
+    receipt['action_clips'],_=actions(action_file,receipt['record']['player_index'],source['disc']['sha256'])
+    receipt['action_file_sha256']=sha256(action_file).hexdigest()
+    receipt['action_binding']=deepcopy(project.player_action_overrides.get(asset_id))
     if raw!=retail:
         g,a,_=assemble_tmd(raw,equipped);g['textures'],a['texture_assembly']=reconstruct_source(raw,receipt['record']['player_index'],source['disc']['sha256'],a,g,receipt['assembly']['texture_assembly']['placement']);a['texture_routing']='static_authoring_projection';_pixels(g);g.update(semantic_id=asset_id,source_record=deepcopy(source));receipt.update(geometry=g,assembly=a,layer='current')
     try:glb,binding=native.export_player_model(raw,sha256(raw).hexdigest(),equipped,receipt['geometry'])
@@ -75,11 +82,11 @@ def current(project,**context):
     raw,receipt,_,binding=_snapshot(project,**context)
     _,_,tmd=assemble_tmd(raw,context['equipped'])
     _,sources=_sources(project.disc_path);_,_,retail_tmd=assemble_tmd(sources[receipt['record']['player_index']][3],context['equipped'])
-    return dict(schema_version='legaia.player-model-current.v1',project_path=str(project.root),project_source_key=context['expected_source_key'],catalog_source_key=context['catalog_source_key'],record=receipt['record'],assembly=receipt['assembly'],geometry=receipt['geometry'],binding=deepcopy(project.player_model_overrides.get(context['asset_id'])),effective_file_sha256=sha256(raw).hexdigest(),tmd_base64=b64encode(tmd).decode('ascii'),retail_tmd_base64=b64encode(retail_tmd).decode('ascii'),layer='current',read_only=True,project_changed=False,gameplay_verified=False)
+    return dict(schema_version='legaia.player-model-current.v2',project_path=str(project.root),project_source_key=context['expected_source_key'],catalog_source_key=context['catalog_source_key'],record=receipt['record'],assembly=receipt['assembly'],geometry=receipt['geometry'],binding=deepcopy(project.player_model_overrides.get(context['asset_id'])),effective_file_sha256=sha256(raw).hexdigest(),action_clips=receipt['action_clips'],action_file_sha256=receipt['action_file_sha256'],action_binding=receipt['action_binding'],tmd_base64=b64encode(tmd).decode('ascii'),retail_tmd_base64=b64encode(retail_tmd).decode('ascii'),layer='current',read_only=True,project_changed=False,gameplay_verified=False)
 
 
 def _current_tracks(project, expected_current_sha256, action_slot, **context):
-    from importer.player_battle import action_frames
+    from importer.player_battle import action_frames_source
     raw, receipt, _, _ = _snapshot(project, **context)
     if sha256(raw).hexdigest() != expected_current_sha256:
         raise ProjectError('PLAYER Current changed; inspect Current again')
@@ -88,9 +95,10 @@ def _current_tracks(project, expected_current_sha256, action_slot, **context):
     clip = receipt['record']['actions'][action_slot]
     if not clip['preview_supported']:
         raise ProjectError('Empty PLAYER action has no Current pose or clip')
-    # Model imports preserve record0. The original qualified action stream
-    # therefore drives Current geometry through its selected assembly mapping.
-    frames = action_frames(project.disc_path, receipt['record'], receipt['assembly'], clip)
+    # Model pools and action record0 are independently source-qualified. Sample
+    # the effective action ledger through the selected Current model mapping.
+    action_file=receipt['_action_file']
+    frames = action_frames_source(action_file,receipt['record']['player_index'],receipt['record']['source_record']['disc']['sha256'], receipt['assembly'], receipt['action_clips'][action_slot])
     return receipt, clip, frames
 
 
@@ -111,7 +119,7 @@ def current_pose(project, expected_current_sha256, action_slot, frame_index, **c
         project_path=str(project.root), project_source_key=context['expected_source_key'],
         catalog_source_key=context['catalog_source_key'], record=receipt['record'],
         assembly=receipt['assembly'], geometry=geometry, clip=clip, object_transforms=transforms,
-        action_slot=action_slot, frame_index=frame_index, effective_file_sha256=expected_current_sha256,
+        action_slot=action_slot, frame_index=frame_index, effective_file_sha256=expected_current_sha256,current_action_clip=receipt['action_clips'][action_slot],
         layer='current', read_only=True, project_changed=False, gameplay_verified=False)
 
 
@@ -141,7 +149,7 @@ def current_export(project, expected_current_sha256, mode, action_slot, frame_in
         current_sha256=expected_current_sha256, player_assembly=receipt['assembly'])
     geometry['representation'] = 'current-selected-player-equipment-assembly'
     if mode != 'object-local':
-        geometry['animation'] = dict(semantic_id=clip['semantic_id'], source_record=clip['source_record'],
+        geometry['animation'] = dict(semantic_id=clip['semantic_id'], source_record=receipt['action_clips'][action_slot]['source_record'],
             timing=clip['timing'], runtime_state='not_observed',
             **({'source_frame_index':frame_index} if mode == 'pose' else {}))
         if mode == 'pose':
@@ -164,5 +172,5 @@ def current_export(project, expected_current_sha256, mode, action_slot, frame_in
         frame_index=frame_index, fps=fps, clip=clip,
         filename=f'player-{receipt["record"]["player_index"]}-'+ '-'.join(str(i) for i in context['equipped'])+'-current-'+suffix+'.glb',
         glb_base64=b64encode(content).decode('ascii'), audit=audit,
-        effective_file_sha256=expected_current_sha256, layer='current',
+        effective_file_sha256=expected_current_sha256, current_action_clip=receipt['action_clips'][action_slot] if clip else None,layer='current',
         read_only=True, project_changed=False, gameplay_verified=False)

@@ -1219,6 +1219,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/player-model-review.js": ("player-model-review.js", "text/javascript"),
                  "/player-battle.js": ("player-battle.js", "text/javascript"),
                  "/player-action-playback.js": ("player-action-playback.js", "text/javascript"),
+                 "/player-action-editor.js": ("player-action-editor.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
@@ -1330,6 +1331,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body) != {'id'}:
                         raise ProjectError('Stability cancellation requires the current job identity')
                     self._json(200, {'job': self.server.stability_checks.cancel(body['id'])})
+                    return
+                if route in ('/api/player-action-inspect','/api/player-action-review','/api/player-action-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','action_slot'}
+                    if not route.endswith('-inspect'):fields|={'expected_current_sha256','expected_action_sha256','edits'}
+                    if route.endswith('-apply'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('PLAYER action authoring requires exact source, selection and typed Review fields')
+                    from .player_action_authoring import inspect,review,apply
+                    action=inspect if route.endswith('-inspect') else apply if route.endswith('-apply') else review
+                    result=action(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),player_action_apply=result) if route.endswith('-apply') else result)
                     return
                 if route == '/api/player-battle-playback':
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','layer','expected_current_sha256','action_slot'}

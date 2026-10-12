@@ -42,6 +42,7 @@ def authored_state_key(project) -> str:
                                 "texture_additions": getattr(project, "texture_additions", {}),
                                 "models": getattr(project, "model_overrides", {}),
                                 **({"player_models": project.player_model_overrides} if getattr(project,"player_model_overrides",{}) else {}),
+                                **({"player_actions": project.player_action_overrides} if getattr(project,"player_action_overrides",{}) else {}),
                                 **({"audio": project.audio_overrides} if getattr(project, "audio_overrides", {}) else {}),
                                 **({"audio_sequence_replacements": project.audio_sequence_replacements} if getattr(project,"audio_sequence_replacements",{}) else {}),
                                 **({"audio_bank": project.audio_bank_overrides} if getattr(project, "audio_bank_overrides", {}) else {}),
@@ -122,6 +123,7 @@ def package_change_kinds(edits) -> list[str]:
     """Describe emitted audit scopes, without inferring unexecuted game behavior."""
     labels = {
         'PLAYER-native-model-pools-only': 'PLAYER native models',
+        'PLAYER-action-channel-content-only': 'PLAYER action channels',
         'world-animation-channel-content-only': 'World animation channels',
         'world-script-animation-operands-only': 'World script animation operands',
         'world-script-effect-color-operands-only': 'World script effect colors',
@@ -254,6 +256,8 @@ def build_report(audit) -> dict:
                            if field == 'model.shape' and 'coordinate_changes' in change else {}),
                         **({key: change[key] for key in ('prot_entry_index', 'byte_length', 'retained_input_count', 'changed_byte_count')}
                            if change.get('scope') == 'PLAYER-native-model-pools-only' else {}),
+                        **({key: change[key] for key in ('frame_index','part_index','action_slot','bank_byte_offset','animation_id','source_bank_sha256','proposed_bank_sha256')}
+                           if change.get('scope') == 'PLAYER-action-channel-content-only' else {}),
                         **({"affected_grid_cell_count":len(change["affected_grid_cells"])}
                            if "affected_grid_cells" in change else {}),
                         **({key: deepcopy(change[key]) for key in ('record_index', 'source_record_sha256', 'affected_source_entities') if key in change}
