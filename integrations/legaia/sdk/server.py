@@ -1234,6 +1234,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/field-textures.js": ("field-textures.js", "text/javascript"),
                  "/monster-textures.js": ("monster-textures.js", "text/javascript"),
                  "/monster-motion.js": ("monster-motion.js", "text/javascript"),
+                 "/monster-export.js": ("monster-export.js", "text/javascript"),
                  "/monster-archive.js": ("monster-archive.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
@@ -1457,6 +1458,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!=fields:raise ProjectError('Pack animation inspection requires exact project, source and frame fields')
                     from .battle_character_resources import animations,pose
                     self._json(200,(pose if route.endswith('-pose') else animations)(self.server.project,**body))
+                    return
+                if route == '/api/monster-export':
+                    if set(body)!={'expected_project_path','expected_source_key','asset_id','catalog_source_key','mode','animation_id','frame_index','fps'}:
+                        raise ProjectError('Monster interchange requires exact source, mode and sampling fields')
+                    from .monster_export import export
+                    self._json(200,export(self.server.project,**body))
                     return
                 if route == '/api/monster-pose':
                     if set(body)!={'expected_project_path','expected_source_key','asset_id','catalog_source_key','animation_id','frame_index'}:

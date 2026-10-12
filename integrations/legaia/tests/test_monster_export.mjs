@@ -1,0 +1,6 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+import {decodeMonsterResources,monsterRecords} from '../editor/monster-archive.js';
+import {qualifyMonsterExport} from '../editor/monster-export.js';
+const cases=JSON.parse(fs.readFileSync(process.argv[2],'utf8')),r=cases.report,report=await decodeMonsterResources(r,{projectPath:r.project_path,sourceKey:r.project_source_key}),records=monsterRecords(report);let refused=0;
+for(const receipt of cases.receipts){const {value,choice}=receipt,record=records.find(r=>r.id===value.asset_id);await qualifyMonsterExport(value,report,record,choice);for(const change of [v=>v.filename='../model.glb',v=>v.audit.source_record.sha256='0'.repeat(64),v=>v.audit.source_record.monster_texture_source.sha256='0'.repeat(64),v=>v.audit.object_count++,v=>v.mode='unknown',v=>v.audit.posed=!v.audit.posed,v=>v.audit.sha256='0'.repeat(64),v=>v.layer='live']){const altered=structuredClone(value);change(altered);await assert.rejects(qualifyMonsterExport(altered,report,record,choice));refused++;}if(choice.mode==='full-clip'){const altered=structuredClone(value);altered.audit.export_fps++;await assert.rejects(qualifyMonsterExport(altered,report,record,choice));refused++;}}
+console.log(`Nine GLBs across all three modes qualify; ${refused} altered source/export receipts refuse`);

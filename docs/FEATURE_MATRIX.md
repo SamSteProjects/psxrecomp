@@ -10794,3 +10794,8 @@ World Source Interaction Script Inspector — read-only source P0 graph inspecti
 ## Stored Monster Motion Checkpoint — 2026-10-12
 
 [Stored Monster Motion Inspector](legaia-monster-archive.md#stored-monster-motion-inspector) advances animation registration, source association and textured pose inspection with 1,811 stored entry identities and 1,803 qualified model/part mappings. Native/channel/matrix/client/editor checks pass at the documented scope. This is FUNCTIONAL / READ-ONLY / OFFLINE for selected stored frames. Eight unmatched mappings, native cadence/activation, timed/interchange motion, authoring/delivery and gameplay acceptance remain open. Source normals and Retail versus stored-pose layers remain distinct; the full SDK objective is incomplete and active.
+
+
+## Monster Interchange Checkpoint — 2026-10-12
+
+[Monster GLB Interchange](legaia-monster-archive.md#monster-glb-interchange) advances useful model/texture/animation export with object-local, baked stored-frame and complete rigid-clip modes. Source geometry/images/channel samples, private downloads and bounded client/editor checks pass at the documented scope. This is FUNCTIONAL / READ-ONLY / OFFLINE INTERCHANGE. Explicit export rates remain separate from native timing. Monster replacement/delivery, eight unresolved part mappings, nine out-of-page UV cases and gameplay acceptance remain open. Full SDK objective remains incomplete and active.

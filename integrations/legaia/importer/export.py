@@ -177,7 +177,9 @@ def encode_model_glb(preview: dict[str, Any], frame_index: int | None = None, *,
                     "pbrMetallicRoughness": {"metallicFactor": 0, "roughnessFactor": 1},
                     "extras": {"retail_material": deepcopy(source)}}
         item = texture_inputs.get(index, {})
-        if source.get("textured") and item.get("status") == "address_match":
+        if source.get("textured") and item.get("status") in ("address_match", "source_pool_match"):
+            if item.get('status')=='source_pool_match' and (preview.get('texture_scope')!='monster_source_pool' or item.get('association')!='page_local_uv_and_source_clut_low6'):
+                raise ImportError('Source-pool export requires its qualified local association')
             width, height = item.get("width"), item.get("height")
             if (type(width) is not int or type(height) is not int or
                     not 0 < width <= 256 or not 0 < height <= 256):
@@ -206,6 +208,18 @@ def encode_model_glb(preview: dict[str, Any], frame_index: int | None = None, *,
             material["alphaMode"] = "MASK"
             material["alphaCutoff"] = 0.5
             material["extras"]["texture_source_ids"] = deepcopy(item.get("source_ids", []))
+            if item.get('status')=='source_pool_match':
+                try:mask=base64.b64decode(item.get('stp_base64',''),validate=True) if 'stp_base64' in item else item.get('stp')
+                except (ValueError,TypeError) as e:raise ImportError('Invalid source-pool STP encoding') from e
+                palette=item.get('palette_index');pool_hash=item.get('pool_sha256')
+                if type(palette) is not int or not 0<=palette<15 or not isinstance(pool_hash,str) or len(pool_hash)!=64 or any(c not in '0123456789abcdef' for c in pool_hash):
+                    raise ImportError('Invalid source-pool palette/hash identity')
+                if not isinstance(mask,bytes) or len(mask)!=width*height or any(n not in (0,1) for n in mask):
+                    raise ImportError('Source-pool export requires its separate native STP mask')
+                material['extras']['source_pool_association']=dict(kind=item['association'],pool_sha256=item['pool_sha256'],
+                    palette_index=item['palette_index'],uv_origin=origin,stp_sha256=hashlib.sha256(mask).hexdigest(),
+                    blending='native_STP_retained_by_source_hash_not_glTF_blend_parity')
+
             matched[index] = (origin, width, height)
         elif source.get("textured"):
             diagnostics.append(f"material {index}: {item.get('status', 'missing')} texture; exported vertex-color fallback")
