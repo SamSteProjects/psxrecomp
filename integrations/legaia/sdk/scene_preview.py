@@ -27,6 +27,7 @@ def preview_project(project, representation='authored'):
     if representation == 'authored':
         return project
     view = copy(project)
+    view._preview_representation='retail'
     view.overrides = {}
     view.actor_drafts = {}
     view.model_overrides = {}

@@ -80,16 +80,24 @@ def _texture_preview(project, asset: dict, preview: dict) -> dict:
     scene = asset.get('source_record', {}).get('prot_entry_name')
     if scene == 'befect_data':
         scene = project.imports[project.active_scene]['scene']['name']
-    if not scene:
-        return result
-    # Keep authored source textures visible, but never import images or material
-    # shader edits. The scene key binds these catalogs to the effective export.
-    for binding in project.texture_overrides.values():
-        if binding['source_scene_id'] == 'scene://' + scene:
-            project.read_texture_replacement(binding)
-    scene_catalog = apply_texture_overrides(
-        project, load_scene_texture_catalog(project.disc_path, scene))
-    catalog = load_asset_texture_catalog(project.disc_path, asset, scene_catalog)
+    if uses_field_party_textures(asset):
+        from importer.textures import TextureCatalog
+        catalog=load_asset_texture_catalog(project.disc_path,asset,TextureCatalog('field-party-route',asset['source_record']['disc']['sha256']))
+    else:
+        if not scene:
+            return result
+        # Keep authored source textures visible, but never import images or material
+        # shader edits. The scene key binds these catalogs to the effective export.
+        for binding in project.texture_overrides.values():
+            if binding['source_scene_id'] == 'scene://' + scene:
+                project.read_texture_replacement(binding)
+        scene_catalog = apply_texture_overrides(
+            project, load_scene_texture_catalog(project.disc_path, scene))
+        catalog = load_asset_texture_catalog(project.disc_path, asset, scene_catalog)
+    if uses_field_party_textures(asset):
+        from .field_texture_authoring import compose_catalog
+        catalog,bindings=compose_catalog(project,catalog)
+        result['texture_bindings']=bindings;result['texture_layer']='current'
     result['texture_scope'] = 'field_party' if uses_field_party_textures(asset) else 'scene'
     result['texture_catalog'] = catalog.metadata()
     budget = 2 * 1024 * 1024

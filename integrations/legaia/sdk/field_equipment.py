@@ -15,19 +15,8 @@ def _textures(project,asset,geometry,*,current=False):
     catalog=load_asset_texture_catalog(project.disc_path,asset,TextureCatalog('field-equipment',asset['source_record']['disc']['sha256']))
     bindings={}
     if current:
-        from .field_texture_authoring import owns,context,validate
-        from importer.textures import parse_tim
-        bindings={k:deepcopy(v) for k,v in project.texture_overrides.items() if owns(k)}
-        if bindings:
-            catalog=deepcopy(catalog);replacements={}
-            from importer.pipeline import _disc_context
-            with _disc_context(project.disc_path):
-                ctx=context(project,next(iter(bindings)))
-                for identifier,binding in bindings.items():
-                    validate(project,binding,identifier)
-                    if binding['source_disc_sha256']!=ctx._digest or binding['source_sha256']!=sha256(ctx.original_tim(identifier)).hexdigest():raise ProjectError('Shared Current TIM original source changed')
-                    content=project.read_texture_replacement(binding);ctx.validate_replacement(identifier,content);replacements[identifier]=parse_tim(content)
-            catalog.textures=[(replacements.get(source['semantic_id'],tim),source) for tim,source in catalog.textures]
+        from .field_texture_authoring import compose_catalog
+        catalog,bindings=compose_catalog(project,catalog)
     geometry['texture_layer']='current' if current else 'retail';geometry['texture_bindings']=bindings
     geometry['texture_catalog']=catalog.metadata();geometry['texture_scope']='field_party';geometry['textures']=[];budget=2*1024*1024
     for index,material in enumerate(geometry['materials']):

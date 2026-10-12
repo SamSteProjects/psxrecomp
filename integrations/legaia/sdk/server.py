@@ -751,24 +751,33 @@ class EditorServer(ThreadingHTTPServer):
         scene = asset.get("source_record", {}).get("prot_entry_name")
         if scene == "befect_data":
             scene = project.imports.get(project.active_scene, {}).get("scene", {}).get("name")
-        if not scene:
-            preview["textures"] = []
-            return preview
-        from .scene_preview import source_key
-        from .resources import apply_texture_overrides
-        for binding in project.texture_overrides.values():
-            if binding["source_scene_id"] == "scene://" + scene:
-                project.read_texture_replacement(binding)
-        from .texture_slots import read
-        for identifier,binding in project.texture_additions.items():
-            if binding['source_scene_id']=='scene://'+scene:read(project,identifier,binding)
-        key = (project.disc_path, scene, source_key(project))
-        if key not in self.texture_catalogs:
-            if len(self.texture_catalogs) >= 2:
-                self.texture_catalogs.clear()
-            self.texture_catalogs[key] = apply_texture_overrides(project, load_scene_texture_catalog(project.disc_path, scene))
-        # The selected shared bank never replaces or merges into the scene cache.
-        catalog = load_asset_texture_catalog(project.disc_path, asset, texture_catalog if texture_catalog is not None else self.texture_catalogs[key])
+        if uses_field_party_textures(asset):
+            from importer.textures import TextureCatalog
+            catalog=load_asset_texture_catalog(project.disc_path,asset,TextureCatalog('field-party-route',asset['source_record']['disc']['sha256']))
+        else:
+            if not scene:
+                preview["textures"] = []
+                return preview
+            from .scene_preview import source_key
+            from .resources import apply_texture_overrides
+            for binding in project.texture_overrides.values():
+                if binding["source_scene_id"] == "scene://" + scene:
+                    project.read_texture_replacement(binding)
+            from .texture_slots import read
+            for identifier,binding in project.texture_additions.items():
+                if binding['source_scene_id']=='scene://'+scene:read(project,identifier,binding)
+            key = (project.disc_path, scene, source_key(project))
+            if key not in self.texture_catalogs:
+                if len(self.texture_catalogs) >= 2:
+                    self.texture_catalogs.clear()
+                self.texture_catalogs[key] = apply_texture_overrides(project, load_scene_texture_catalog(project.disc_path, scene))
+            # The selected shared bank never replaces or merges into the scene cache.
+            catalog = load_asset_texture_catalog(project.disc_path, asset, texture_catalog if texture_catalog is not None else self.texture_catalogs[key])
+        if uses_field_party_textures(asset):
+            from .field_texture_authoring import compose_catalog
+            catalog,bindings=compose_catalog(project,catalog)
+            preview['texture_bindings']=bindings
+            preview['texture_layer']='retail' if getattr(project,'_preview_representation',None)=='retail' else 'current'
         preview["texture_scope"] = "field_party" if uses_field_party_textures(asset) else "scene"
         preview["texture_catalog"] = catalog.metadata()
         preview["textures"] = []

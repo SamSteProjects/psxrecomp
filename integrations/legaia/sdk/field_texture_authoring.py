@@ -78,3 +78,24 @@ def apply(project,review_key,**args):
     if result['current_sha256']==result['candidate_sha256']:raise ProjectError('Shared field palette Apply has no native change')
     project.set_texture_replacement(args['asset_id'],b64decode(result['candidate_tim_base64']))
     return dict(schema_version='legaia.field-texture-apply.v1',history_steps=1,project_changed=True,gameplay_verified=False)
+
+
+
+def compose_catalog(project,catalog):
+    """Copy a qualified field catalog and replay saved source-bound replacements."""
+    from copy import deepcopy
+    from importer.pipeline import _disc_context
+    from importer.textures import parse_tim
+    if catalog.scene!='global-field-party':raise ProjectError('Shared TIM composition requires its qualified global catalog')
+    bindings={i:deepcopy(b) for i,b in project.texture_overrides.items() if owns(i)}
+    if not bindings:return catalog,bindings
+    result=deepcopy(catalog);replacements={}
+    with _disc_context(project.disc_path):
+        ctx=context(project,next(iter(bindings)))
+        if ctx._digest!=catalog.disc_sha256:raise ProjectError('Shared TIM catalog and replacement disc differ')
+        for identifier,binding in bindings.items():
+            validate(project,binding,identifier)
+            if binding['source_disc_sha256']!=ctx._digest or binding['source_sha256']!=sha256(ctx.original_tim(identifier)).hexdigest():raise ProjectError('Shared Current TIM original source changed')
+            content=project.read_texture_replacement(binding);ctx.validate_replacement(identifier,content);replacements[identifier]=parse_tim(content)
+    result.textures=[(replacements.get(source['semantic_id'],tim),source) for tim,source in result.textures]
+    return result,bindings

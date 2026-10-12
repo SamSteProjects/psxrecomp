@@ -5885,7 +5885,7 @@ worldPlacementControls=mountWorldPlacements({after:$('resource-refresh'),getStat
 
 const projectAssetHost=document.createElement('div');projectAssetHost.style.gridColumn='1 / -1';assetTools.prepend(projectAssetHost);
 projectAssetControls=mountProjectAssets({host:projectAssetHost,getContext:projectAssetContext,busy:()=>busy,setBusy,
-  getUnavailableReason:()=>state.project_assets_unavailable_reason,fieldTextures:()=>state.capabilities?.worldmap_geometry===true,battleResources:()=>state.capabilities?.worldmap_geometry===true,globalWorldmap:()=>state.capabilities?.worldmap_placements===true,globalResources:()=>state.capabilities?.worldmap_geometry===true,
+  getUnavailableReason:()=>state.project_assets_unavailable_reason,backgroundDiscovery:true,fieldTextures:()=>state.capabilities?.worldmap_geometry===true,battleResources:()=>state.capabilities?.worldmap_geometry===true,globalWorldmap:()=>state.capabilities?.worldmap_placements===true,globalResources:()=>state.capabilities?.worldmap_geometry===true,
   onChange:()=>{assetPageSignature=null;renderAssets();},onError:error=>notify(error.message,true)});
 
 mountSceneToolDrawer({toolbar:document.querySelector('.viewport-toolbar'),viewport:$('viewport-wrap'),keep:[sceneRuler.bar,npcGroundPlacement.bar,groundPositionBar,npcCreationBar,runRibbon,fieldNote,scenePoseBar,actorGroupTools,scriptTargetTools,transitionArrivalTools,npcArrivalTools,historicalTools],onToggle:()=>{cancelViewportGesture();resize();}});
