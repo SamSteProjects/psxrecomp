@@ -1,0 +1,35 @@
+import {placementDigest} from './worldmap-placement-replay.js';
+const ordered=v=>Array.isArray(v)?v.map(ordered):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,ordered(v[k])])):v;
+const same=(a,b)=>JSON.stringify(ordered(a))===JSON.stringify(ordered(b)),fail=()=>{throw Error('Retained pack inputs differ from the inspected Current native owner.');};
+export async function qualifyPackInputLibrary(v,inspection,report,record){
+ if(v?.schema_version!=='legaia.battle-pack-model-inputs.v1'||v.project_path!==report.project_path||v.project_source_key!==report.project_source_key||v.catalog_source_key!==report.catalog.source_key||!same(v.record,record.data)||!same(v.model_binding,inspection.model_binding)||v.current_tmd_sha256!==inspection.current_tmd_sha256||v.current_entry_sha256!==inspection.current_entry_sha256||v.layer!=='active_retained_inputs'||v.historical_inputs!==true||v.read_only!==true||v.project_changed!==false||v.gameplay_verified!==false||!Array.isArray(v.imports)||v.imports.length>16)fail();
+ const inputs=inspection.model_binding?.inputs??[],sizes=new Map(),keys=[];
+ if(v.imports.length!==inputs.length||v.receipt_count!==inputs.length)fail();
+ for(const [i,row]of v.imports.entries()){
+  const r=inputs[i],fields=[record.id,String(i),r.glb_sha256,String(r.glb_byte_length),r.base_tmd_sha256,r.candidate_tmd_sha256,r.review_key],key=await placementDigest(new TextEncoder().encode(fields.join('|')));
+  if(row.import_index!==i||row.receipt_key!==key||!same(row.receipt,r)||Object.keys(row).sort().join(',')!=='import_index,receipt,receipt_key'||!Number.isSafeInteger(r.glb_byte_length)||r.glb_byte_length<28||r.glb_byte_length>8*1024*1024||sizes.has(r.glb_sha256)&&sizes.get(r.glb_sha256)!==r.glb_byte_length)fail();
+  sizes.set(r.glb_sha256,r.glb_byte_length);keys.push(key);
+ }
+ const identity=[report.project_path,report.project_source_key,report.catalog.source_key,record.id,inspection.current_tmd_sha256,inspection.current_entry_sha256,...keys];
+ if(v.library_key!==await placementDigest(new TextEncoder().encode(identity.join('\n')))||v.distinct_glb_count!==sizes.size||v.registered_byte_length!==[...sizes.values()].reduce((n,size)=>n+size,0))fail();
+ return structuredClone(v);
+}
+export async function qualifyPackInputDownload(v,library,inspection,report,record,selected){
+ const base={...v};delete base.selected;delete base.content_base64;delete base.filename;
+ await qualifyPackInputLibrary(base,inspection,report,record);
+ if(!same(base,library)||!same(v.selected,selected)||!library.imports.some(r=>same(r,selected))||typeof v.content_base64!=='string'||v.content_base64.length>4*Math.ceil(8*1024*1024/3)||v.filename!==`battle-pack-${record.data.pool_index}-import-${String(selected.import_index+1).padStart(2,'0')}-${selected.receipt.glb_sha256.slice(0,12)}.glb`)fail();
+ let bytes;try{bytes=Uint8Array.from(atob(v.content_base64),c=>c.charCodeAt(0));}catch{fail();}
+ if(bytes.length!==selected.receipt.glb_byte_length||await placementDigest(bytes)!==selected.receipt.glb_sha256||bytes.length<28)fail();
+ const d=new DataView(bytes.buffer);if(d.getUint32(0,true)!==0x46546c67||d.getUint32(4,true)!==2||d.getUint32(8,true)!==bytes.length)fail();return bytes;
+}
+export function mountPackInputLibrary({host,report,record,getInspection,current,busy,setBusy,onError}){
+ const node=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;},box=node('details'),inspect=node('button','Inspect Retained Pack Inputs'),select=node('select'),download=node('button','Download Original Pack GLB'),status=node('p');box.dataset.packInputLibrary='';select.setAttribute('aria-label','Retained pack GLB input');Object.assign(select.style,{width:'100%',boxSizing:'border-box'});box.append(node('summary','Retained Pack GLB Inputs'),node('p','Recover exact original files from this saved model’s active import chain. Downloads preserve historical source tags; earlier files may require a fresh binding before another Review. Orphaned recovery files are not listed.'),inspect,select,download,status);host.append(box);
+ let disposed=false,owner=null,held=null,pending=null;const valid=()=>!disposed&&current()&&!!getInspection();
+ function clear(){owner=held=null;select.replaceChildren();status.textContent='Inspect Current to recover its active original GLB inputs.';}
+ function update(){if(disposed)return;if(!valid()||owner&&owner!==getInspection())clear();const blocked=!valid()||busy()||!!pending;inspect.disabled=blocked;select.disabled=download.disabled=blocked||!held?.imports.length;}
+ const context=()=>({expected_project_path:report.project_path,expected_source_key:report.project_source_key,asset_id:record.id,catalog_source_key:report.catalog.source_key,expected_current_tmd_sha256:owner.current_tmd_sha256,expected_current_entry_sha256:owner.current_entry_sha256});
+ async function run(route,args,accept){const observed=owner,controller=new AbortController();pending=controller;setBusy(true);update();const fresh=()=>valid()&&owner===observed&&observed===getInspection()&&pending===controller&&!controller.signal.aborted;try{const response=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(args),signal:controller.signal}),text=await response.text();if(text.length>16*1024*1024)fail();const v=JSON.parse(text);if(!response.ok)throw Error(v.error||'Pack input recovery failed');if(fresh())await accept(v,fresh,observed);}catch(e){if(fresh()&&e.name!=='AbortError'){status.textContent=e.message;onError(e);}}finally{if(pending===controller)pending=null;setBusy(false);update();}}
+ inspect.onclick=()=>{update();if(inspect.disabled)return;clear();owner=getInspection();run('/api/battle-pack-model-inputs',context(),async(v,fresh,observed)=>{const next=await qualifyPackInputLibrary(v,observed,report,record);if(!fresh())return;held=next;for(const row of next.imports){const option=node('option',`Import ${row.import_index+1} · ${row.receipt.glb_byte_length} Bytes · ${row.receipt.glb_sha256.slice(0,12)}`);option.value=row.receipt_key;select.append(option);}status.textContent=`${next.receipt_count} Active Inputs · ${next.distinct_glb_count} Original Files · ${next.registered_byte_length} Bytes`;});};
+ download.onclick=()=>{update();if(download.disabled)return;const library=held,selected=library.imports.find(r=>r.receipt_key===select.value);if(!selected)return;run('/api/battle-pack-model-input-download',{...context(),expected_library_key:library.library_key,selected_receipt_key:selected.receipt_key},async(v,fresh,observed)=>{const bytes=await qualifyPackInputDownload(v,library,observed,report,record,selected);if(!fresh()||held!==library||select.value!==selected.receipt_key)return;const url=URL.createObjectURL(new Blob([bytes],{type:'model/gltf-binary'})),a=node('a');a.href=url;a.download=v.filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);status.textContent=`Recovered Original Import ${selected.import_index+1} · Exact SHA-256 Verified`;});};
+ update();return {update,dispose(){disposed=true;pending?.abort();clear();box.remove();}};
+}

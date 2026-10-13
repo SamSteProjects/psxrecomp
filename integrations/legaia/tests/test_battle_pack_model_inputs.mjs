@@ -1,0 +1,12 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+import {qualifyBattlePackCurrent} from '../editor/battle-pack-model-authoring.js';
+import {qualifyPackInputLibrary,qualifyPackInputDownload} from '../editor/battle-pack-model-inputs.js';
+const c=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));await qualifyBattlePackCurrent(c.inspection,c.report,c.record);let refusals=0;
+await qualifyPackInputLibrary(c.library,c.inspection,c.report,c.record);
+for(const prefix of ['empty','one']){const library=c[`${prefix}_library`],inspection=c[`${prefix}_inspection`],report={...c.report,project_source_key:library.project_source_key};await qualifyBattlePackCurrent(inspection,report,c.record);await qualifyPackInputLibrary(library,inspection,report,c.record);assert.equal(library.receipt_count,prefix==='empty'?0:1);}
+for(const change of [v=>v.schema_version='foreign',v=>v.project_path='foreign',v=>v.project_source_key='stale',v=>v.catalog_source_key='stale',v=>v.record.pool_index++,v=>v.current_tmd_sha256='0'.repeat(64),v=>v.current_entry_sha256='0'.repeat(64),v=>v.model_binding.inputs.reverse(),v=>v.imports.reverse(),v=>v.imports[0].receipt_key='0'.repeat(64),v=>v.imports[0].import_index=true,v=>v.imports[0].receipt.binding.current_tmd_sha256='0'.repeat(64),v=>v.library_key='0'.repeat(64),v=>v.receipt_count++,v=>v.distinct_glb_count++,v=>v.registered_byte_length++,v=>v.read_only=false,v=>v.project_changed=true,v=>v.historical_inputs=false,v=>v.layer='orphaned']){const v=structuredClone(c.library);change(v);await assert.rejects(()=>qualifyPackInputLibrary(v,c.inspection,c.report,c.record));refusals++;}
+for(const download of c.downloads){
+ const bytes=await qualifyPackInputDownload(download,c.library,c.inspection,c.report,c.record,download.selected);assert.equal(bytes.length,download.selected.receipt.glb_byte_length);
+ for(const change of [v=>v.filename='../foreign.glb',v=>v.content_base64=Buffer.from('foreign').toString('base64'),v=>v.selected.import_index++,v=>v.selected.receipt.glb_sha256='0'.repeat(64),v=>v.library_key='0'.repeat(64),v=>v.current_entry_sha256='0'.repeat(64),v=>v.record.source_record.byte_offset++,v=>v.project_changed=true]){const v=structuredClone(download);change(v);await assert.rejects(()=>qualifyPackInputDownload(v,c.library,c.inspection,c.report,c.record,download.selected));refusals++;}
+}
+console.log(`Two ordered Current GLB recovery receipts and exact original downloads qualify; ${refusals} altered ownership, source, ordering, counts and content receipts refuse`);

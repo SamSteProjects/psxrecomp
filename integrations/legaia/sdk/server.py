@@ -1262,6 +1262,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/battle-pack-playback.js": ("battle-pack-playback.js", "text/javascript"),
                  "/battle-pack-timeline.js": ("battle-pack-timeline.js", "text/javascript"),
                  "/battle-pack-model-authoring.js": ("battle-pack-model-authoring.js", "text/javascript"),
+                 "/battle-pack-model-inputs.js": ("battle-pack-model-inputs.js", "text/javascript"),
                  "/native-tmd-preview.js": ("native-tmd-preview.js", "text/javascript"),
                  "/battle-pack-current-actions.js": ("battle-pack-current-actions.js", "text/javascript"),
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
@@ -1478,6 +1479,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     action=review if route.endswith('-review') else apply if route.endswith('-apply') else proposed_preview
                     result=action(self.server.project,**body)
                     self._json(200,dict(self.server.state(),player_model_restore=result) if route.endswith('-apply') else result)
+                    return
+                if route in ('/api/battle-pack-model-inputs','/api/battle-pack-model-input-download'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','expected_current_tmd_sha256','expected_current_entry_sha256'}
+                    if route.endswith('-download'):fields|={'expected_library_key','selected_receipt_key'}
+                    if set(body)!=fields:raise ProjectError('Pack input recovery requires exact Current owner and active receipt fields')
+                    from .battle_pack_model_inputs import library,download
+                    self._json(200,(download if route.endswith('-download') else library)(self.server.project,**body))
                     return
                 if route in ('/api/battle-pack-current-pose','/api/battle-pack-current-export'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','expected_current_tmd_sha256','expected_current_entry_sha256','animation_id','animation_source_key','frame_index'}
