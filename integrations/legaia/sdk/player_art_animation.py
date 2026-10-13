@@ -17,8 +17,10 @@ def resources(project, expected_project_path, expected_source_key):
     except ImportError as error:
         raise ProjectError(str(error)) from error
     _disc(project, catalog)
+    from .player_art_glb import input_records
+    inputs=input_records(project,catalog)
     _fresh(project, expected_project_path, expected_source_key)
-    return dict(schema_version='legaia.player-art-resources.v1', project_path=str(project.root),
+    return dict(retained_art_inputs=inputs,schema_version='legaia.player-art-resources.v1', project_path=str(project.root),
                 project_source_key=expected_source_key, catalog=catalog, layer='retail',
                 read_only=True, project_changed=False, gameplay_verified=False)
 

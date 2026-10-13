@@ -275,3 +275,39 @@ def apply(project,review_key,**args):
     return dict(schema_version='legaia.player-art-glb-apply.v1',history_steps=1,project_changed=True,
         stream_id=args['stream_id'],current_slot_sha256=value['candidate_slot_sha256'],
         retained_input=deepcopy(value['retained_input']) if value['ownership_after'] is not None else None,gameplay_verified=False)
+
+
+def input_records(project,catalog):
+    """Register active historical inputs separately from final Current channels."""
+    from .player_art_store import context,composed_slots
+    values=getattr(project,'player_art_overrides',{})
+    if not isinstance(values,dict):raise ProjectError('Art retained input ownership changed')
+    if not any(isinstance(v,dict) and 'glb_import' in v for v in values.values()):return []
+    raw,verified,_=context(project)
+    if catalog!=verified:raise ProjectError('Art retained input catalogue changed')
+    composed_slots(raw,catalog,values,project=project)
+    streams={s['semantic_id']:s for s in catalog['streams']};records=[]
+    for identifier,binding in sorted(values.items()):
+        evidence=binding.get('glb_import')
+        if evidence is None:continue
+        stream=streams[identifier];player=stream['player_index'];role=stream['archive_role'];index=stream['stream_index'];key=evidence['glb_sha256']
+        records.append(dict(semantic_id=f'retained-animation://legaia/player-art/{player:04d}/{role}/{index:04d}/glb/{key}',
+            asset_kind='retained_player_art_glb',name=f'PLAYER {player} {role.title()} Art Stream {index} GLB Input',
+            model_asset_id=stream['model_asset_id'],stream_asset_id=identifier,player_index=player,archive_role=role,stream_index=index,
+            layer='retained_authored_input',source_record=deepcopy(evidence),retail_source=deepcopy(stream['source_record']),
+            references=[stream['model_asset_id'],identifier],current_body_sha256=binding['current_body_sha256'],current_decoded_sha256=binding['decoded_sha256'],
+            relationship='historical_import_input_not_final_current_art',read_only=True,gameplay_verified=False))
+    return records
+
+
+def export_input(project,expected_project_path,expected_source_key,asset_id):
+    from .player_art_animation import resources
+    from .battle_character_resources import _fresh
+    report=resources(project,expected_project_path,expected_source_key)
+    record=next((r for r in report['retained_art_inputs'] if r['semantic_id']==asset_id),None)
+    if record is None:raise ProjectError('Art GLB input is no longer registered; refresh Project assets')
+    evidence=record['source_record'];content=_bytes(project,evidence['glb_sha256'],evidence['glb_byte_length'],'glb')
+    _fresh(project,expected_project_path,expected_source_key)
+    return dict(schema_version='legaia.player-art-input-export.v1',project_path=str(project.root),project_source_key=expected_source_key,
+        record=record,filename=f'player-art-input-{record["player_index"]}-{record["archive_role"]}-{record["stream_index"]}-{evidence["glb_sha256"]}.glb',
+        glb_base64=b64encode(content).decode(),read_only=True,project_changed=False,gameplay_verified=False)

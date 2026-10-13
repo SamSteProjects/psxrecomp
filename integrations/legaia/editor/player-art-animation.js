@@ -1,4 +1,5 @@
 import {placementDigest} from './worldmap-placement-replay.js';
+import {qualifyPlayerArtInputs,playerArtInputRecords} from './player-art-inputs.js';
 import {decodeArtArchive} from './player-art-codec.js';
 import {qualifyPlayerPreview} from './player-battle.js';
 import {qualifyPlayerCurrent} from './player-model-review.js';
@@ -40,13 +41,14 @@ export async function decodePlayerArts(value, expected, modelReport) {
   }
   const key = await placementDigest(new TextEncoder().encode('player-art-v1:'+c.source_disc_sha256+':'+c.source_entry_sha256+':'+c.player_file_sha256.join(':')));
   if (key!==c.source_key) fail();
+  qualifyPlayerArtInputs(value);
   return structuredClone(value);
 }
 
 export function playerArtProjectRecords(report) {
   const context={projectPath:report.project_path,sourceKey:report.project_source_key,artSourceKey:report.catalog.source_key};
   return [...report.catalog.records.map(data=>({id:data.semantic_id,type:'animation',label:data.name?`PLAYER ${data.player_index} Art ${data.record_index}: ${data.name}`:`PLAYER ${data.player_index} Art Record ${data.record_index}`,source:'PLAYER Art Record · Source',data:structuredClone(data),projectPlayerArt:{...context,modelId:`asset://legaia/models/player-battle/${String(data.player_index).padStart(4,'0')}`,artRecordId:data.semantic_id,streamId:data.reference_stream_id}})),
-    ...report.catalog.streams.map(data=>({id:data.semantic_id,type:'animation',label:data.name,source:'PLAYER ME Stream · Source',data:structuredClone(data),projectPlayerArt:{...context,modelId:data.model_asset_id,artRecordId:null,streamId:data.semantic_id}}))];
+    ...report.catalog.streams.map(data=>({id:data.semantic_id,type:'animation',label:data.name,source:'PLAYER ME Stream · Source',data:structuredClone(data),projectPlayerArt:{...context,modelId:data.model_asset_id,artRecordId:null,streamId:data.semantic_id}})),...playerArtInputRecords(report)];
 }
 
 export async function createPlayerArtSampler(value, artReport, modelReport, modelRecord, selection) {

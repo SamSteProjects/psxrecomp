@@ -1261,6 +1261,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/battle-sideband.js": ("battle-sideband.js", "text/javascript"),
                  "/player-art-codec.js": ("player-art-codec.js", "text/javascript"),
                  "/player-art-animation.js": ("player-art-animation.js", "text/javascript"),
+                 "/player-art-inputs.js": ("player-art-inputs.js", "text/javascript"),
                  "/player-art-inspector.js": ("player-art-inspector.js", "text/javascript"),
                  "/player-art-timeline.js": ("player-art-timeline.js", "text/javascript"),
                  "/player-art-export.js": ("player-art-export.js", "text/javascript"),
@@ -1745,6 +1746,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!=fields:raise ProjectError('Current art export requires exact inspected source and export representation fields')
                     from .player_art_authoring import export_current
                     self._json(200,export_current(self.server.project,**body))
+                    return
+                if route == '/api/player-art-input-export':
+                    if set(body)!={'expected_project_path','expected_source_key','asset_id'}:raise ProjectError('Art input download requires exact fresh Project and asset identities')
+                    from .player_art_glb import export_input
+                    self._json(200,export_input(self.server.project,**body))
                     return
                 if route in ('/api/player-art-glb-review','/api/player-art-glb-pose','/api/player-art-glb-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','art_source_key','stream_id','art_record_id','layer','expected_current_sha256','frame_index','part_index','expected_current_slot_sha256','glb_base64','fps','animation_index','object_node_indices'}
