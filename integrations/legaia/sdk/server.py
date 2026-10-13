@@ -1266,6 +1266,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/player-art-export.js": ("player-art-export.js", "text/javascript"),
                  "/player-art-authoring.js": ("player-art-authoring.js", "text/javascript"),
                  "/player-art-native-editor.js": ("player-art-native-editor.js", "text/javascript"),
+                 "/player-art-native-timeline.js": ("player-art-native-timeline.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
                  "/battle-pack-playback.js": ("battle-pack-playback.js", "text/javascript"),
                  "/battle-pack-timeline.js": ("battle-pack-timeline.js", "text/javascript"),
