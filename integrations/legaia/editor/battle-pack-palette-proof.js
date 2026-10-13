@@ -14,6 +14,7 @@ export async function qualifyPackPaletteContext(context,report,geometry){
   for(const row of owner.edits){const {palette_index:p,entry_index:e,word:w}=row,index=p*16+e,at=s.byte_offset+20+index*2;if(Object.keys(row).sort().join(',')!=='entry_index,palette_index,word'||![p,e,w].every(Number.isSafeInteger)||p<0||p>=16||e<0||e>=16||w<0||w>65535||index<=previous||d.getUint16(at,true)===w)fail();d.setUint16(at,w,true);previous=index;}
   if(await placementDigest(expected.subarray(s.byte_offset,s.byte_offset+s.byte_length))!==owner.current_tim_sha256)fail();
  }
+ for(const [id,owner]of Object.entries(context.image_owners??{})){const record=c.textures.find(r=>r.semantic_id===id&&r.preview_supported),source=record?.source_record;if(!source||owner.schema_version!=='legaia.battle-pack-image-override.v1'||owner.asset_id!==id||!same(owner.source_record,source)||owner.index_byte_length!==32768||owner.input?.schema_version!=='legaia.battle-pack-png-input.v1')fail();const at=source.byte_offset+544,image=current.subarray(at,at+32768);if(await placementDigest(image)!==owner.index_sha256)fail();expected.set(image,at);}
  if(expected.some((n,i)=>n!==current[i]))fail();
  if(geometry)qualifyPackTexturePixels(current,c,geometry);
  return current;

@@ -90,13 +90,13 @@ def preview(body,palette_index):
 
 
 def qualify_entry(original,catalog,current):
-    """Texture-only view context; models, headers and all index pixels stay Retail."""
+    """Texture-only view context; models and headers stay Retail; existing CLUT/index payloads may change."""
     if not isinstance(current,bytes) or len(current)!=len(original):raise ImportError('Pack texture context changed the entry footprint')
     allowed=set()
     for record in catalog['textures']:
         if not record['preview_supported']:continue
         source(original,catalog,record);at=record['source_record']['byte_offset']
-        allowed.update(range(at+20,at+532))
+        allowed.update(range(at+20,at+532));allowed.update(range(at+544,at+record['source_record']['byte_length']))
     if any(a!=b and i not in allowed for i,(a,b) in enumerate(zip(original,current))):
-        raise ImportError('Pack texture context changed models, layout, partial atlas or indexed image bytes')
+        raise ImportError('Pack texture context changed models, layout or partial atlas bytes')
     return current

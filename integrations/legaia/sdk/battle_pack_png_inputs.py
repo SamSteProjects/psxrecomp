@@ -77,3 +77,48 @@ def compose(project,original,catalog,values,current=None):
         if record is None:raise ProjectError('Pack image owner has no complete immutable source')
         image=effective(project,original,catalog,record,owner);at=record['source_record']['byte_offset']+544;result[at:at+32768]=image
     return bytes(result)
+
+
+def budget(values):
+    if not isinstance(values,dict) or len(values)>6:raise ProjectError('Pack image owners exceed six complete sources')
+    sizes={}
+    for owner in values.values():
+        if not isinstance(owner,dict) or not isinstance(owner.get('input'),dict):raise ProjectError('Pack PNG input metadata changed')
+        r=owner['input']
+        for key,size,kind in [(r.get('png_sha256'),r.get('png_byte_length'),'png'),(r.get('stp_sha256'),r.get('stp_byte_length'),'png'),(r.get('baseline_sha256'),r.get('baseline_byte_length'),'tim'),(owner.get('index_sha256'),owner.get('index_byte_length'),'idx')]:
+            if key is None and size is None and kind=='png':continue
+            limit=8*1024*1024 if kind=='png' else 33312 if kind=='tim' else 32768
+            if not isinstance(key,str) or not re.fullmatch('[a-f0-9]{64}',key) or type(size) is not int or not 1<=size<=limit:raise ProjectError('Pack PNG retained budget metadata changed')
+            pair=(key,kind)
+            if pair in sizes and sizes[pair]!=size:raise ProjectError('Pack PNG input lengths conflict')
+            sizes[pair]=size
+    if sum(sizes.values())>64*1024*1024:raise ProjectError('Pack active PNG inputs exceed64MiB')
+    return sum(sizes.values())
+
+
+def validate(project,values):
+    from importer.pipeline import _disc_context
+    from importer.battle_character_catalog import decode_catalog
+    from .battle_character_resources import _disc
+    budget(values)
+    if not values:return {}
+    with _disc_context(project.disc_path) as (_,disc,_,archive):
+        original=archive.read_entry(archive.entry(1204));catalog=decode_catalog(original,disc);_disc(project,catalog)
+        compose(project,original,catalog,values)
+    return deepcopy(values)
+
+
+def prepare(project,archive,disc_hash):
+    from importer.battle_character_catalog import decode_catalog
+    values=getattr(project,'battle_pack_image_overrides',{});validate(project,values)
+    if not values:return [],[]
+    entry=archive.entry(1204);original=archive.read_entry(entry);catalog=decode_catalog(original,disc_hash);overlays=[];changes=[]
+    for record in catalog['textures']:
+        owner=values.get(record['semantic_id'])
+        if owner is None:continue
+        payload=effective(project,original,catalog,record,owner);s=record['source_record'];at=s['byte_offset']+544
+        source=deepcopy(s);source.update(byte_offset=at,byte_length=32768,sha256=sha256(original[at:at+32768]).hexdigest(),parent_tim_sha256=s['sha256'])
+        overlays.append(dict(scene='battle-character-pack',offset=(archive.node.extent_lba+entry.start_lba)*archive.SECTOR+at,size=32768,file=f'assets/battle-pack-{s["record_index"]}-indices.bin',payload=payload,
+            sha256=sha256(payload).hexdigest(),expected_sha256=source['sha256'],source_kind='fixed_span_battle_pack_indices',source_record=source))
+        changes.append(dict(scene='battle-character-pack',semantic_id=record['semantic_id'],field='texture.native_indices',scope='battle-pack-existing-index-image-only',byte_offset=at,byte_length=32768,before_sha256=source['sha256'],after_sha256=sha256(payload).hexdigest(),original_png_replayed=True))
+    return overlays,changes

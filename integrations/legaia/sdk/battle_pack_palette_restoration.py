@@ -16,16 +16,17 @@ def _prepare(project,palette_index,expected_current_tim_sha256,expected_current_
     if sha256(body).hexdigest()!=expected_current_tim_sha256 or sha256(entry).hexdigest()!=expected_current_entry_sha256:
         raise ProjectError('Pack Current palette or composed entry changed; inspect again')
     after=deepcopy(project.battle_pack_palette_overrides);after.pop(context['asset_id']);validate(project,after)
+    retail_words=retail[:544]+body[544:]
     candidate=compose(project,original,catalog,models(project,original,catalog),after);at=record['source_record']['byte_offset'];end=at+len(body)
-    if candidate[at:end]!=retail or candidate[:at]!=entry[:at] or candidate[end:]!=entry[end:] or body==retail:
+    if candidate[at:end]!=retail_words or candidate[:at]!=entry[:at] or candidate[end:]!=entry[end:] or body==retail:
         raise ProjectError('Whole palette restoration changed protected pack neighbors or has no native changes')
     inspection=inspect(project,palette_index=palette_index,**context)
     value=dict(schema_version='legaia.battle-pack-palette-restoration-review.v1',operation='restore_retail_pack_tim_palette_owner',project_path=str(project.root),
         project_source_key=context['expected_source_key'],catalog_source_key=context['catalog_source_key'],record=record,palette_index=palette_index,current_inspection=inspection,
-        binding=None,removed_binding=owner,removed_word_count=len(owner['edits']),current_tim_base64=b64encode(body).decode(),candidate_tim_base64=b64encode(retail).decode(),
+        binding=None,removed_binding=owner,removed_word_count=len(owner['edits']),current_tim_base64=b64encode(body).decode(),candidate_tim_base64=b64encode(retail_words).decode(),
         current_entry_base64=b64encode(entry).decode(),candidate_entry_base64=b64encode(candidate).decode(),current_entry_sha256=sha256(entry).hexdigest(),candidate_entry_sha256=sha256(candidate).hexdigest(),
-        current_preview=_preview(body,palette_index),proposed_preview=_preview(retail,palette_index),proof=dict(byte_change_count=sum(a!=b for a,b in zip(body,retail)),
-            current_tim_sha256=sha256(body).hexdigest(),candidate_tim_sha256=sha256(retail).hexdigest(),unchanged_neighbors_sha256=sha256(entry[:at]+entry[end:]).hexdigest()),
+        current_preview=_preview(body,palette_index),proposed_preview=_preview(retail_words,palette_index),proof=dict(byte_change_count=sum(a!=b for a,b in zip(body,retail_words)),
+            current_tim_sha256=sha256(body).hexdigest(),candidate_tim_sha256=sha256(retail_words).hexdigest(),unchanged_neighbors_sha256=sha256(entry[:at]+entry[end:]).hexdigest()),
         scope='whole_selected_TIM_palette_owner_all_sixteen_local_palettes',layer='proposed',persistence='not_applied',read_only=True,project_changed=False,gameplay_verified=False)
     encoded=canonical(value);value['review_key']=sha256(encoded).hexdigest();value['review_receipt_base64']=b64encode(encoded).decode()
     _fresh(project,context['expected_project_path'],context['expected_source_key']);return value,after

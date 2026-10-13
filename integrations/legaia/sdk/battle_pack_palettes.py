@@ -22,18 +22,22 @@ def validate(project,values):
 
 
 def texture_entry(project,original,catalog):
-    try:return native.compose(original,catalog,getattr(project,'battle_pack_palette_overrides',{}))
+    try:
+        from .battle_pack_png_inputs import compose as images
+        return images(project,original,catalog,getattr(project,'battle_pack_image_overrides',{}),native.compose(original,catalog,getattr(project,'battle_pack_palette_overrides',{})))
     except NativeError as error:raise ProjectError(str(error)) from error
 
 
 def compose(project,original,catalog,models,values=None):
-    try:return native.compose(original,catalog,getattr(project,'battle_pack_palette_overrides',{}) if values is None else values,models)
+    try:
+        from .battle_pack_png_inputs import compose as images
+        return images(project,original,catalog,getattr(project,'battle_pack_image_overrides',{}),native.compose(original,catalog,getattr(project,'battle_pack_palette_overrides',{}) if values is None else values,models))
     except NativeError as error:raise ProjectError(str(error)) from error
 
 
 def context(project,original,catalog):
     owners=getattr(project,'battle_pack_palette_overrides',{})
-    return dict(palette_context=dict(schema_version='legaia.battle-pack-palette-context.v1',owners=deepcopy(owners),
+    return dict(palette_context=dict(schema_version='legaia.battle-pack-palette-context.v1',owners=deepcopy(owners),**(dict(image_owners=deepcopy(project.battle_pack_image_overrides)) if getattr(project,'battle_pack_image_overrides',{}) else {}),
         retail_entry_base64=b64encode(original).decode(),palette_entry_base64=b64encode(texture_entry(project,original,catalog)).decode()))
 
 
@@ -48,6 +52,7 @@ def snapshot(project,expected_project_path,expected_source_key,asset_id,catalog_
             if record is None:raise ProjectError('Choose an existing complete pack TIM')
             retail=native.source(original,catalog,record);body=native.effective(original,catalog,record,getattr(project,'battle_pack_palette_overrides',{}).get(asset_id))
             entry=compose(project,original,catalog,models(project,original,catalog))
+            at=record['source_record']['byte_offset'];body=entry[at:at+len(retail)]
     except NativeError as error:raise ProjectError(str(error)) from error
     _fresh(project,expected_project_path,expected_source_key);return original,catalog,record,retail,body,entry
 
@@ -62,7 +67,7 @@ def _preview(body,palette):
 def inspect(project,palette_index,**args):
     original,_,record,retail,body,entry=snapshot(project,**args)
     return dict(schema_version='legaia.battle-pack-palette-inspection.v1',project_path=str(project.root),project_source_key=args['expected_source_key'],catalog_source_key=args['catalog_source_key'],
-        record=record,palette_index=palette_index,binding=deepcopy(project.battle_pack_palette_overrides.get(args['asset_id'])),retail_tim_base64=b64encode(retail).decode(),current_tim_base64=b64encode(body).decode(),
+        record=record,palette_index=palette_index,**(dict(image_binding=deepcopy(project.battle_pack_image_overrides[args['asset_id']])) if args['asset_id'] in getattr(project,'battle_pack_image_overrides',{}) else {}),binding=deepcopy(project.battle_pack_palette_overrides.get(args['asset_id'])),retail_tim_base64=b64encode(retail).decode(),current_tim_base64=b64encode(body).decode(),
         current_tim_sha256=sha256(body).hexdigest(),current_entry_sha256=sha256(entry).hexdigest(),retail_preview=_preview(retail,palette_index),preview=_preview(body,palette_index),
         layer='current',read_only=True,project_changed=False,gameplay_verified=False)
 
@@ -73,6 +78,9 @@ def review(project,palette_index,entry_index,word,expected_current_tim_sha256,ex
     if sha256(body).hexdigest()!=expected_current_tim_sha256 or sha256(entry).hexdigest()!=expected_current_entry_sha256:raise ProjectError('Pack Current palette or composed entry changed; inspect again')
     try:owner,candidate,proof=native.project(original,catalog,record,project.battle_pack_palette_overrides.get(args['asset_id']),palette_index,entry_index,word)
     except NativeError as error:raise ProjectError(str(error)) from error
+    # Native word ownership stays palette-only; preserve the independent image.
+    candidate=candidate[:544]+body[544:]
+    proof['current_tim_sha256']=sha256(body).hexdigest();proof['candidate_tim_sha256']=sha256(candidate).hexdigest();proof['unchanged_image_sha256']=sha256(body[544:]).hexdigest()
     at=record['source_record']['byte_offset'];end=at+len(candidate);proposed=entry[:at]+candidate+entry[end:]
     value=dict(schema_version='legaia.battle-pack-palette-review.v1',project_path=str(project.root),project_source_key=args['expected_source_key'],catalog_source_key=args['catalog_source_key'],record=record,
         palette_index=palette_index,entry_index=entry_index,word=word,binding=owner,proof=proof,current_tim_base64=b64encode(body).decode(),candidate_tim_base64=b64encode(candidate).decode(),
