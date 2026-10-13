@@ -1737,6 +1737,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                     handler=export if route.endswith('-export') else preview if route.endswith('-preview') else resources
                     self._json(200,handler(self.server.project,**body))
                     return
+                if route in ('/api/player-art-frame-inspect','/api/player-art-frame-review','/api/player-art-frame-pose','/api/player-art-frame-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','art_source_key','stream_id','art_record_id','layer','expected_current_sha256','frame_index','part_index'}
+                    if not route.endswith('-inspect'):fields|={'expected_current_slot_sha256','translation','rotation_psx'}
+                    if route.endswith('-pose') or route.endswith('-apply'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Art channels require exact source, assembly, frame, part and channel fields')
+                    from .player_art_authoring import inspect,review,proposed_pose,apply
+                    result=(inspect if route.endswith('-inspect') else review if route.endswith('-review') else proposed_pose if route.endswith('-pose') else apply)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),player_art_apply=result) if route.endswith('-apply') else result)
+                    return
                 if route in ('/api/player-art-resources','/api/player-art-playback','/api/player-art-pose','/api/player-art-export'):
                     fields={'expected_project_path','expected_source_key'}
                     if not route.endswith('-resources'):fields|={'asset_id','catalog_source_key','equipped','art_source_key','stream_id','art_record_id','layer','expected_current_sha256'}
