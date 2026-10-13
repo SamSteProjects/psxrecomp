@@ -1244,6 +1244,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/monster-model-inputs.js": ("monster-model-inputs.js", "text/javascript"),
                  "/monster-motion-authoring.js": ("monster-motion-authoring.js", "text/javascript"),
                  "/monster-motion-replay.js": ("monster-motion-replay.js", "text/javascript"),
+                 "/monster-motion-comparison.js": ("monster-motion-comparison.js", "text/javascript"),
                  "/monster-archive.js": ("monster-archive.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
@@ -1479,13 +1480,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     result=(apply if route.endswith('-apply') else review if route.endswith('-review') else export)(self.server.project,**body)
                     self._json(200,dict(self.server.state(),monster_model_apply=result) if route.endswith('-apply') else result)
                     return
-                if route in ('/api/monster-frame-inspect','/api/monster-frame-review','/api/monster-frame-apply'):
+                if route in ('/api/monster-frame-inspect','/api/monster-frame-review','/api/monster-frame-apply','/api/monster-frame-pose'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','animation_id','frame_index','part_index'}
                     if not route.endswith('-inspect'):fields|={'expected_current_block_sha256','translation','rotation_psx'}
-                    if route.endswith('-apply'):fields.add('review_key')
+                    if route.endswith('-apply') or route.endswith('-pose'):fields.add('review_key')
                     if set(body)!=fields:raise ProjectError('Monster frame requires exact source, frame, part and channel fields')
-                    from .monster_motion_authoring import inspect,review,apply
-                    result=(apply if route.endswith('-apply') else review if route.endswith('-review') else inspect)(self.server.project,**body)
+                    from .monster_motion_authoring import inspect,review,apply,proposed_pose
+                    result=(proposed_pose if route.endswith('-pose') else apply if route.endswith('-apply') else review if route.endswith('-review') else inspect)(self.server.project,**body)
                     self._json(200,dict(self.server.state(),monster_motion_apply=result) if route.endswith('-apply') else result)
                     return
                 if route == '/api/monster-model-input-download':
