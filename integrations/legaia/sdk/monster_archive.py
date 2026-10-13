@@ -14,9 +14,11 @@ def resources(project,expected_project_path,expected_source_key):
     _disc(project,catalog)
     from .monster_png import records
     retained_inputs=records(project,catalog)
+    from .monster_model_inputs import records as model_inputs
+    retained_model_inputs=model_inputs(project,catalog)
     _fresh(project,expected_project_path,expected_source_key)
     return dict(schema_version='legaia.monster-resources.v1',project_path=str(project.root),project_source_key=expected_source_key,
-        catalog=catalog,retained_inputs=retained_inputs,layer='retail',read_only=True,project_changed=False,gameplay_verified=False)
+        catalog=catalog,retained_inputs=retained_inputs,retained_model_inputs=retained_model_inputs,layer='retail',read_only=True,project_changed=False,gameplay_verified=False)
 
 
 def preview(project,expected_project_path,expected_source_key,asset_id,catalog_source_key):
