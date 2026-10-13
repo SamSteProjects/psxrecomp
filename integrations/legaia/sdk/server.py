@@ -1266,6 +1266,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/battle-pack-model-restoration.js": ("battle-pack-model-restoration.js", "text/javascript"),
                  "/battle-pack-palette-proof.js": ("battle-pack-palette-proof.js", "text/javascript"),
                  "/battle-pack-palette-authoring.js": ("battle-pack-palette-authoring.js", "text/javascript"),
+                 "/battle-pack-png.js": ("battle-pack-png.js", "text/javascript"),
                  "/native-tmd-preview.js": ("native-tmd-preview.js", "text/javascript"),
                  "/battle-pack-current-actions.js": ("battle-pack-current-actions.js", "text/javascript"),
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),

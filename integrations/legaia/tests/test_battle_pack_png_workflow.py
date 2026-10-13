@@ -4,7 +4,8 @@ from pathlib import Path
 from copy import deepcopy
 from sdk.project import ProjectService
 from sdk.project_assets import source_key
-from sdk.battle_character_resources import resources
+from sdk.battle_character_resources import resources,animations
+from sdk import battle_pack_current_actions as actions
 from sdk import battle_pack_palettes as palettes,battle_pack_png as png_api,battle_pack_model_authoring as models
 from sdk.battle_pack_png_inputs import prepare
 from sdk.build import build_project
@@ -12,6 +13,7 @@ from importer.pipeline import _disc_context,import_scene
 from importer.texture_png import decode_png
 from importer.export import _png
 from test_model_primitive_workflow import http_server
+from test_monster_model_authoring import shifted_glb
 
 
 @unittest.skipUnless(os.getenv('LEGAIA_DISC_BIN'),'Retail source is private')
@@ -32,6 +34,16 @@ class PackPNGWorkflowTests(unittest.TestCase):
      status,value=post('/api/battle-pack-png-input-download',dict(fresh,kind=kind));self.assertEqual(status,200,value);self.assertEqual(base64.b64decode(value['png_base64']),expected)
    after=deepcopy(p._document());self.assertEqual(len(p.undo_stack),len(before[1])+1);p.undo();self.assertEqual(p._document(),before[0]);p.redo();self.assertEqual(p._document(),after);p.save();p=ProjectService.open(p.root);self.assertEqual(p._document(),after)
    current=palettes.inspect(p,palette_index=0,**ctx());model=models.current(p,expected_project_path=str(p.root),expected_source_key=source_key(p),asset_id=catalog['models'][0]['semantic_id'],catalog_source_key=catalog['source_key']);self.assertEqual(model['palette_context']['image_owners'],p.battle_pack_image_overrides)
+   # Native model inputs remain valid after independent indexed image edits.
+   from importer import battle_pack_model_authoring as native_models
+   with _disc_context(p.disc_path) as (_,_,_,archive):raw=archive.read_entry(archive.entry(1204))
+   for m in catalog['models']:
+    _,retail_binding=native_models.export(raw,m,catalog);exported=models.export(p,expected_project_path=str(p.root),expected_source_key=source_key(p),asset_id=m['semantic_id'],catalog_source_key=catalog['source_key']);self.assertEqual(exported['binding'],retail_binding)
+   an=animations(p,expected_project_path=str(p.root),expected_source_key=source_key(p));clip=an['catalog']['clips'][0];sel=dict(expected_project_path=str(p.root),expected_source_key=source_key(p),asset_id=model['record']['semantic_id'],catalog_source_key=catalog['source_key'],expected_current_tmd_sha256=model['current_tmd_sha256'],expected_current_entry_sha256=model['current_entry_sha256'],animation_id=clip['semantic_id'],animation_source_key=an['catalog']['source_key']);pose=actions.pose(p,frame_index=0,**sel);self.assertEqual(pose['geometry']['textures'],model['geometry']['textures'])
+   for mode in ('object-local','pose','clip'):
+    selected=dict(sel,mode=mode,frame_index=0 if mode=='pose' else None,fps=30 if mode=='clip' else None)
+    if mode=='object-local':selected.update(animation_id=None,animation_source_key=None)
+    self.assertEqual(actions.export(p,**selected)['current_entry_sha256'],model['current_entry_sha256'])
    retained={f:f.read_bytes() for f in (p.root/'Authored').rglob('*') if f.is_file()};p.import_metadata(import_scene(p.disc_path,'town01'));p.save()
    with _disc_context(p.disc_path) as (_,disc,_,archive):io,_=prepare(p,archive,disc);po,_=palettes.prepare(p,archive,disc);original=archive.read_entry(archive.entry(1204))
    rebuilt=bytearray(original)
