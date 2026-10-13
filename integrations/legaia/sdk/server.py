@@ -1731,6 +1731,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                     handler=export if route.endswith('-export') else preview if route.endswith('-preview') else resources
                     self._json(200,handler(self.server.project,**body))
                     return
+                if route in ('/api/player-art-resources','/api/player-art-playback','/api/player-art-pose'):
+                    fields={'expected_project_path','expected_source_key'}
+                    if not route.endswith('-resources'):fields|={'asset_id','catalog_source_key','equipped','art_source_key','stream_id','art_record_id','layer','expected_current_sha256'}
+                    if route.endswith('-pose'):fields.add('frame_index')
+                    if set(body)!=fields:raise ProjectError('PLAYER art inspection requires exact project, archive and assembly fields')
+                    from .player_art_animation import resources,playback,pose
+                    handler=pose if route.endswith('-pose') else playback if route.endswith('-playback') else resources
+                    self._json(200,handler(self.server.project,**body))
+                    return
                 if route == '/api/command-history':
                     if set(body) not in (set(), {'offset'}):
                         raise ProjectError('History listing accepts an optional offset only')

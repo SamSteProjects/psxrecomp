@@ -98,3 +98,24 @@ def discover(disc):
                                'Source decoding does not establish writable capacity or native animation authoring.'])
     validate_metadata_only(result)
     return result
+
+
+def load_stream(disc, stream_id, expected_source_key):
+    catalog = discover(disc)
+    if expected_source_key != catalog['source_key']:
+        raise ImportError('PLAYER art source changed; refresh discovery')
+    record = next((r for r in catalog['streams'] if r['semantic_id'] == stream_id), None)
+    if record is None:
+        raise ImportError('Choose an existing physical PLAYER art stream')
+    with _disc_context(disc) as (_, digest, _, archive):
+        raw = archive.read_entry(archive.entry(894))
+    source = record['source_record']
+    if digest != catalog['source_disc_sha256'] or sha256(raw).hexdigest() != source['entry_sha256']:
+        raise ImportError('PLAYER art entry identity changed')
+    slot = raw[source['slot_offset']:source['slot_offset'] + source['slot_byte_length']]
+    if sha256(slot).hexdigest() != source['slot_sha256']:
+        raise ImportError('PLAYER art slot identity changed')
+    parsed = entries(slot)[record['stream_index']]
+    if parsed['byte_length'] != source['byte_length'] or source['slot_offset'] + parsed['byte_offset'] != source['byte_offset'] or sha256(parsed['decoded']).hexdigest() != source['decoded_sha256']:
+        raise ImportError('PLAYER art decoded source span changed')
+    return catalog, record, slot, parsed['decoded']

@@ -1,0 +1,92 @@
+"""Read-only explicit ME archive previews on qualified PLAYER assemblies."""
+from base64 import b64encode
+from copy import deepcopy
+from importer import player_art_animation as native
+from importer.core import ImportError
+from importer.player_battle import decode_part
+from importer.animation import pose_vertices
+from .project import ProjectError
+from .battle_character_resources import _fresh, _disc
+
+
+def resources(project, expected_project_path, expected_source_key):
+    _fresh(project, expected_project_path, expected_source_key)
+    try:
+        catalog = native.discover(project.disc_path)
+    except ImportError as error:
+        raise ProjectError(str(error)) from error
+    _disc(project, catalog)
+    _fresh(project, expected_project_path, expected_source_key)
+    return dict(schema_version='legaia.player-art-resources.v1', project_path=str(project.root),
+                project_source_key=expected_source_key, catalog=catalog, layer='retail',
+                read_only=True, project_changed=False, gameplay_verified=False)
+
+
+def playback(project, expected_project_path, expected_source_key, asset_id, catalog_source_key, equipped,
+             art_source_key, stream_id, art_record_id, layer, expected_current_sha256):
+    _fresh(project, expected_project_path, expected_source_key)
+    context = dict(expected_project_path=expected_project_path, expected_source_key=expected_source_key,
+                   asset_id=asset_id, catalog_source_key=catalog_source_key, equipped=equipped)
+    if layer == 'current':
+        from .player_model_authoring import current
+        base = current(project, **context)
+        if expected_current_sha256 != base['effective_file_sha256']:
+            raise ProjectError('PLAYER Current changed; inspect the assembly again')
+        effective_hash = base['effective_file_sha256']
+    elif layer == 'retail':
+        if expected_current_sha256 is not None:
+            raise ProjectError('Retail art preview accepts no Current identity')
+        from .player_battle import preview
+        base = preview(project, **context)
+        effective_hash = base['record']['source_record']['sha256']
+    else:
+        raise ProjectError('Choose Retail or Current PLAYER geometry')
+    try:
+        catalog, stream, slot, decoded = native.load_stream(project.disc_path, stream_id, art_source_key)
+    except ImportError as error:
+        raise ProjectError(str(error)) from error
+    _disc(project, catalog)
+    if stream['model_asset_id'] != asset_id or stream['player_index'] != base['record']['player_index']:
+        raise ProjectError('PLAYER art stream belongs to another character')
+    art = None
+    if art_record_id is not None:
+        art = next((r for r in catalog['records'] if r['semantic_id'] == art_record_id), None)
+        if art is None or stream_id not in art['eligible_stream_ids'] or art['player_index'] != stream['player_index']:
+            raise ProjectError('Art record does not reference the explicitly selected archive stream')
+    parts = base['assembly']['animation_part_indices']
+    if len(parts) != len(base['geometry']['objects']) or any(type(p) is not int or not 0 <= p < stream['part_count'] for p in parts):
+        raise ProjectError('PLAYER assembly part mapping exceeds the selected art rig')
+    _fresh(project, expected_project_path, expected_source_key)
+    return dict(schema_version='legaia.player-art-playback.v1', project_path=str(project.root),
+                project_source_key=expected_source_key, catalog_source_key=catalog_source_key,
+                art_source_key=art_source_key, base_inspection=base, stream=stream, art_record=art,
+                layer=layer, effective_file_sha256=effective_hash, source_slot_base64=b64encode(slot).decode('ascii'),
+                decoded_stream_base64=b64encode(decoded).decode('ascii'), archive_selection='explicit_source_archive_not_observed_residency',
+                timing='not_observed', read_only=True, project_changed=False, gameplay_verified=False)
+
+
+def frame_geometry(base, stream, decoded, frame_index):
+    if type(frame_index) is not int or not 0 <= frame_index < stream['frame_count']:
+        raise ProjectError('Choose an existing whole PLAYER art frame')
+    start = 2 + frame_index * stream['part_count'] * 9
+    parts = [decode_part(decoded[start + i * 9:start + (i + 1) * 9]) for i in range(stream['part_count'])]
+    assembly, geometry = base['assembly'], deepcopy(base['geometry'])
+    transforms = [dict(object_index=i, part_index=part, **parts[part]) for i, part in enumerate(assembly['animation_part_indices'])]
+    geometry['vertices'] = pose_vertices(geometry['vertices'], geometry['objects'], transforms)
+    geometry['bounds'] = dict(min=[min(v[i] for v in geometry['vertices']) for i in range(3)],
+                            max=[max(v[i] for v in geometry['vertices']) for i in range(3)])
+    geometry.update(posed=True, coordinate_system='retail_psx_actor_local_y_down')
+    geometry.pop('triangle_normals', None)
+    geometry.pop('normal_preview', None)
+    return geometry, transforms
+
+
+def pose(project, frame_index, **context):
+    from base64 import b64decode
+    receipt = playback(project, **context)
+    geometry, transforms = frame_geometry(receipt['base_inspection'], receipt['stream'],
+                                         b64decode(receipt['decoded_stream_base64']), frame_index)
+    _fresh(project, context['expected_project_path'], context['expected_source_key'])
+    return dict(schema_version='legaia.player-art-pose.v1', playback=receipt, geometry=geometry,
+                object_transforms=transforms, frame_index=frame_index, read_only=True,
+                project_changed=False, gameplay_verified=False)
