@@ -1,5 +1,6 @@
 """Immutable physical-art import inputs and independently replayed baselines."""
 from copy import deepcopy
+from base64 import b64decode, b64encode
 from hashlib import sha256
 import re
 from importer.core import ImportError as NativeError
@@ -167,3 +168,110 @@ def retain_inputs(project, value, current, content, *, active_inputs=()):
             if path.is_file():
                 path.unlink()
         raise
+    return tuple(created)
+
+
+def _decode(value):
+    if not isinstance(value,str) or not 1<=len(value)<=MAX_BYTES*4//3+4:
+        raise ProjectError('Art GLB requires at most 4 MiB of exact base64 bytes')
+    try:content=b64decode(value,validate=True)
+    except (ValueError,TypeError) as error:raise ProjectError('Art GLB requires exact base64 bytes') from error
+    if not 1<=len(content)<=MAX_BYTES:raise ProjectError('Art GLB requires at most 4 MiB')
+    return content
+
+
+def prepare_review(project,frame_index,part_index,expected_current_slot_sha256,
+                   glb_base64,fps,animation_index,object_node_indices,**context):
+    from .player_art_authoring import inspect,_edit
+    from .player_art_store import context as sources,numeric_values,composed_slots
+    from .battle_character_resources import _fresh
+    from importer.me_archive import entries
+    from importer.player_battle import decode_part
+    from importer.player_art_authoring import owner
+    inspection=inspect(project,frame_index,part_index,**context)
+    if inspection['current_slot_sha256']!=expected_current_slot_sha256:
+        raise ProjectError('Art GLB Current slot changed; inspect again')
+    content=_decode(glb_base64);base=inspection['base_playback'];stream=base['stream']
+    original=b64decode(base['source_slot_base64']);current=b64decode(inspection['current_slot_base64'])
+    raw,catalog,_=sources(project)
+    candidate,analysis,evidence=prepare_input(project,original,catalog,stream['archive_asset_id'],stream['semantic_id'],
+        current,numeric_values(inspection['owners']),content,equipped=context['equipped'],fps=fps,
+        animation_index=animation_index,object_node_indices=object_node_indices)
+    if evidence['object_part_indices']!=base['base_inspection']['assembly']['animation_part_indices']:
+        raise ProjectError('Art GLB assembly mapping changed')
+    if not analysis['edits'] or candidate==current:raise ProjectError('Art GLB Review requires changed Current motion')
+    retail=entries(original)[stream['stream_index']]['decoded'];decoded=entries(candidate)[stream['stream_index']]['decoded']
+    rows=[]
+    for frame in range(stream['frame_count']):
+        for part in range(stream['part_count']):
+            at=2+(frame*stream['part_count']+part)*9
+            if decoded[at:at+9]!=retail[at:at+9]:
+                rows.append(dict(frame_index=frame,part_index=part,**decode_part(decoded[at:at+9])))
+    after=deepcopy(project.player_art_overrides);identifier=stream['semantic_id']
+    try:
+        if rows:
+            after[identifier]=owner(original,catalog,stream['archive_asset_id'],identifier,rows)
+            after[identifier]['glb_import']=deepcopy(evidence)
+        else:after.pop(identifier,None)
+    except NativeError as error:raise ProjectError(str(error)) from error
+    canonical=composed_slots(raw,catalog,numeric_values(after)).get(stream['archive_asset_id'],original)
+    source=stream['source_record'];at=source['byte_offset']-source['slot_offset'];end=at+source['byte_length']
+    # Conversion preserves Current unused body bytes; final native ownership
+    # always encodes on Retail. Verify semantic equality and all outside bytes,
+    # then use the canonical body so shortening/restoration cannot retain stale
+    # compressed bytes from an earlier owner.
+    if (canonical[:at]!=candidate[:at] or canonical[end:]!=candidate[end:] or
+            entries(canonical)[stream['stream_index']]['decoded']!=decoded):
+        raise ProjectError('Art GLB differs from canonical final owner composition')
+    canonicalized_bytes=sum(a!=b for a,b in zip(canonical,candidate));candidate=canonical
+    active=[v['glb_import'] for v in after.values() if 'glb_import' in v]
+    check_budget(project,active)
+    value=dict(schema_version='legaia.player-art-glb-review.v1',inspection=inspection,frame_index=frame_index,part_index=part_index,
+        glb_import=analysis,retained_input=evidence,ownership_after=deepcopy(after.get(identifier)),
+        candidate_slot_base64=b64encode(candidate).decode(),candidate_slot_sha256=sha256(candidate).hexdigest(),
+        candidate_body_sha256=sha256(candidate[at:end]).hexdigest(),candidate_decoded_base64=b64encode(decoded).decode(),
+        projection=dict(byte_change_count=sum(a!=b for a,b in zip(current,candidate)),changed_current_part_frames=len(analysis['edits']),retail_relative_part_frames=len(rows),
+            native_body_policy='retail_relative_canonical_owner',canonicalized_body_bytes=canonicalized_bytes),
+        capacity=dict(original_body_size=source['byte_length'],decoded_byte_count=len(decoded),growth=False),
+        motion_layer='proposed',geometry_layer=context['layer'],persistence='not_applied',read_only=True,project_changed=False,gameplay_verified=False)
+    value['review_key']=digest(value);_edit(project);_fresh(project,context['expected_project_path'],context['expected_source_key'])
+    return current,content,after,value
+
+
+def review(project,**args):return prepare_review(project,**args)[3]
+
+
+def proposed_pose(project,review_key,**args):
+    from .player_art_animation import frame_geometry
+    value=review(project,**args)
+    if value['review_key']!=review_key:raise ProjectError('Art GLB Proposed requires exact fresh Review')
+    base=value['inspection']['base_playback'];stream=base['stream'];frame=args['frame_index']
+    current,ct=frame_geometry(base['base_inspection'],stream,b64decode(value['inspection']['current_decoded_base64']),frame)
+    proposed,pt=frame_geometry(base['base_inspection'],stream,b64decode(value['candidate_decoded_base64']),frame)
+    return dict(schema_version='legaia.player-art-glb-pose.v1',review=value,review_key=review_key,
+        current_pose=dict(geometry=current,object_transforms=ct,frame_index=frame),
+        proposed_pose=dict(geometry=proposed,object_transforms=pt,frame_index=frame),
+        motion_layer='proposed',geometry_layer=args['layer'],persistence='not_applied',read_only=True,project_changed=False,gameplay_verified=False)
+
+
+def apply(project,review_key,**args):
+    from .player_art_store import validate
+    from .player_art_authoring import _edit
+    from .battle_character_resources import _fresh
+    current,content,after,value=prepare_review(project,**args)
+    if value['review_key']!=review_key:raise ProjectError('Art GLB Apply requires exact fresh Review')
+    before=deepcopy(project.player_art_overrides);created=()
+    try:
+        if value['ownership_after'] is not None:
+            active=[v['glb_import'] for k,v in after.items() if k!=args['stream_id'] and 'glb_import' in v]
+            created=retain_inputs(project,value['retained_input'],current,content,active_inputs=active)
+        after=validate(project,after);_edit(project);_fresh(project,args['expected_project_path'],args['expected_source_key'])
+    except Exception:
+        for path in reversed(created):path.unlink(missing_ok=True)
+        raise
+    project.player_art_overrides=after
+    project.undo_stack.append(dict(target='player_art_overrides',before=before,after=deepcopy(after),label='PLAYER Art GLB'))
+    project.redo_stack.clear()
+    return dict(schema_version='legaia.player-art-glb-apply.v1',history_steps=1,project_changed=True,
+        stream_id=args['stream_id'],current_slot_sha256=value['candidate_slot_sha256'],
+        retained_input=deepcopy(value['retained_input']) if value['ownership_after'] is not None else None,gameplay_verified=False)

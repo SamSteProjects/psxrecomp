@@ -1348,7 +1348,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit=12*1024*1024
             if urlsplit(self.path).path in ('/api/battle-pack-model-glb-review','/api/battle-pack-model-glb-apply'):
                 request_limit=12*1024*1024
-            if urlsplit(self.path).path in ('/api/player-model-glb-review','/api/player-model-glb-apply','/api/player-action-glb-review','/api/player-action-glb-apply'):
+            if urlsplit(self.path).path in ('/api/player-model-glb-review','/api/player-model-glb-apply','/api/player-action-glb-review','/api/player-action-glb-apply','/api/player-art-glb-review','/api/player-art-glb-pose','/api/player-art-glb-apply'):
                 request_limit = 8 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/worldmap-clip-channel-review','/api/worldmap-clip-channel-apply','/api/worldmap-animation-edit-review','/api/worldmap-animation-edit-apply'):
                 request_limit = 1024 * 1024
@@ -1745,6 +1745,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!=fields:raise ProjectError('Current art export requires exact inspected source and export representation fields')
                     from .player_art_authoring import export_current
                     self._json(200,export_current(self.server.project,**body))
+                    return
+                if route in ('/api/player-art-glb-review','/api/player-art-glb-pose','/api/player-art-glb-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','art_source_key','stream_id','art_record_id','layer','expected_current_sha256','frame_index','part_index','expected_current_slot_sha256','glb_base64','fps','animation_index','object_node_indices'}
+                    if not route.endswith('-review'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Art GLB requires exact inspected source, input and Review fields')
+                    from .player_art_glb import review,proposed_pose,apply
+                    result=(review if route.endswith('-review') else proposed_pose if route.endswith('-pose') else apply)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),player_art_apply=result) if route.endswith('-apply') else result)
                     return
                 if route in ('/api/player-art-frame-inspect','/api/player-art-frame-review','/api/player-art-frame-pose','/api/player-art-frame-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','art_source_key','stream_id','art_record_id','layer','expected_current_sha256','frame_index','part_index'}
