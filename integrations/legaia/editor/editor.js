@@ -6,6 +6,7 @@ import {showPlayerBattle,showPlayerAction,showPlayerTexture,showPlayerMotionInpu
 import {showBattlePackAnimationResource} from '/battle-pack-animation.js';
 import {showBattleCharacterResource,updateBattleCharacterResource} from '/battle-character-resources.js';
 import {showSidebandResource,updateSidebandResource} from '/battle-sideband.js';
+import {showPlayerArtInspector,updatePlayerArtInspector} from '/player-art-inspector.js';
 import {worldAnimationBuildSource,worldAnimationBuildTarget} from '/worldmap-animation-build-navigation.js';
 import {qualifyWorldmapBehaviorResource,showWorldmapBehaviorResource} from '/worldmap-behavior-resources.js';
 import {mergeWorldAnimationAuthoredAssets} from '/worldmap-animation-assets.js';
@@ -935,7 +936,7 @@ function setBusy(value) {
   if($('project-copy-button'))$('project-copy-button').disabled=value||!state.capabilities?.project_copy;
   if($('project-animation-inputs'))$('project-animation-inputs').disabled=value||!state.project?.path;
   document.querySelectorAll('#script-report [data-script-family]').forEach(button=>button.disabled=value);
-  busy=value;updateMonster($('asset-details'));updatePlayerBattle($('asset-details'));updateBattleCharacterResource($('asset-details'));updateSidebandResource($('asset-details'));fieldEquipmentControls?.update();sceneImportBatch?.update();hierarchyHistory?.refresh();sceneCameraInspector?.update();if($('select-matching-actors'))hierarchyMatchSelect.disabled=!canSelectHierarchyMatches()||!hierarchyMatchIds.length||hierarchyMatchKey!==resourceStateKey();npcPresetControls?.update();triggerScriptsDialog?.refresh?.();triggerGroupDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();updateSceneVisibilityButtons();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
+  busy=value;updateMonster($('asset-details'));updatePlayerBattle($('asset-details'));updateBattleCharacterResource($('asset-details'));updateSidebandResource($('asset-details'));updatePlayerArtInspector($('asset-details'));fieldEquipmentControls?.update();sceneImportBatch?.update();hierarchyHistory?.refresh();sceneCameraInspector?.update();if($('select-matching-actors'))hierarchyMatchSelect.disabled=!canSelectHierarchyMatches()||!hierarchyMatchIds.length||hierarchyMatchKey!==resourceStateKey();npcPresetControls?.update();triggerScriptsDialog?.refresh?.();triggerGroupDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();updateSceneVisibilityButtons();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);updateAssetPlacementActions();
@@ -1599,7 +1600,7 @@ function hasUnsavedEditorWork(){return !!state.project?.dirty||worldmapDraftPend
 window.addEventListener('beforeunload',event=>{if(hasUnsavedEditorWork()){event.preventDefault();event.returnValue='';}});
 
 function render(){
-  updateMonster($('asset-details'));updatePlayerBattle($('asset-details'));updateBattleCharacterResource($('asset-details'));updateSidebandResource($('asset-details'));fieldEquipmentControls?.update();
+  updateMonster($('asset-details'));updatePlayerBattle($('asset-details'));updateBattleCharacterResource($('asset-details'));updateSidebandResource($('asset-details'));updatePlayerArtInspector($('asset-details'));fieldEquipmentControls?.update();
   updateEnvironmentGroupSelection();
   updateActorGroupSelection();actorBatchTool.synchronize();savedActorSelections?.synchronize();savedSceneSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();
   draftsButton.textContent=`NPC drafts (${Object.keys(state.actor_drafts??{}).length})`;
@@ -2051,6 +2052,7 @@ function showAssetDetails(record,lookup=()=>assetRecords(),{keepTrail=false,play
   if(record.projectPlayerBattleTexture){try{showPlayerTexture({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalPlayerBattles,onModel:async(id,equipment)=>{if(busy)return;assetDetails.close();const next=await projectAssetControls.revealAsset(id);if(next)showAssetDetails(next,undefined,{playerEquipment:equipment});}});}catch(error){notify(error.message,true);}return;}
   if(record.projectPlayerBattleAnimation){try{showPlayerAction({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalPlayerBattles,onModel:async(id,action)=>{if(busy)return;assetDetails.close();const next=await projectAssetControls.revealAsset(id);if(next)showAssetDetails(next,undefined,{playerAction:action});}});}catch(error){notify(error.message,true);}return;}
   if(record.projectPlayerBattleResource){try{showPlayerBattle({dialog:assetDetails,record,actionSlot:playerAction,equipmentPreset:playerEquipment,onApplied:next=>{assetDetails.close();state=next;render();},getReport:()=>projectAssetControls?.sourceReport()?.globalPlayerBattles,current:()=>state.project?.path===record.projectPlayerBattleResource.projectPath&&state.project_assets_source_key===record.projectPlayerBattleResource.sourceKey,busy:()=>busy,setBusy,onError:error=>notify(error.message,true)});}catch(error){notify(error.message,true);}return;}
+  if(record.projectPlayerArt){try{showPlayerArtInspector({dialog:assetDetails,record,getReports:()=>{const r=projectAssetControls?.sourceReport();return {arts:r?.globalPlayerArts,models:r?.globalPlayerBattles};},current:()=>state.project?.path===record.projectPlayerArt.projectPath&&state.project_assets_source_key===record.projectPlayerArt.sourceKey,busy:()=>busy,setBusy,canCurrent:()=>state.project?.mode==='edit',onError:error=>notify(error.message,true)});}catch(error){notify(error.message,true);}return;}
   if(record.projectSideband){try{showSidebandResource({dialog:assetDetails,record,getReport:()=>projectAssetControls?.sourceReport()?.globalBattleSideband,current:()=>state.project?.path===record.projectSideband.projectPath&&state.project_assets_source_key===record.projectSideband.sourceKey,busy:()=>busy,setBusy,onError:error=>notify(error.message,true)});}catch(error){notify(error.message,true);}return;}
   if(record.projectBattlePackAnimation){try{showBattlePackAnimationResource({dialog:assetDetails,record,report:projectAssetControls?.sourceReport()?.globalBattlePackAnimations,onModel:async id=>{if(busy)return;assetDetails.close();const next=await projectAssetControls.revealAsset(id);if(next)showAssetDetails(next);}});}catch(error){notify(error.message,true);}return;}
   if(record.projectBattleResource){try{showBattleCharacterResource({dialog:assetDetails,record,onApplied:next=>{assetDetails.close();state=next;render();},canAuthor:()=>state.project?.mode==='edit',getReport:()=>projectAssetControls?.sourceReport()?.globalBattleCharacters,current:()=>state.project?.path===record.projectBattleResource.projectPath&&state.project_assets_source_key===record.projectBattleResource.sourceKey,busy:()=>busy,setBusy,onError:error=>notify(error.message,true)});}catch(error){notify(error.message,true);}return;}
@@ -2231,7 +2233,7 @@ function projectAssetContext(){return state.capabilities?.project_assets?{projec
 async function resolveProjectAsset(record){
   if(record.projectWorldBehaviorResource){qualifyWorldmapBehaviorResource(record,projectAssetControls?.sourceReport()?.globalWorldBehaviorResources,state);return record;}
   if(record.projectWorldResource){qualifyWorldmapProjectResource(record,projectAssetControls?.sourceReport()?.globalWorldResources,state);return record;}
-  if(record.projectSideband||record.projectBattleResource||record.projectPlayerBattleResource){const fresh=projectAssetControls?.records().find(r=>r.id===record.id);if(!fresh||JSON.stringify(fresh)!==JSON.stringify(record))throw Error('Refresh battle project resources before navigation.');return record;}
+  if(record.projectPlayerArt||record.projectSideband||record.projectBattleResource||record.projectPlayerBattleResource){const fresh=projectAssetControls?.records().find(r=>r.id===record.id);if(!fresh||JSON.stringify(fresh)!==JSON.stringify(record))throw Error('Refresh battle project resources before navigation.');return record;}
   if(record.projectGlobal){const report=projectAssetControls?.sourceReport()?.globalWorldmap;worldmapAssetTarget(record,report,state);return record;}
   if(!record.projectMembership)return record;
   const variant=projectAssetVariant(record,projectAssetContext()),expected=record.projectMembership.sourceKey;
@@ -2260,7 +2262,7 @@ async function inspectControllerAsset(record,focusFlagPc=null){
 }
 async function activateAsset(record,action=null){
   if(busy)return;
-  if(record?.projectSideband||record?.projectFieldTexture||record?.projectPlayerMotionInput||record?.projectPlayerBattleTexture||record?.projectPlayerBattleAnimation||record?.projectPlayerBattleResource||record?.projectBattleResource||record?.projectBattlePackAnimation){showAssetDetails(record);return;}
+  if(record?.projectPlayerArt||record?.projectSideband||record?.projectFieldTexture||record?.projectPlayerMotionInput||record?.projectPlayerBattleTexture||record?.projectPlayerBattleAnimation||record?.projectPlayerBattleResource||record?.projectBattleResource||record?.projectBattlePackAnimation){showAssetDetails(record);return;}
   try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
   if(record.projectWorldBehaviorResource){if(action===null)showAssetDetails(record);return;}
   if(record.projectWorldResource){if(![null,'inspect-world-resource'].includes(action)||!canEdit()||!state.capabilities?.worldmap_geometry||worldmapDraftPending)return;try{const target=qualifyWorldmapProjectResource(record,projectAssetControls?.sourceReport()?.globalWorldResources,state);if(record.type==='model')await worldmapGeometryControls.openResource(target);else showAssetDetails(record);}catch(error){notify(error.message,true);}return;}
@@ -5897,7 +5899,7 @@ worldPlacementControls=mountWorldPlacements({after:$('resource-refresh'),getStat
 
 const projectAssetHost=document.createElement('div');projectAssetHost.style.gridColumn='1 / -1';assetTools.prepend(projectAssetHost);
 projectAssetControls=mountProjectAssets({host:projectAssetHost,getContext:projectAssetContext,busy:()=>busy,setBusy,
-  getUnavailableReason:()=>state.project_assets_unavailable_reason,backgroundDiscovery:true,monsterResources:()=>state.capabilities?.worldmap_geometry===true,fieldTextures:()=>state.capabilities?.worldmap_geometry===true,battleResources:()=>state.capabilities?.worldmap_geometry===true,sidebandResources:()=>state.capabilities?.worldmap_geometry===true,globalWorldmap:()=>state.capabilities?.worldmap_placements===true,globalResources:()=>state.capabilities?.worldmap_geometry===true,
+  getUnavailableReason:()=>state.project_assets_unavailable_reason,backgroundDiscovery:true,monsterResources:()=>state.capabilities?.worldmap_geometry===true,fieldTextures:()=>state.capabilities?.worldmap_geometry===true,battleResources:()=>state.capabilities?.worldmap_geometry===true,sidebandResources:()=>state.capabilities?.worldmap_geometry===true,playerArtResources:()=>state.capabilities?.worldmap_geometry===true,globalWorldmap:()=>state.capabilities?.worldmap_placements===true,globalResources:()=>state.capabilities?.worldmap_geometry===true,
   onChange:()=>{assetPageSignature=null;renderAssets();},onError:error=>notify(error.message,true)});
 
 mountSceneToolDrawer({toolbar:document.querySelector('.viewport-toolbar'),viewport:$('viewport-wrap'),keep:[sceneRuler.bar,npcGroundPlacement.bar,groundPositionBar,npcCreationBar,runRibbon,fieldNote,scenePoseBar,actorGroupTools,scriptTargetTools,transitionArrivalTools,npcArrivalTools,historicalTools],onToggle:()=>{cancelViewportGesture();resize();}});

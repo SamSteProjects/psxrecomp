@@ -1,6 +1,6 @@
 # PLAYER Art Animation Sources
 
-In Progress — 2026-10-13. The bounded native ME codec and source discovery are implemented. Fresh project APIs, Asset Database registration, explicit archive selection, Retail/Current assembly preview, export/playback/timeline controls and normal browser verification remain pending. This is a source foundation, not a completed editor workflow.
+In Progress — 2026-10-13. Native source decoding, fresh APIs, client qualification, Asset Database registration and normal read-only inspection/playback/timeline controls are implemented. Pose/clip exports and broader normal browser coverage remain pending. Gameplay, runtime residency and native cadence remain unverified.
 
 The pinned reference `d6e64c68ede25813d35db20980da82a1a025549b` identifies ME archives in PROT 894, separate from the twelve inline PLAYER action records. Each of four characters has a main archive at slot `3*player+1` and a base archive at `3*player+2`, within fixed 0x10800-byte slots. Main counts are 17, 18, 19 and 1; every base archive has eight entries. All 87 retail entries use the channel-delta codec.
 
@@ -35,3 +35,14 @@ Cached samplers own copies of decoded bytes, geometry and part mappings; caller 
 Sixteen explicit archive fixtures cover all four characters, main/base archives and Retail/authored Current geometry, with 32 first/last pose checks and 352 changed source, model, texture, mapping, record and pose refusals. The fixture generator finished successfully; TMD witnesses were added from the original/current qualified assemblies, and separate fresh API checks confirm the new witness field for both layers. The original eight-archive codec suite still matches 469,245 bytes and refuses 285 malformed cases. JavaScript syntax, Python AST and whitespace checks pass.
 
 Evidence: `local-output/sdk-20260909/player-art-animation-20261013/playback-cases.json`, `make_playback_cases.py`, codec cases and `tests/test_player_art_animation.mjs`. Normal inspector controls/registration, export, playback UI, native channel timelines and actual browser verification remain unfinished. No full workflow acceptance is claimed.
+
+
+## Normal Inspector And Channel Timeline
+
+Offline checks passed — 2026-10-13. Global battle discovery now includes 196 separate animation identities: 109 logical bank records and 87 physical ME streams. The normal inspector selects a same-character eligible archive explicitly, five equipment sections and Retail or Current geometry. Inspection qualifies the fresh model/source receipt before retaining a local sampler. Frame scrubbing, one-pass display playback, object selection, orbit and zoom reuse that sampler and GPU renderer. Display FPS remains an independent whole-number control, not native cadence.
+
+The source channel timeline exposes all native parts and six translation/rotation axes. It displays discrete packed values, including signed translations and PSX rotation units. Click or Left/Right/Home/End changes the same preview frame; the original ME channels apply to both geometry layers. Invalid frame drafts, busy operations and changed project/source identity disable timeline navigation. No project channels are authored by these controls.
+
+Sixteen Retail/Current fixtures validate all mapped part axes against 32 independently qualified first/last poses. All 196 normalized identities are unique. Existing 352 source/model/pose refusals and Asset Database regressions still pass. Actual muted Edge verifies Retail-to-Current reinspection, cached playback without additional pose requests, object selection, timeline End/Home and axis/part controls, invalid frame/busy/source withdrawal, unchanged document/history and wide/400-pixel layouts. Repeated sideband inspection also passes its full existing filter/palette/queued-close/Save/Open workflow after a shared WebGL lifecycle fix: clearing a selection now retains the canvas context; final close disposes it.
+
+Private evidence is in `local-output/sdk-20260909/player-art-inspector-20261013/`, including browser scripts, proof and captures, and its `sideband-regression/` child. Broader art browser checks for archive/equipment changes, authored Current geometry, Save/Open and pending-close races remain queued alongside pose/full-clip exports. Native authored Current coverage exists separately. This is a bounded offline milestone, not complete art workflow or gameplay acceptance.

@@ -198,7 +198,7 @@ export function showSidebandResource({dialog, record, getReport, current, busy, 
   const release = () => { if (ownsBusy) { ownsBusy = false; setBusy(false); } };
   function clear() {
     generation++; pending?.abort(); pending = null; value = null; drag = null;
-    renderer?.dispose(); renderer = null; loadedObject = null;
+    renderer?.load({assets:[],entities:[]}); loadedObject = null;
     canvas.hidden = true; canvas.style.display = 'none'; canvas.dataset.ready = 'false'; object.hidden = true;
   }
   function update() {
@@ -239,7 +239,7 @@ export function showSidebandResource({dialog, record, getReport, current, busy, 
       if (record.type === 'model') {
         object.replaceChildren(); const all = node('option','All Object-Local Groups'); all.value = 'all'; object.append(all);
         for (const row of value.objects) { const option = node('option',`Object ${row.object_index}`); option.value = String(row.object_index); object.append(option); }
-        object.hidden = false; renderer = new SceneRenderer(canvas); draw();
+        object.hidden = false; renderer ??= new SceneRenderer(canvas); draw();
         status.textContent = `${value.objects.length} objects · ${value.vertices.length} vertices · ${value.triangles.length} triangles · Source Only. Drag to orbit; scroll to zoom.`;
       } else {
         canvas.width = value.width; canvas.height = value.height; canvas.style.height = 'auto'; canvas.style.imageRendering = 'pixelated';
@@ -276,7 +276,7 @@ export function showSidebandResource({dialog, record, getReport, current, busy, 
   canvas.onpointerup = canvas.onpointercancel = () => { drag = null; };
   canvas.addEventListener('wheel',e => { if (record.type !== 'model' || !value || !valid() || busy()) return; e.preventDefault(); view.zoom = Math.max(.25,Math.min(5,view.zoom*Math.exp(-e.deltaY*.001))); redraw(); },{passive:false});
   const observer = new ResizeObserver(redraw); observer.observe(canvas);
-  function dispose() { if (disposed) return; disposed = true; clear(); observer.disconnect(); dialog.removeEventListener('close',dispose); release(); if (mounted.get(dialog)?.dispose === dispose) mounted.delete(dialog); }
+  function dispose() { if (disposed) return; disposed = true; clear(); renderer?.dispose(); renderer = null; observer.disconnect(); dialog.removeEventListener('close',dispose); release(); if (mounted.get(dialog)?.dispose === dispose) mounted.delete(dialog); }
   dialog.addEventListener('close',dispose); mounted.set(dialog,{update,dispose});
   if (!dialog.open) dialog.showModal(); update();
 }

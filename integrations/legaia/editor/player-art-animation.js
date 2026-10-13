@@ -43,6 +43,12 @@ export async function decodePlayerArts(value, expected, modelReport) {
   return structuredClone(value);
 }
 
+export function playerArtProjectRecords(report) {
+  const context={projectPath:report.project_path,sourceKey:report.project_source_key,artSourceKey:report.catalog.source_key};
+  return [...report.catalog.records.map(data=>({id:data.semantic_id,type:'animation',label:data.name?`PLAYER ${data.player_index} Art ${data.record_index}: ${data.name}`:`PLAYER ${data.player_index} Art Record ${data.record_index}`,source:'PLAYER Art Record · Source',data:structuredClone(data),projectPlayerArt:{...context,modelId:`asset://legaia/models/player-battle/${String(data.player_index).padStart(4,'0')}`,artRecordId:data.semantic_id,streamId:data.reference_stream_id}})),
+    ...report.catalog.streams.map(data=>({id:data.semantic_id,type:'animation',label:data.name,source:'PLAYER ME Stream · Source',data:structuredClone(data),projectPlayerArt:{...context,modelId:data.model_asset_id,artRecordId:null,streamId:data.semantic_id}}))];
+}
+
 export async function createPlayerArtSampler(value, artReport, modelReport, modelRecord, selection) {
   if (artReport.project_path!==modelReport.project_path || artReport.project_source_key!==modelReport.project_source_key) fail();
   const stream=artReport.catalog.streams.find(s=>s.semantic_id===selection.stream_id), art=selection.art_record_id===null?null:artReport.catalog.records.find(r=>r.semantic_id===selection.art_record_id);

@@ -1,0 +1,57 @@
+import {playerArtProjectRecords,createPlayerArtSampler} from './player-art-animation.js';
+import {SceneRenderer} from './scene-renderer.js';
+import {modelPreviewFrame} from './model-preview-frame.js';
+import {mountPlayerArtTimeline} from './player-art-timeline.js';
+import {mountWorldAnimationPlayback} from './worldmap-animation-playback.js';
+
+const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b),mounted=new WeakMap();
+export function updatePlayerArtInspector(dialog){mounted.get(dialog)?.update();}
+export function showPlayerArtInspector({dialog,record,getReports,current,busy,setBusy,onError,canCurrent}){
+  mounted.get(dialog)?.dispose();
+  const reports=getReports(),ar=reports?.arts,mr=reports?.models;
+  if(!ar||!mr||!same(playerArtProjectRecords(ar).find(r=>r.id===record.id),record))throw Error('Refresh PLAYER art sources before inspection.');
+  const model=mr.catalog.models.find(m=>m.semantic_id===record.projectPlayerArt.modelId),modelRecord={id:model.semantic_id,data:model};
+  const selectedArt=record.projectPlayerArt.artRecordId?ar.catalog.records.find(r=>r.semantic_id===record.projectPlayerArt.artRecordId):null;
+  const streams=ar.catalog.streams.filter(s=>s.model_asset_id===model.semantic_id&&(!selectedArt||selectedArt.eligible_stream_ids.includes(s.semantic_id)));
+  const node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
+  dialog.replaceChildren();const heading=node('div'),close=node('button','×');heading.className='dialog-heading';close.type='button';close.setAttribute('aria-label','Close PLAYER Art Inspector');close.onclick=()=>dialog.close();heading.append(node('h2',record.label),close);
+  const streamInput=node('select'),layer=node('select'),inspect=node('button','Inspect PLAYER Art Assembly'),frame=node('input'),object=node('select'),canvas=node('canvas'),status=node('p'),equipment=[];
+  streamInput.setAttribute('aria-label','PLAYER Art Source Archive');for(const s of streams){const o=node('option',`${s.archive_role.toUpperCase()} Archive · Stream ${s.stream_index} · ${s.frame_count} Frames`);o.value=s.semantic_id;streamInput.append(o);}streamInput.value=record.projectPlayerArt.streamId;
+  layer.setAttribute('aria-label','PLAYER Art Geometry Layer');for(const v of ['retail','current']){const o=node('option',v==='retail'?'Retail Geometry':'Current Geometry');o.value=v;layer.append(o);}
+  const controls=node('div');Object.assign(controls.style,{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,170px),1fr))',gap:'6px'});
+  for(const [title,input] of [['Explicit Source Archive',streamInput],['Geometry Layer',layer]]){const label=node('label',title);label.append(input);controls.append(label);}
+  for(let i=0;i<5;i++){const input=node('select');input.setAttribute('aria-label',`PLAYER Art Equipment Section ${i}`);for(const d of model.descriptors.filter(d=>d.section_index===i)){const o=node('option',`Item ${d.item_id}`);o.value=String(d.item_id);input.append(o);}input.value='0';equipment.push(input);const label=node('label',`Equipment Section ${i}`);label.append(input);controls.append(label);}
+  for(const input of [streamInput,layer,...equipment])Object.assign(input.style,{width:'100%',boxSizing:'border-box'});
+  inspect.type='button';frame.type='number';frame.min='0';frame.step='1';frame.value='0';frame.setAttribute('aria-label','PLAYER Art Native Frame');object.setAttribute('aria-label','PLAYER Art Model Object');object.hidden=true;Object.assign(object.style,{width:'100%'});
+  Object.assign(canvas.style,{width:'100%',height:'320px',display:'none',background:'#101a20'});canvas.hidden=true;canvas.dataset.playerArtPreview='';canvas.dataset.ready='false';
+  const details=node('details'),pre=node('pre',JSON.stringify(record.data,null,2));Object.assign(pre.style,{whiteSpace:'pre-wrap',overflowWrap:'anywhere'});details.append(node('summary','Source Provenance'),pre);
+  dialog.append(heading,node('p','Explicit source archive selection. Runtime residency, art activation and native timing are unobserved.'),controls,inspect,node('label','Native Frame'),frame,object,canvas,status,details);
+  let disposed=false,pending=null,ownsBusy=false,generation=0,sampler=null,base=null,pose=null,renderer=null,loadedObject=null,drag=null;
+  const view={yaw:.55,pitch:-.18,zoom:1};
+  const valid=()=>!disposed&&dialog.open&&current()&&same(getReports(),reports);
+  const selection=()=>({stream_id:streamInput.value,art_record_id:record.projectPlayerArt.artRecordId,layer:layer.value,equipped:equipment.map(e=>Number(e.value))});
+  const release=()=>{if(ownsBusy){ownsBusy=false;setBusy(false);}};
+  const playback=mountWorldAnimationPlayback({host:dialog,current:()=>valid()&&(!sampler||Number.isSafeInteger(Number(frame.value))&&frame.value.trim()!==''&&Number(frame.value)>=0&&Number(frame.value)<sampler.frameCount),busy,onFrame:value=>{pose=value.geometry;frame.value=String(value.frame_index);drawSafe();},onError,update:()=>update(),labelPrefix:'PLAYER Art',playLabel:'Play PLAYER Art Frames'});
+  const timeline=mountPlayerArtTimeline({host:dialog,getState:()=>({receipt:base,frame:frame.value.trim()===''?NaN:Number(frame.value)}),current:()=>valid()&&!!sampler&&frame.value.trim()!==''&&Number.isSafeInteger(Number(frame.value))&&Number(frame.value)>=0&&Number(frame.value)<sampler.frameCount,busy,onFrame:n=>playback.seek(n),onError});
+  function clear(){generation++;pending?.abort();pending=null;playback.clear();sampler=base=pose=null;timeline.update();renderer?.load({assets:[],entities:[]});loadedObject=null;drag=null;canvas.hidden=true;canvas.style.display='none';canvas.dataset.ready='false';object.hidden=true;}
+  function update(){if(disposed)return;if(!valid()){clear();status.textContent='Source changed; refresh PLAYER art resources.';release();}const blocked=!valid()||busy()||!!pending;layer.querySelector('option[value="current"]').disabled=!canCurrent();for(const control of [streamInput,layer,inspect,...equipment])control.disabled=blocked;inspect.disabled=blocked||layer.value==='current'&&!canCurrent();frame.disabled=object.disabled=blocked||!sampler;playback.update();timeline.update();}
+  function draw(){if(!valid()||!pose||!renderer)return;const o=object.value==='all'?null:pose.objects[Number(object.value)],start=o?.triangle_start??0,end=o?start+o.triangle_count:pose.triangles.length,g={...pose};for(const key of ['triangles','triangle_colors','triangle_uvs','triangle_materials'])g[key]=pose[key].slice(start,end);
+    if(loadedObject!==object.value){const errors=renderer.load({assets:[{geometry_key:'player-art',preview:g}],entities:[{entity_id:'player-art',geometry_key:'player-art',renderable:true,model_to_scene:[1,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,1]}]});if(errors.length)throw Error(errors.join('; '));loadedObject=object.value;}else if(!renderer.updateVertices('player-art',pose.vertices))throw Error('PLAYER art geometry was withdrawn.');
+    const framing=modelPreviewFrame(g,g,'current','visible'),r=canvas.getBoundingClientRect(),c=Math.cos(view.yaw),s=Math.sin(view.yaw),cp=Math.cos(view.pitch),sp=Math.sin(view.pitch);renderer.draw({width:r.width,height:r.height,positions:new Map(),grid:false,camera:{target:{x:framing.center[0],y:-framing.center[1],z:framing.center[2]},distance:framing.radius*4/view.zoom*.9/1.3},basis:{right:{x:c,y:0,z:s},up:{x:sp*s,y:cp,z:-sp*c},forward:{x:-cp*s,y:sp,z:cp*c}}});canvas.dataset.ready='true';timeline.update();
+  }
+  const drawSafe=()=>{try{draw();}catch(error){clear();status.textContent=error.message;onError(error);}};
+  async function request(route,body,signal){const response=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal}),text=await response.text();if(text.length>12*1024*1024)throw Error('PLAYER art receipt exceeds its preview budget.');const value=JSON.parse(text);if(!response.ok)throw Error(value.error||'PLAYER art request failed');return value;}
+  inspect.onclick=async()=>{if(inspect.disabled||!valid()||busy()||pending)return;clear();const ticket=generation,chosen=selection(),controller=new AbortController();pending=controller;ownsBusy=true;setBusy(true);update();
+    try{const context={expected_project_path:mr.project_path,expected_source_key:mr.project_source_key,asset_id:model.semantic_id,catalog_source_key:mr.catalog.source_key,equipped:chosen.equipped};let currentHash=null;
+      if(chosen.layer==='current'){const value=await request('/api/player-model-current',context,controller.signal);currentHash=value.effective_file_sha256;}
+      const receipt=await request('/api/player-art-playback',{...context,art_source_key:ar.catalog.source_key,...chosen,expected_current_sha256:currentHash},controller.signal);
+      const qualified=await createPlayerArtSampler(receipt,ar,mr,modelRecord,{...chosen,expected_current_sha256:currentHash});if(!valid()||ticket!==generation||!same(chosen,selection()))return;
+      sampler=qualified;base=receipt;frame.max=String(sampler.frameCount-1);frame.value='0';object.replaceChildren();const all=node('option','All Selected Equipment Objects');all.value='all';object.append(all);for(const o of receipt.base_inspection.geometry.objects){const opt=node('option',`Object ${o.object_index}`);opt.value=String(o.object_index);object.append(opt);}object.hidden=false;renderer??=new SceneRenderer(canvas);canvas.hidden=false;canvas.style.display='block';pose=sampler.sample(0).geometry;draw();playback.set(sampler);status.textContent=`${chosen.layer.toUpperCase()} Geometry · ${receipt.stream.archive_role.toUpperCase()} Source Archive · ${sampler.frameCount} Native Frames · Residency Unobserved`;
+    }catch(error){if(error.name!=='AbortError'&&valid()&&ticket===generation){clear();status.textContent=error.message;onError(error);}}finally{if(pending===controller)pending=null;release();update();}};
+  for(const input of [streamInput,layer,...equipment])input.onchange=()=>{if(!busy()){clear();status.textContent='Selection changed; inspect the chosen source assembly.';update();}};
+  frame.oninput=()=>{if(!sampler||busy()||!valid())return;const n=frame.value.trim()===''?NaN:Number(frame.value);if(!Number.isSafeInteger(n)||n<0||n>=sampler.frameCount){playback.update();timeline.update();canvas.hidden=true;canvas.dataset.ready='false';status.textContent='Choose an existing whole native frame.';return;}canvas.hidden=false;playback.seek(n);};object.onchange=drawSafe;
+  canvas.onpointerdown=e=>{if(pose&&!busy()&&valid()){drag={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);}};canvas.onpointermove=e=>{if(!drag||busy()||!valid())return;view.yaw+=(e.clientX-drag.x)*.01;view.pitch=Math.max(-1.4,Math.min(1.4,view.pitch+(e.clientY-drag.y)*.01));drag={x:e.clientX,y:e.clientY};drawSafe();};canvas.onpointerup=canvas.onpointercancel=()=>{drag=null;};canvas.addEventListener('wheel',e=>{if(!pose||busy()||!valid())return;e.preventDefault();view.zoom=Math.max(.25,Math.min(5,view.zoom*Math.exp(-e.deltaY*.001)));drawSafe();},{passive:false});
+  const observer=new ResizeObserver(drawSafe);observer.observe(canvas);
+  function dispose(){if(disposed)return;disposed=true;clear();renderer?.dispose();renderer=null;playback.dispose();timeline.dispose();observer.disconnect();dialog.removeEventListener('close',dispose);release();if(mounted.get(dialog)?.dispose===dispose)mounted.delete(dialog);}
+  dialog.addEventListener('close',dispose);mounted.set(dialog,{update,dispose});if(!dialog.open)dialog.showModal();update();
+}

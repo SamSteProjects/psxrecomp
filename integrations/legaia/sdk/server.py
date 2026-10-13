@@ -1261,6 +1261,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/battle-sideband.js": ("battle-sideband.js", "text/javascript"),
                  "/player-art-codec.js": ("player-art-codec.js", "text/javascript"),
                  "/player-art-animation.js": ("player-art-animation.js", "text/javascript"),
+                 "/player-art-inspector.js": ("player-art-inspector.js", "text/javascript"),
+                 "/player-art-timeline.js": ("player-art-timeline.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
                  "/battle-pack-playback.js": ("battle-pack-playback.js", "text/javascript"),
                  "/battle-pack-timeline.js": ("battle-pack-timeline.js", "text/javascript"),
