@@ -1258,6 +1258,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/monster-model-restoration.js": ("monster-model-restoration.js", "text/javascript"),
                  "/monster-archive.js": ("monster-archive.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
+                 "/battle-sideband.js": ("battle-sideband.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
                  "/battle-pack-playback.js": ("battle-pack-playback.js", "text/javascript"),
                  "/battle-pack-timeline.js": ("battle-pack-timeline.js", "text/javascript"),
@@ -1719,6 +1720,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if route.endswith('-preview'):fields|={'asset_id','catalog_source_key','palette_index'}
                     if set(body)!=fields:raise ProjectError('Battle resource inspection requires exact project and source fields')
                     from .battle_character_resources import resources,preview
+                    self._json(200,(preview if route.endswith('-preview') else resources)(self.server.project,**body))
+                    return
+                if route in ('/api/battle-sideband-resources','/api/battle-sideband-preview'):
+                    fields={'expected_project_path','expected_source_key'}
+                    if route.endswith('-preview'):fields|={'asset_id','catalog_source_key','palette_index'}
+                    if set(body)!=fields:raise ProjectError('Sideband inspection requires exact project and source fields')
+                    from .battle_sideband import resources,preview
                     self._json(200,(preview if route.endswith('-preview') else resources)(self.server.project,**body))
                     return
                 if route == '/api/command-history':
