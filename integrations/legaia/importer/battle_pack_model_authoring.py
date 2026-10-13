@@ -9,7 +9,7 @@ from .model_glb import export_model_glb, import_model_glb
 from .model_authoring import replace_model_content
 
 
-def source(original, record, catalog, current_tmd=None):
+def source(original, record, catalog, current_tmd=None, texture_entry=None):
     if (not isinstance(original, bytes) or not isinstance(record, dict)
             or not isinstance(catalog, dict) or record not in catalog.get('models', [])
             or catalog.get('source_entry_index') != 1204
@@ -33,12 +33,15 @@ def source(original, record, catalog, current_tmd=None):
     geometry = decode_tmd(tmd)
     geometry.update(semantic_id=record['semantic_id'], source_record=deepcopy(native),
                     representation='retail-reference-pack-not-player-assembly')
-    geometry['textures'] = material_textures(original, catalog, geometry)
+    if texture_entry is not None:
+        from .battle_pack_palettes import qualify_entry
+        texture_entry=qualify_entry(original,catalog,texture_entry)
+    geometry['textures'] = material_textures(original if texture_entry is None else texture_entry, catalog, geometry)
     return tmd, geometry
 
 
-def export(original, record, catalog, current_tmd=None):
-    tmd, geometry = source(original, record, catalog, current_tmd)
+def export(original, record, catalog, current_tmd=None, texture_entry=None):
+    tmd, geometry = source(original, record, catalog, current_tmd, texture_entry)
     content, profile = export_model_glb(tmd, geometry)
     binding = dict(schema_version='legaia.battle-pack-model-glb-binding.v1',
         asset_id=record['semantic_id'], source_record=deepcopy(record['source_record']),

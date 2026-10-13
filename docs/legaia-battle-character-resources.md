@@ -1,5 +1,13 @@
 # Battle Character Resource Discovery
 
+## Native Pack Palette Authoring — In Progress
+
+The native replay layer covers existing CLUT words only: six complete 4-bpp TIMs, sixteen local palettes each, sixteen entries per palette. Sparse typed unsigned16 edits preserve every header, image index byte, model stream and partial seventh atlas. Returning a word to Retail removes that cell from its canonical owner; empty ownership restores Retail. Composition accepts a separately qualified model entry and refuses base changes outside existing model spans.
+
+Focused native checks cover all 1,536 cells and inverse restoration, all six combined owners, malformed/out-of-range/duplicate/unsorted/stale/partial input, black/STP/RGB word decoding and protected neighbors. Current texture-only context changes GLB display images while preserving all five native import profiles and exact edited-model replay. Fresh palette tests pass; the earlier five-test model-authoring/HTTP/history/package regression passes. These are native foundation checks, not completed authoring or gameplay acceptance.
+
+Remaining work: optional project owner persistence/history, full model-plus-palette composition, source-qualified Current/Proposed texture proof and UI, Current model/pose/playback/export and whole-model restoration composition, exact directory/ZIP package delivery and normal wide/400-pixel editor checks. No game or recomp compilation is needed for this implementation phase. Native residency, activation, cadence and playable appearance remain deferred. Full SDK goal active; solo work continues.
+
 ## Reviewed Whole Pack Model Restoration
 
 Offline checks passed — 2026-10-13. Inspect Current Native Pack Model, expand Whole Pack Model Restoration and choose Review Restore Retail Pack Model. Review restores the selected complete existing TMD, independently verifies its Retail geometry and complete composed entry, and lists the active inputs that will leave the selected owner. Current and Proposed layers share a comparison frame; Apply Reviewed Pack Restoration requires the rendered Proposed layer and exact fresh review. Other pack models, all TIM bytes, stream headers and opaque neighbors remain unchanged.
