@@ -6,7 +6,7 @@ from .battle_character_resources import _fresh
 from .monster_model_authoring import snapshot as model_snapshot
 from importer.monster_archive import decode_catalog
 from importer.monster_motion import frame
-from importer.monster_motion_authoring import patch
+from importer.monster_motion_authoring import patch,patch_range
 from importer.core import ImportError as NativeError
 from importer.serialization import serialize_lzs_decoded
 from .monster_motions import current_clip,compose,validate
@@ -31,11 +31,13 @@ def inspect(project,animation_id,frame_index,part_index,**context):
     return dict(schema_version='legaia.monster-frame-inspection.v1',project_path=str(project.root),project_source_key=context['expected_source_key'],catalog_source_key=context['catalog_source_key'],asset_id=context['asset_id'],clip=clip,frame_index=frame_index,part_index=part_index,channels=channels,current_block_sha256=sha256(current).hexdigest(),source_motion_base64=b64encode(stream).decode(),retail_motion_base64=b64encode(original[at:end]).decode(),motion_binding=deepcopy(project.monster_motion_overrides.get(animation_id)),layer='current',read_only=True,project_changed=False,gameplay_verified=False)
 
 
-def review(project,animation_id,frame_index,part_index,expected_current_block_sha256,translation,rotation_psx,**context):
+def review(project,animation_id,frame_index,part_index,expected_current_block_sha256,translation,rotation_psx,frame_start=None,frame_end=None,range_operation=None,**context):
     clip,original,current,raw,used,_,stream=snapshot(project,animation_id,frame_index,part_index,**context)
     if sha256(current).hexdigest()!=expected_current_block_sha256:raise ProjectError('Monster Current slot changed; inspect its channels again')
     try:
-        candidate,projection=patch(current,current_clip(current,clip),frame_index,part_index,translation,rotation_psx);at=clip['source_record']['compressed_stream_offset'];_,capacity=serialize_lzs_decoded(raw[at:at+used],len(original),candidate,'monster-motion')
+        ranged=any(n is not None for n in (frame_start,frame_end,range_operation))
+        candidate,projection=patch_range(original,current,current_clip(current,clip),frame_index,part_index,translation,rotation_psx,frame_start,frame_end,range_operation) if ranged else patch(current,current_clip(current,clip),frame_index,part_index,translation,rotation_psx)
+        at=clip['source_record']['compressed_stream_offset'];_,capacity=serialize_lzs_decoded(raw[at:at+used],len(original),candidate,'monster-motion')
     except NativeError as e:raise ProjectError(str(e)) from e
     start=clip['source_record']['byte_offset'];end=start+clip['source_record']['byte_length']
     value=dict(schema_version='legaia.monster-frame-review.v1',project_path=str(project.root),project_source_key=context['expected_source_key'],catalog_source_key=context['catalog_source_key'],asset_id=context['asset_id'],clip=clip,frame_index=frame_index,part_index=part_index,projection=projection,capacity=capacity,source_motion_base64=b64encode(stream).decode(),candidate_motion_base64=b64encode(candidate[start:end]).decode(),layer='proposed',persistence='not_applied',read_only=True,project_changed=False,gameplay_verified=False)
@@ -45,16 +47,23 @@ def review(project,animation_id,frame_index,part_index,expected_current_block_sh
 def apply(project,review_key,**args):
     value=review(project,**args)
     if value['review_key']!=review_key or not value['projection']['byte_change_count']:raise ProjectError('Monster frame Apply requires exact fresh changed Review')
-    clip,original,current,raw,_,_,_=snapshot(project,**{k:v for k,v in args.items() if k not in ('expected_current_block_sha256','translation','rotation_psx')})
+    clip,original,current,raw,_,_,_=snapshot(project,**{k:v for k,v in args.items() if k not in ('expected_current_block_sha256','translation','rotation_psx','frame_start','frame_end','range_operation')})
     identifier=clip['semantic_id'];before=deepcopy(project.monster_motion_overrides);after=deepcopy(before);rows={(e['frame_index'],e['part_index']):deepcopy(e) for e in before.get(identifier,{}).get('edits',[])};pair=(args['frame_index'],args['part_index']);retail,_=frame(original,clip,args['frame_index']);source=retail[args['part_index']]
-    if args['translation']==source['translation'] and args['rotation_psx']==source['rotation_psx']:rows.pop(pair,None)
-    else:rows[pair]=dict(frame_index=pair[0],part_index=pair[1],translation=args['translation'].copy(),rotation_psx=args['rotation_psx'].copy())
+    merge_review_rows(rows,original,clip,value)
     if rows:
-        candidate,_=patch(current,current_clip(current,clip),args['frame_index'],args['part_index'],args['translation'],args['rotation_psx']);derived=current_clip(candidate,clip)
+        at=clip['source_record']['byte_offset'];end=at+clip['source_record']['byte_length'];candidate=current[:at]+b64decode(value['candidate_motion_base64'])+current[end:];derived=current_clip(candidate,clip)
         after[identifier]=dict(schema_version='legaia.monster-motion-override.v1',asset_id=identifier,source_record=deepcopy(clip['source_record']),edits=[rows[k] for k in sorted(rows)],current_motion_sha256=derived['source_record']['sha256'],current_entry_sha256=derived['source_record']['entry_sha256'])
     else:after.pop(identifier,None)
     validate(project,after);project.monster_motion_overrides=after;project.undo_stack.append(dict(target='monster_motion_overrides',before=before,after=deepcopy(after),label='Monster native motion'));project.redo_stack.clear()
     return dict(history_steps=1,project_changed=True,gameplay_verified=False)
+
+
+def merge_review_rows(rows,original,clip,value):
+    edits=value['projection'].get('range',{}).get('edits',[dict(frame_index=value['frame_index'],part_index=value['part_index'],**value['projection']['after'])])
+    for edit in edits:
+        pair=(edit['frame_index'],edit['part_index']);transforms,_=frame(original,clip,pair[0]);source=transforms[pair[1]]
+        if edit['translation']==source['translation'] and edit['rotation_psx']==source['rotation_psx']:rows.pop(pair,None)
+        else:rows[pair]=deepcopy(edit)
 
 
 def proposed_pose(project,review_key,**args):
@@ -66,8 +75,7 @@ def proposed_pose(project,review_key,**args):
     clip,original,current,_,_,_,_=snapshot(project,animation_id=args['animation_id'],frame_index=args['frame_index'],part_index=args['part_index'],**context)
     at=clip['source_record']['byte_offset'];end=at+clip['source_record']['byte_length'];candidate=current[:at]+b64decode(value['candidate_motion_base64'])+current[end:]
     rows={(e['frame_index'],e['part_index']):deepcopy(e) for e in project.monster_motion_overrides.get(clip['semantic_id'],{}).get('edits',[])};pair=(args['frame_index'],args['part_index']);retail,_=frame(original,clip,pair[0]);source=retail[pair[1]]
-    if args['translation']==source['translation'] and args['rotation_psx']==source['rotation_psx']:rows.pop(pair,None)
-    else:rows[pair]=dict(frame_index=pair[0],part_index=pair[1],translation=args['translation'].copy(),rotation_psx=args['rotation_psx'].copy())
+    merge_review_rows(rows,original,clip,value)
     derived=current_clip(candidate,clip);binding=dict(schema_version='legaia.monster-motion-override.v1',asset_id=clip['semantic_id'],source_record=deepcopy(clip['source_record']),edits=[rows[k] for k in sorted(rows)],current_motion_sha256=derived['source_record']['sha256'],current_entry_sha256=derived['source_record']['entry_sha256']) if rows else None
     before=current_pose(project,**context,animation_id=args['animation_id'],frame_index=args['frame_index']);proposed=deepcopy(before);transforms,stream=frame(candidate,derived,pair[0]);g=deepcopy(before['base_preview']['geometry']);g['vertices']=pose_vertices(g['vertices'],g['objects'],transforms);g.pop('triangle_normals',None);g.pop('normal_preview',None)
     g.update(posed=True,coordinate_system='retail_psx_actor_local_y_down',bounds=dict(min=[min(v[i] for v in g['vertices']) for i in range(3)],max=[max(v[i] for v in g['vertices']) for i in range(3)]))

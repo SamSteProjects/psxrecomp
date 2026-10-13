@@ -1483,6 +1483,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route in ('/api/monster-frame-inspect','/api/monster-frame-review','/api/monster-frame-apply','/api/monster-frame-pose'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','animation_id','frame_index','part_index'}
                     if not route.endswith('-inspect'):fields|={'expected_current_block_sha256','translation','rotation_psx'}
+                    if not route.endswith('-inspect') and set(body)&{'frame_start','frame_end','range_operation'}:fields|={'frame_start','frame_end','range_operation'}
                     if route.endswith('-apply') or route.endswith('-pose'):fields.add('review_key')
                     if set(body)!=fields:raise ProjectError('Monster frame requires exact source, frame, part and channel fields')
                     from .monster_motion_authoring import inspect,review,apply,proposed_pose
