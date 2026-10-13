@@ -1226,6 +1226,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/worldmap-scene.js": ("worldmap-scene.js", "text/javascript"),
                  "/project-assets.js": ("project-assets.js", "text/javascript"),
                  "/player-model-review.js": ("player-model-review.js", "text/javascript"),
+                 "/player-model-restoration.js": ("player-model-restoration.js", "text/javascript"),
                  "/player-battle.js": ("player-battle.js", "text/javascript"),
                  "/player-action-playback.js": ("player-action-playback.js", "text/javascript"),
                  "/player-action-editor.js": ("player-action-editor.js", "text/javascript"),
@@ -1258,6 +1259,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/monster-archive.js": ("monster-archive.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
+                 "/battle-pack-playback.js": ("battle-pack-playback.js", "text/javascript"),
+                 "/battle-pack-timeline.js": ("battle-pack-timeline.js", "text/javascript"),
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
                  "/worldmap-asset-references.js": ("worldmap-asset-references.js", "text/javascript"),
                  "/worldmap-reference-trace.js": ("worldmap-reference-trace.js", "text/javascript"),
@@ -1462,6 +1465,21 @@ class EditorHandler(BaseHTTPRequestHandler):
                     result=action(self.server.project,**body)
                     self._json(200,dict(self.server.state(),player_action_apply=result) if route.endswith('-apply') else result)
                     return
+                if route in ('/api/player-model-restore-review','/api/player-model-restore-preview','/api/player-model-restore-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','expected_current_sha256','expected_current_composed_sha256'}
+                    if not route.endswith('-review'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('PLAYER model restoration requires exact fresh composed source and selection fields')
+                    from .player_model_restoration import review,proposed_preview,apply
+                    action=review if route.endswith('-review') else apply if route.endswith('-apply') else proposed_preview
+                    result=action(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),player_model_restore=result) if route.endswith('-apply') else result)
+                    return
+                if route == '/api/battle-pack-playback':
+                    fields={'expected_project_path','expected_source_key','model_id','model_source_key','animation_id','animation_source_key'}
+                    if set(body)!=fields:raise ProjectError('Battle pack playback requires exact source model and clip identities')
+                    from .battle_pack_playback import playback
+                    self._json(200,playback(self.server.project,**body))
+                    return
                 if route == '/api/player-battle-playback':
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','layer','expected_current_sha256','action_slot'}
                     if set(body)!=fields:raise ProjectError('PLAYER playback requires exact inspected layer and selection fields')
@@ -1489,7 +1507,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','mode','action_slot','frame_index','fps'}
                     if set(body)!=fields:raise ProjectError('PLAYER export requires exact source, equipment, mode and frame/rate fields')
                     from .player_battle import export
-                    self._json(200,export(self.server.project,**body,texture_layer='current' if route=='/api/monster-current-export' else 'retail'))
+                    self._json(200,export(self.server.project,**body))
                     return
                 if route == '/api/player-battle-pose':
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','action_slot','frame_index'}
@@ -1514,7 +1532,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     fields={'expected_project_path','expected_source_key','model_id','model_source_key','animation_id','animation_source_key','frame_index'}
                     if set(body)!=fields:raise ProjectError('Battle pack export requires exact project, model and optional pose selection')
                     from .battle_character_resources import export
-                    self._json(200,export(self.server.project,**body,texture_layer='current' if route=='/api/monster-current-export' else 'retail'))
+                    self._json(200,export(self.server.project,**body))
                     return
                 if route in ('/api/battle-pack-animation-resources','/api/battle-pack-pose'):
                     fields={'expected_project_path','expected_source_key'}

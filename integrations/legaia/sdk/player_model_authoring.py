@@ -82,7 +82,10 @@ def current(project,**context):
     raw,receipt,_,binding=_snapshot(project,**context)
     _,_,tmd=assemble_tmd(raw,context['equipped'])
     _,sources=_sources(project.disc_path);_,_,retail_tmd=assemble_tmd(sources[receipt['record']['player_index']][3],context['equipped'])
-    return dict(schema_version='legaia.player-model-current.v2',project_path=str(project.root),project_source_key=context['expected_source_key'],catalog_source_key=context['catalog_source_key'],record=receipt['record'],assembly=receipt['assembly'],geometry=receipt['geometry'],binding=deepcopy(project.player_model_overrides.get(context['asset_id'])),effective_file_sha256=sha256(raw).hexdigest(),action_clips=receipt['action_clips'],action_file_sha256=receipt['action_file_sha256'],action_binding=receipt['action_binding'],tmd_base64=b64encode(tmd).decode('ascii'),retail_tmd_base64=b64encode(retail_tmd).decode('ascii'),layer='current',read_only=True,project_changed=False,gameplay_verified=False)
+    from importer.player_battle import table
+    descriptor=table(raw)[0]['descriptor_offset'];action=receipt['_action_file']
+    composed=raw[:16]+action[16:descriptor]+raw[descriptor:]
+    return dict(schema_version='legaia.player-model-current.v2',project_path=str(project.root),project_source_key=context['expected_source_key'],catalog_source_key=context['catalog_source_key'],record=receipt['record'],assembly=receipt['assembly'],geometry=receipt['geometry'],binding=deepcopy(project.player_model_overrides.get(context['asset_id'])),effective_file_sha256=sha256(raw).hexdigest(),current_composed_sha256=sha256(composed).hexdigest(),action_clips=receipt['action_clips'],action_file_sha256=receipt['action_file_sha256'],action_binding=receipt['action_binding'],tmd_base64=b64encode(tmd).decode('ascii'),retail_tmd_base64=b64encode(retail_tmd).decode('ascii'),layer='current',read_only=True,project_changed=False,gameplay_verified=False)
 
 
 def _current_tracks(project, expected_current_sha256, action_slot, **context):

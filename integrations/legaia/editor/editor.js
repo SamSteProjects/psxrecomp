@@ -2,9 +2,9 @@ import {showMonster,showMonsterTexture,showMonsterAnimation,showMonsterInput,sho
 import {showFieldTexture,showFieldTextureInput,disposeFieldTexture} from '/field-textures.js';
 import {mountFieldEquipment} from './field-equipment.js';
 let fieldEquipmentControls=null;
-import {showPlayerBattle,showPlayerAction,showPlayerTexture,showPlayerMotionInput} from '/player-battle.js';
+import {showPlayerBattle,showPlayerAction,showPlayerTexture,showPlayerMotionInput,updatePlayerBattle} from '/player-battle.js';
 import {showBattlePackAnimationResource} from '/battle-pack-animation.js';
-import {showBattleCharacterResource} from '/battle-character-resources.js';
+import {showBattleCharacterResource,updateBattleCharacterResource} from '/battle-character-resources.js';
 import {worldAnimationBuildSource,worldAnimationBuildTarget} from '/worldmap-animation-build-navigation.js';
 import {qualifyWorldmapBehaviorResource,showWorldmapBehaviorResource} from '/worldmap-behavior-resources.js';
 import {mergeWorldAnimationAuthoredAssets} from '/worldmap-animation-assets.js';
@@ -934,7 +934,7 @@ function setBusy(value) {
   if($('project-copy-button'))$('project-copy-button').disabled=value||!state.capabilities?.project_copy;
   if($('project-animation-inputs'))$('project-animation-inputs').disabled=value||!state.project?.path;
   document.querySelectorAll('#script-report [data-script-family]').forEach(button=>button.disabled=value);
-  busy=value;updateMonster($('asset-details'));fieldEquipmentControls?.update();sceneImportBatch?.update();hierarchyHistory?.refresh();sceneCameraInspector?.update();if($('select-matching-actors'))hierarchyMatchSelect.disabled=!canSelectHierarchyMatches()||!hierarchyMatchIds.length||hierarchyMatchKey!==resourceStateKey();npcPresetControls?.update();triggerScriptsDialog?.refresh?.();triggerGroupDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();updateSceneVisibilityButtons();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
+  busy=value;updateMonster($('asset-details'));updatePlayerBattle($('asset-details'));updateBattleCharacterResource($('asset-details'));fieldEquipmentControls?.update();sceneImportBatch?.update();hierarchyHistory?.refresh();sceneCameraInspector?.update();if($('select-matching-actors'))hierarchyMatchSelect.disabled=!canSelectHierarchyMatches()||!hierarchyMatchIds.length||hierarchyMatchKey!==resourceStateKey();npcPresetControls?.update();triggerScriptsDialog?.refresh?.();triggerGroupDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();updateSceneVisibilityButtons();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);updateAssetPlacementActions();
@@ -1598,7 +1598,7 @@ function hasUnsavedEditorWork(){return !!state.project?.dirty||worldmapDraftPend
 window.addEventListener('beforeunload',event=>{if(hasUnsavedEditorWork()){event.preventDefault();event.returnValue='';}});
 
 function render(){
-  updateMonster($('asset-details'));fieldEquipmentControls?.update();
+  updateMonster($('asset-details'));updatePlayerBattle($('asset-details'));updateBattleCharacterResource($('asset-details'));fieldEquipmentControls?.update();
   updateEnvironmentGroupSelection();
   updateActorGroupSelection();actorBatchTool.synchronize();savedActorSelections?.synchronize();savedSceneSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();
   draftsButton.textContent=`NPC drafts (${Object.keys(state.actor_drafts??{}).length})`;

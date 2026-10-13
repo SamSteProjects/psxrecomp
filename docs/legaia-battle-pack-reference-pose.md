@@ -1,4 +1,15 @@
 # Battle Pack Reference Pose
+## Cached Playback And Native Channel Timeline
+
+Offline checks passed — 2026-10-12. Inspect a Retail pack model, inspect its matching reference animations, select a clip and Load Complete Pack Clip. The fresh six-field `/api/battle-pack-playback` route supplies complete original bank, clip and model bytes. Clients verify source hashes, exact headers/trailers, record ranges, model vertices and first-frame assembly before retaining an immutable sampler. Only the twenty-seven clips matched to models 0/1/2 play; the final three unmatched simplified rigs remain refused.
+
+Loading immediately displays frame zero. Number, scrubber, Play and the six-axis Native Battle Pack Channel Timeline share the actual displayed frame and static export selection. Playback is local and one-pass, with whole Display FPS 1–60 separate from Interchange FPS and unknown native cadence. Native-part/axis selection shows discrete source samples, signed twelve-bit translation and reduced eight-bit rotation ×16. Mouse/keyboard graph navigation uses the local sampler; frame-only navigation retains existing graph dots. Clip/model/source/Return/Close withdraw cached data; busy or hidden pages pause it.
+
+Native/client checks pass twenty-seven complete streams, fifty-four independent first/last poses, 32,994 matrix-oracle vertices and 289 altered source/index/header/codec refusals. Timeline checks cover 2,574 tracks, 59,190 literal axis samples and 1,170 refusal cases. Actual muted Edge normal-inspector checks pass number/scrub/play/graph synchronization, six axes/native parts, exact displayed-frame export, separate clip-export rate, source/root/busy/hidden/close cleanup and inspected wide/400-pixel layouts. Project/history, runtime calls and per-frame HTTP remain unchanged/empty. Physical Pause testing uses a slow rate: an earlier test click arrived after a short clip had ended and restarted playback, which was a driver race rather than a transport defect.
+
+Parent renderer integration retains mesh and texture buffers: browser instrumentation records seventeen texture creates/uploads before and after seventy-two local vertex-buffer updates. Camera movement adds no uploads. Existing Retail pack and PLAYER export dispatch was repaired to pass only each exporter's supported arguments; fresh eight-pack/twelve-PLAYER HTTP exports and native corner/pixel/track checks pass.
+
+Evidence: `local-output/sdk-20260909/battle-pack-playback-20261012/`, `battle-pack-timeline-20261012/` and `player-integration-20261012/`. These are source reference/viewer clips, separate from PLAYER equipment assemblies. Native activation, cadence, interpolation/GTE and gameplay remain unverified. No native compilation, game, attachment, installation or disc export ran; the full SDK goal remains active.
 
 Offline checks passed for pack-source registration and reference pose inspection — 2026-10-11. PROT 1203 section 2 contains 30 rigid eight-byte ANM records for the object order of the PROT 1204 default pack. The SDK keeps this configuration distinct from normal battle meshes assembled from PLAYER equipment sections and their nine-byte action streams.
 
