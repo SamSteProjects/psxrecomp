@@ -22,4 +22,4 @@ for(const c of fixture.cases){
   for(const edit of [v=>v.current_tmd_sha256='0'.repeat(64),v=>v.current_entry_sha256='0'.repeat(64),v=>v.mode='foreign',v=>v.audit.sha256='0'.repeat(64),v=>v.audit.byte_length++,v=>v.filename='../foreign.glb',v=>v.project_source_key='stale',v=>v.fps=999]){const v=structuredClone(value);edit(v);await assert.rejects(()=>qualifyCurrentPackExport(v,c.inspection,fixture.report,c.record,selection));refusals++;}
  }
 }
-console.log(`${poses} authored Current pack poses / ${exports} exports / ${trackSamples} literal full-clip tracks / ${refusals} altered model, source, frame, geometry and export refusals pass`);
+console.log(`${poses} authored Current pack poses / ${exports} exports / ${trackSamples} literal full-clip part/frame samples / ${refusals} altered model, source, frame, geometry and export refusals pass`);
