@@ -62,6 +62,7 @@ export function showPlayerArtInspector({dialog,record,getReports,current,busy,se
     }catch(error){if(error.name!=='AbortError'&&valid()&&ticket===generation){status.textContent=error.message;onError(error);}}finally{if(pending===controller)pending=null;release();update();}}
   poseExport.onclick=()=>download('pose');clipExport.onclick=()=>download('clip');
   const observer=new ResizeObserver(drawSafe);observer.observe(canvas);
-  function dispose(){if(disposed)return;disposed=true;clear();renderer?.dispose();renderer=null;playback.dispose();timeline.dispose();nativeEditor.dispose();observer.disconnect();dialog.removeEventListener('close',dispose);release();if(mounted.get(dialog)?.dispose===dispose)mounted.delete(dialog);}
-  dialog.addEventListener('close',dispose);mounted.set(dialog,{update,dispose});if(!dialog.open)dialog.showModal();update();
+  function dispose(){if(disposed)return;disposed=true;clear();renderer?.dispose();renderer=null;playback.dispose();timeline.dispose();nativeEditor.dispose();observer.disconnect();dialog.removeEventListener('close',onClose);release();if(mounted.get(dialog)?.dispose===dispose)mounted.delete(dialog);}
+  const onClose=()=>{if(!dialog.open)dispose();};
+  dialog.addEventListener('close',onClose);mounted.set(dialog,{update,dispose});if(!dialog.open)dialog.showModal();update();
 }
