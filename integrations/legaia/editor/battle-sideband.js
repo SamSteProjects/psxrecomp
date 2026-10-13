@@ -8,8 +8,8 @@ const same = (a, b) => JSON.stringify(ordered(a)) === JSON.stringify(ordered(b))
 const fail = () => { throw Error('Sideband source, geometry or native page pixels changed.'); };
 const hash = v => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v);
 const pin = 'd6e64c68ede25813d35db20980da82a1a025549b';
-const bytes = s => {
-  if (typeof s !== 'string' || s.length > 1024 * 1024) fail();
+const bytes = (s, limit = 1024 * 1024) => {
+  if (typeof s !== 'string' || s.length > limit) fail();
   return Uint8Array.from(atob(s), c => c.charCodeAt(0));
 };
 
@@ -89,6 +89,80 @@ export async function qualifySidebandPreview(value, report, record) {
   return structuredClone(g);
 }
 
+async function sourcePngPixels(data, width, height) {
+  if (data.length < 57 || ![137,80,78,71,13,10,26,10].every((v,i) => data[i] === v)) fail();
+  const view = new DataView(data.buffer,data.byteOffset,data.byteLength), parts = []; let at = 8, header = false, ended = false;
+  const crc = raw => { let value = 0xffffffff; for (const b of raw) { value ^= b; for (let i=0;i<8;i++) value = (value >>> 1) ^ ((value & 1) ? 0xedb88320 : 0); } return (value ^ 0xffffffff) >>> 0; };
+  while (at + 12 <= data.length) {
+    const length = view.getUint32(at), end = at + 12 + length;
+    if (end > data.length || crc(data.subarray(at+4,end-4)) !== view.getUint32(end-4)) fail();
+    const type = String.fromCharCode(...data.subarray(at+4,at+8)), payload = data.subarray(at+8,end-4);
+    if (!header) {
+      if (type !== 'IHDR' || length !== 13 || view.getUint32(at+8) !== width || view.getUint32(at+12) !== height || !same([...payload.subarray(8)],[8,6,0,0,0])) fail();
+      header = true;
+    } else if (type === 'IDAT' && !ended) parts.push(payload);
+    else if (type === 'IEND' && length === 0 && parts.length && end === data.length) ended = true;
+    else fail();
+    at = end;
+  }
+  if (!ended || at !== data.length) fail();
+  const expected = (width*4+1)*height, reader = new Blob(parts).stream().pipeThrough(new DecompressionStream('deflate')).getReader(), chunks = []; let count = 0;
+  try { for (;;) { const {done,value} = await reader.read(); if (done) break; count += value.length; if (count > expected) fail(); chunks.push(value); } } finally { await reader.cancel(); }
+  if (count !== expected) fail();
+  const raw = new Uint8Array(expected); at = 0; for (const chunk of chunks) { raw.set(chunk,at); at += chunk.length; }
+  const rgba = new Uint8Array(width*height*4);
+  for (let y=0;y<height;y++) { const row = y*(width*4+1); if (raw[row] !== 0) fail(); rgba.set(raw.subarray(row+1,row+1+width*4),y*width*4); }
+  return rgba;
+}
+
+function sourceGlbPositions(data, geometry, audit) {
+  const view = new DataView(data.buffer,data.byteOffset,data.byteLength);
+  if (data.length < 28 || view.getUint32(0,true) !== 0x46546c67 || view.getUint32(4,true) !== 2 || view.getUint32(8,true) !== data.length || view.getUint32(16,true) !== 0x4e4f534a) fail();
+  const size = view.getUint32(12,true), binAt = 20+size;
+  if (size < 2 || binAt+8 > data.length || view.getUint32(binAt+4,true) !== 0x004e4942 || binAt+8+view.getUint32(binAt,true) !== data.length) fail();
+  const doc = JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(data.subarray(20,binAt))), binary = data.subarray(binAt+8);
+  const embedded = Object.fromEntries(Object.entries(audit).filter(([k]) => !['sha256','byte_length'].includes(k)));
+  if (doc.asset?.version !== '2.0' || !same(doc.extras,embedded) || doc.animations || doc.skins || doc.images || doc.textures || !Array.isArray(doc.nodes) || doc.nodes.length > 256 || !Array.isArray(doc.meshes) || doc.meshes.length > 256 || !Array.isArray(doc.accessors) || doc.accessors.length > 4096 || !Array.isArray(doc.bufferViews) || doc.bufferViews.length > 4096 || doc.buffers?.length !== 1 || doc.buffers[0].uri || doc.buffers[0].byteLength !== binary.length) fail();
+  const seen = new Set();
+  for (const node of doc.nodes) {
+    const object = node.extras?.source_object, index = object?.object_index;
+    if (!Number.isSafeInteger(index) || seen.has(index) || !same(object,geometry.objects[index]) || node.matrix || node.translation || node.rotation || node.scale || node.children) fail();
+    seen.add(index);
+    const mesh = doc.meshes[node.mesh]; if (!mesh || !Array.isArray(mesh.primitives)) fail();
+    const materials = new Set();
+    for (const p of mesh.primitives) {
+      if (p.mode !== 4 || p.indices !== undefined || !Number.isSafeInteger(p.material) || materials.has(p.material)) fail(); materials.add(p.material);
+      const expected = [];
+      for (let t=object.triangle_start;t<object.triangle_start+object.triangle_count;t++) if (geometry.triangle_materials[t] === p.material) for (const corner of [0,2,1]) { const [x,y,z] = geometry.vertices[geometry.triangles[t][corner]]; expected.push([x,-y,z]); }
+      const a = doc.accessors[p.attributes?.POSITION], b = doc.bufferViews[a?.bufferView];
+      if (!a || !b || a.componentType !== 5126 || a.type !== 'VEC3' || a.count !== expected.length || a.sparse || a.normalized || b.buffer !== 0 || b.byteStride || !Number.isSafeInteger(b.byteOffset) || b.byteOffset < 0 || b.byteLength !== a.count*12 || b.byteOffset+b.byteLength > binary.length || (a.byteOffset ?? 0) !== 0) fail();
+      const positions = new DataView(binary.buffer,binary.byteOffset+b.byteOffset,b.byteLength);
+      for (let i=0;i<a.count;i++) for (let axis=0;axis<3;axis++) if (positions.getFloat32(i*12+axis*4,true) !== expected[i][axis]) fail();
+    }
+    const expectedMaterials = new Set(geometry.triangle_materials.slice(object.triangle_start,object.triangle_start+object.triangle_count));
+    if (!same([...materials].sort((a,b)=>a-b),[...expectedMaterials].sort((a,b)=>a-b))) fail();
+  }
+  if (seen.size !== geometry.objects.length) fail();
+}
+
+export async function qualifySidebandExport(value, report, record, kind, palette) {
+  if (value?.schema_version !== 'legaia.battle-sideband-export.v1' || value.export_kind !== kind || !['glb','png','stp'].includes(kind) || value.read_only !== true || value.project_changed !== false || value.gameplay_verified !== false || value.inspection?.palette_index !== palette) fail();
+  const geometry = await qualifySidebandPreview(value.inspection,report,record), source = record.source_record, stem = `sideband-${source.prot_entry_index}-slot-${source.slot_index}`;
+  const name = kind === 'glb' ? stem+'-object-local.glb' : stem+`-palette-${palette}`+(kind === 'stp' ? '-stp' : '')+'.png';
+  const data = bytes(value.file_base64,8*1024*1024);
+  if (value.filename !== name || !Number.isSafeInteger(value.byte_length) || value.byte_length !== data.length || data.length > 6*1024*1024 || value.sha256 !== await placementDigest(data)) fail();
+  const audit = value.audit;
+  if (kind === 'glb') {
+    if (record.asset_kind !== 'tmd_model' || audit?.schema_version !== 'legaia.model-export.v1' || audit.asset_semantic_id !== record.semantic_id || !same(audit.source_record,source) || audit.reference_commit !== pin || audit.representation !== 'retail_battle_sideband_object_local' || audit.posed !== false || audit.frame_index !== null || audit.animation !== null || audit.object_transforms !== null || audit.texture_count !== 0 || audit.object_count !== geometry.objects.length || audit.triangle_count !== geometry.triangles.length || audit.source_coordinate_system !== 'retail_tmd_object_local' || audit.coordinate_conversion !== '[x,-y,z]; reverse triangle winding' || audit.sha256 !== value.sha256 || audit.byte_length !== data.length) fail();
+    sourceGlbPositions(data,geometry,audit);
+  } else {
+    if (record.asset_kind !== 'texture' || !same(audit,{width:geometry.width,height:geometry.height,pixel_format:'RGBA8',adapter:'source_CLUT_page_pixels_not_native_TIM',mask_convention:kind === 'stp' ? 'white_set_bit_black_clear_bit' : null})) fail();
+    const pixels = await sourcePngPixels(data,geometry.width,geometry.height), rgba = bytes(geometry.rgba_base64), stp = bytes(geometry.stp_base64);
+    for (let i=0;i<pixels.length;i++) { const expected = kind === 'png' ? rgba[i] : i%4 === 3 ? 255 : stp[i>>2]*255; if (pixels[i] !== expected) fail(); }
+  }
+  return data;
+}
+
 const mounted = new WeakMap();
 export function updateSidebandResource(dialog) { mounted.get(dialog)?.update(); }
 
@@ -111,7 +185,13 @@ export function showSidebandResource({dialog, record, getReport, current, busy, 
   canvas.hidden = true; canvas.dataset.sidebandPreview = ''; canvas.dataset.ready = 'false';
   const details = node('details'), pre = node('pre',JSON.stringify(record.data,null,2));
   Object.assign(pre.style,{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}); details.append(node('summary','Source Provenance'),pre);
-  dialog.append(heading,node('p',record.type === 'model' ? 'Object-local source geometry. Assembly, animation and texture association are unresolved.' : 'Native source CLUT and indexed page. Runtime upload, residency and STP forcing are unresolved.'),inspect,palette,object,canvas,status,details);
+  const downloads = node('div'), exportButtons = [];
+  Object.assign(downloads.style,{display:'flex',flexWrap:'wrap',gap:'6px'});
+  for (const [kind,label] of record.type === 'model' ? [['glb','Download Source Model GLB']] : [['png','Download Source Page PNG'],['stp','Download Source Page STP Mask']]) {
+    const button = node('button',label); button.type = 'button'; button.disabled = true;
+    button.onclick = () => download(kind); exportButtons.push(button); downloads.append(button);
+  }
+  dialog.append(heading,node('p',record.type === 'model' ? 'Object-local source geometry. Assembly, animation and texture association are unresolved.' : 'Native source CLUT and indexed page. Runtime upload, residency and STP forcing are unresolved.'),inspect,palette,object,canvas,status,downloads,details);
   let disposed = false, pending = null, ownsBusy = false, generation = 0, value = null, renderer = null, loadedObject = null, drag = null;
   const view = {yaw:.55,pitch:-.18,zoom:1};
   const valid = () => !disposed && dialog.open && current() && same(getReport(),report);
@@ -126,6 +206,7 @@ export function showSidebandResource({dialog, record, getReport, current, busy, 
     if (!valid()) { clear(); status.textContent = 'Source changed; refresh project resources before inspecting again.'; release(); }
     const blocked = !valid() || busy() || !!pending;
     inspect.disabled = palette.disabled = object.disabled = blocked;
+    for (const button of exportButtons) button.disabled = blocked || !value;
   }
   function draw() {
     if (!valid() || !value || record.type !== 'model' || !renderer) return;
@@ -171,6 +252,23 @@ export function showSidebandResource({dialog, record, getReport, current, busy, 
       if (pending === controller) pending = null; release(); update();
     }
   };
+  async function download(kind) {
+    if (!value || !valid() || busy() || pending) return;
+    const held = value, ticket = generation, controller = new AbortController(), selectedPalette = record.type === 'texture' ? Number(palette.value) : 0;
+    pending = controller; ownsBusy = true; setBusy(true); update();
+    try {
+      const response = await fetch('/api/battle-sideband-export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expected_project_path:report.project_path,expected_source_key:report.project_source_key,asset_id:record.id,catalog_source_key:report.catalog.source_key,palette_index:selectedPalette,export_kind:kind}),signal:controller.signal});
+      const text = await response.text(); if (text.length > 8*1024*1024) fail();
+      const receipt = JSON.parse(text); if (!response.ok) throw Error(receipt.error || 'Source export failed');
+      const file = await qualifySidebandExport(receipt,report,record.data,kind,selectedPalette);
+      if (!valid() || generation !== ticket || value !== held || record.type === 'texture' && Number(palette.value) !== selectedPalette) return;
+      const url = URL.createObjectURL(new Blob([file],{type:kind === 'glb' ? 'model/gltf-binary' : 'image/png'})), link = node('a');
+      link.href = url; link.download = receipt.filename; link.click(); setTimeout(() => URL.revokeObjectURL(url),1000);
+      status.textContent = `Downloaded ${receipt.filename} · Source Only`;
+    } catch (error) {
+      if (error.name !== 'AbortError' && valid() && generation === ticket) { status.textContent = error.message; onError(error); }
+    } finally { if (pending === controller) pending = null; release(); update(); }
+  }
   palette.onchange = () => { if (!busy() && valid()) { clear(); status.textContent = 'Inspect the selected source palette.'; update(); } };
   object.onchange = redraw;
   canvas.onpointerdown = e => { if (record.type === 'model' && value && valid() && !busy()) { drag = {x:e.clientX,y:e.clientY}; canvas.setPointerCapture(e.pointerId); } };

@@ -1,5 +1,6 @@
 """Fresh read-only project APIs for separate battle sideband sources."""
 from base64 import b64encode
+from hashlib import sha256
 from importer.core import ImportError
 from importer.assets import decode_tmd
 from sdk.project import ProjectError
@@ -64,3 +65,38 @@ def preview(project, expected_project_path, expected_source_key, asset_id, catal
                 record=record, preview=value, source_slot_base64=b64encode(slot).decode('ascii'),
                 palette_index=palette_index, layer='retail', read_only=True,
                 project_changed=False, gameplay_verified=False)
+
+
+def export(project, expected_project_path, expected_source_key, asset_id, catalog_source_key, palette_index, export_kind):
+    if export_kind not in ('glb', 'png', 'stp'):
+        raise ProjectError('Choose a source model GLB or source page PNG/STP export')
+    receipt = preview(project, expected_project_path, expected_source_key, asset_id, catalog_source_key, palette_index)
+    record, value = receipt['record'], receipt['preview']
+    source = record['source_record']
+    stem = f"sideband-{source['prot_entry_index']}-slot-{source['slot_index']}"
+    if export_kind == 'glb':
+        if record['asset_kind'] != 'tmd_model':
+            raise ProjectError('Source GLB export requires an object-local model')
+        from importer.export import encode_model_glb
+        try:
+            data, audit = encode_model_glb(value)
+        except ImportError as error:
+            raise ProjectError(str(error)) from error
+        filename = stem + '-object-local.glb'
+    else:
+        if record['asset_kind'] != 'texture':
+            raise ProjectError('Source PNG/STP export requires a native CLUT page')
+        from base64 import b64decode
+        from importer.texture_png import _encode_png
+        rgba = b64decode(value['rgba_base64'])
+        if export_kind == 'stp':
+            rgba = bytes(channel for bit in b64decode(value['stp_base64']) for channel in (bit * 255, bit * 255, bit * 255, 255))
+        data = _encode_png(value['width'], value['height'], rgba)
+        audit = dict(width=value['width'], height=value['height'], pixel_format='RGBA8',
+                     adapter='source_CLUT_page_pixels_not_native_TIM',
+                     mask_convention='white_set_bit_black_clear_bit' if export_kind == 'stp' else None)
+        filename = stem + f'-palette-{palette_index}' + ('-stp' if export_kind == 'stp' else '') + '.png'
+    _fresh(project, expected_project_path, expected_source_key)
+    return dict(schema_version='legaia.battle-sideband-export.v1', inspection=receipt, export_kind=export_kind,
+                filename=filename, file_base64=b64encode(data).decode('ascii'), byte_length=len(data), sha256=sha256(data).hexdigest(),
+                audit=audit, read_only=True, project_changed=False, gameplay_verified=False)

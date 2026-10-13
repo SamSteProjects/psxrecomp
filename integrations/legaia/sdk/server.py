@@ -1722,12 +1722,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .battle_character_resources import resources,preview
                     self._json(200,(preview if route.endswith('-preview') else resources)(self.server.project,**body))
                     return
-                if route in ('/api/battle-sideband-resources','/api/battle-sideband-preview'):
+                if route in ('/api/battle-sideband-resources','/api/battle-sideband-preview','/api/battle-sideband-export'):
                     fields={'expected_project_path','expected_source_key'}
-                    if route.endswith('-preview'):fields|={'asset_id','catalog_source_key','palette_index'}
+                    if not route.endswith('-resources'):fields|={'asset_id','catalog_source_key','palette_index'}
+                    if route.endswith('-export'):fields.add('export_kind')
                     if set(body)!=fields:raise ProjectError('Sideband inspection requires exact project and source fields')
-                    from .battle_sideband import resources,preview
-                    self._json(200,(preview if route.endswith('-preview') else resources)(self.server.project,**body))
+                    from .battle_sideband import resources,preview,export
+                    handler=export if route.endswith('-export') else preview if route.endswith('-preview') else resources
+                    self._json(200,handler(self.server.project,**body))
                     return
                 if route == '/api/command-history':
                     if set(body) not in (set(), {'offset'}):
