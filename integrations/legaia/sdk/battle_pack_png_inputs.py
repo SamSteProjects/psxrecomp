@@ -48,6 +48,15 @@ def retain_import(project,original,catalog,record,palette_index,png,palette_mode
     return owner,candidate,proof
 
 
+def describe(record,palette_index,png,palette_mode,stp,baseline,candidate):
+    """Prospective ownership, used to preflight aggregate budget before writes."""
+    return dict(schema_version='legaia.battle-pack-image-override.v1',asset_id=record['semantic_id'],source_record=deepcopy(record['source_record']),
+        input=dict(schema_version='legaia.battle-pack-png-input.v1',palette_index=palette_index,palette_mode=palette_mode,
+            png_sha256=sha256(png).hexdigest(),png_byte_length=len(png),stp_sha256=sha256(stp).hexdigest() if stp is not None else None,
+            stp_byte_length=len(stp) if stp is not None else None,baseline_sha256=sha256(baseline).hexdigest(),baseline_byte_length=len(baseline),candidate_tim_sha256=sha256(candidate).hexdigest()),
+        index_sha256=sha256(candidate[544:]).hexdigest(),index_byte_length=32768)
+
+
 def effective(project,original,catalog,record,owner):
     if (not isinstance(owner,dict) or set(owner)!={'schema_version','asset_id','source_record','input','index_sha256','index_byte_length'}
             or owner['schema_version']!='legaia.battle-pack-image-override.v1' or owner['asset_id']!=record['semantic_id']

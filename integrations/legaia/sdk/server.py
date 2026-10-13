@@ -1328,7 +1328,7 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/worldmap-replacement-review", "/api/worldmap-replacement-apply", "/api/text-json-preview", "/api/text-json-import") else 32768
-            if urlsplit(self.path).path in ('/api/field-texture-png-review','/api/field-texture-png-apply','/api/monster-png-review','/api/monster-png-apply'):
+            if urlsplit(self.path).path in ('/api/battle-pack-png-review','/api/battle-pack-png-apply','/api/field-texture-png-review','/api/field-texture-png-apply','/api/monster-png-review','/api/monster-png-apply'):
                 request_limit=24*1024*1024
             if urlsplit(self.path).path in ('/api/field-texture-file-review','/api/field-texture-file-apply'):
                 request_limit=2*1024*1024
@@ -1482,6 +1482,18 @@ class EditorHandler(BaseHTTPRequestHandler):
                     action=review if route.endswith('-review') else apply if route.endswith('-apply') else proposed_preview
                     result=action(self.server.project,**body)
                     self._json(200,dict(self.server.state(),player_model_restore=result) if route.endswith('-apply') else result)
+                    return
+                if route in ('/api/battle-pack-png-download','/api/battle-pack-png-review','/api/battle-pack-png-apply','/api/battle-pack-png-input-download'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','expected_current_tim_sha256','expected_current_entry_sha256'}
+                    if route.endswith('-input-download'):fields.add('kind')
+                    else:fields.add('palette_index')
+                    if route.endswith(('-review','-apply')):fields|={'palette_mode','png_base64','stp_base64'}
+                    if route.endswith('-apply'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Pack PNG interchange requires exact Current source, input and fresh Review fields')
+                    from .battle_pack_png import download,review,apply,download_input
+                    action=download_input if route.endswith('-input-download') else download if route.endswith('-download') else apply if route.endswith('-apply') else review
+                    result=action(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),battle_pack_png_apply=result) if route.endswith('-apply') else result)
                     return
                 if route in ('/api/battle-pack-palette-restore-review','/api/battle-pack-palette-restore-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','palette_index','expected_current_tim_sha256','expected_current_entry_sha256'}
