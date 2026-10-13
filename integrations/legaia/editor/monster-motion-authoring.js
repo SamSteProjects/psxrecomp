@@ -1,4 +1,5 @@
 import {mountMonsterChannelTimeline} from './monster-channel-timeline.js';
+import {mountMonsterMotionRestoration} from './monster-motion-restoration.js';
 import {qualifyMonsterPreview} from './monster-archive.js';
 import {samplePlayerActionBytes} from './player-action-playback.js';
 import {mountMonsterMotionGlb} from './monster-motion-glb.js';
@@ -26,7 +27,7 @@ export function mountMonsterMotionAuthoring({host,record,report,current,busy,cho
  const section=node('section'),part=node('input'),inspect=node('button','Inspect Native Monster Channels'),review=node('button','Review Native Monster Frame'),apply=node('button','Apply Reviewed Monster Frame'),preview=node('button','Preview Proposed Monster Frame'),restoreView=node('button','Return To Reviewed Edit Frame'),status=node('p','Choose a Stored Action and Frame above, then inspect its native channels.'),inputs={translation:[],rotation_psx:[]};
  part.type='number';part.min='0';part.step='1';part.value='0';part.setAttribute('aria-label','Monster Native Part');const label=node('label','Native Part Index');label.append(part);
  section.append(node('h3','Native Motion Channels'),node('p','Translation uses native signed 12-bit units (−2048 to 2047). Rotation uses 0–4095 units per turn. Review is unsaved; Apply saves one persistent native frame change.'),status,label,inspect);
- let disposed=false,pending=null,observed=null,owner=null,held=null,body=null,previewKey=null,glb=null,timeline=null,timelineInspection=null,previewing=false,previewFrame=0,samplers=null,sourceIdentity=selectionIdentity();
+ let disposed=false,pending=null,observed=null,owner=null,held=null,body=null,previewKey=null,glb=null,restoration=null,timeline=null,timelineInspection=null,previewing=false,previewFrame=0,samplers=null,sourceIdentity=selectionIdentity();
  const valid=()=>!disposed&&current(),key=()=>JSON.stringify([choice().animation_id,choice().frame_index,part.value]),values=field=>inputs[field].map(e=>e.value.trim()?Number(e.value):NaN);
  function withdrawReview(){held=body=null;previewKey=null;previewing=false;samplers=null;comparison.withdraw();}
  function withdrawInspection(){observed=null;owner=null;withdrawReview();}
@@ -44,12 +45,12 @@ export function mountMonsterMotionAuthoring({host,record,report,current,busy,cho
   if(timelineInspection&&timelineInspection.clip.semantic_id!==c.animation_id){timelineInspection=null;withdrawInspection();}
   if(owner!==null&&owner!==key()){withdrawInspection();status.textContent='Frame or part changed; inspect again.';}
   part.max=String(Math.max(0,(clip?.part_count??0)-1));
-  const blocked=!valid()||busy()||!!pending||!!glb?.pending(),allowed=clip?.preview_supported&&Number.isSafeInteger(c.frame_index)&&c.frame_index>=0&&c.frame_index<clip.frame_count&&part.value.trim()&&Number.isSafeInteger(Number(part.value))&&Number(part.value)>=0&&Number(part.value)<clip.part_count;
+  const blocked=!valid()||busy()||!!pending||!!glb?.pending()||!!restoration?.pending(),allowed=clip?.preview_supported&&Number.isSafeInteger(c.frame_index)&&c.frame_index>=0&&c.frame_index<clip.frame_count&&part.value.trim()&&Number.isSafeInteger(Number(part.value))&&Number(part.value)>=0&&Number(part.value)<clip.part_count;
   inspect.disabled=blocked||!allowed;part.disabled=blocked;for(const field of Object.keys(inputs))for(const e of inputs[field])e.disabled=blocked||!observed;
   review.disabled=blocked||!observed||Object.keys(inputs).some(f=>values(f).some(n=>!Number.isSafeInteger(n)||n<(f==='translation'?-2048:0)||n>(f==='translation'?2047:4095)));
   rangeMode.disabled=rangeStart.disabled=rangeEnd.disabled=blocked;rangeStart.max=rangeEnd.max=String((clip?.frame_count??1)-1);
   if(rangeMode.value!=='single'&&(!rangeStart.value.trim()||!rangeEnd.value.trim()||!Number.isSafeInteger(Number(rangeStart.value))||!Number.isSafeInteger(Number(rangeEnd.value))||Number(rangeStart.value)<0||Number(rangeStart.value)>c.frame_index||Number(rangeEnd.value)<c.frame_index||Number(rangeEnd.value)>=(clip?.frame_count??0)))review.disabled=true;
-  preview.disabled=blocked||!held;restoreView.hidden=!previewing;restoreView.disabled=blocked||!previewing;comparison.setDisabled(blocked);apply.disabled=blocked||!held||previewKey!==held.review_key||!held.projection.byte_change_count;glb?.update();timeline?.update();
+  preview.disabled=blocked||!held;restoreView.hidden=!previewing;restoreView.disabled=blocked||!previewing;comparison.setDisabled(blocked);apply.disabled=blocked||!held||previewKey!==held.review_key||!held.projection.byte_change_count;glb?.update();restoration?.update();timeline?.update();
  }
  async function run(route,args,accept){
   if(!valid()||busy()||pending)return;const startedKey=key(),startedSource=selectionIdentity();pending=new AbortController();onPending(true);update();
@@ -73,10 +74,11 @@ export function mountMonsterMotionAuthoring({host,record,report,current,busy,cho
  }
  restoreView.onclick=()=>{update();if(!restoreView.disabled)displayFrame(held.frame_index);};
  apply.onclick=()=>{update();if(!apply.disabled)run('/api/monster-frame-apply',{...body,review_key:held.review_key},v=>{if(v.monster_motion_apply?.history_steps!==1)fail();onApplied(v);});};
- timeline=mountMonsterChannelTimeline({host:section,getState:()=>({inspection:timelineInspection,review:held,frame:choice().frame_index,part:part.value.trim()?Number(part.value):NaN,previewing,previewFrame}),current:valid,busy:()=>busy()||!!pending||!!glb?.pending(),onError,
+ timeline=mountMonsterChannelTimeline({host:section,getState:()=>({inspection:timelineInspection,review:held,frame:choice().frame_index,part:part.value.trim()?Number(part.value):NaN,previewing,previewFrame}),current:valid,busy:()=>busy()||!!pending||!!glb?.pending()||!!restoration?.pending(),onError,
   onFrame:frame=>{if(previewing&&held){displayFrame(frame);return;}if(typeof onFrame!=='function'){onError(Error('Monster timeline frame navigation is unavailable.'));return;}withdrawInspection();onFrame(frame);status.textContent='Frame changed; inspect its native channels before editing.';update();},
   onPart:index=>{part.value=String(index);withdrawInspection();status.textContent='Native part changed; inspect its channels before editing.';update();}
  });
- glb=mountMonsterMotionGlb({host:section,record,report,onApplied,current:valid,busy:()=>busy()||!!pending,getInspection:()=>observed,onPending:v=>{onPending(v);update();},onError});
- update();return {update,pending:()=>!!pending||!!glb?.pending(),dispose:()=>{disposed=true;pending?.abort();timeline?.dispose();comparison.dispose();glb?.dispose();section.remove();}};
+ glb=mountMonsterMotionGlb({host:section,record,report,onApplied,current:valid,busy:()=>busy()||!!pending||!!restoration?.pending(),getInspection:()=>observed,onPending:v=>{onPending(v);update();},onError});
+ restoration=mountMonsterMotionRestoration({host:section,record,report,onApplied,current:valid,busy:()=>busy()||!!pending||!!glb?.pending(),getInspection:()=>observed,onPending:v=>{onPending(v);update();},onError});
+ update();return {update,pending:()=>!!pending||!!glb?.pending()||!!restoration?.pending(),dispose:()=>{disposed=true;pending?.abort();timeline?.dispose();comparison.dispose();glb?.dispose();restoration?.dispose();section.remove();}};
 }

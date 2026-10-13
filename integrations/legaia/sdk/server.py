@@ -1250,6 +1250,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/monster-playback.js": ("monster-playback.js", "text/javascript"),
                  "/monster-channel-timeline.js": ("monster-channel-timeline.js", "text/javascript"),
                  "/field-equipment-playback.js": ("field-equipment-playback.js", "text/javascript"),
+                 "/field-equipment-timeline.js": ("field-equipment-timeline.js", "text/javascript"),
+                 "/monster-motion-restoration.js": ("monster-motion-restoration.js", "text/javascript"),
                  "/monster-archive.js": ("monster-archive.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
@@ -1383,6 +1385,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!=fields:raise ProjectError('Field equipment preview requires exact source and explicit variant/frame fields')
                     from .field_equipment import preview,export,export_clip
                     self._json(200,(export_clip if route.endswith('-clip-export') else export if route.endswith('-export') else preview)(self.server.project,**body,**({'model_layer':'current'} if '-current-' in route else {})))
+                    return
+                if route in ('/api/monster-action-restore-review','/api/monster-action-restore-pose','/api/monster-action-restore-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','animation_id','frame_index','expected_current_block_sha256'}
+                    if not route.endswith('-review'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Monster action restoration requires exact Current and Review fields')
+                    from .monster_motion_restoration import review,proposed_pose,apply
+                    result=(apply if route.endswith('-apply') else proposed_pose if route.endswith('-pose') else review)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),monster_motion_restore=result) if route.endswith('-apply') else result)
                     return
                 if route in ('/api/player-action-range-review','/api/player-action-range-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','action_slot','expected_current_sha256','expected_action_sha256','range_spec'}

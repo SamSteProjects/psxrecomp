@@ -3,6 +3,7 @@ import {SceneRenderer} from './scene-renderer.js';
 import {modelPreviewFrame} from './model-preview-frame.js';
 import {createFieldEquipmentPlaybackSampler} from './field-equipment-playback.js';
 import {mountWorldAnimationPlayback} from './worldmap-animation-playback.js';
+import {createFieldEquipmentTimeline,mountFieldEquipmentTimeline} from './field-equipment-timeline.js';
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b),fail=()=>{throw Error('Field equipment variant differs from its qualified source descriptors.');};
 
 export async function qualifyFieldEquipment(value,context){
@@ -37,19 +38,22 @@ export function mountFieldEquipment({host,assetId,getContext,current,busy,onErro
  for(const e of [layer,choice,clip,frame,fps])Object.assign(e.style,{width:'100%',boxSizing:'border-box'});
  Object.assign(canvas.style,{width:'100%',height:'300px',display:'none'});canvas.dataset.fieldEquipmentCanvas='';
  box.append(layer,choice,clip,frame,inspect,download,rateLabel,clipDownload,status,canvas);host.append(box);
- let pending=null,disposed=false,renderer=null,value=null,sampler=null,heldContext=null,yaw=.5,pitch=-.12,zoom=1,drag=null,playback=null;
+ let pending=null,disposed=false,renderer=null,value=null,sampler=null,heldContext=null,renderSource=null,renderVertices=null,yaw=.5,pitch=-.12,zoom=1,drag=null,playback=null,timeline=null;
  const valid=()=>!disposed&&current();
  const selected=()=>heldContext&&layer.value===heldContext.modelLayer&&Number(choice.value)===heldContext.equipmentByte&&(clip.value||null)===heldContext.clipId&&same(getContext(),{projectPath:heldContext.projectPath,sourceKey:heldContext.sourceKey});
  function draw(){
   if(!value||!valid())return;const g=value.geometry,f=modelPreviewFrame(g,g,'current','visible'),r=canvas.getBoundingClientRect(),c=Math.cos(yaw),s=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
-  renderer??=new SceneRenderer(canvas);const errors=renderer.load({assets:[{geometry_key:'field-equipment',preview:g}],entities:[{entity_id:'field-equipment',geometry_key:'field-equipment',renderable:true,model_to_scene:[1,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,1]}]});if(errors.length)throw Error(errors.join('; '));
+  renderer??=new SceneRenderer(canvas);const source=sampler??value.base_geometry;
+  if(renderSource!==source){const errors=renderer.load({assets:[{geometry_key:'field-equipment',preview:g}],entities:[{entity_id:'field-equipment',geometry_key:'field-equipment',renderable:true,model_to_scene:[1,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,1]}]});if(errors.length)throw Error(errors.join('; '));renderSource=source;}
+  else if(renderVertices!==g.vertices&&!renderer.updateVertices('field-equipment',g.vertices))return;
+  renderVertices=g.vertices;
   renderer.draw({width:r.width,height:r.height,positions:new Map(),grid:false,camera:{target:{x:f.center[0],y:-f.center[1],z:f.center[2]},distance:f.radius*3/zoom},basis:{right:{x:c,y:0,z:s},up:{x:sp*s,y:cp,z:-sp*c},forward:{x:-cp*s,y:sp,z:cp*c}}});canvas.dataset.ready='true';canvas.dataset.frame=value.frame_index===null?'unposed':String(value.frame_index);
  }
  function refresh(){
   if(value&&(!valid()||!selected()))withdraw();
-  const locked=!valid()||busy()||!!pending;inspect.disabled=locked;download.disabled=locked||!value;clipDownload.disabled=locked||!value||value.clip_id===null;frame.disabled=locked||!clip.value;playback?.update();
+  const locked=!valid()||busy()||!!pending;inspect.disabled=locked;download.disabled=locked||!value;clipDownload.disabled=locked||!value||value.clip_id===null;frame.disabled=locked||!clip.value;playback?.update();timeline?.update();
  }
- function withdraw(){pending?.abort();value=null;sampler=null;heldContext=null;playback?.clear();canvas.style.display='none';canvas.dataset.ready='false';delete canvas.dataset.frame;status.textContent='Selection changed; inspect this explicit variant.';refresh();}
+ function withdraw(){pending?.abort();value=null;sampler=null;heldContext=null;renderSource=renderVertices=null;playback?.clear();timeline?.clear();canvas.style.display='none';canvas.dataset.ready='false';delete canvas.dataset.frame;status.textContent='Selection changed; inspect this explicit variant.';refresh();}
  layer.onchange=choice.onchange=clip.onchange=withdraw;
  frame.oninput=()=>{
   if(!sampler||!selected()){withdraw();return;}
@@ -59,21 +63,22 @@ export function mountFieldEquipment({host,assetId,getContext,current,busy,onErro
  inspect.onclick=async()=>{
   if(!valid()||busy()||pending)return;
   const context={...getContext(),assetId,modelLayer:layer.value,equipmentByte:Number(choice.value),clipId:clip.value||null,frameIndex:clip.value&&frame.value.trim()!==''?Number(frame.value):null};
-  const controller=new AbortController();pending=controller;value=null;sampler=null;heldContext=null;playback.clear();canvas.style.display='none';canvas.dataset.ready='false';refresh();
+  const controller=new AbortController();pending=controller;value=null;sampler=null;heldContext=null;renderSource=renderVertices=null;playback.clear();timeline.clear();canvas.style.display='none';canvas.dataset.ready='false';refresh();
   try{
    const action=context.clipId===null?'preview':'playback',path=`/api/field-equipment-${context.modelLayer==='current'?'current-':''}${action}`;
    const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expected_project_path:context.projectPath,expected_source_key:context.sourceKey,asset_id:assetId,equipment_byte:context.equipmentByte,clip_id:context.clipId,frame_index:context.frameIndex}),signal:controller.signal}),text=await response.text();
    if(text.length>12*1024*1024)fail();const data=JSON.parse(text);if(!response.ok)throw Error(data.error||'Field equipment preview failed');
-   const next=await qualifyFieldEquipment(context.clipId===null?data:data.preview,context),nextSampler=context.clipId===null?null:await createFieldEquipmentPlaybackSampler(data,context);
+   const next=await qualifyFieldEquipment(context.clipId===null?data:data.preview,context),nextSampler=context.clipId===null?null:await createFieldEquipmentPlaybackSampler(data,context),nextTimeline=context.clipId===null?null:await createFieldEquipmentTimeline(data,context);
    if(!valid()||pending!==controller||controller.signal.aborted||layer.value!==context.modelLayer||Number(choice.value)!==context.equipmentByte||(clip.value||null)!==context.clipId||(context.clipId!==null&&Number(frame.value)!==context.frameIndex)||!same(getContext(),{projectPath:context.projectPath,sourceKey:context.sourceKey}))return;
-   value=next;heldContext=context;sampler=nextSampler;if(sampler){frame.max=String(sampler.frameCount-1);playback.set(sampler);}else frame.max='511';canvas.style.display='block';draw();
+   value=next;heldContext=context;sampler=nextSampler;if(sampler){frame.max=String(sampler.frameCount-1);playback.set(sampler);timeline.set(nextTimeline);}else frame.max='511';canvas.style.display='block';draw();
    status.textContent=`${context.modelLayer==='current'?'Current model / Current textures':'Retail model / Retail textures'} · selected ${next.geometry.equipment_variant.selection} variant · 10 active groups · ${next.geometry.triangles.length} triangles · ${next.geometry.textures.filter(t=>t.status==='address_match').length} static texture matches${sampler?` · stored ${context.clipId} frame ${context.frameIndex} / ${sampler.frameCount-1}`:''} · live equipment not observed`;
   }catch(e){if(e.name!=='AbortError'&&valid()&&pending===controller){status.textContent=e.message;onError(e);}}
   finally{if(pending===controller)pending=null;if(!disposed)refresh();}
  };
  playback=mountWorldAnimationPlayback({host:box,current:()=>valid()&&box.open&&!!value&&selected(),busy:()=>busy()||!!pending,onError,update:refresh,labelPrefix:'Field equipment',playLabel:'Play Stored Field Clip',onFrame:sample=>{
-  if(!value||!selected())return;value={...value,geometry:sample.geometry,frame_index:sample.frame_index};frame.value=String(sample.frame_index);draw();status.textContent=`${heldContext.modelLayer==='current'?'Current model / Current textures':'Retail model / Retail textures'} · selected ${value.geometry.equipment_variant.selection} variant · stored ${value.clip_id} frame ${sample.frame_index} / ${sampler.frameCount-1} · caller-selected display FPS; live equipment not observed`;refresh();
+  if(!value||!selected())return;value={...value,geometry:sample.geometry,frame_index:sample.frame_index};frame.value=String(sample.frame_index);timeline?.frame(sample.frame_index);draw();status.textContent=`${heldContext.modelLayer==='current'?'Current model / Current textures':'Retail model / Retail textures'} · selected ${value.geometry.equipment_variant.selection} variant · stored ${value.clip_id} frame ${sample.frame_index} / ${sampler.frameCount-1} · caller-selected display FPS; live equipment not observed`;refresh();
  }});
+ timeline=mountFieldEquipmentTimeline({host:box,current:()=>valid()&&box.open&&!!value&&selected()&&!!sampler,busy:()=>busy()||!!pending,onError,onNavigate:index=>{if(valid()&&!busy()&&!pending&&sampler&&selected())playback.seek(index);}});
  box.addEventListener('toggle',refresh);
  const downloadVariant=async(full)=>{
   if(download.disabled||!value||!valid()||busy()||pending)return;
@@ -92,6 +97,6 @@ export function mountFieldEquipment({host,assetId,getContext,current,busy,onErro
  canvas.onpointermove=e=>{if(!drag)return;yaw+=(e.clientX-drag.x)*.009;pitch+=(e.clientY-drag.y)*.009;drag={x:e.clientX,y:e.clientY};draw();};canvas.onpointerup=canvas.onpointercancel=()=>drag=null;
  canvas.onwheel=e=>{if(value){e.preventDefault();zoom=Math.max(.2,Math.min(8,zoom*Math.exp(-e.deltaY*.001)));draw();}};
  const resize=new ResizeObserver(draw);resize.observe(canvas);const close=()=>{if(!host.open)dispose();};host.addEventListener('close',close);
- function dispose(){if(disposed)return;disposed=true;pending?.abort();playback.dispose();renderer?.dispose();resize.disconnect();host.removeEventListener('close',close);box.remove();}
+ function dispose(){if(disposed)return;disposed=true;pending?.abort();playback.dispose();timeline.dispose();renderer?.dispose();resize.disconnect();host.removeEventListener('close',close);box.remove();}
  refresh();return {dispose,update:refresh};
 }

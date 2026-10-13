@@ -1,4 +1,8 @@
-# Legaia stability and release parity
+# Legaia Stability and Release Parity
+
+## Recorded Source Inclusion — 2026-10-12
+
+Fresh read-only inclusion after SDK checkpoint `1c428b5d3` still matches all five recorded runtime/precompile source hashes and three stability fixture hashes. Three focused inclusion/manifest tests pass. Receipt: `local-output/sdk-20260909/requirements-audit-20261012/stability-source-inclusion.json`. No runtime execution was repeated, and no binary, sibling release or gameplay identity was newly verified. This proves preservation of the recorded eight-file set; full runtime parity remains open.
 
 ## Recorded Source Inclusion — 2026-10-11
 
