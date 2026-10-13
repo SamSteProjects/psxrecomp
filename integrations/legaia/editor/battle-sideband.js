@@ -1,5 +1,7 @@
 import {placementDigest} from './worldmap-placement-replay.js';
 import {qualifyNativeTmdGeometry} from './native-tmd-preview.js';
+import {SceneRenderer} from './scene-renderer.js';
+import {modelPreviewFrame} from './model-preview-frame.js';
 
 const ordered = v => Array.isArray(v) ? v.map(ordered) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(k => [k, ordered(v[k])])) : v;
 const same = (a, b) => JSON.stringify(ordered(a)) === JSON.stringify(ordered(b));
@@ -85,4 +87,98 @@ export async function qualifySidebandPreview(value, report, record) {
     }
   } else fail();
   return structuredClone(g);
+}
+
+const mounted = new WeakMap();
+export function updateSidebandResource(dialog) { mounted.get(dialog)?.update(); }
+
+export function showSidebandResource({dialog, record, getReport, current, busy, setBusy, onError}) {
+  mounted.get(dialog)?.dispose();
+  const report = getReport();
+  if (!report || !same(sidebandProjectRecords(report).find(r => r.id === record.id), record)) fail();
+  const node = (tag, text) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; return e; };
+  dialog.replaceChildren();
+  const heading = node('div'), close = node('button','×'); heading.className = 'dialog-heading';
+  close.type = 'button'; close.setAttribute('aria-label','Close Source Inspector'); close.onclick = () => dialog.close();
+  heading.append(node('h2',record.label),close);
+  const inspect = node('button',record.type === 'model' ? 'Inspect Source Model' : 'Inspect Source Page'); inspect.type = 'button';
+  const palette = node('select'), object = node('select'), canvas = node('canvas'), status = node('p');
+  palette.setAttribute('aria-label','Source Page Palette'); object.setAttribute('aria-label','Source Model Object');
+  palette.hidden = record.type !== 'texture'; object.hidden = true;
+  for (let i = 0; i < (record.data.palette_count ?? 0); i++) { const o = node('option',`Palette ${i}`); o.value = String(i); palette.append(o); }
+  for (const select of [palette,object]) Object.assign(select.style,{width:'100%',boxSizing:'border-box'});
+  Object.assign(canvas.style,{width:'100%',height:'320px',background:'#101a20',display:'none'});
+  canvas.hidden = true; canvas.dataset.sidebandPreview = ''; canvas.dataset.ready = 'false';
+  const details = node('details'), pre = node('pre',JSON.stringify(record.data,null,2));
+  Object.assign(pre.style,{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}); details.append(node('summary','Source Provenance'),pre);
+  dialog.append(heading,node('p',record.type === 'model' ? 'Object-local source geometry. Assembly, animation and texture association are unresolved.' : 'Native source CLUT and indexed page. Runtime upload, residency and STP forcing are unresolved.'),inspect,palette,object,canvas,status,details);
+  let disposed = false, pending = null, ownsBusy = false, generation = 0, value = null, renderer = null, loadedObject = null, drag = null;
+  const view = {yaw:.55,pitch:-.18,zoom:1};
+  const valid = () => !disposed && dialog.open && current() && same(getReport(),report);
+  const release = () => { if (ownsBusy) { ownsBusy = false; setBusy(false); } };
+  function clear() {
+    generation++; pending?.abort(); pending = null; value = null; drag = null;
+    renderer?.dispose(); renderer = null; loadedObject = null;
+    canvas.hidden = true; canvas.style.display = 'none'; canvas.dataset.ready = 'false'; object.hidden = true;
+  }
+  function update() {
+    if (disposed) return;
+    if (!valid()) { clear(); status.textContent = 'Source changed; refresh project resources before inspecting again.'; release(); }
+    const blocked = !valid() || busy() || !!pending;
+    inspect.disabled = palette.disabled = object.disabled = blocked;
+  }
+  function draw() {
+    if (!valid() || !value || record.type !== 'model' || !renderer) return;
+    const selected = object.value === 'all' ? null : value.objects[Number(object.value)];
+    const start = selected?.triangle_start ?? 0, end = selected ? start + selected.triangle_count : value.triangles.length;
+    const geometry = {...value};
+    for (const key of ['triangles','triangle_colors','triangle_uvs','triangle_materials','triangle_normals']) geometry[key] = value[key].slice(start,end);
+    if (loadedObject !== object.value) {
+      const errors = renderer.load({assets:[{geometry_key:'sideband-model',preview:geometry}],entities:[{entity_id:'sideband-model',geometry_key:'sideband-model',renderable:true,model_to_scene:[1,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,1]}]});
+      if (errors.length) throw Error(errors.join('; ')); loadedObject = object.value;
+    }
+    const frame = modelPreviewFrame(geometry,geometry,'current','visible'), rect = canvas.getBoundingClientRect();
+    const c = Math.cos(view.yaw), s = Math.sin(view.yaw), cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+    renderer.draw({width:rect.width,height:rect.height,positions:new Map(),grid:false,camera:{target:{x:frame.center[0],y:-frame.center[1],z:frame.center[2]},distance:frame.radius*4/view.zoom*.9/1.3},basis:{right:{x:c,y:0,z:s},up:{x:sp*s,y:cp,z:-sp*c},forward:{x:-cp*s,y:sp,z:cp*c}}});
+    canvas.dataset.ready = 'true';
+  }
+  const redraw = () => { try { draw(); } catch (error) { clear(); status.textContent = error.message; onError(error); } };
+  inspect.onclick = async () => {
+    if (inspect.disabled || !valid() || busy() || pending) return;
+    clear(); const ticket = generation, controller = new AbortController(), selectedPalette = record.type === 'texture' ? Number(palette.value) : 0;
+    pending = controller; ownsBusy = true; setBusy(true); update();
+    try {
+      const response = await fetch('/api/battle-sideband-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expected_project_path:report.project_path,expected_source_key:report.project_source_key,asset_id:record.id,catalog_source_key:report.catalog.source_key,palette_index:selectedPalette}),signal:controller.signal});
+      const text = await response.text(); if (text.length > 2 * 1024 * 1024) fail();
+      const receipt = JSON.parse(text); if (!response.ok) throw Error(receipt.error || 'Source inspection failed');
+      if (receipt.palette_index !== selectedPalette) fail();
+      const qualified = await qualifySidebandPreview(receipt,report,record.data);
+      if (!valid() || generation !== ticket || record.type === 'texture' && Number(palette.value) !== selectedPalette) return;
+      value = qualified; canvas.hidden = false; canvas.style.display = 'block';
+      if (record.type === 'model') {
+        object.replaceChildren(); const all = node('option','All Object-Local Groups'); all.value = 'all'; object.append(all);
+        for (const row of value.objects) { const option = node('option',`Object ${row.object_index}`); option.value = String(row.object_index); object.append(option); }
+        object.hidden = false; renderer = new SceneRenderer(canvas); draw();
+        status.textContent = `${value.objects.length} objects · ${value.vertices.length} vertices · ${value.triangles.length} triangles · Source Only. Drag to orbit; scroll to zoom.`;
+      } else {
+        canvas.width = value.width; canvas.height = value.height; canvas.style.height = 'auto'; canvas.style.imageRendering = 'pixelated';
+        canvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(bytes(value.rgba_base64)),value.width,value.height),0,0);
+        canvas.dataset.ready = 'true'; status.textContent = `${value.width} × ${value.height} · Palette ${selectedPalette} · Source Words And STP`;
+      }
+    } catch (error) {
+      if (generation === ticket && error.name !== 'AbortError' && valid()) { clear(); status.textContent = error.message; onError(error); }
+    } finally {
+      if (pending === controller) pending = null; release(); update();
+    }
+  };
+  palette.onchange = () => { if (!busy() && valid()) { clear(); status.textContent = 'Inspect the selected source palette.'; update(); } };
+  object.onchange = redraw;
+  canvas.onpointerdown = e => { if (record.type === 'model' && value && valid() && !busy()) { drag = {x:e.clientX,y:e.clientY}; canvas.setPointerCapture(e.pointerId); } };
+  canvas.onpointermove = e => { if (!drag || !valid() || busy()) return; view.yaw += (e.clientX-drag.x)*.01; view.pitch = Math.max(-1.4,Math.min(1.4,view.pitch+(e.clientY-drag.y)*.01)); drag = {x:e.clientX,y:e.clientY}; redraw(); };
+  canvas.onpointerup = canvas.onpointercancel = () => { drag = null; };
+  canvas.addEventListener('wheel',e => { if (record.type !== 'model' || !value || !valid() || busy()) return; e.preventDefault(); view.zoom = Math.max(.25,Math.min(5,view.zoom*Math.exp(-e.deltaY*.001))); redraw(); },{passive:false});
+  const observer = new ResizeObserver(redraw); observer.observe(canvas);
+  function dispose() { if (disposed) return; disposed = true; clear(); observer.disconnect(); dialog.removeEventListener('close',dispose); release(); if (mounted.get(dialog)?.dispose === dispose) mounted.delete(dialog); }
+  dialog.addEventListener('close',dispose); mounted.set(dialog,{update,dispose});
+  if (!dialog.open) dialog.showModal(); update();
 }

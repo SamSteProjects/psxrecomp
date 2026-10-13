@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {decodeSidebandResources, sidebandProjectRecords, qualifySidebandPreview} from '../editor/battle-sideband.js';
+import {projectAssetRecords} from '../editor/project-assets.js';
 
 const c = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const context = {projectPath:c.report.project_path, sourceKey:c.report.project_source_key};
@@ -8,6 +9,10 @@ const report = await decodeSidebandResources(c.report, context);
 const records = sidebandProjectRecords(report);
 assert.equal(records.length, 166);
 assert(records.every(r => !r.sceneId && !r.projectMembership && r.projectSideband));
+const combined = {scenes:[],assets:[],globalBattleSideband:report};
+assert.equal(projectAssetRecords(combined,'global-battle-sideband').length,166);
+assert.equal(projectAssetRecords(combined,'all').length,166);
+assert.equal(projectAssetRecords(combined,'global-battle-character').length,0);
 let checks = 0, refusals = 0;
 for (const value of c.cases) {
   await qualifySidebandPreview(value, report, value.record);
