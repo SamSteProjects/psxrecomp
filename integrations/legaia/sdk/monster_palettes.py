@@ -53,6 +53,9 @@ def snapshot(project,asset_id):
         current=compose_model(project,original,catalog,record['monster_id'],current)
         from .monster_motions import compose as compose_motion
         current=compose_motion(original,catalog,record['monster_id'],project.monster_motion_overrides,current,project=project)
+        if getattr(project,'monster_record_overrides',{}):
+            from .monster_records import compose as compose_records
+            current=compose_records(original,catalog,record['monster_id'],project.monster_record_overrides,current)
         return catalog,record,original,current,raw,used
 
 

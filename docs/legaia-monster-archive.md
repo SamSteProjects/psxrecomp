@@ -205,6 +205,32 @@ Checks passed: six Retail sampling oracles (1,388 vertices), saved Current sampl
 
 Evidence remains private under `local-output/sdk-20260909/monster-archive-20261012/playback-browser-proof.json` and `local-output/sdk-20260909/monster-timeline-20261012/monster-timeline-browser-proof.json`. Eight unmatched part mappings, allocation, native cadence/activation/interpolation, GTE fidelity and playable acceptance remain open. No recomp compilation, game, attachment, installation or disc export ran for these monster checks.
 
+## Stored Monster Stats And Rewards
+
+Offline checks passed — 2026-10-12. The normal model inspector offers Inspect Stored Monster Record, twelve bounded unsigned Draft inputs, fresh Review and one-step Apply. Retail, Current and unsaved Proposed values remain separate. The writable header fields are eight u16 values at 0x0C–0x1A (HP, agility, MP, attack, high/low defense, intelligence and speed), u16 gold/experience at 0x44/0x46 and raw drop-item/drop-chance bytes at 0x48/0x49. These are stored values; runtime formulas, item names and probability semantics are not inferred. Name, pointer, element, spell and opaque bytes are preserved.
+
+An optional sparse `monster_record_overrides` section participates in dirty state, Undo/Redo, Save/Open, source identity and Build. Older projects omit it without document changes. Record composition runs after model, palette and motion owners. Model interchange baselines normalize the complete Retail header before retaining imports, while the actual Current slot hash remains distinct. Review Restore Retail Record removes only this record owner; other records and model/texture/motion owners survive. Source, project root, layer and draft changes withdraw stale proposals; global busy work gates controls.
+
+Three native tests and thirty altered client receipt refusals pass. Native evidence covers all widths/endian/bounds, model import after stored-header edits, retained PNG/motion coexistence, other-record preservation and exact directory/ZIP readback for two complete slots (package SHA-256 `cf1bac25a2dcdcf2f01e43e41e5d059854d31bf3082609c4a0a7e3f9cc69f8ac`). Actual muted Edge passes all twelve inputs, no-op guards, Review/Apply/history/Save, real project-root withdrawal and Retail restoration. Wide/400-pixel captures were inspected. Evidence: `local-output/sdk-20260909/monster-records-20261012/`. Gameplay effects remain unverified.
+
+## Reviewed Whole Model Restoration
+
+Offline checks passed — 2026-10-12. Inspect the Current authored model, then Review Restore Retail Monster Model, qualify its separate Current/Proposed textured preview and Apply one history command. The selected model owner and active GLB input memberships are removed; exact retained GLB/TMD/preimage files and Undo remain available. Current headers, textures, every motion and other model owners survive.
+
+Some bounded TMD source extents contain opaque motion streams. Restoration reinstates Retail model content and then recomposes Current motion; the final complete-slot diff must exactly reverse the model ledger. Clients independently replay that ledger, every protected neighboring byte, original consumed-span capacity and decoded Current/Proposed topology, UVs, materials, colors and normals. Two native tests, thirty-six altered client receipts, responsive normal-inspector history/source/busy checks and exact full directory/ZIP readback pass (package SHA-256 `91aa04b76d7ee4099e3081de3913c523a48202a698c67b85c50ffdef9cf171e6`). Evidence: `local-output/sdk-20260909/monster-model-restoration-20261012/`. No runtime appearance claim is added.
+
+## Reviewed Whole Texture Pool Restoration
+
+Offline checks passed — 2026-10-12. Inspect Current Texture Owner, review its complete Retail pool, qualify Current/Proposed color and separate STP pages, then Apply. All fifteen palettes and packed image indices are restored together. Palette/display changes in the qualified comparison are local and issue no HTTP; inspection palette, source or close changes withdraw the proposal. Transparent word zero remains separate from opaque black/STP word 0x8000.
+
+Only the selected texture owner and active original PNG/mask membership are removed. Recovery files, other texture/model/motion/record owners and Undo remain available. Native tests cover retained PNG plus later numeric palette edits, both 128/256-pixel pages, exact neighboring bytes and full directory/ZIP package readback (package SHA-256 `b8313f1a0d0134155f81f971b74ecddb9afd772614ec1dc2d20b96b27cbf029b`). Clients qualify all fifteen views and reject thirty-four altered receipts. Actual muted Edge passes mandatory preview gating, local comparison, busy/source/palette/close withdrawal, history/Save and inspected wide/400-pixel pages. Evidence: `local-output/sdk-20260909/monster-texture-restoration-20261012/`.
+
+## Bounded Retail Catalogue Cache
+
+The importer caches one derived Retail catalogue only, keyed by immutable disc SHA-256 and a fresh hash of the entire bounded archive. Independent copies prevent caller mutations from contaminating later reads. Changed source bytes/disc identity requalify the parser. No raw archive buffer, authored owner, retained file or Current slot is cached. Two fresh tests pass copy isolation, eviction, invalid-input refusal and complete equality against uncached parsing of 186 models/1,811 clips. Observed warm parsing was 0.019 seconds versus 2.182 seconds uncached; this is a local measurement, not a performance guarantee.
+
+These features qualify offline editor/native-package workflows only. Allocation, unresolved mappings, native activation/cadence/GTE and playable acceptance remain open. No recomp compilation, game launch/attachment, installation or disc export ran; the full SDK objective remains active.
+
 ## Reviewed Whole Action Restoration
 
 Offline checks passed — 2026-10-12. Inspect Native Monster Channels for an authored action, then use Review Restore Retail Monster Action and Preview Proposed Action Restoration before Apply. The proposal restores the complete Retail stream for every stored part/frame of that action. Local comparison scrubbing preserves the Review selection frame and key. Apply removes only the selected motion owner and its active historical input membership; retained original GLB/stream files, other actions, model and texture owners remain intact.

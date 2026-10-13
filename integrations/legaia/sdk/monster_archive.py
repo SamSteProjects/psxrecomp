@@ -100,6 +100,7 @@ def current_preview(project,expected_project_path,expected_source_key,asset_id,c
     texture=base['texture_record']
     if texture is None:raise ProjectError('Current monster palette preview requires a qualified source pool')
     catalog,record,original,current,_,_=snapshot(project,texture['semantic_id'])
+    base['current_block_sha256']=sha256(current).hexdigest()
     if catalog['source_key']!=catalog_source_key or record!=texture:raise ProjectError('Current monster texture owner changed')
     retail,width=layout(original,record['source_record']['byte_offset']);pool,_=layout(current,record['source_record']['byte_offset'])
     from importer.assets import decode_tmd

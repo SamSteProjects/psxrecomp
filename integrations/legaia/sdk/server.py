@@ -1252,6 +1252,9 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/field-equipment-playback.js": ("field-equipment-playback.js", "text/javascript"),
                  "/field-equipment-timeline.js": ("field-equipment-timeline.js", "text/javascript"),
                  "/monster-motion-restoration.js": ("monster-motion-restoration.js", "text/javascript"),
+                 "/monster-record-authoring.js": ("monster-record-authoring.js", "text/javascript"),
+                 "/monster-texture-restoration.js": ("monster-texture-restoration.js", "text/javascript"),
+                 "/monster-model-restoration.js": ("monster-model-restoration.js", "text/javascript"),
                  "/monster-archive.js": ("monster-archive.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
@@ -1385,6 +1388,32 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!=fields:raise ProjectError('Field equipment preview requires exact source and explicit variant/frame fields')
                     from .field_equipment import preview,export,export_clip
                     self._json(200,(export_clip if route.endswith('-clip-export') else export if route.endswith('-export') else preview)(self.server.project,**body,**({'model_layer':'current'} if '-current-' in route else {})))
+                    return
+                if route in ('/api/monster-record-inspect','/api/monster-record-review','/api/monster-record-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key'}
+                    if not route.endswith('-inspect'):fields|={'expected_current_block_sha256','values'}
+                    if route.endswith('-apply'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Monster records require exact source, Current and Review fields')
+                    from .monster_record_authoring import inspect,review,apply
+                    result=(apply if route.endswith('-apply') else review if route.endswith('-review') else inspect)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),monster_record_apply=result) if route.endswith('-apply') else result)
+                    return
+                if route in ('/api/monster-model-restore-review','/api/monster-model-restore-preview','/api/monster-model-restore-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','expected_current_block_sha256'}
+                    if not route.endswith('-review'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Monster model restoration requires exact Current and Review fields')
+                    from .monster_model_restoration import review,proposed_preview,apply
+                    result=(apply if route.endswith('-apply') else proposed_preview if route.endswith('-preview') else review)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),monster_model_restore=result) if route.endswith('-apply') else result)
+                    return
+                if route in ('/api/monster-texture-restore-inspect','/api/monster-texture-restore-review','/api/monster-texture-restore-preview','/api/monster-texture-restore-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','palette_index'}
+                    if not route.endswith('-inspect'):fields|={'expected_current_block_sha256','expected_current_pool_sha256','expected_owner_sha256'}
+                    if route.endswith('-preview') or route.endswith('-apply'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Monster texture restoration requires exact source, Current and Review fields')
+                    from .monster_texture_restoration import inspect,review,proposed_preview,apply
+                    result=(apply if route.endswith('-apply') else proposed_preview if route.endswith('-preview') else review if route.endswith('-review') else inspect)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),monster_texture_restore=result) if route.endswith('-apply') else result)
                     return
                 if route in ('/api/monster-action-restore-review','/api/monster-action-restore-pose','/api/monster-action-restore-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','animation_id','frame_index','expected_current_block_sha256'}

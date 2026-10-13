@@ -30,6 +30,9 @@ def snapshot(project,expected_project_path,expected_source_key,asset_id,catalog_
         current=compose_model(project,original,catalog,record['monster_id'],current)
         from .monster_motions import compose as compose_motion
         current=compose_motion(original,catalog,record['monster_id'],project.monster_motion_overrides,current,project=project)
+        if getattr(project,'monster_record_overrides',{}):
+            from .monster_records import compose as compose_records
+            current=compose_records(original,catalog,record['monster_id'],project.monster_record_overrides,current)
     _fresh(project,expected_project_path,expected_source_key)
     return record,texture,original,current,raw,used
 
@@ -49,6 +52,9 @@ def export(project,**context):
 
 def model_baseline(original,current,raw,record):
     catalog=decode_catalog(raw,record['source_record']['disc']['sha256']);data=bytearray(current)
+    # Retained GLB baselines own model bytes only; other header owners stay
+    # separate just as motion owners do. Keep the actual slot hash separately.
+    data[:0x4c]=original[:0x4c]
     for clip in catalog['animations']:
         if clip['monster_id']==record['monster_id']:
             at=clip['source_record']['byte_offset'];end=at+clip['source_record']['byte_length'];data[at:end]=original[at:end]

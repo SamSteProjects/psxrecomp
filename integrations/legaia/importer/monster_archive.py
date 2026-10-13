@@ -5,6 +5,8 @@ The fixed 0x14000 slot selects an LZS stream. Actual consumption, including
 any slot spill, is retained explicitly; no writable allocation is inferred.
 """
 from hashlib import sha256
+from copy import deepcopy
+from threading import RLock
 import struct
 from .core import ImportError,decompress_lzs,validate_metadata_only,TMD_MAGIC
 from .pipeline import REFERENCE_COMMIT,_disc_context
@@ -18,6 +20,31 @@ LIMITATIONS=[
  'Stored model/pool/action sources; runtime assembly, VRAM relocation, cadence, activation and equipment remain unobserved.',
  'Actual compressed consumption is qualified against the archive; fixed slot boundaries do not establish writable capacity.',
 ]
+_catalog_lock=RLock()
+_catalog_cache=None
+
+
+def decode_catalog(content,disc_sha256):
+    """Reuse bounded Retail metadata only after checking the complete input.
+
+    Current owners and retained input files are never cached here. Callers get
+    independent copies so an editor/report cannot poison subsequent imports.
+    """
+    if not isinstance(content,bytes) or not 4<=len(content)<=STRIDE*512:
+        raise ImportError('Monster archive exceeds its bounded source extent')
+    if not isinstance(disc_sha256,str) or len(disc_sha256)!=64 or any(c not in '0123456789abcdef' for c in disc_sha256):
+        raise ImportError('Monster archive requires an immutable disc hash')
+    key=(disc_sha256,sha256(content).hexdigest())
+    global _catalog_cache
+    with _catalog_lock:
+        if _catalog_cache is not None and _catalog_cache[0]==key:
+            return deepcopy(_catalog_cache[1])
+        value=_decode_catalog_uncached(content,disc_sha256)
+        if len(value['animations'])<=8192:
+            _catalog_cache=(key,deepcopy(value))
+        else:
+            _catalog_cache=None
+        return value
 
 
 def block(content,identifier):
@@ -31,7 +58,7 @@ def block(content,identifier):
     return decoded,used
 
 
-def decode_catalog(content,disc_sha256):
+def _decode_catalog_uncached(content,disc_sha256):
     if not isinstance(content,bytes) or not 4<=len(content)<=STRIDE*512:
         raise ImportError('Monster archive exceeds its bounded source extent')
     if not isinstance(disc_sha256,str) or len(disc_sha256)!=64 or any(c not in '0123456789abcdef' for c in disc_sha256):

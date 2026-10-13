@@ -1,0 +1,26 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {qualifyMonsterModelRestorationReview,qualifyMonsterModelRestorationComparison} from '../editor/monster-model-restoration.js';
+import {placementDigest} from '../editor/worldmap-placement-replay.js';
+const c=JSON.parse(fs.readFileSync(process.argv[2],'utf8')),inspection=c.inspection,report={project_path:inspection.project_path,project_source_key:inspection.project_source_key,catalog:c.catalog},record={id:inspection.record.semantic_id};
+const review=await qualifyMonsterModelRestorationReview(c.review,inspection),geometry=await qualifyMonsterModelRestorationComparison(c.comparison,review,report,record);
+const before=Buffer.from(review.current_block_base64,'base64'),after=Buffer.from(review.candidate_block_base64,'base64'),retail=Buffer.from(review.retail_tmd_base64,'base64'),expected=Buffer.from(before),start=review.record.source_record.byte_offset,end=start+retail.length;
+for(const row of review.model_binding.edits){assert.equal(before[start+row.byte_offset],row.after_byte);expected[start+row.byte_offset]=row.before_byte;}
+assert.deepEqual(after,expected);assert.notDeepEqual(after.subarray(start,end),retail);assert.deepEqual(after.subarray(0,0x4c),before.subarray(0,0x4c));assert.deepEqual(geometry.proposed.vertices,c.comparison.proposed_preview.geometry.vertices);
+const ordered=v=>Array.isArray(v)?v.map(ordered):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,ordered(v[k])])):v;
+async function rekey(v){const held={...v};delete held.review_key;v.review_key=await placementDigest(new TextEncoder().encode(JSON.stringify(ordered(held),null,2)+'\n'));return v;}
+let refusals=0;
+for(const change of [v=>v.operation='restore_other_model',v=>v.asset_id='foreign',v=>v.current_tmd_base64=v.retail_tmd_base64,v=>v.candidate_tmd_base64=v.current_tmd_base64,v=>v.projection.byte_change_count++,v=>v.projection.byte_offset++,v=>v.projection.removed_active_inputs.pop(),v=>v.model_binding.inputs[0].glb_sha256='0'.repeat(64),v=>v.model_binding.edits[0].after_byte^=1,v=>v.projection.unchanged_header_sha256='0'.repeat(64),v=>v.projection.unchanged_outside_ledger_sha256='0'.repeat(64),v=>v.projection.unchanged_pool_sha256='0'.repeat(64),v=>v.projection.preserved_motion_streams[0].candidate_sha256='0'.repeat(64),v=>v.motion_bindings[Object.keys(v.motion_bindings)[0]].current_motion_sha256='0'.repeat(64),v=>v.capacity.original_encoded_size=v.record.source_record.slot_stride-4,v=>v.capacity.new_encoded_size=v.capacity.original_encoded_size+1,v=>v.persistence='applied',v=>v.project_source_key='foreign']){
+ const changed=structuredClone(review);change(changed);await rekey(changed);await assert.rejects(qualifyMonsterModelRestorationReview(changed,inspection));refusals++;
+}
+// A consistently hashed slot alteration still fails the exact reverse ledger.
+for(const offset of [0,review.texture_record.source_record.byte_offset,review.projection.preserved_motion_streams[0].source_record.byte_offset]){
+ const changed=structuredClone(review),bytes=Buffer.from(changed.candidate_block_base64,'base64');bytes[offset]^=1;changed.candidate_block_base64=bytes.toString('base64');changed.projection.candidate_block_sha256=await placementDigest(bytes);await rekey(changed);await assert.rejects(qualifyMonsterModelRestorationReview(changed,inspection));refusals++;
+}
+const withdrawn=structuredClone(inspection);withdrawn.model_binding=null;await assert.rejects(qualifyMonsterModelRestorationReview(review,withdrawn));refusals++;
+for(const change of [v=>v.proposed_preview.geometry.vertices[0][0]++,v=>v.proposed_preview.geometry.triangles[0][0]=(v.proposed_preview.geometry.triangles[0][0]+1)%v.proposed_preview.geometry.vertices.length,v=>v.proposed_preview.geometry.triangle_colors[0][0][0]^=1,v=>v.proposed_preview.geometry.triangle_normals[0]=[[0,0,0],[0,0,0],[0,0,0]],v=>v.proposed_preview.geometry.materials[0].semi_transparent=!v.proposed_preview.geometry.materials[0].semi_transparent,v=>v.proposed_preview.geometry.objects[0].raw_object_word6++,v=>v.proposed_preview.source_tmd_base64=v.current_preview.source_tmd_base64,v=>v.proposed_preview.model_binding=v.current_preview.model_binding,v=>v.proposed_preview.motion_bindings={},v=>v.proposed_preview.source_pool_base64=v.proposed_preview.retail_pool_base64,v=>v.review.projection.preserved_motion_streams.pop(),v=>v.review_key='0'.repeat(64)]){
+ const changed=structuredClone(c.comparison);change(changed);await assert.rejects(qualifyMonsterModelRestorationComparison(changed,review,report,record));refusals++;
+}
+const missing=structuredClone(review);missing.projection.preserved_motion_streams.pop();await rekey(missing);const comparison=structuredClone(c.comparison);comparison.review=missing;comparison.review_key=missing.review_key;await assert.rejects(qualifyMonsterModelRestorationComparison(comparison,missing,report,record));refusals++;
+const uv=structuredClone(c.comparison),face=uv.proposed_preview.geometry.triangle_uvs.find(v=>v!==null);assert(face);face[0][0]^=1;await assert.rejects(qualifyMonsterModelRestorationComparison(uv,review,report,record));refusals++;
+console.log(`Whole model restoration reverse ledger and Current/Proposed native textured geometry qualify; ${refusals} altered owner, slot, capacity, input, motion and geometry receipts refuse.`);
