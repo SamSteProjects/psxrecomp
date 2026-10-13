@@ -126,12 +126,12 @@ function sourceGlbPositions(data, geometry, audit) {
   const seen = new Set();
   for (const node of doc.nodes) {
     const object = node.extras?.source_object, index = object?.object_index;
-    if (!Number.isSafeInteger(index) || seen.has(index) || !same(object,geometry.objects[index]) || node.matrix || node.translation || node.rotation || node.scale || node.children) fail();
+    if (!Number.isSafeInteger(index) || seen.has(index) || !same(object,geometry.objects[index]) || ['matrix','translation','rotation','scale','children','skin','weights','extensions'].some(k=>Object.hasOwn(node,k))) fail();
     seen.add(index);
-    const mesh = doc.meshes[node.mesh]; if (!mesh || !Array.isArray(mesh.primitives)) fail();
+    const mesh = doc.meshes[node.mesh]; if (!mesh || !Array.isArray(mesh.primitives) || ['weights','extensions'].some(k=>Object.hasOwn(mesh,k))) fail();
     const materials = new Set();
     for (const p of mesh.primitives) {
-      if (p.mode !== 4 || p.indices !== undefined || !Number.isSafeInteger(p.material) || materials.has(p.material)) fail(); materials.add(p.material);
+      if (p.mode !== 4 || p.indices !== undefined || !Number.isSafeInteger(p.material) || materials.has(p.material) || ['targets','extensions'].some(k=>Object.hasOwn(p,k))) fail(); materials.add(p.material);
       const expected = [];
       for (let t=object.triangle_start;t<object.triangle_start+object.triangle_count;t++) if (geometry.triangle_materials[t] === p.material) for (const corner of [0,2,1]) { const [x,y,z] = geometry.vertices[geometry.triangles[t][corner]]; expected.push([x,-y,z]); }
       const a = doc.accessors[p.attributes?.POSITION], b = doc.bufferViews[a?.bufferView];
