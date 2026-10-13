@@ -1246,6 +1246,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/monster-motion-replay.js": ("monster-motion-replay.js", "text/javascript"),
                  "/monster-motion-comparison.js": ("monster-motion-comparison.js", "text/javascript"),
                  "/monster-motion-glb.js": ("monster-motion-glb.js", "text/javascript"),
+                 "/monster-motion-inputs.js": ("monster-motion-inputs.js", "text/javascript"),
                  "/monster-archive.js": ("monster-archive.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
@@ -1482,6 +1483,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .monster_model_authoring import export,review,apply
                     result=(apply if route.endswith('-apply') else review if route.endswith('-review') else export)(self.server.project,**body)
                     self._json(200,dict(self.server.state(),monster_model_apply=result) if route.endswith('-apply') else result)
+                    return
+                if route == '/api/monster-motion-input-download':
+                    if set(body)!={'expected_project_path','expected_source_key','animation_id','expected_current_motion_sha256','expected_input_sha256'}:raise ProjectError('Monster motion input requires exact fresh Current and original identities')
+                    from .monster_motion_inputs import download
+                    self._json(200,download(self.server.project,**body))
                     return
                 if route in ('/api/monster-motion-glb-review','/api/monster-motion-glb-apply','/api/monster-motion-glb-pose'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','animation_id','expected_current_block_sha256','glb_base64','fps','animation_index','object_node_indices'}
