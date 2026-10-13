@@ -1,5 +1,13 @@
 # Battle Character Resource Discovery
 
+## Pack Indexed Image/PNG Replacement — In Progress
+
+The native adapter uses each real complete TIM directly, retaining its source dimensions and VRAM rectangles. Current PNG and explicit STP mask exports preserve native words and indices on no-op import. Existing palette mapping and deterministic selected-palette rebuild use the shared qualified PNG converter; other local palette words remain exact. Index pixels are shared across all sixteen local palettes, so image replacement affects every palette view. Partial TIM6 and allocation remain unsupported.
+
+One source-backed codec check covers all six complete atlases, palettes 0/15, both mapping modes, exact PNG/STP roundtrips and 24 edited-image cases. Some Retail palettes are uniform; valid Current palettes make indices distinguishable for editing tests without inventing new layouts. Candidate RGBA/STP bytes match requested pixels, fixed headers and other local palettes remain exact, and malformed/palette/mode/partial inputs refuse. The combined pack/generic/monster PNG regression passes 12 tests in 40.287 seconds. This is not a completed editor workflow or gameplay acceptance.
+
+Required integration remains: retained original PNG/mask/baseline and native index bytes with complete replay; optional owner/history/persistence and fresh Review/Apply; independent Current texture proof through model/pose/cache/interchange; consistent word-only and whole-texture restoration; exact directory/ZIP data-package delivery and normal wide/400-pixel editor checks. Full SDK goal stays active; solo implementation continues.
+
 ## Reviewed Whole Pack Palette Restoration
 
 Offline checks passed — 2026-10-13. Inspect Current Pack Palette, then Review Restore Whole Pack Palette. This restores all authored words in the selected complete TIM’s sixteen local palettes, including words outside the currently displayed palette. Review lists the total removed words and shows independently decoded Current and Proposed Retail pixels. Apply Reviewed Pack Palette requires that exact fresh Review and rendered proposal. Changing the local palette, entry or word withdraws held Review; source, mode, busy state and disposal guard the operation. An unowned TIM has no restoration to apply.
