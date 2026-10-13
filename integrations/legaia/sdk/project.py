@@ -143,6 +143,7 @@ class ProjectService:
         self.monster_motion_overrides: dict[str, dict] = {}
         self.monster_record_overrides: dict[str, dict] = {}
         self.battle_pack_model_overrides: dict[str, dict] = {}
+        self.battle_pack_palette_overrides: dict[str, dict] = {}
         self.audio_overrides: dict[str, dict] = {}
         self.audio_sequence_replacements: dict[str, dict] = {}
         self.audio_bank_overrides: dict[str, dict] = {}
@@ -255,6 +256,7 @@ class ProjectService:
                 **({"monster_motion_overrides": deepcopy(self.monster_motion_overrides)} if self.monster_motion_overrides else {}),
                 **({"monster_record_overrides": deepcopy(self.monster_record_overrides)} if self.monster_record_overrides else {}),
                 **({"battle_pack_model_overrides": deepcopy(self.battle_pack_model_overrides)} if self.battle_pack_model_overrides else {}),
+                **({"battle_pack_palette_overrides": deepcopy(self.battle_pack_palette_overrides)} if self.battle_pack_palette_overrides else {}),
                 **({"model_overrides": deepcopy(self.model_overrides)} if self.model_overrides else {})}
 
     @property
@@ -295,7 +297,7 @@ class ProjectService:
                   "authored": "Scene and game-data edits", "actor_templates": "Actor presets",
                   "texture_additions": "New texture slots", "texture_overrides": "Texture replacements", "model_overrides": "Model content", "audio_sequence_replacements": "Audio sequence replacements", "audio_overrides": "Audio sequence operands", "audio_bank_overrides": "Audio bank parameters", "audio_sample_sources": "Retained WAV inputs", "audio_midi_sources": "Retained MIDI inputs", "audio_sample_overrides": "Native audio samples",
                   "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "worldmap_selection_sets": "Saved world selections", "scene_views": "Saved scene views", "animation_labels": "Animation display names", "model_vertex_groups": "Saved model vertex groups", "script_bookmarks": "Saved script bookmarks",
-                  "monster_palette_overrides": "Monster native palettes", "monster_model_overrides": "Monster native models", "monster_motion_overrides": "Monster native motion", "monster_record_overrides": "Monster stored records", "battle_pack_model_overrides": "Battle pack native models", "player_model_overrides": "PLAYER native models", "player_action_overrides": "PLAYER action channels", "model_sources": "Retained model inputs", "animation_sources": "Retained animation inputs"}
+                  "monster_palette_overrides": "Monster native palettes", "monster_model_overrides": "Monster native models", "monster_motion_overrides": "Monster native motion", "monster_record_overrides": "Monster stored records", "battle_pack_palette_overrides": "Battle pack native palettes", "battle_pack_model_overrides": "Battle pack native models", "player_model_overrides": "PLAYER native models", "player_action_overrides": "PLAYER action channels", "model_sources": "Retained model inputs", "animation_sources": "Retained animation inputs"}
         return [label for key, label in labels.items()
                 if digest(document.get(key)) != self.saved_sections.get(key)]
 
@@ -305,7 +307,7 @@ class ProjectService:
         self.saved_document = deepcopy(document)
         self.saved_sections = {key: digest(document.get(key)) for key in
                                ("name", "retail_source", "imports", "active_scene",
-                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_sequence_replacements", "audio_bank_overrides", "audio_sample_sources", "audio_midi_sources", "audio_sample_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "worldmap_selection_sets", "scene_views", "animation_labels", "model_vertex_groups", "script_bookmarks", "model_sources", "animation_sources", "player_model_overrides", "player_action_overrides", "monster_palette_overrides", "monster_model_overrides", "monster_motion_overrides", "monster_record_overrides", "battle_pack_model_overrides")}
+                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_sequence_replacements", "audio_bank_overrides", "audio_sample_sources", "audio_midi_sources", "audio_sample_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "worldmap_selection_sets", "scene_views", "animation_labels", "model_vertex_groups", "script_bookmarks", "model_sources", "animation_sources", "player_model_overrides", "player_action_overrides", "monster_palette_overrides", "monster_model_overrides", "monster_motion_overrides", "monster_record_overrides", "battle_pack_model_overrides", "battle_pack_palette_overrides")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):
@@ -3439,6 +3441,11 @@ class ProjectService:
             from .audio_sample_sources import validate_files
             validate_files(self,value);self.audio_sample_sources=value
             source.pop();target.append(entry);return
+        if source[-1].get('target') == 'battle_pack_palette_overrides':
+            entry=source[-1];value=deepcopy(entry[field])
+            from .battle_pack_palettes import validate
+            self.battle_pack_palette_overrides=validate(self,value)
+            source.pop();target.append(entry);return
         if source[-1].get('target') == 'battle_pack_model_overrides':
             entry=source[-1];value=deepcopy(entry[field])
             from .battle_pack_models import validate
@@ -3606,6 +3613,9 @@ class ProjectService:
         if self.monster_record_overrides:
             from .monster_records import validate as validate_monster_records
             validate_monster_records(self,self.monster_record_overrides)
+        if self.battle_pack_palette_overrides:
+            from .battle_pack_palettes import validate as validate_pack_palettes
+            validate_pack_palettes(self,self.battle_pack_palette_overrides)
         if self.battle_pack_model_overrides:
             from .battle_pack_models import validate as validate_pack_models
             validate_pack_models(self,self.battle_pack_model_overrides)
@@ -3679,6 +3689,9 @@ class ProjectService:
         if 'monster_record_overrides' in raw:
             from .monster_records import validate as validate_monster_records
             result.monster_record_overrides=validate_monster_records(result,raw['monster_record_overrides'])
+        if 'battle_pack_palette_overrides' in raw:
+            from .battle_pack_palettes import validate as validate_pack_palettes
+            result.battle_pack_palette_overrides=validate_pack_palettes(result,raw['battle_pack_palette_overrides'])
         if 'battle_pack_model_overrides' in raw:
             from .battle_pack_models import validate as validate_pack_models
             result.battle_pack_model_overrides=validate_pack_models(result,raw['battle_pack_model_overrides'])

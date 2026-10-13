@@ -1,3 +1,4 @@
+import {qualifyPackPaletteContext} from './battle-pack-palette-proof.js';
 import {placementDigest} from './worldmap-placement-replay.js';
 import {qualifyBattlePackCurrent} from './battle-pack-model-authoring.js';
 import {qualifyNativeTmdGeometry} from './native-tmd-preview.js';
@@ -15,6 +16,7 @@ export async function qualifyPackModelRestoration(v,inspection,report,record){
  const neighbors=new Uint8Array(entry.length-retail.length);neighbors.set(entry.subarray(0,at));neighbors.set(entry.subarray(end),at);const changes=before.reduce((n,b,i)=>n+(b!==retail[i]),0),removed=inspection.model_binding.inputs.map((r,i)=>({import_index:i,glb_sha256:r.glb_sha256,glb_byte_length:r.glb_byte_length}));
  if(!changes||v.byte_change_count!==changes||await placementDigest(neighbors)!==v.unchanged_neighbors_sha256||!same(v.removed_active_inputs,removed))fail();
  qualifyNativeTmdGeometry(retail,v.retail_geometry);qualifyBattleCharacterPreview({schema_version:'legaia.battle-character-preview.v1',project_path:report.project_path,project_source_key:report.project_source_key,catalog_source_key:report.catalog.source_key,record:record.data,preview:v.retail_geometry,palette_index:0,layer:'retail',read_only:true,project_changed:false,gameplay_verified:false},report,record,0);
+ if(inspection.palette_context)await qualifyPackPaletteContext(inspection.palette_context,report,v.retail_geometry);
  const encoded=decode(v.review_receipt_base64,16*1024*1024),copy={...v};delete copy.review_key;delete copy.review_receipt_base64;
  let receipt;try{receipt=JSON.parse(new TextDecoder().decode(encoded));}catch{fail();}if(await placementDigest(encoded)!==v.review_key||!same(receipt,copy))fail();return structuredClone(v);
 }

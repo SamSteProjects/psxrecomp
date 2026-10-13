@@ -20,6 +20,8 @@ def snapshot(project,expected_project_path,expected_source_key,asset_id,catalog_
         record=next((r for r in catalog['models'] if r['semantic_id']==asset_id),None)
         if record is None:raise ProjectError('Choose an existing bounded battle pack model')
         body=effective(project,original,catalog,record);current=compose(project,original,catalog)
+        from .battle_pack_palettes import compose as palettes
+        current=palettes(project,original,catalog,current)
     _fresh(project,expected_project_path,expected_source_key)
     return original,catalog,record,body,current
 
@@ -34,19 +36,21 @@ def _geometry(value):
 
 def current(project,**context):
     original,catalog,record,body,entry=snapshot(project,**context)
-    _,geometry=native.source(original,record,catalog,body);at=record['source_record']['byte_offset']
+    from .battle_pack_palettes import texture_entry,context as palette_context
+    _,geometry=native.source(original,record,catalog,body,texture_entry(project,original,catalog));at=record['source_record']['byte_offset']
     value=dict(schema_version='legaia.battle-pack-model-current.v1',project_path=str(project.root),
         project_source_key=context['expected_source_key'],catalog_source_key=context['catalog_source_key'],
         record=record,model_binding=deepcopy(project.battle_pack_model_overrides.get(record['semantic_id'])),
         current_tmd_sha256=sha256(body).hexdigest(),current_entry_sha256=sha256(entry).hexdigest(),
         current_tmd_base64=b64encode(body).decode(),retail_tmd_base64=b64encode(original[at:at+len(body)]).decode(),
-        geometry=_geometry(geometry),layer='current',read_only=True,project_changed=False,gameplay_verified=False)
+        geometry=_geometry(geometry),**palette_context(project,original,catalog),layer='current',read_only=True,project_changed=False,gameplay_verified=False)
     _fresh(project,context['expected_project_path'],context['expected_source_key']);return value
 
 
 def export(project,**context):
     original,catalog,record,body,entry=snapshot(project,**context)
-    try:content,binding=native.export(original,record,catalog,body)
+    from .battle_pack_palettes import texture_entry
+    try:content,binding=native.export(original,record,catalog,body,texture_entry(project,original,catalog))
     except NativeError as error:raise ProjectError(str(error)) from error
     if len(content)>MAX_INPUT:raise ProjectError('Battle pack authoring GLB exceeds8MiB')
     value=dict(schema_version='legaia.battle-pack-model-export.v1',project_path=str(project.root),
@@ -71,7 +75,9 @@ def review(project,binding,glb_base64,expected_current_entry_sha256,**context):
         raise ProjectError('Battle pack GLB byte coverage is invalid')
     try:candidate,projection=native.convert(original,record,catalog,binding,content,body)
     except NativeError as error:raise ProjectError(str(error)) from error
-    projection['geometry']=_geometry(projection['geometry'])
+    from .battle_pack_palettes import texture_entry
+    _,geometry=native.source(original,record,catalog,candidate,texture_entry(project,original,catalog))
+    projection['geometry']=_geometry(geometry)
     at=record['source_record']['byte_offset'];end=at+len(candidate)
     if candidate!=body:
         retail=original[at:end];sizes={}

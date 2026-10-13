@@ -16,10 +16,11 @@ def _prepare(project,expected_current_tmd_sha256,expected_current_entry_sha256,*
     if sha256(body).hexdigest()!=expected_current_tmd_sha256 or sha256(entry).hexdigest()!=expected_current_entry_sha256:
         raise ProjectError('Current pack model or composed entry changed; inspect again')
     after=deepcopy(project.battle_pack_model_overrides);after.pop(identifier);validate(project,after)
-    candidate=compose(project,original,catalog,after);at=record['source_record']['byte_offset'];end=at+len(body);retail=original[at:end]
+    from .battle_pack_palettes import compose as palettes,texture_entry
+    candidate=palettes(project,original,catalog,compose(project,original,catalog,after));at=record['source_record']['byte_offset'];end=at+len(body);retail=original[at:end]
     if candidate[at:end]!=retail or candidate[:at]!=entry[:at] or candidate[end:]!=entry[end:] or body==retail:
         raise ProjectError('Pack restoration changed protected neighbors or has no native changes')
-    _,geometry=source(original,record,catalog)
+    _,geometry=source(original,record,catalog,texture_entry=texture_entry(project,original,catalog))
     value=dict(schema_version='legaia.battle-pack-model-restoration-review.v1',operation='restore_retail_pack_model',
         project_path=str(project.root),project_source_key=context['expected_source_key'],catalog_source_key=context['catalog_source_key'],
         record=record,model_binding=owner,current_preview=current(project,**context),retail_geometry=_geometry(geometry),

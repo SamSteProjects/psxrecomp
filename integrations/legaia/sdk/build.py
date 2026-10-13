@@ -48,6 +48,7 @@ def authored_state_key(project) -> str:
                                 **({"monster_motion": project.monster_motion_overrides} if getattr(project,"monster_motion_overrides",{}) else {}),
                                 **({"monster_records": project.monster_record_overrides} if getattr(project,"monster_record_overrides",{}) else {}),
                                 **({"battle_pack_models": project.battle_pack_model_overrides} if getattr(project,"battle_pack_model_overrides",{}) else {}),
+                                **({"battle_pack_palettes": project.battle_pack_palette_overrides} if getattr(project,"battle_pack_palette_overrides",{}) else {}),
                                 **({"audio": project.audio_overrides} if getattr(project, "audio_overrides", {}) else {}),
                                 **({"audio_sequence_replacements": project.audio_sequence_replacements} if getattr(project,"audio_sequence_replacements",{}) else {}),
                                 **({"audio_bank": project.audio_bank_overrides} if getattr(project, "audio_bank_overrides", {}) else {}),
@@ -901,6 +902,9 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         from .battle_pack_model_build import prepare as prepare_pack_models
         pack_overlays,pack_changes=prepare_pack_models(project,archive,disc_hash)
         overlays.extend(pack_overlays);audit_edits.extend(pack_changes)
+        from .battle_pack_palettes import prepare as prepare_pack_palettes
+        palette_overlays,palette_changes=prepare_pack_palettes(project,archive,disc_hash)
+        overlays.extend(palette_overlays);audit_edits.extend(palette_changes)
         overlays.extend(monster_overlays);audit_edits.extend(monster_changes)
         overlays.extend(player_overlays)
         audit_edits.extend(player_changes)

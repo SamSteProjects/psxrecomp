@@ -21,7 +21,7 @@ def resources(project,expected_project_path,expected_source_key):
     try:catalog=discover(project.disc_path)
     except RetailImportError as error:raise ProjectError(str(error)) from error
     _disc(project,catalog);_fresh(project,expected_project_path,expected_source_key)
-    return dict(schema_version='legaia.battle-character-resources.v1',project_path=str(project.root),project_source_key=expected_source_key,catalog=catalog,layer='retail',read_only=True,project_changed=False,gameplay_verified=False)
+    return dict(schema_version='legaia.battle-character-resources.v1',project_path=str(project.root),project_source_key=expected_source_key,catalog=catalog,native_palette_context_required=True,layer='retail',read_only=True,project_changed=False,gameplay_verified=False)
 
 
 def preview(project,expected_project_path,expected_source_key,asset_id,catalog_source_key,palette_index):

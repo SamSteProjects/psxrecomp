@@ -18,7 +18,8 @@ def _base(project,expected_current_tmd_sha256,expected_current_entry_sha256,**co
     original,catalog,record,tmd,entry=snapshot(project,**context)
     if sha256(tmd).hexdigest()!=expected_current_tmd_sha256 or sha256(entry).hexdigest()!=expected_current_entry_sha256:
         raise ProjectError('Current pack model or composed entry changed; inspect Current again')
-    _,geometry=source(original,record,catalog,tmd)
+    from .battle_pack_palettes import texture_entry
+    _,geometry=source(original,record,catalog,tmd,texture_entry(project,original,catalog))
     return record,geometry
 
 

@@ -1264,6 +1264,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/battle-pack-model-authoring.js": ("battle-pack-model-authoring.js", "text/javascript"),
                  "/battle-pack-model-inputs.js": ("battle-pack-model-inputs.js", "text/javascript"),
                  "/battle-pack-model-restoration.js": ("battle-pack-model-restoration.js", "text/javascript"),
+                 "/battle-pack-palette-proof.js": ("battle-pack-palette-proof.js", "text/javascript"),
+                 "/battle-pack-palette-authoring.js": ("battle-pack-palette-authoring.js", "text/javascript"),
                  "/native-tmd-preview.js": ("native-tmd-preview.js", "text/javascript"),
                  "/battle-pack-current-actions.js": ("battle-pack-current-actions.js", "text/javascript"),
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
@@ -1480,6 +1482,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                     action=review if route.endswith('-review') else apply if route.endswith('-apply') else proposed_preview
                     result=action(self.server.project,**body)
                     self._json(200,dict(self.server.state(),player_model_restore=result) if route.endswith('-apply') else result)
+                    return
+                if route in ('/api/battle-pack-palette-inspect','/api/battle-pack-palette-review','/api/battle-pack-palette-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','palette_index'}
+                    if not route.endswith('-inspect'):fields|={'entry_index','word','expected_current_tim_sha256','expected_current_entry_sha256'}
+                    if route.endswith('-apply'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Pack palette authoring requires exact source, native cell and fresh Review fields')
+                    from .battle_pack_palettes import inspect,review,apply
+                    result=(inspect if route.endswith('-inspect') else apply if route.endswith('-apply') else review)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),battle_pack_palette_apply=result) if route.endswith('-apply') else result)
                     return
                 if route in ('/api/battle-pack-model-restore-review','/api/battle-pack-model-restore-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','expected_current_tmd_sha256','expected_current_entry_sha256'}

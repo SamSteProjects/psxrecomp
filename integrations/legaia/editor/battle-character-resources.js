@@ -1,3 +1,4 @@
+import {mountPackPaletteAuthoring} from './battle-pack-palette-authoring.js';
 import {mountBattlePackAnimation} from './battle-pack-animation.js';
 import {mountBattlePackModelAuthoring} from './battle-pack-model-authoring.js';
 import {placementDigest} from './worldmap-placement-replay.js';
@@ -11,6 +12,7 @@ const fail=()=>{throw Error('Battle resource source or preview differs from the 
 const offsets=[4,0x82f4,0x1065c,0x1672c,0x1d0cc],sizes=[33516,33636,24780,27036,33340],objects=[15,16,15,20,15],rows=[490,491,492,493,494,495,497],pin='d6e64c68ede25813d35db20980da82a1a025549b';
 export async function decodeBattleCharacterResources(value,expected){
   const c=value?.catalog;
+  if(value?.native_palette_context_required!==undefined&&value.native_palette_context_required!==true)fail();
   if(value?.schema_version!=='legaia.battle-character-resources.v1'||value.project_path!==expected.projectPath||value.project_source_key!==expected.sourceKey||value.layer!=='retail'||value.read_only!==true||value.project_changed!==false||value.gameplay_verified!==false||c?.schema_version!=='legaia.battle-character-catalog.v1'||c.source_entry_index!==1204||!hash(c.source_disc_sha256)||!hash(c.source_entry_sha256)||!Number.isSafeInteger(c.source_entry_byte_length)||c.source_entry_byte_length<0x564dc+544||c.source_entry_byte_length>2*1024*1024||c.reference_commit!==pin||c.read_only!==true||c.project_changed!==false||c.gameplay_verified!==false||!Array.isArray(c.models)||c.models.length!==5||!Array.isArray(c.textures)||c.textures.length!==7||!Array.isArray(c.limitations)||c.limitations.some(v=>typeof v!=='string'||v.length>8192))fail();
   if(c.source_key!==await placementDigest(new TextEncoder().encode('battle-character-v1:'+c.source_disc_sha256+':'+c.source_entry_sha256)))fail();
   for(const [kind,list] of [['model',c.models],['texture',c.textures]])for(const [i,r] of list.entries()){
@@ -79,5 +81,6 @@ export function showBattleCharacterResource({dialog,record,getReport,current,bus
   };palette.onchange=()=>{if(value){canvas.hidden=true;canvas.style.display='none';canvas.dataset.ready='false';value=null;status.textContent='Palette changed; inspect the selected native palette.';}};object.onchange=draw;
   canvas.onpointerdown=e=>{if(record.type==='model'&&value&&!busy()){canvas.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY};}};canvas.onpointermove=e=>{if(!drag||disposed)return;view.yaw+=(e.clientX-drag.x)*.009;view.pitch+=(e.clientY-drag.y)*.009;drag={x:e.clientX,y:e.clientY};draw();};canvas.onpointerup=canvas.onpointercancel=()=>drag=null;canvas.onwheel=e=>{if(record.type==='model'&&value&&!busy()){e.preventDefault();view.zoom=Math.max(.15,Math.min(8,view.zoom*Math.exp(-e.deltaY*.001)));draw();}};
   if(record.type==='model')authoring=mountBattlePackModelAuthoring({host:dialog,report,record,current:()=>valid()&&canAuthor(),busy,setBusy,onApplied,onError});
+  else if(record.data.preview_supported)authoring=mountPackPaletteAuthoring({host:dialog,report,record,current:()=>valid()&&canAuthor(),busy,setBusy,onApplied,onError});
   const resize=new ResizeObserver(draw);resize.observe(canvas);const dispose=()=>{if(disposed)return;disposed=true;pending?.abort();pending=null;renderer?.dispose();animation?.dispose();authoring?.dispose();resize.disconnect();value=rawModel=null;drag=null;dialog.removeEventListener('close',onClose);if(mounted.get(dialog)===dispose)mounted.delete(dialog);};const onClose=()=>{if(!dialog.open)dispose();};dispose.update=refresh;mounted.set(dialog,dispose);dialog.addEventListener('close',onClose);dialog.showModal();refresh();
 }
