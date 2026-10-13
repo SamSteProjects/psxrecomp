@@ -175,7 +175,8 @@ def export_model_glb(effective_tmd: bytes, preview: dict) -> tuple[bytes, dict]:
     crops = []
     for index, material in enumerate(geometry['materials']):
         item = textures.get(index, {})
-        matched = material['textured'] and item.get('status') == 'address_match'
+        matched = material['textured'] and (item.get('status') == 'address_match' or
+                  item.get('status') == 'source_pool_match' and preview.get('texture_scope') == 'monster_source_pool')
         crops.append({'material_index': index, 'textured': material['textured'],
                       'uv_origin': deepcopy(item['uv_origin']) if matched else [0, 0],
                       'width': item['width'] if matched else 256,
