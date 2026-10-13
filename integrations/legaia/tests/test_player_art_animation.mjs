@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {decodePlayerArts,playerArtProjectRecords,createPlayerArtSampler,qualifyPlayerArtPose} from '../editor/player-art-animation.js';
 
+import {projectAssetRecords} from '../editor/project-assets.js';
 import {playerArtChannelTrack} from '../editor/player-art-timeline.js';
 const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));let frames=0,refusals=0;
 for(const c of fixture.cases){
@@ -9,6 +10,7 @@ for(const c of fixture.cases){
   const sampler=await createPlayerArtSampler(c.playback,report,c.model_report,record,c.selection);
   for(const pose of c.poses){await qualifyPlayerArtPose(pose,report,c.model_report,record,c.selection,pose.frame_index);const v=sampler.sample(pose.frame_index);assert.equal(v.geometry.vertices.length,pose.geometry.vertices.length);frames++;}
   const records=playerArtProjectRecords(report);assert.equal(records.length,196);assert.equal(new Set(records.map(r=>r.id)).size,196);assert.equal(records.filter(r=>r.projectPlayerArt.artRecordId===null).length,87);
+  const database={scenes:[],assets:[],globalPlayerBattles:c.model_report,globalPlayerArts:report};for(const filter of ['all','global-battle-character'])assert.deepEqual(projectAssetRecords(database,filter).filter(r=>r.projectPlayerArt),records);assert.equal(projectAssetRecords(database,'global-worldmap').filter(r=>r.projectPlayerArt).length,0);
   for(const part of new Set(c.playback.base_inspection.assembly.animation_part_indices))for(const field of ['translation','rotation_psx'])for(const [a,axis] of [...'xyz'].entries()){const track=playerArtChannelTrack(c.playback,part,field,axis);for(const pose of c.poses){const tr=pose.object_transforms.find(t=>t.part_index===part);assert.equal(track.samples[pose.frame_index].retail,tr[field][a]);}}
   assert.throws(()=>playerArtChannelTrack(c.playback,-1,'translation','x'));assert.throws(()=>playerArtChannelTrack(c.playback,0,'translation','bad'));
   const held=sampler.sample(0),x=held.geometry.vertices[0][0];held.geometry.vertices[0][0]+=200;assert.equal(sampler.sample(0).geometry.vertices[0][0],x);
