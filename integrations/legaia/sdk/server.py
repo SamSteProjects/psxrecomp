@@ -1643,6 +1643,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','animation_id','expected_current_block_sha256','glb_base64','fps','animation_index','object_node_indices'}
                     if not route.endswith('-review'):fields.add('review_key')
                     if route.endswith('-pose'):fields.add('frame_index')
+                    if route.endswith('-export'):fields|={'mode','frame_index','fps'}
                     if set(body)!=fields:raise ProjectError('Monster motion GLB requires exact source, input, sampling and Review fields')
                     from .monster_motion_glb import review,apply,proposed_pose
                     result=(proposed_pose if route.endswith('-pose') else apply if route.endswith('-apply') else review)(self.server.project,**body)
@@ -1735,13 +1736,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     handler=export if route.endswith('-export') else preview if route.endswith('-preview') else resources
                     self._json(200,handler(self.server.project,**body))
                     return
-                if route in ('/api/player-art-resources','/api/player-art-playback','/api/player-art-pose'):
+                if route in ('/api/player-art-resources','/api/player-art-playback','/api/player-art-pose','/api/player-art-export'):
                     fields={'expected_project_path','expected_source_key'}
                     if not route.endswith('-resources'):fields|={'asset_id','catalog_source_key','equipped','art_source_key','stream_id','art_record_id','layer','expected_current_sha256'}
                     if route.endswith('-pose'):fields.add('frame_index')
+                    if route.endswith('-export'):fields|={'mode','frame_index','fps'}
                     if set(body)!=fields:raise ProjectError('PLAYER art inspection requires exact project, archive and assembly fields')
-                    from .player_art_animation import resources,playback,pose
-                    handler=pose if route.endswith('-pose') else playback if route.endswith('-playback') else resources
+                    from .player_art_animation import resources,playback,pose,export
+                    handler=export if route.endswith('-export') else pose if route.endswith('-pose') else playback if route.endswith('-playback') else resources
                     self._json(200,handler(self.server.project,**body))
                     return
                 if route == '/api/command-history':

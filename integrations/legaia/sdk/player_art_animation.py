@@ -76,13 +76,17 @@ def playback(project, expected_project_path, expected_source_key, asset_id, cata
                 timing='not_observed', read_only=True, project_changed=False, gameplay_verified=False)
 
 
-def frame_geometry(base, stream, decoded, frame_index):
+def frame_transforms(base, stream, decoded, frame_index):
     if type(frame_index) is not int or not 0 <= frame_index < stream['frame_count']:
         raise ProjectError('Choose an existing whole PLAYER art frame')
     start = 2 + frame_index * stream['part_count'] * 9
     parts = [decode_part(decoded[start + i * 9:start + (i + 1) * 9]) for i in range(stream['part_count'])]
-    assembly, geometry = base['assembly'], deepcopy(base['geometry'])
-    transforms = [dict(object_index=i, part_index=part, **parts[part]) for i, part in enumerate(assembly['animation_part_indices'])]
+    return [dict(object_index=i, part_index=part, **parts[part]) for i, part in enumerate(base['assembly']['animation_part_indices'])]
+
+
+def frame_geometry(base, stream, decoded, frame_index):
+    transforms = frame_transforms(base, stream, decoded, frame_index)
+    geometry = deepcopy(base['geometry'])
     geometry['vertices'] = pose_vertices(geometry['vertices'], geometry['objects'], transforms)
     geometry['bounds'] = dict(min=[min(v[i] for v in geometry['vertices']) for i in range(3)],
                             max=[max(v[i] for v in geometry['vertices']) for i in range(3)])
@@ -100,4 +104,48 @@ def pose(project, frame_index, **context):
     _fresh(project, context['expected_project_path'], context['expected_source_key'])
     return dict(schema_version='legaia.player-art-pose.v1', playback=receipt, geometry=geometry,
                 object_transforms=transforms, frame_index=frame_index, read_only=True,
+                project_changed=False, gameplay_verified=False)
+
+
+def export(project, mode, frame_index, fps, **context):
+    """Read-only interchange using freshly qualified ME channels and geometry."""
+    import math
+    from base64 import b64decode
+    from importer.export import encode_model_glb
+    if mode not in ('pose', 'clip'):
+        raise ProjectError('Choose a PLAYER art pose or full clip')
+    if mode == 'pose' and (type(frame_index) is not int or frame_index < 0 or fps is not None):
+        raise ProjectError('Art pose requires a whole frame and no rate')
+    if mode == 'clip' and (frame_index is not None or type(fps) not in (int, float) or not math.isfinite(fps) or not 1 <= fps <= 120):
+        raise ProjectError('Art clip requires an interchange rate 1–120 and no frame')
+    receipt = playback(project, **context)
+    base, stream = receipt['base_inspection'], receipt['stream']
+    decoded = b64decode(receipt['decoded_stream_base64'])
+    geometry = deepcopy(base['geometry'])
+    geometry['representation'] = 'player-art-selected-equipment-assembly'
+    geometry['source_record'] = dict(model=base['record']['source_record'],
+                                   current_sha256=receipt['effective_file_sha256'],
+                                   player_assembly=base['assembly'], stream=stream['source_record'],
+                                   art_record=receipt['art_record'], layer=receipt['layer'])
+    geometry['animation'] = dict(semantic_id=stream['semantic_id'], label=stream['name'],
+                                 source_record=stream['source_record'], timing='not_observed',
+                                 archive_selection=receipt['archive_selection'])
+    if mode == 'pose':
+        posed, transforms = frame_geometry(base, stream, decoded, frame_index)
+        geometry['frames'] = [dict(posed, object_transforms=transforms)]
+        geometry['animation']['source_frame_index'] = frame_index
+    else:
+        geometry['frames'] = [dict(object_transforms=frame_transforms(base, stream, decoded, i))
+                              for i in range(stream['frame_count'])]
+    try:
+        content, audit = encode_model_glb(geometry, 0 if mode == 'pose' else None,
+                                         clip_fps=fps if mode == 'clip' else None)
+    except ImportError as error:
+        raise ProjectError(str(error)) from error
+    _fresh(project, context['expected_project_path'], context['expected_source_key'])
+    suffix = f'frame-{frame_index}' if mode == 'pose' else 'clip'
+    filename = f'player-art-{stream["player_index"]}-{stream["archive_role"]}-{stream["stream_index"]}-{receipt["layer"]}-{suffix}.glb'
+    return dict(schema_version='legaia.player-art-export.v1', playback=receipt, mode=mode,
+                frame_index=frame_index, fps=fps, filename=filename, audit=audit,
+                glb_base64=b64encode(content).decode('ascii'), read_only=True,
                 project_changed=False, gameplay_verified=False)
