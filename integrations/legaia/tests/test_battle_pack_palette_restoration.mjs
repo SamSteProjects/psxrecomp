@@ -1,0 +1,9 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+import {qualifyPackPaletteRestoration} from '../editor/battle-pack-palette-authoring.js';
+import {placementDigest} from '../editor/worldmap-placement-replay.js';
+const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));let refusals=0;
+for(const c of fixture.cases){await qualifyPackPaletteRestoration(c.review,c.inspection,c.report,c.record);
+ for(const change of [v=>v.project_source_key='stale',v=>v.record.source_record.byte_offset++,v=>v.removed_word_count++,v=>v.removed_binding.edits.reverse(),v=>v.current_inspection.preview.words[0]^=1,v=>v.binding=v.removed_binding,v=>v.current_entry_sha256='0'.repeat(64),v=>v.candidate_entry_sha256='0'.repeat(64),v=>v.proof.byte_change_count++,v=>v.proof.unchanged_neighbors_sha256='0'.repeat(64),v=>v.proposed_preview.words[0]^=1,v=>v.scope='one_word_only',v=>v.operation='foreign',v=>v.palette_index=0,v=>v.persistence='applied',v=>v.project_changed=true,v=>v.review_key='0'.repeat(64)]){const v=structuredClone(c.review);change(v);await assert.rejects(()=>qualifyPackPaletteRestoration(v,c.inspection,c.report,c.record));refusals++;}
+ const v=structuredClone(c.review),bytes=Buffer.from(v.candidate_entry_base64,'base64');bytes[0]^=1;v.candidate_entry_base64=bytes.toString('base64');v.candidate_entry_sha256=await placementDigest(bytes);const copy={...v};delete copy.review_key;delete copy.review_receipt_base64;const encoded=new TextEncoder().encode(JSON.stringify(copy));v.review_receipt_base64=Buffer.from(encoded).toString('base64');v.review_key=await placementDigest(encoded);await assert.rejects(()=>qualifyPackPaletteRestoration(v,c.inspection,c.report,c.record));refusals++;
+}
+console.log(`${fixture.cases.length} whole TIM palette-owner restorations qualify; ${refusals} changed word, source, image, ownership, neighbor and rehashed receipt cases refuse`);

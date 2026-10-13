@@ -1483,6 +1483,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     result=action(self.server.project,**body)
                     self._json(200,dict(self.server.state(),player_model_restore=result) if route.endswith('-apply') else result)
                     return
+                if route in ('/api/battle-pack-palette-restore-review','/api/battle-pack-palette-restore-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','palette_index','expected_current_tim_sha256','expected_current_entry_sha256'}
+                    if route.endswith('-apply'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Whole palette restoration requires exact Current source and Review fields')
+                    from .battle_pack_palette_restoration import review,apply
+                    result=(apply if route.endswith('-apply') else review)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),battle_pack_palette_restore=result) if route.endswith('-apply') else result)
+                    return
                 if route in ('/api/battle-pack-palette-inspect','/api/battle-pack-palette-review','/api/battle-pack-palette-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','palette_index'}
                     if not route.endswith('-inspect'):fields|={'entry_index','word','expected_current_tim_sha256','expected_current_entry_sha256'}

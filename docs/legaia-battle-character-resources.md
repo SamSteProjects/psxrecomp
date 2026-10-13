@@ -1,5 +1,17 @@
 # Battle Character Resource Discovery
 
+## Reviewed Whole Pack Palette Restoration
+
+Offline checks passed — 2026-10-13. Inspect Current Pack Palette, then Review Restore Whole Pack Palette. This restores all authored words in the selected complete TIM’s sixteen local palettes, including words outside the currently displayed palette. Review lists the total removed words and shows independently decoded Current and Proposed Retail pixels. Apply Reviewed Pack Palette requires that exact fresh Review and rendered proposal. Changing the local palette, entry or word withdraws held Review; source, mode, busy state and disposal guard the operation. An unowned TIM has no restoration to apply.
+
+Apply removes only the selected palette owner in one Undo/Redo step. Other TIM owners, all model owners, native headers, index pixels and retained original model files remain intact. Save/Open and native data-package Build preserve the remaining composition. Complete before/candidate entry proofs independently verify protected neighbors; canonical receipt bytes and parsed content both qualify.
+
+One source-backed test passed in 114.845 seconds across all six owners, with two edited words in different local palettes per owner, an authored model, exact HTTP/stale/malformed guards, no-owner refusal, history and persistence. After the first restoration, five CLUT overlays and one model overlay reconstruct the reviewed complete pack entry. Every directory and ZIP file matches; package SHA-256 `f3827bd435b2cfea9d4c2c36849a63d39dabf09c71946e79b5e87229867a8bae`. Clients qualify all six cases and reject 108 changed source, word, image, ownership, neighbor and rehashed receipts; existing palette/context 27/12 refusal suites remain green.
+
+Actual muted Edge passes multi-local-palette owner restoration, read-only Review, exact Proposed canvas pixels, draft/busy withdrawal, one-step Apply, absent-owner gate, Undo/Redo and Save/Open, with inspected wide/400-pixel captures and zero page errors/runtime commands. Private evidence: `local-output/sdk-20260909/battle-pack-palette-restoration-20261013/`.
+
+Existing complete CLUT owners only. Indexed image/PNG replacement, allocation, partial seventh atlas, unknown runtime routing/residency/blending and playable appearance remain open. Private data-package Build only; no game, recomp compilation, attachment, installation, disc export or publication ran. Full SDK goal active; solo work continues.
+
 ## Native Pack Palette Authoring
 
 Offline checks passed — 2026-10-13. Open one of the six complete pack TIM resources and expand Native Pack Palette Authoring. Choose an existing local palette, inspect Current, select an entry and edit its unsigned16 word. The sixteen existing words are displayed in hex; zero is transparent and STP remains a separate native bit. Review shows independently decoded Retail, Current and Proposed 256×256 images. Apply requires the exact fresh changed Review and rendered Proposed pixels. Returning an edited word to Retail removes that cell; the last cell removes the active owner. The truncated seventh atlas remains unavailable for editing.
