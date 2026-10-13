@@ -12,11 +12,11 @@ from .battle_character_resources import _fresh,_disc
 from .project import ProjectError,digest
 
 
-def compose(original,record,binding):
-    if not isinstance(binding,dict) or set(binding)!={'schema_version','asset_id','source_record','edits','current_pool_sha256','current_block_sha256'} or binding['schema_version']!='legaia.monster-palette-override.v1' or binding['asset_id']!=record['semantic_id'] or binding['source_record']!=record['source_record']:
+def compose(original,record,binding,project=None):
+    if not isinstance(binding,dict) or set(binding)-{'schema_version','asset_id','source_record','edits','current_pool_sha256','current_block_sha256','image_override','png_import'} or not {'schema_version','asset_id','source_record','edits','current_pool_sha256','current_block_sha256'}<=set(binding) or binding['schema_version']!='legaia.monster-palette-override.v1' or binding['asset_id']!=record['semantic_id'] or binding['source_record']!=record['source_record']:
         raise ProjectError('Monster palette source ownership changed')
     edits=binding['edits']
-    if not isinstance(edits,list) or not 1<=len(edits)<=240:raise ProjectError('Monster palette ledger must own existing palette cells')
+    if not isinstance(edits,list) or not 0<=len(edits)<=240 or not edits and 'image_override' not in binding:raise ProjectError('Monster palette ledger must own existing palette cells')
     candidate=bytearray(original);seen=set();order=[];pool_at=record['source_record']['byte_offset']
     for row in edits:
         if not isinstance(row,dict) or set(row)!={'palette_index','entry_index','word'} or any(type(row[k]) is not int for k in row):raise ProjectError('Monster palette ledger requires typed palette, entry and word')
@@ -25,6 +25,17 @@ def compose(original,record,binding):
         at=pool_at+palette*32+entry*2
         if struct.unpack_from('<H',original,at)[0]==word:raise ProjectError('Monster palette ledger contains an unmodified Retail cell')
         struct.pack_into('<H',candidate,at,word);seen.add(key);order.append(key)
+    if 'image_override' in binding:
+        from .monster_png import read
+        image=binding['image_override']
+        if project is None or not isinstance(image,dict) or set(image)!={'sha256','byte_length'} or image['byte_length']!=len(original)-pool_at-480:raise ProjectError('Monster image override footprint changed')
+        content=read(project,image['sha256'],image['byte_length'],'idx')
+        if content==original[pool_at+480:]:raise ProjectError('Monster image override has no native changes')
+        candidate[pool_at+480:]=content
+    if 'png_import' in binding:
+        from .monster_png import validate_input
+        if project is None:raise ProjectError('Monster original PNG replay requires its project')
+        validate_input(project,record,binding['png_import'])
     if order!=sorted(order):raise ProjectError('Monster palette ledger is not canonical')
     candidate=bytes(candidate);pool=candidate[pool_at:]
     if sha256(candidate).hexdigest()!=binding['current_block_sha256'] or sha256(pool).hexdigest()!=binding['current_pool_sha256']:raise ProjectError('Monster palette Current replay hash changed')
@@ -37,20 +48,24 @@ def snapshot(project,asset_id):
         record=next((r for r in catalog['textures'] if r['semantic_id']==asset_id),None)
         if record is None:raise ProjectError('Monster palette owner is unqualified')
         original,used=block(raw,record['monster_id']);binding=project.monster_palette_overrides.get(asset_id)
-        current=compose(original,record,binding) if binding else original
+        current=compose(original,record,binding,project) if binding else original
         return catalog,record,original,current,raw,used
 
 
 def validate(project,values):
     if not isinstance(values,dict) or len(values)>186:raise ProjectError('Monster palette overrides require a bounded owner mapping')
     if not values:return {}
+    retained_bytes=0
     if not project.disc_path:raise ProjectError('Monster palette validation requires its original source disc')
     with _disc_context(project.disc_path) as (_,disc,_,archive):
         raw=archive.read_entry(archive.entry(867));catalog=decode_catalog(raw,disc);_disc(project,catalog)
         for identifier,binding in values.items():
             record=next((r for r in catalog['textures'] if r['semantic_id']==identifier),None)
             if record is None:raise ProjectError('Monster palette binding has no qualified native owner')
-            original,used=block(raw,record['monster_id']);current=compose(original,record,binding);start=record['source_record']['compressed_stream_offset']
+            original,used=block(raw,record['monster_id']);current=compose(original,record,binding,project);start=record['source_record']['compressed_stream_offset']
+            if 'png_import' in binding:
+                receipt=binding['png_import'];retained_bytes+=receipt['png_byte_length']+(receipt['stp_byte_length'] or 0)+receipt['baseline_byte_length']
+                if retained_bytes>64*1024*1024:raise ProjectError('Active monster PNG inputs exceed the 64 MiB project budget')
             try:serialize_lzs_decoded(raw[start:start+used],len(original),current,'monster-palette')
             except NativeError as e:raise ProjectError(str(e)) from e
     return deepcopy(values)
@@ -75,8 +90,9 @@ def review(project,expected_project_path,expected_source_key,asset_id,palette_in
     if word==struct.unpack_from('<H',original,at)[0]:ledger.pop(pair,None)
     else:ledger[pair]=word
     candidate=bytearray(current);struct.pack_into('<H',candidate,at,word);candidate=bytes(candidate);proposed_pool=candidate[pool_at:]
-    binding=dict(schema_version='legaia.monster-palette-override.v1',asset_id=asset_id,source_record=deepcopy(record['source_record']),edits=[dict(palette_index=p,entry_index=e,word=w) for (p,e),w in sorted(ledger.items())],current_pool_sha256=sha256(proposed_pool).hexdigest(),current_block_sha256=sha256(candidate).hexdigest()) if ledger else None
-    if binding:compose(original,record,binding)
+    extras={k:deepcopy(project.monster_palette_overrides.get(asset_id,{}))[k] for k in ('image_override','png_import') if k in project.monster_palette_overrides.get(asset_id,{})}
+    binding=dict(**extras,schema_version='legaia.monster-palette-override.v1',asset_id=asset_id,source_record=deepcopy(record['source_record']),edits=[dict(palette_index=p,entry_index=e,word=w) for (p,e),w in sorted(ledger.items())],current_pool_sha256=sha256(proposed_pool).hexdigest(),current_block_sha256=sha256(candidate).hexdigest()) if ledger or 'image_override' in extras else None
+    if binding:compose(original,record,binding,project)
     start=record['source_record']['compressed_stream_offset']
     try:_,capacity=serialize_lzs_decoded(raw[start:start+used],len(original),candidate,'monster-palette')
     except NativeError as e:raise ProjectError(str(e)) from e
@@ -101,12 +117,14 @@ def prepare(project,archive,disc_hash):
     if not values:return [],[]
     raw=archive.read_entry(archive.entry(867));catalog=decode_catalog(raw,disc_hash);overlays=[];changes=[]
     for identifier,binding in sorted(values.items()):
-        record=next(r for r in catalog['textures'] if r['semantic_id']==identifier);original,used=block(raw,record['monster_id']);current=compose(original,record,binding);start=record['source_record']['compressed_stream_offset']
+        record=next(r for r in catalog['textures'] if r['semantic_id']==identifier);original,used=block(raw,record['monster_id']);current=compose(original,record,binding,project);start=record['source_record']['compressed_stream_offset']
         try:payload,capacity=serialize_lzs_decoded(raw[start:start+used],len(original),current,'monster-palette')
         except NativeError as e:raise ProjectError(str(e)) from e
         offset=(archive.node.extent_lba+archive.entry(867).start_lba)*archive.SECTOR+start
         overlays.append(dict(scene='monster-archive',offset=offset,size=used,file=f'assets/monster-{record["monster_id"]}-palette.bin',payload=payload,sha256=sha256(payload).hexdigest(),expected_sha256=sha256(raw[start:start+used]).hexdigest(),source_kind='fixed_span_monster_palette',source_record=record['source_record'],capacity=capacity,decoded_before_sha256=sha256(original).hexdigest(),decoded_after_sha256=sha256(current).hexdigest()))
         pool_at=record['source_record']['byte_offset']
+        if 'image_override' in binding:
+            changes.append(dict(scene='monster-archive',semantic_id=identifier,field='texture.image_indices',scope='monster-native-image-indices-only',byte_offset=pool_at+480,byte_length=len(current)-pool_at-480,before_sha256=sha256(original[pool_at+480:]).hexdigest(),after_sha256=sha256(current[pool_at+480:]).hexdigest()))
         for edit in binding['edits']:
             at=pool_at+edit['palette_index']*32+edit['entry_index']*2
             changes.append(dict(edit,scene='monster-archive',semantic_id=identifier,field='palette.word',scope='monster-native-palette-words-only',byte_offset=at,before_word=struct.unpack_from('<H',original,at)[0],after_word=edit['word']))

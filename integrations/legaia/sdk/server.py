@@ -1237,6 +1237,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/monster-export.js": ("monster-export.js", "text/javascript"),
                  "/monster-palettes.js": ("monster-palettes.js", "text/javascript"),
                  "/monster-palette-replay.js": ("monster-palette-replay.js", "text/javascript"),
+                 "/monster-png.js": ("monster-png.js", "text/javascript"),
                  "/monster-archive.js": ("monster-archive.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
@@ -1300,7 +1301,7 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/worldmap-replacement-review", "/api/worldmap-replacement-apply", "/api/text-json-preview", "/api/text-json-import") else 32768
-            if urlsplit(self.path).path in ('/api/field-texture-png-review','/api/field-texture-png-apply'):
+            if urlsplit(self.path).path in ('/api/field-texture-png-review','/api/field-texture-png-apply','/api/monster-png-review','/api/monster-png-apply'):
                 request_limit=24*1024*1024
             if urlsplit(self.path).path in ('/api/field-texture-file-review','/api/field-texture-file-apply'):
                 request_limit=2*1024*1024
@@ -1460,6 +1461,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!=fields:raise ProjectError('Pack animation inspection requires exact project, source and frame fields')
                     from .battle_character_resources import animations,pose
                     self._json(200,(pose if route.endswith('-pose') else animations)(self.server.project,**body))
+                    return
+                if route in ('/api/monster-png-download','/api/monster-png-review','/api/monster-png-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','palette_index','expected_current_sha256'}
+                    if not route.endswith('-download'):fields|={'png_base64','palette_mode'}
+                    if route.endswith('-apply'):fields.add('review_key')
+                    if set(body) not in (fields,fields|{'stp_base64'}) or route.endswith('-download') and 'stp_base64' in body:
+                        raise ProjectError('Monster PNG requires exact source, input and Review fields')
+                    from .monster_png import download,review,apply
+                    result=(download if route.endswith('-download') else apply if route.endswith('-apply') else review)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),monster_palette_apply=result) if route.endswith('-apply') else result)
                     return
                 if route in ('/api/monster-palette-inspect','/api/monster-palette-review','/api/monster-palette-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','palette_index'}
