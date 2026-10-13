@@ -1,0 +1,7 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+import {qualifyMonsterFrameInspection,qualifyMonsterFrameReview} from '../editor/monster-motion-authoring.js';
+const proof=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));let refusals=0;
+for(const c of proof.cases){const v=c.inspection,r={project_path:v.project_path,project_source_key:v.project_source_key,catalog:{source_key:v.catalog_source_key,animations:[v.clip]}},record={id:v.asset_id},choice={animation_id:v.clip.semantic_id,frame_index:v.frame_index};await qualifyMonsterFrameInspection(v,r,record,choice,v.part_index);await qualifyMonsterFrameReview(c.review,v,c.translation,c.rotation_psx);
+ for(const change of [v=>v.channels.translation[0]++,v=>v.source_motion_base64=Buffer.from('changed').toString('base64'),v=>v.part_index++,v=>v.clip.source_record.sha256='0'.repeat(64)]){const a=structuredClone(v);change(a);await assert.rejects(qualifyMonsterFrameInspection(a,r,record,choice,v.part_index));refusals++;}
+ for(const change of [v=>v.projection.after.translation[0]++,v=>v.candidate_motion_base64=Buffer.from('changed').toString('base64'),v=>v.projection.byte_offset++,v=>v.projection.candidate_motion_sha256='0'.repeat(64),v=>v.persistence='applied',v=>v.projection.source_block_sha256='0'.repeat(64)]){const a=structuredClone(c.review);change(a);await assert.rejects(qualifyMonsterFrameReview(a,v,c.translation,c.rotation_psx));refusals++;}
+}console.log(`Three exact part/frame channel Reviews qualify; ${refusals} altered source/byte receipts refuse`);

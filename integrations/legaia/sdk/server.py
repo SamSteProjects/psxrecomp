@@ -1242,6 +1242,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/monster-model-authoring.js": ("monster-model-authoring.js", "text/javascript"),
                  "/monster-model-replay.js": ("monster-model-replay.js", "text/javascript"),
                  "/monster-model-inputs.js": ("monster-model-inputs.js", "text/javascript"),
+                 "/monster-motion-authoring.js": ("monster-motion-authoring.js", "text/javascript"),
                  "/monster-archive.js": ("monster-archive.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
@@ -1476,6 +1477,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .monster_model_authoring import export,review,apply
                     result=(apply if route.endswith('-apply') else review if route.endswith('-review') else export)(self.server.project,**body)
                     self._json(200,dict(self.server.state(),monster_model_apply=result) if route.endswith('-apply') else result)
+                    return
+                if route in ('/api/monster-frame-inspect','/api/monster-frame-review'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','animation_id','frame_index','part_index'}
+                    if route.endswith('-review'):fields|={'expected_current_block_sha256','translation','rotation_psx'}
+                    if set(body)!=fields:raise ProjectError('Monster frame requires exact source, frame, part and channel fields')
+                    from .monster_motion_authoring import inspect,review
+                    self._json(200,(review if route.endswith('-review') else inspect)(self.server.project,**body))
                     return
                 if route == '/api/monster-model-input-download':
                     if set(body)!={'expected_project_path','expected_source_key','asset_id','expected_current_tmd_sha256','import_index','expected_input_sha256'}:raise ProjectError('Monster model input download requires exact Current and retained identities')
