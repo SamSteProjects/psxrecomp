@@ -1740,6 +1740,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     handler=export if route.endswith('-export') else preview if route.endswith('-preview') else resources
                     self._json(200,handler(self.server.project,**body))
                     return
+                if route=='/api/player-art-current-export':
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','art_source_key','stream_id','art_record_id','layer','expected_current_sha256','frame_index','part_index','expected_current_slot_sha256','mode','pose_frame_index','fps'}
+                    if set(body)!=fields:raise ProjectError('Current art export requires exact inspected source and export representation fields')
+                    from .player_art_authoring import export_current
+                    self._json(200,export_current(self.server.project,**body))
+                    return
                 if route in ('/api/player-art-frame-inspect','/api/player-art-frame-review','/api/player-art-frame-pose','/api/player-art-frame-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','art_source_key','stream_id','art_record_id','layer','expected_current_sha256','frame_index','part_index'}
                     if not route.endswith('-inspect'):fields|={'expected_current_slot_sha256','translation','rotation_psx'}

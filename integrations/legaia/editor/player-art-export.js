@@ -1,3 +1,4 @@
+import {qualifyPlayerArtInspection} from './player-art-authoring.js';
 import {createPlayerArtSampler} from './player-art-animation.js';
 import {placementDigest} from './worldmap-placement-replay.js';
 import {sourcePngPixels} from './battle-sideband.js';
@@ -8,12 +9,24 @@ const absent=(v,keys)=>keys.every(k=>!Object.hasOwn(v,k));
 export async function qualifyPlayerArtExport(value,arts,models,record,selection,held){
   const {mode,frame_index:frame,fps}=selection;
   if(!['pose','clip'].includes(mode)||mode==='pose'&&(!Number.isSafeInteger(frame)||fps!==null)||mode==='clip'&&(frame!==null||!Number.isFinite(fps)||fps<1||fps>120)||value?.schema_version!=='legaia.player-art-export.v1'||value.mode!==mode||value.frame_index!==frame||value.fps!==fps||value.read_only!==true||value.project_changed!==false||value.gameplay_verified!==false||!same(value.playback,held))fail();
-  const sampler=await createPlayerArtSampler(value.playback,arts,models,record,selection),receipt=value.playback,base=receipt.base_inspection,g=base.geometry,a=value.audit;
+  const sampler=await createPlayerArtSampler(value.playback,arts,models,record,selection);
+  return qualifyGeometryExport(value,value.playback,sampler,selection);
+}
+
+export async function qualifyPlayerArtCurrentExport(value,arts,models,record,selection,held){
+  if(value?.schema_version!=='legaia.player-art-current-export.v1'||value.motion_layer!=='current'||!same(value.inspection,held)||!same(value.playback,held.base_playback)||value.mode!==selection.mode||value.frame_index!==selection.frame_index||value.fps!==selection.fps||value.read_only!==true||value.project_changed!==false||value.gameplay_verified!==false)fail();
+  const q=await qualifyPlayerArtInspection(held,arts,models,record,selection,held.frame_index,held.part_index),motion={layer:'current',current_slot_sha256:held.current_slot_sha256,current_body_sha256:held.current_body_sha256,decoded_sha256:await placementDigest(Uint8Array.from(atob(held.current_decoded_base64),c=>c.charCodeAt(0))),owners:held.owners};
+  if(!['pose','clip'].includes(selection.mode)||selection.mode==='pose'&&(!Number.isSafeInteger(selection.frame_index)||selection.fps!==null)||selection.mode==='clip'&&(selection.frame_index!==null||!Number.isFinite(selection.fps)||selection.fps<1||selection.fps>120))fail();
+  return qualifyGeometryExport(value,held.base_playback,q.sampler,selection,motion);
+}
+
+async function qualifyGeometryExport(value,receipt,sampler,selection,motion=null){
+  const {mode,frame_index:frame,fps}=selection,base=receipt.base_inspection,g=base.geometry,a=value.audit;
   const posed=mode==='pose'?sampler.sample(frame):null,geometry=posed?.geometry??g;
-  const source={model:base.record.source_record,current_sha256:receipt.effective_file_sha256,player_assembly:base.assembly,stream:receipt.stream.source_record,art_record:receipt.art_record,layer:receipt.layer};
-  const animation={semantic_id:receipt.stream.semantic_id,label:receipt.stream.name,source_record:receipt.stream.source_record,timing:'not_observed',archive_selection:receipt.archive_selection,...(posed?{source_frame_index:frame}:{})};
-  const suffix=posed?`frame-${frame}`:'clip',filename=`player-art-${receipt.stream.player_index}-${receipt.stream.archive_role}-${receipt.stream.stream_index}-${receipt.layer}-${suffix}.glb`;
-  if(value.filename!==filename||a?.schema_version!=='legaia.model-export.v1'||a.asset_semantic_id!==g.semantic_id||!same(a.source_record,source)||a.reference_commit!==g.reference_commit||a.representation!=='player-art-selected-equipment-assembly'||a.posed!==!!posed||a.frame_index!==(posed?0:null)||!same(a.animation,animation)||!same(a.object_transforms,posed?.object_transforms??null)||a.object_count!==g.objects.length||a.triangle_count!==g.triangles.length||a.source_coordinate_system!==geometry.coordinate_system||a.coordinate_conversion!=='[x,-y,z]; reverse triangle winding'||typeof value.glb_base64!=='string'||value.glb_base64.length>44*1024*1024)fail();
+  const source={model:base.record.source_record,current_sha256:receipt.effective_file_sha256,player_assembly:base.assembly,stream:receipt.stream.source_record,art_record:receipt.art_record,layer:receipt.layer,...(motion?{motion}:{})};
+  const animation={semantic_id:receipt.stream.semantic_id,label:receipt.stream.name,source_record:receipt.stream.source_record,timing:'not_observed',archive_selection:receipt.archive_selection,...(motion?{motion_layer:'current'}:{}),...(posed?{source_frame_index:frame}:{})};
+  const suffix=posed?`frame-${frame}`:'clip',filename=`player-art-${motion?'current-motion-':''}${receipt.stream.player_index}-${receipt.stream.archive_role}-${receipt.stream.stream_index}-${receipt.layer}-${suffix}.glb`;
+  if(value.filename!==filename||a?.schema_version!=='legaia.model-export.v1'||a.asset_semantic_id!==g.semantic_id||!same(a.source_record,source)||a.reference_commit!==g.reference_commit||a.representation!==(motion?'player-art-current-motion-selected-equipment-assembly':'player-art-selected-equipment-assembly')||a.posed!==!!posed||a.frame_index!==(posed?0:null)||!same(a.animation,animation)||!same(a.object_transforms,posed?.object_transforms??null)||a.object_count!==g.objects.length||a.triangle_count!==g.triangles.length||a.source_coordinate_system!==geometry.coordinate_system||a.coordinate_conversion!=='[x,-y,z]; reverse triangle winding'||typeof value.glb_base64!=='string'||value.glb_base64.length>44*1024*1024)fail();
   if(!posed&&(a.full_clip!==true||a.frame_count!==sampler.frameCount||a.export_fps!==fps||a.interpolation!=='STEP'||a.duration_seconds!==sampler.frameCount/fps||a.timing_evidence!=='caller_selected_rate_not_verified_retail_timing'))fail();
   const data=Uint8Array.from(atob(value.glb_base64),c=>c.charCodeAt(0)),v=new DataView(data.buffer);
   if(data.length<28||data.length>32*1024*1024||a.byte_length!==data.length||await placementDigest(data)!==a.sha256||v.getUint32(0,true)!==0x46546c67||v.getUint32(4,true)!==2||v.getUint32(8,true)!==data.length||v.getUint32(16,true)!==0x4e4f534a)fail();

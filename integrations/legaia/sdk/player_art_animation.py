@@ -107,22 +107,21 @@ def pose(project, frame_index, **context):
                 project_changed=False, gameplay_verified=False)
 
 
-def export(project, mode, frame_index, fps, **context):
-    """Read-only interchange using freshly qualified ME channels and geometry."""
+def export_choice(mode, frame_index, fps):
     import math
-    from base64 import b64decode
-    from importer.export import encode_model_glb
     if mode not in ('pose', 'clip'):
         raise ProjectError('Choose a PLAYER art pose or full clip')
     if mode == 'pose' and (type(frame_index) is not int or frame_index < 0 or fps is not None):
         raise ProjectError('Art pose requires a whole frame and no rate')
     if mode == 'clip' and (frame_index is not None or type(fps) not in (int, float) or not math.isfinite(fps) or not 1 <= fps <= 120):
         raise ProjectError('Art clip requires an interchange rate 1–120 and no frame')
-    receipt = playback(project, **context)
+
+
+def encode_export(receipt, mode, frame_index, fps, decoded, motion=None):
+    from importer.export import encode_model_glb
     base, stream = receipt['base_inspection'], receipt['stream']
-    decoded = b64decode(receipt['decoded_stream_base64'])
     geometry = deepcopy(base['geometry'])
-    geometry['representation'] = 'player-art-selected-equipment-assembly'
+    geometry['representation'] = 'player-art-current-motion-selected-equipment-assembly' if motion else 'player-art-selected-equipment-assembly'
     geometry['source_record'] = dict(model=base['record']['source_record'],
                                    current_sha256=receipt['effective_file_sha256'],
                                    player_assembly=base['assembly'], stream=stream['source_record'],
@@ -130,6 +129,9 @@ def export(project, mode, frame_index, fps, **context):
     geometry['animation'] = dict(semantic_id=stream['semantic_id'], label=stream['name'],
                                  source_record=stream['source_record'], timing='not_observed',
                                  archive_selection=receipt['archive_selection'])
+    if motion:
+        geometry['source_record']['motion'] = deepcopy(motion)
+        geometry['animation']['motion_layer'] = 'current'
     if mode == 'pose':
         posed, transforms = frame_geometry(base, stream, decoded, frame_index)
         geometry['frames'] = [dict(posed, object_transforms=transforms)]
@@ -142,10 +144,19 @@ def export(project, mode, frame_index, fps, **context):
                                          clip_fps=fps if mode == 'clip' else None)
     except ImportError as error:
         raise ProjectError(str(error)) from error
-    _fresh(project, context['expected_project_path'], context['expected_source_key'])
     suffix = f'frame-{frame_index}' if mode == 'pose' else 'clip'
-    filename = f'player-art-{stream["player_index"]}-{stream["archive_role"]}-{stream["stream_index"]}-{receipt["layer"]}-{suffix}.glb'
+    prefix = 'player-art-current-motion' if motion else 'player-art'
+    filename = f'{prefix}-{stream["player_index"]}-{stream["archive_role"]}-{stream["stream_index"]}-{receipt["layer"]}-{suffix}.glb'
     return dict(schema_version='legaia.player-art-export.v1', playback=receipt, mode=mode,
                 frame_index=frame_index, fps=fps, filename=filename, audit=audit,
                 glb_base64=b64encode(content).decode('ascii'), read_only=True,
                 project_changed=False, gameplay_verified=False)
+
+
+def export(project, mode, frame_index, fps, **context):
+    from base64 import b64decode
+    export_choice(mode, frame_index, fps)
+    receipt=playback(project,**context)
+    result=encode_export(receipt,mode,frame_index,fps,b64decode(receipt['decoded_stream_base64']))
+    _fresh(project,context['expected_project_path'],context['expected_source_key'])
+    return result

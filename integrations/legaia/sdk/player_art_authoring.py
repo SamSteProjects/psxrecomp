@@ -93,3 +93,15 @@ def apply(project,review_key,**args):
     after=validate(project,after);_edit(project);_fresh(project,args['expected_project_path'],args['expected_source_key'])
     project.player_art_overrides=after;project.undo_stack.append(dict(target='player_art_overrides',before=before,after=deepcopy(after),label='PLAYER Art Channels'));project.redo_stack.clear()
     return dict(history_steps=1,project_changed=True,stream_id=identifier,current_slot_sha256=value['candidate_slot_sha256'],gameplay_verified=False)
+
+
+def export_current(project,expected_current_slot_sha256,mode,pose_frame_index,fps,**context):
+    from .player_art_animation import export_choice,encode_export
+    export_choice(mode,pose_frame_index,fps)
+    inspection=inspect(project,**context)
+    if inspection['current_slot_sha256']!=expected_current_slot_sha256:raise ProjectError('Current art export source changed; inspect again')
+    decoded=b64decode(inspection['current_decoded_base64'])
+    motion=dict(layer='current',current_slot_sha256=inspection['current_slot_sha256'],current_body_sha256=inspection['current_body_sha256'],decoded_sha256=sha256(decoded).hexdigest(),owners=inspection['owners'])
+    result=encode_export(inspection['base_playback'],mode,pose_frame_index,fps,decoded,motion)
+    result.update(schema_version='legaia.player-art-current-export.v1',inspection=inspection,motion_layer='current')
+    _fresh(project,context['expected_project_path'],context['expected_source_key']);return result
