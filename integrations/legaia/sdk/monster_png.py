@@ -62,6 +62,43 @@ def input_bytes(value):
     return content
 
 
+def records(project,catalog):
+    """Active original inputs are metadata assets, distinct from Current pixels."""
+    from importer.pipeline import _disc_context
+    from importer.monster_archive import block
+    from .monster_palettes import compose
+    rows=[]
+    owners={k:v for k,v in project.monster_palette_overrides.items() if 'png_import' in v}
+    if not owners:return rows
+    with _disc_context(project.disc_path) as (_,_,_,archive):
+        raw=archive.read_entry(archive.entry(867))
+        for identifier,binding in sorted(owners.items()):
+            record=next((r for r in catalog['textures'] if r['semantic_id']==identifier),None)
+            if record is None:raise ProjectError('Monster retained input owner is missing')
+            original,_=block(raw,record['monster_id']);compose(original,record,binding,project)
+            receipt=binding['png_import']
+            for kind in ('png','stp'):
+                key=receipt[kind+'_sha256']
+                if key is None:continue
+                rows.append(dict(semantic_id=f'retained-texture://legaia/monster-archive/{record["monster_id"]:04d}/{kind}/{key}',name=f'Monster {record["monster_id"]} Original '+('PNG Input' if kind=='png' else 'STP Mask Input'),asset_kind='retained_monster_png',kind=kind,layer='historical_authored_input',texture_asset_id=identifier,sha256=key,byte_length=receipt[kind+'_byte_length'],source_record=deepcopy(receipt),retail_source=deepcopy(record['source_record']),references=[identifier],current_pool_sha256=binding['current_pool_sha256'],relationship='historical_import_input_not_final_current_texture',read_only=True,gameplay_verified=False))
+    return rows
+
+
+def download_input(project,expected_project_path,expected_source_key,asset_id,expected_current_sha256,kind):
+    from .monster_palettes import snapshot
+    if kind not in ('png','stp'):raise ProjectError('Choose original monster PNG or STP mask')
+    _fresh(project,expected_project_path,expected_source_key)
+    _,record,_,current,_,_=snapshot(project,asset_id)
+    pool=current[record['source_record']['byte_offset']:]
+    if sha256(pool).hexdigest()!=expected_current_sha256:raise ProjectError('Monster Current pool changed; refresh its input')
+    receipt=project.monster_palette_overrides.get(asset_id,{}).get('png_import')
+    if receipt is None:raise ProjectError('Monster pool has no retained PNG input')
+    png,stp,_=validate_input(project,record,receipt);content=png if kind=='png' else stp
+    if content is None:raise ProjectError('Monster PNG import used no explicit STP mask')
+    _fresh(project,expected_project_path,expected_source_key)
+    return dict(schema_version='legaia.monster-input-download.v1',project_path=str(project.root),project_source_key=expected_source_key,asset_id=asset_id,current_pool_sha256=expected_current_sha256,kind=kind,sha256=sha256(content).hexdigest(),byte_length=len(content),png_base64=b64encode(content).decode(),filename=f'monster-{record["monster_id"]}-original-{kind}.png',retained_source=deepcopy(receipt),layer='historical_authored_input',read_only=True,project_changed=False,gameplay_verified=False)
+
+
 def review(project,expected_project_path,expected_source_key,asset_id,palette_index,expected_current_sha256,png_base64,palette_mode,stp_base64=None):
     from .monster_palettes import snapshot
     if project.mode!='edit':raise ProjectError('Monster image authoring requires Edit mode')

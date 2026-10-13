@@ -25,6 +25,22 @@ class MonsterPngMaskTests(unittest.TestCase):
 
 @unittest.skipUnless(os.getenv('LEGAIA_DISC_BIN'),'Retail source is private')
 class MonsterPngTests(unittest.TestCase):
+ def test_explicit_mask_saved_recovery_pair(self):
+  from sdk.monster_png import download,review,apply,download_input
+  from sdk.monster_palettes import inspect
+  from sdk.monster_archive import resources
+  with tempfile.TemporaryDirectory() as root:
+   p=ProjectService(Path(root));p.disc_path=os.environ['LEGAIA_DISC_BIN'];p.save()
+   asset='texture://legaia/monster-archive/0063/pool';context=dict(expected_project_path=str(p.root),expected_source_key=source_key(p),asset_id=asset,palette_index=0)
+   observed=inspect(p,**context);args=dict(context,expected_current_sha256=observed['current_pool_sha256']);exported=download(p,**args)
+   pixels=decode_png(base64.b64decode(exported['png_base64']));rgba=bytearray(pixels['rgba']);rgba[:4]=bytes([0,255,0,255]);png=_encode_png(pixels['width'],pixels['height'],bytes(rgba));mask=base64.b64decode(exported['stp_base64'])
+   body=dict(args,png_base64=base64.b64encode(png).decode(),stp_base64=exported['stp_base64'],palette_mode='rebuild');plan=review(p,**body);apply(p,review_key=plan['review_key'],**body)
+   p.save();p=ProjectService.open(p.root);fresh=dict(expected_project_path=str(p.root),expected_source_key=source_key(p));library=resources(p,**fresh);self.assertEqual([r['kind'] for r in library['retained_inputs']],['png','stp'])
+   held=deepcopy((p._document(),p.undo_stack))
+   for kind,expected in [('png',png),('stp',mask)]:
+    recovered=download_input(p,**fresh,asset_id=asset,expected_current_sha256=plan['candidate_pool_sha256'],kind=kind);self.assertEqual(base64.b64decode(recovered['png_base64']),expected)
+   self.assertEqual((p._document(),p.undo_stack),held)
+   if os.getenv('LEGAIA_MONSTER_MASK_CASES'):Path(os.environ['LEGAIA_MONSTER_MASK_CASES']).write_text(json.dumps(dict(report=library,download=download_input(p,**fresh,asset_id=asset,expected_current_sha256=plan['candidate_pool_sha256'],kind='png'))),encoding='utf-8')
  def test_original_png_native_image_and_history_delivery(self):
   with tempfile.TemporaryDirectory() as root:
    p=ProjectService(Path(root));p.disc_path=os.environ['LEGAIA_DISC_BIN'];p.save();asset='texture://legaia/monster-archive/0063/pool'
@@ -45,6 +61,16 @@ class MonsterPngTests(unittest.TestCase):
    try:
     with self.assertRaises(ProjectError):ProjectService.open(p.root)
    finally:image_path.write_bytes(image_bytes)
+   from sdk.monster_archive import resources
+   from sdk.monster_png import download_input
+   fresh=dict(expected_project_path=str(p.root),expected_source_key=source_key(p))
+   library=resources(p,**fresh);self.assertEqual(len(library['retained_inputs']),1)
+   input_row=library['retained_inputs'][0];self.assertEqual(input_row['references'],[asset]);self.assertEqual(input_row['sha256'],receipt['png_sha256'])
+   download_args=dict(fresh,asset_id=asset,expected_current_sha256=p.monster_palette_overrides[asset]['current_pool_sha256'],kind='png')
+   recovered=download_input(p,**download_args);self.assertEqual(base64.b64decode(recovered['png_base64']),edited)
+   with self.assertRaises(ProjectError):download_input(p,**dict(download_args,kind='stp'))
+   with self.assertRaises(ProjectError):download_input(p,**dict(download_args,expected_current_sha256='0'*64))
+   if os.getenv('LEGAIA_MONSTER_INPUT_CASES'):Path(os.environ['LEGAIA_MONSTER_INPUT_CASES']).write_text(json.dumps(dict(report=library,download=recovered)),encoding='utf-8')
    p.import_metadata(import_scene(p.disc_path,'town01'));p.save();built=build_project(p);audit=json.loads(Path(built['audit']).read_text(encoding='utf-8'))
    with zipfile.ZipFile(built['path']) as package:
     overlay=next(o for o in audit['overlays'] if o.get('source_kind')=='fixed_span_monster_palette');self.assertEqual(len(package.read(overlay['file'])),used);self.assertEqual(decompress_lzs(package.read(overlay['file']),len(original))[0],current)

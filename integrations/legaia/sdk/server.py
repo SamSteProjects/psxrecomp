@@ -1238,6 +1238,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/monster-palettes.js": ("monster-palettes.js", "text/javascript"),
                  "/monster-palette-replay.js": ("monster-palette-replay.js", "text/javascript"),
                  "/monster-png.js": ("monster-png.js", "text/javascript"),
+                 "/monster-inputs.js": ("monster-inputs.js", "text/javascript"),
                  "/monster-archive.js": ("monster-archive.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
@@ -1461,6 +1462,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!=fields:raise ProjectError('Pack animation inspection requires exact project, source and frame fields')
                     from .battle_character_resources import animations,pose
                     self._json(200,(pose if route.endswith('-pose') else animations)(self.server.project,**body))
+                    return
+                if route == '/api/monster-input-download':
+                    if set(body)!={'expected_project_path','expected_source_key','asset_id','expected_current_sha256','kind'}:
+                        raise ProjectError('Monster input download requires exact Current and input identities')
+                    from .monster_png import download_input
+                    self._json(200,download_input(self.server.project,**body))
                     return
                 if route in ('/api/monster-png-download','/api/monster-png-review','/api/monster-png-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','palette_index','expected_current_sha256'}

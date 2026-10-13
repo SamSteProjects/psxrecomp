@@ -11,9 +11,12 @@ def resources(project,expected_project_path,expected_source_key):
     _fresh(project,expected_project_path,expected_source_key)
     try:catalog=native.discover(project.disc_path)
     except NativeError as e:raise ProjectError(str(e)) from e
-    _disc(project,catalog);_fresh(project,expected_project_path,expected_source_key)
+    _disc(project,catalog)
+    from .monster_png import records
+    retained_inputs=records(project,catalog)
+    _fresh(project,expected_project_path,expected_source_key)
     return dict(schema_version='legaia.monster-resources.v1',project_path=str(project.root),project_source_key=expected_source_key,
-        catalog=catalog,layer='retail',read_only=True,project_changed=False,gameplay_verified=False)
+        catalog=catalog,retained_inputs=retained_inputs,layer='retail',read_only=True,project_changed=False,gameplay_verified=False)
 
 
 def preview(project,expected_project_path,expected_source_key,asset_id,catalog_source_key):
