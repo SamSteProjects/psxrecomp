@@ -1263,6 +1263,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/battle-pack-timeline.js": ("battle-pack-timeline.js", "text/javascript"),
                  "/battle-pack-model-authoring.js": ("battle-pack-model-authoring.js", "text/javascript"),
                  "/battle-pack-model-inputs.js": ("battle-pack-model-inputs.js", "text/javascript"),
+                 "/battle-pack-model-restoration.js": ("battle-pack-model-restoration.js", "text/javascript"),
                  "/native-tmd-preview.js": ("native-tmd-preview.js", "text/javascript"),
                  "/battle-pack-current-actions.js": ("battle-pack-current-actions.js", "text/javascript"),
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
@@ -1479,6 +1480,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     action=review if route.endswith('-review') else apply if route.endswith('-apply') else proposed_preview
                     result=action(self.server.project,**body)
                     self._json(200,dict(self.server.state(),player_model_restore=result) if route.endswith('-apply') else result)
+                    return
+                if route in ('/api/battle-pack-model-restore-review','/api/battle-pack-model-restore-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','expected_current_tmd_sha256','expected_current_entry_sha256'}
+                    if route.endswith('-apply'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Pack restoration requires exact fresh Current source and Review fields')
+                    from .battle_pack_model_restoration import review,apply
+                    result=(apply if route.endswith('-apply') else review)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),battle_pack_model_restore=result) if route.endswith('-apply') else result)
                     return
                 if route in ('/api/battle-pack-model-inputs','/api/battle-pack-model-input-download'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','expected_current_tmd_sha256','expected_current_entry_sha256'}

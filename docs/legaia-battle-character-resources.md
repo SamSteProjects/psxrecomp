@@ -1,5 +1,17 @@
 # Battle Character Resource Discovery
 
+## Reviewed Whole Pack Model Restoration
+
+Offline checks passed — 2026-10-13. Inspect Current Native Pack Model, expand Whole Pack Model Restoration and choose Review Restore Retail Pack Model. Review restores the selected complete existing TMD, independently verifies its Retail geometry and complete composed entry, and lists the active inputs that will leave the selected owner. Current and Proposed layers share a comparison frame; Apply Reviewed Pack Restoration requires the rendered Proposed layer and exact fresh review. Other pack models, all TIM bytes, stream headers and opaque neighbors remain unchanged.
+
+Apply removes only the selected model owner and records one Undo/Redo step. Exact original GLBs and retained candidates stay on disk; their active membership follows the restored owner. Save/Open and ordinary native data-package Build preserve the remaining owners. An unowned/already-Retail model has no restoration to apply. Changed source, composed entry, owner or retained input prevents stale Apply; Proposed replacement, busy state and disposal withdraw or block controls.
+
+Two source-backed checks pass: all five complete source models restore only their selected spans (102.437 seconds), and the two-import/other-owner HTTP/history/Open/retained-input/package workflow passes (65.638 seconds). Complete reconstructed PROT1204 matches Review; all directory and ZIP files agree, and the only remaining model overlay preserves its exact authored bytes. Package SHA-256: `42ba2d2aaa5e058b4990c608d1e14bb5a5afab809cebf7b5961a35efa7ef1495`. Clients independently verify every known model and reject 26 altered source/owner/geometry/receipt values, including a rehashed candidate with changed protected neighbors. Canonical receipt wire bytes preserve exact Python float serialization while parsed content is also compared. Existing input recovery and cached playback guard suites remain green.
+
+Actual muted Edge normal-inspector checks pass read-only Review, Current/Proposed and busy gates, rendered comparison, Apply, absent restored owner, one-step history, Undo/Redo, Save/Open and original retained GLB bytes, with inspected wide/400-pixel captures and zero page errors/runtime commands. Private evidence: `local-output/sdk-20260909/battle-pack-model-restoration-20261013/`.
+
+This covers existing fixed model spans. Allocation, unknown formats, pack texture authoring, native activation/cadence and playable appearance remain open. Private data-package Build only; no game, recomp compilation, attachment, installation, disc export or publication ran. Full SDK goal active; solo work continues.
+
 ## Retained Pack GLB Input Recovery
 
 Offline checks passed — 2026-10-13. Inspect Current Native Pack Model, expand Retained Pack GLB Inputs and select Inspect Retained Pack Inputs. Each active historical import is listed in order with its original byte length and hash. Download Original Pack GLB recovers the exact retained file; it does not regenerate or retag a Current export. Earlier source tags may differ from Current, so recovery does not make an input a newly reviewed import.
@@ -8,7 +20,7 @@ The service freshly replays the selected native owner and complete composed pack
 
 One focused source-backed native test passes in 76.507 seconds: two consecutive imports plus another model owner, both exact HTTP downloads, stale/foreign/extra/malformed guards, history, Save/Open, retained-file preservation and missing/truncated/altered input refusal. Clients qualify empty/one/two-input catalogues and reject 36 changed source, ownership, ordering, totals, filenames and file-content receipts. Actual muted Edge normal-inspector checks pass empty Current, exact original download, Proposed/busy gates, unchanged document/history, inspected wide/400-pixel layouts and existing cached playback, history and Save/Open, with no page errors or runtime commands. Private evidence: `local-output/sdk-20260909/battle-pack-model-inputs-20261013/`.
 
-Whole-pack model restoration UI, allocation, unknown formats, native cadence/activation and playable appearance remain open. Recovery is scoped to active inputs of the selected saved pack model; orphan discovery and cross-project relinking remain separate work. No game, recomp compilation, attachment, installation, disc export or publication ran. Full SDK goal active; solo work continues.
+Selected whole-model restoration is now connected above. Allocation, unknown formats, native cadence/activation and playable appearance remain open. Recovery is scoped to active inputs of the selected saved pack model; orphan discovery and cross-project relinking remain separate work. No game, recomp compilation, attachment, installation, disc export or publication ran. Full SDK goal active; solo work continues.
 
 ## Cached Current Pack Playback And Native Channels
 
