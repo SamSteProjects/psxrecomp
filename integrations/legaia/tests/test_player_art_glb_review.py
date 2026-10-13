@@ -24,7 +24,7 @@ class ArtGlbReviewTests(unittest.TestCase):
     def test_http_preview_apply_freshness_rollback_and_retail_restoration(self):
         cases=json.loads(Path(os.environ['PLAYER_ART_CURRENT_EXPORT_CASES']).read_text(encoding='utf-8'))['cases']
         case=next(c for c in cases if c['selection']['mode']=='clip' and c['selection']['layer']=='retail')
-        base=case['inspection']['base_playback'];stream=base['stream']
+        base=case['inspection']['base_playback'];stream=base['stream'];client_cases=[]
         with tempfile.TemporaryDirectory() as root:
             p=ProjectService(Path(root));p.disc_path=os.environ['LEGAIA_DISC_BIN'];p.save()
             raw,catalog,_=context(p);at=stream['source_record']['slot_offset'];original=raw[at:at+0x10800]
@@ -44,6 +44,14 @@ class ArtGlbReviewTests(unittest.TestCase):
                 self.assertEqual(value['retained_input']['baseline_owners'],p.player_art_overrides)
                 self.assertTrue(value['projection']['retail_relative_part_frames'])
                 status,pose=post('/api/player-art-glb-pose',dict(args,review_key=value['review_key']));self.assertEqual(status,200,pose)
+                def retain_case(i,r,pose,input_args):
+                    from sdk.player_art_animation import resources as arts
+                    from sdk.player_battle import resources as models
+                    mr=models(p,str(p.root),source_key(p));ar=arts(p,str(p.root),source_key(p))
+                    client_cases.append(dict(inspection=i,review=r,pose=pose,model_report=mr,art_report=ar,model=mr['catalog']['models'][stream['player_index']],
+                        selection={k:input_args[k] for k in ('stream_id','art_record_id','equipped','layer','expected_current_sha256')},
+                        input_base64=input_args['glb_base64'],options={k:input_args[k] for k in ('fps','animation_index','object_node_indices')}))
+                if os.getenv('PLAYER_ART_GLB_REVIEW_CASES'):retain_case(inspection,value,pose,args)
                 for name,decoded in [('current_pose',inspection['current_decoded_base64']),('proposed_pose',value['candidate_decoded_base64'])]:
                     check_literal_pose(self,inspection['base_playback']['base_inspection'],stream,base64.b64decode(decoded),0,pose[name]['geometry'],pose[name]['object_transforms'])
                 self.assertEqual((p._document(),p.undo_stack,p.redo_stack),held)
@@ -76,11 +84,17 @@ class ArtGlbReviewTests(unittest.TestCase):
                 status,restoration=post('/api/player-art-glb-review',restore_args);self.assertEqual(status,200,restoration)
                 self.assertIsNone(restoration['ownership_after']);self.assertEqual(restoration['projection']['retail_relative_part_frames'],0)
                 self.assertGreater(restoration['projection']['canonicalized_body_bytes'],0)
+                if os.getenv('PLAYER_ART_GLB_REVIEW_CASES'):
+                    status,restored_pose=post('/api/player-art-glb-pose',dict(restore_args,review_key=restoration['review_key']));self.assertEqual(status,200,restored_pose)
+                    retain_case(now,restoration,restored_pose,restore_args)
                 status,result=post('/api/player-art-glb-apply',dict(restore_args,review_key=restoration['review_key']));self.assertEqual(status,200,result)
                 self.assertIsNone(result['player_art_apply']['retained_input'])
             self.assertEqual(p.player_art_overrides,{neighbor['semantic_id']:neighbor_owner})
             self.assertEqual(sorted(str(path.relative_to(p.root)) for path in (p.root/'Authored').rglob('*') if path.is_file()),retained)
             p.undo();self.assertIn('glb_import',p.player_art_overrides[stream['semantic_id']]);p.redo();self.assertNotIn(stream['semantic_id'],p.player_art_overrides)
+            if os.getenv('PLAYER_ART_GLB_REVIEW_CASES'):
+                path=Path(os.environ['PLAYER_ART_GLB_REVIEW_CASES']);path.parent.mkdir(parents=True,exist_ok=True);self.assertEqual(len(client_cases),2)
+                path.write_text(json.dumps(dict(cases=client_cases,gameplay_verified=False)),encoding='utf-8')
             print('Art GLB HTTP Review/Proposed/Apply: literal poses, no preview writes, stale/no-op/input refusals, post-retention rollback, one-step history/Open and neighbor-preserving import restoration passed',flush=True)
 
 

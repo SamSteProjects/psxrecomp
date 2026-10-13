@@ -1262,6 +1262,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/player-art-codec.js": ("player-art-codec.js", "text/javascript"),
                  "/player-art-animation.js": ("player-art-animation.js", "text/javascript"),
                  "/player-art-inputs.js": ("player-art-inputs.js", "text/javascript"),
+                 "/player-art-glb.js": ("player-art-glb.js", "text/javascript"),
                  "/player-art-inspector.js": ("player-art-inspector.js", "text/javascript"),
                  "/player-art-timeline.js": ("player-art-timeline.js", "text/javascript"),
                  "/player-art-export.js": ("player-art-export.js", "text/javascript"),

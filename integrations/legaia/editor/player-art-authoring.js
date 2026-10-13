@@ -31,6 +31,11 @@ export async function composePlayerArtOwners(original,arts,archiveId,owners,allo
   }return result;
 }
 const compose=composePlayerArtOwners;
+export {channels as playerArtNativeChannels,edited as editPlayerArtChannels};
+
+export function qualifyPlayerArtSamplerPose(actual,sampler,frame){
+  const expected=sampler.sample(frame);if(!same(actual?.object_transforms,expected.object_transforms)||actual.frame_index!==expected.frame_index||actual.geometry?.vertices?.length!==expected.geometry.vertices.length||actual.geometry.vertices.some((v,i)=>v.length!==3||v.some((n,a)=>!Number.isFinite(n)||Math.abs(n-expected.geometry.vertices[i][a])>1e-7)))fail();const g=structuredClone(actual.geometry);g.vertices=expected.geometry.vertices;g.bounds=expected.geometry.bounds;if(!same(g,expected.geometry))fail();for(const bound of ['min','max'])if(actual.geometry.bounds?.[bound]?.length!==3||actual.geometry.bounds[bound].some((n,a)=>!Number.isFinite(n)||Math.abs(n-expected.geometry.bounds[bound][a])>1e-7))fail();
+}
 
 export async function qualifyPlayerArtInspection(value,arts,models,record,selection,frame,part){
   if(value?.schema_version!=='legaia.player-art-frame-inspection.v1'||value.project_path!==arts.project_path||value.project_source_key!==arts.project_source_key||value.frame_index!==frame||value.part_index!==part||value.motion_layer!=='current'||value.geometry_layer!==selection.layer||value.read_only!==true||value.project_changed!==false||value.gameplay_verified!==false||!same(value.consumer_profile,profile))fail();
@@ -58,6 +63,6 @@ export async function qualifyPlayerArtReview(value,observed,arts,models,record,s
 export async function qualifyPlayerArtProposedPose(value,review,observed,arts,models,record,selection,desired){
   const current=await qualifyPlayerArtInspection(observed,arts,models,record,selection,observed.frame_index,observed.part_index),proposed=await qualifyPlayerArtReview(review,observed,arts,models,record,selection,desired);
   if(value?.schema_version!=='legaia.player-art-frame-pose.v1'||!same(value.review,review)||value.review_key!==review.review_key||value.motion_layer!=='proposed'||value.geometry_layer!==selection.layer||value.persistence!=='not_applied'||value.read_only!==true||value.project_changed!==false||value.gameplay_verified!==false)fail();
-  for(const [key,sampler]of [['current_pose',current.sampler],['proposed_pose',proposed.sampler]]){const expected=sampler.sample(observed.frame_index),actual=value[key];if(!same(actual?.object_transforms,expected.object_transforms)||actual.frame_index!==expected.frame_index||actual.geometry?.vertices?.length!==expected.geometry.vertices.length||actual.geometry.vertices.some((v,i)=>v.length!==3||v.some((n,a)=>!Number.isFinite(n)||Math.abs(n-expected.geometry.vertices[i][a])>1e-7)))fail();const g=structuredClone(actual.geometry);g.vertices=expected.geometry.vertices;g.bounds=expected.geometry.bounds;if(!same(g,expected.geometry))fail();for(const bound of ['min','max'])if(actual.geometry.bounds?.[bound]?.length!==3||actual.geometry.bounds[bound].some((n,a)=>!Number.isFinite(n)||Math.abs(n-expected.geometry.bounds[bound][a])>1e-7))fail();}
+  for(const [key,sampler]of [['current_pose',current.sampler],['proposed_pose',proposed.sampler]])qualifyPlayerArtSamplerPose(value[key],sampler,observed.frame_index);
   return {current:current.sampler,proposed:proposed.sampler};
 }
