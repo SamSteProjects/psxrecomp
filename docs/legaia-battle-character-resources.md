@@ -1,5 +1,17 @@
 # Battle Character Resource Discovery
 
+## Reviewed Pack Image And Texture Restoration
+
+Offline checks passed — 2026-10-13. Inspect Current Pack Palette and expand Pack PNG Image Replacement. Review Restore Pack Index Image removes only the active image owner and restores all index pixels, preserving Current CLUT words. Review Restore Whole Pack Texture restores both selected image and palette ownership to Retail. Proposed pixels and the complete before/candidate pack independently qualify; Apply Reviewed Pack Texture requires the exact fresh Review and rendered image. Scope, source, input/mapping, inspection, busy/live state and disposal guard held proposals.
+
+Both operations use one paired history step. Other model/TIM owners, native headers and recovery files remain unchanged; membership follows Undo/Redo and Save/Open. An unowned scope refuses restoration. Valid active original-input ownership whose index bytes already equal Retail can be removed without falsely reporting a native byte change; ownership and content changes are separate evidence.
+
+Native workflow passed in 80.897 seconds, covering both scopes, another image/palette owner, an authored model, HTTP/stale/malformed guards, history/Open, retained files and complete entry reconstruction. Directory and ZIP contents match; package SHA-256 `531d2bd8b91198c3919bd12b73ee67cd94604450578691f94ea38bd1d23fcad4`. Separate valid ownership-only restoration passed in 4.540 seconds. Clients qualify both scopes and ownership-only evidence, rejecting 30 changed source/scope/owner/native pixel/neighbor/receipt cases; PNG 22 refusal regression remains green.
+
+Actual muted Edge passes exact Proposed image bytes, image-only palette preservation, whole texture removal, busy/no-owner gates, one-step Apply, Undo/Redo and Save/Open, including normal PNG authoring and original recovery. Final rerun uses the shared Apply Reviewed Pack Texture label. Wide/400-pixel screenshots were inspected; no page errors or runtime commands occurred. Private evidence: `local-output/sdk-20260909/battle-pack-texture-restoration-20261013/`.
+
+Existing six complete TIMs only. New allocation, partial TIM6, runtime residency/routing/blending/cadence and playable appearance remain open. Private data-package Build only; no game, recomp compilation, attachment, installation, disc export or publication ran. Full SDK goal active; solo work continues.
+
 ## Pack Indexed Image/PNG Replacement
 
 Offline checks passed — 2026-10-13. Inspect Current Pack Palette and expand Pack PNG Image Replacement. Download Current Pack PNG and its separate STP mask, edit the PNG, choose replacement/optional mask files and either Use Existing Palette or Rebuild Selected Palette. Review independently qualifies full native TIM/pack differences, original input hashes, palette/index ownership and decoded Proposed pixels. Apply requires the exact fresh changed Review and a rendered Proposed image. Changing inputs or mapping withdraws the proposal; source, inspection, mode, busy state and disposal invalidate held operations.
@@ -10,7 +22,7 @@ Native codec checks cover all six complete atlases and 24 edited cases across pa
 
 Actual muted Edge normal resource workflow passes Current PNG/mask downloads, edited upload, rebuild Review, exact decoded Proposed canvas pixels, Apply, exact original recovery pair, busy/live controls, mapping-change withdrawal, one paired history step, Undo/Redo, Save/Open and inspected wide/400-pixel layouts. Errors and runtime commands remain empty. Private evidence: `local-output/sdk-20260909/battle-pack-png-workflow-20261013/`.
 
-Distinct whole-image/whole-texture restoration remains next work. New allocation, partial TIM6, unknown runtime residency/routing/blending/cadence and playable appearance remain open. Private data-package Build only; no game, recomp compilation, attachment, installation, disc export or publication ran. Full SDK goal active; solo work continues.
+Distinct image-only/whole-texture restoration is now connected above. New allocation, partial TIM6, unknown runtime residency/routing/blending/cadence and playable appearance remain open. Private data-package Build only; no game, recomp compilation, attachment, installation, disc export or publication ran. Full SDK goal active; solo work continues.
 
 ## Reviewed Whole Pack Palette Restoration
 

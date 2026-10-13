@@ -1484,6 +1484,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     result=action(self.server.project,**body)
                     self._json(200,dict(self.server.state(),player_model_restore=result) if route.endswith('-apply') else result)
                     return
+                if route in ('/api/battle-pack-texture-restore-review','/api/battle-pack-texture-restore-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','palette_index','scope','expected_current_tim_sha256','expected_current_entry_sha256'}
+                    if route.endswith('-apply'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Texture restoration requires exact source, scope and Review fields')
+                    from .battle_pack_texture_restoration import review,apply
+                    result=(apply if route.endswith('-apply') else review)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),battle_pack_texture_restore=result) if route.endswith('-apply') else result)
+                    return
                 if route in ('/api/battle-pack-png-download','/api/battle-pack-png-review','/api/battle-pack-png-apply','/api/battle-pack-png-input-download'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','expected_current_tim_sha256','expected_current_entry_sha256'}
                     if route.endswith('-input-download'):fields.add('kind')
