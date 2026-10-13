@@ -3,7 +3,8 @@ from base64 import b64encode
 from copy import deepcopy
 from importer import player_art_animation as native
 from importer.core import ImportError
-from importer.player_battle import decode_part
+from importer.player_battle import decode_part, _sources, assemble_tmd
+from hashlib import sha256
 from importer.animation import pose_vertices
 from .project import ProjectError
 from .battle_character_resources import _fresh, _disc
@@ -33,12 +34,21 @@ def playback(project, expected_project_path, expected_source_key, asset_id, cata
         if expected_current_sha256 != base['effective_file_sha256']:
             raise ProjectError('PLAYER Current changed; inspect the assembly again')
         effective_hash = base['effective_file_sha256']
+        tmd_base64 = base['tmd_base64']
     elif layer == 'retail':
         if expected_current_sha256 is not None:
             raise ProjectError('Retail art preview accepts no Current identity')
         from .player_battle import preview
         base = preview(project, **context)
         effective_hash = base['record']['source_record']['sha256']
+        digest, files = _sources(project.disc_path)
+        original = files[base['record']['player_index']][3]
+        if digest != base['record']['source_record']['disc']['sha256'] or sha256(original).hexdigest() != effective_hash:
+            raise ProjectError('PLAYER art Retail model source changed')
+        _, _, tmd = assemble_tmd(original, equipped)
+        if sha256(tmd).hexdigest() != base['assembly']['tmd_sha256']:
+            raise ProjectError('PLAYER art Retail assembly source changed')
+        tmd_base64 = b64encode(tmd).decode('ascii')
     else:
         raise ProjectError('Choose Retail or Current PLAYER geometry')
     try:
@@ -61,6 +71,7 @@ def playback(project, expected_project_path, expected_source_key, asset_id, cata
                 project_source_key=expected_source_key, catalog_source_key=catalog_source_key,
                 art_source_key=art_source_key, base_inspection=base, stream=stream, art_record=art,
                 layer=layer, effective_file_sha256=effective_hash, source_slot_base64=b64encode(slot).decode('ascii'),
+                source_tmd_base64=tmd_base64,
                 decoded_stream_base64=b64encode(decoded).decode('ascii'), archive_selection='explicit_source_archive_not_observed_residency',
                 timing='not_observed', read_only=True, project_changed=False, gameplay_verified=False)
 

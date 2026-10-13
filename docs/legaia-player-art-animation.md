@@ -25,3 +25,13 @@ Two focused native/HTTP tests pass in 369.947 seconds: every physical stream's f
 The independent JavaScript codec reproduces all eight archives/87 streams and 469,245 decoded bytes exactly, with 285 malformed source refusals. Receipt/model/texture qualification, normal Asset Database/inspector controls, exports, cached playback, channel timelines and actual browser verification remain pending. No complete workflow or gameplay acceptance is claimed.
 
 Private evidence: `local-output/sdk-20260909/player-art-animation-20261013/workflow-python.log`, `codec-cases.json`, archive proof and catalogue. No game, attachment, recomp compilation, installation, disc export or publication occurred.
+
+## Client Receipt And Cached Frame Qualification
+
+In Progress — 2026-10-13. Client catalogue admission validates all archive/stream/art record identities, bounded physical spans, source hashes, eligible relationships and model-file/disc provenance. Playback qualification replays the complete ME slot through the independent JavaScript codec, compares the stored and decoded stream hashes/bytes, and verifies the existing Retail or Current model/texture inspection. The receipt now additionally carries a complete assembled TMD witness. Native TMD replay checks base vertices, primitives, normals, materials, object metadata and bounds before sampling, closing the missing literal geometry proof in the older Retail preview envelope.
+
+Cached samplers own copies of decoded bytes, geometry and part mappings; caller mutation cannot corrupt subsequent frames. Pose qualification checks object transforms, finite vertices/bounds, preserved textures and the complete expected posed geometry. Source rate bytes remain metadata; no native cadence or resident phase is inferred.
+
+Sixteen explicit archive fixtures cover all four characters, main/base archives and Retail/authored Current geometry, with 32 first/last pose checks and 352 changed source, model, texture, mapping, record and pose refusals. The fixture generator finished successfully; TMD witnesses were added from the original/current qualified assemblies, and separate fresh API checks confirm the new witness field for both layers. The original eight-archive codec suite still matches 469,245 bytes and refuses 285 malformed cases. JavaScript syntax, Python AST and whitespace checks pass.
+
+Evidence: `local-output/sdk-20260909/player-art-animation-20261013/playback-cases.json`, `make_playback_cases.py`, codec cases and `tests/test_player_art_animation.mjs`. Normal inspector controls/registration, export, playback UI, native channel timelines and actual browser verification remain unfinished. No full workflow acceptance is claimed.
