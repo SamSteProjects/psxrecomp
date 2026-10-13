@@ -1245,6 +1245,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/monster-motion-authoring.js": ("monster-motion-authoring.js", "text/javascript"),
                  "/monster-motion-replay.js": ("monster-motion-replay.js", "text/javascript"),
                  "/monster-motion-comparison.js": ("monster-motion-comparison.js", "text/javascript"),
+                 "/monster-motion-glb.js": ("monster-motion-glb.js", "text/javascript"),
                  "/monster-archive.js": ("monster-archive.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
@@ -1313,6 +1314,8 @@ class EditorHandler(BaseHTTPRequestHandler):
             if urlsplit(self.path).path in ('/api/field-texture-file-review','/api/field-texture-file-apply'):
                 request_limit=2*1024*1024
             if urlsplit(self.path).path in ('/api/monster-model-glb-review','/api/monster-model-glb-apply'):
+                request_limit=12*1024*1024
+            if urlsplit(self.path).path == '/api/monster-motion-glb-review':
                 request_limit=12*1024*1024
             if urlsplit(self.path).path in ('/api/player-model-glb-review','/api/player-model-glb-apply','/api/player-action-glb-review','/api/player-action-glb-apply'):
                 request_limit = 8 * 1024 * 1024
@@ -1479,6 +1482,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .monster_model_authoring import export,review,apply
                     result=(apply if route.endswith('-apply') else review if route.endswith('-review') else export)(self.server.project,**body)
                     self._json(200,dict(self.server.state(),monster_model_apply=result) if route.endswith('-apply') else result)
+                    return
+                if route == '/api/monster-motion-glb-review':
+                    if set(body)!={'expected_project_path','expected_source_key','asset_id','catalog_source_key','animation_id','expected_current_block_sha256','glb_base64','fps','animation_index','object_node_indices'}:raise ProjectError('Monster motion GLB Review requires exact source, input and sampling fields')
+                    from .monster_motion_glb import review
+                    self._json(200,review(self.server.project,**body))
                     return
                 if route in ('/api/monster-frame-inspect','/api/monster-frame-review','/api/monster-frame-apply','/api/monster-frame-pose'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','animation_id','frame_index','part_index'}
