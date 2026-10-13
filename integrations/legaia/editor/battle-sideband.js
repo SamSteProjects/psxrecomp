@@ -89,7 +89,7 @@ export async function qualifySidebandPreview(value, report, record) {
   return structuredClone(g);
 }
 
-async function sourcePngPixels(data, width, height) {
+export async function sourcePngPixels(data, width, height) {
   if (data.length < 57 || ![137,80,78,71,13,10,26,10].every((v,i) => data[i] === v)) fail();
   const view = new DataView(data.buffer,data.byteOffset,data.byteLength), parts = []; let at = 8, header = false, ended = false;
   const crc = raw => { let value = 0xffffffff; for (const b of raw) { value ^= b; for (let i=0;i<8;i++) value = (value >>> 1) ^ ((value & 1) ? 0xedb88320 : 0); } return (value ^ 0xffffffff) >>> 0; };

@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {decodePlayerArts} from '../editor/player-art-animation.js';
+import {qualifyPlayerArtExport} from '../editor/player-art-export.js';
+import {placementDigest} from '../editor/worldmap-placement-replay.js';
+async function tamper(original,change){const result=structuredClone(original),bytes=Buffer.from(result.glb_base64,'base64'),at=20+bytes.readUInt32LE(12),doc=JSON.parse(bytes.subarray(20,at).toString()),binary=Buffer.from(bytes.subarray(at+8));change(doc,binary);const json=Buffer.from(JSON.stringify(doc)),padded=Buffer.concat([json,Buffer.alloc((4-json.length%4)%4,32)]),head=Buffer.alloc(20),bh=Buffer.alloc(8);head.writeUInt32LE(0x46546c67,0);head.writeUInt32LE(2,4);head.writeUInt32LE(28+padded.length+binary.length,8);head.writeUInt32LE(padded.length,12);head.writeUInt32LE(0x4e4f534a,16);bh.writeUInt32LE(binary.length,0);bh.writeUInt32LE(0x004e4942,4);const data=Buffer.concat([head,padded,bh,binary]);result.glb_base64=data.toString('base64');result.audit.sha256=await placementDigest(data);result.audit.byte_length=data.length;return result;}
+const cases=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).cases,exports=JSON.parse(fs.readFileSync(process.argv[3],'utf8'));let refusals=0;
+for(const row of exports){const c=cases[row.case_index],ar=await decodePlayerArts(c.art_report,{projectPath:c.art_report.project_path,sourceKey:c.art_report.project_source_key},c.model_report),record={id:c.model.semantic_id,data:c.model};
+  const qualify=v=>qualifyPlayerArtExport(v,ar,c.model_report,record,row.selection,c.playback);await qualify(row.export);
+  for(const change of [v=>v.filename='foreign.glb',v=>v.fps=12,v=>v.read_only=false,v=>v.playback.stream.stream_index++,v=>v.audit.object_count++,v=>v.audit.source_record.layer='foreign',v=>v.glb_base64=Buffer.from('bad').toString('base64')]){const v=structuredClone(row.export);change(v);await assert.rejects(()=>qualify(v));refusals++;}
+  for(const change of [(d,b)=>{const a=d.accessors[d.meshes[0].primitives[0].attributes.POSITION],at=d.bufferViews[a.bufferView].byteOffset;b.writeFloatLE(b.readFloatLE(at)+1,at);},d=>d.nodes[0].scale=[1,2,1],(d,b)=>{const a=d.accessors[d.meshes[0].primitives[0].attributes.COLOR_0],at=d.bufferViews[a.bufferView].byteOffset;b.writeFloatLE(.123,at);},d=>d.materials[0].doubleSided=false]){await assert.rejects(()=>tamper(row.export,change).then(qualify));refusals++;}
+  const doc=JSON.parse(Buffer.from(row.export.glb_base64,'base64').subarray(20,20+Buffer.from(row.export.glb_base64,'base64').readUInt32LE(12)).toString());
+  if(doc.animations){await assert.rejects(()=>tamper(row.export,(d,b)=>{const a=d.accessors[d.animations[0].samplers[0].output],at=d.bufferViews[a.bufferView].byteOffset;b.writeFloatLE(b.readFloatLE(at)+1,at);}).then(qualify));refusals++;}
+  if(doc.images?.length){await assert.rejects(()=>tamper(row.export,(d,b)=>{b[d.bufferViews[d.images[0].bufferView].byteOffset+40]^=1;}).then(qualify));refusals++;}
+  const textured=doc.meshes.flatMap(m=>m.primitives).find(p=>p.attributes.TEXCOORD_0!==undefined);if(textured){await assert.rejects(()=>tamper(row.export,(d,b)=>{const p=d.meshes.flatMap(m=>m.primitives).find(p=>p.attributes.TEXCOORD_0!==undefined),a=d.accessors[p.attributes.TEXCOORD_0],at=d.bufferViews[a.bufferView].byteOffset;b.writeFloatLE(.123,at);}).then(qualify));refusals++;}
+}
+console.log(`${exports.length} PLAYER art GLBs qualified against source positions, all channel samples and texture pixels; ${refusals} changed receipt refusals passed`);
