@@ -12,6 +12,12 @@ export async function qualifyMonsterMotionComparison(v,review,report,record){
  return {current,proposed};
 }
 
+export async function qualifyMonsterGlbComparison(v,review,report,record,index){
+ if(v?.schema_version!=='legaia.monster-glb-pose.v1'||v.project_path!==report.project_path||v.project_source_key!==report.project_source_key||v.review_key!==review.review_key||!same(v.review,review)||v.frame_index!==index||v.layer!=='proposed'||v.persistence!=='not_applied'||v.read_only!==true||v.project_changed!==false||v.gameplay_verified!==false||v.proposed_pose?.layer!=='proposed_native_frame'||v.proposed_pose.source_motion_base64!==review.candidate_motion_base64||v.current_pose?.source_motion_base64!==review.source_motion_base64||!same(v.current_pose.base_preview,v.proposed_pose.base_preview))fail();
+ const base=await qualifyMonsterPreview(v.current_pose.base_preview,report,record,'current'),id=review.clip.semantic_id;
+ return {current:await qualifyMonsterPose(v.current_pose,report,record,id,index,base,'current'),proposed:await qualifyMonsterPose({...v.proposed_pose,layer:'current_palette_stored_pose'},report,record,id,index,base,'current')};
+}
+
 export function mountMonsterMotionComparison(host){
  const section=document.createElement('section'),label=document.createElement('label'),select=document.createElement('select'),canvas=document.createElement('canvas'),status=document.createElement('p');label.textContent='Motion Comparison Layer';select.setAttribute('aria-label','Monster Motion Comparison Layer');for(const [value,text] of [['current','Current Stored Pose'],['proposed','Proposed Unsaved Pose']]){const o=document.createElement('option');o.value=value;o.textContent=text;select.append(o);}label.append(select);Object.assign(canvas.style,{width:'100%',height:'320px',background:'#101a20'});canvas.dataset.monsterMotionComparison='';section.append(label,status,canvas);host.append(section);section.hidden=true;
  let disposed=false,poses=null,renderer=null,drag=null,yaw=.55,pitch=-.18,zoom=1;

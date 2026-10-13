@@ -53,6 +53,7 @@ def apply(project,review_key,**args):
     if rows:
         at=clip['source_record']['byte_offset'];end=at+clip['source_record']['byte_length'];candidate=current[:at]+b64decode(value['candidate_motion_base64'])+current[end:];derived=current_clip(candidate,clip)
         after[identifier]=dict(schema_version='legaia.monster-motion-override.v1',asset_id=identifier,source_record=deepcopy(clip['source_record']),edits=[rows[k] for k in sorted(rows)],current_motion_sha256=derived['source_record']['sha256'],current_entry_sha256=derived['source_record']['entry_sha256'])
+        if 'glb_import' in before.get(identifier,{}):after[identifier]['glb_import']=deepcopy(before[identifier]['glb_import'])
     else:after.pop(identifier,None)
     validate(project,after);project.monster_motion_overrides=after;project.undo_stack.append(dict(target='monster_motion_overrides',before=before,after=deepcopy(after),label='Monster native motion'));project.redo_stack.clear()
     return dict(history_steps=1,project_changed=True,gameplay_verified=False)

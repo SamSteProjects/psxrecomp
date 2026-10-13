@@ -52,7 +52,7 @@ def snapshot(project,asset_id):
         from .monster_models import compose as compose_model
         current=compose_model(project,original,catalog,record['monster_id'],current)
         from .monster_motions import compose as compose_motion
-        current=compose_motion(original,catalog,record['monster_id'],project.monster_motion_overrides,current)
+        current=compose_motion(original,catalog,record['monster_id'],project.monster_motion_overrides,current,project=project)
         return catalog,record,original,current,raw,used
 
 

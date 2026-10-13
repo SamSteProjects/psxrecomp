@@ -39,7 +39,7 @@ def export(project,expected_project_path,expected_source_key,asset_id,catalog_so
                 sampled=clip
                 if texture_layer=='current':
                     from .monster_motions import compose,current_clip
-                    data=compose(data,catalog,clip['monster_id'],project.monster_motion_overrides);sampled=current_clip(data,clip)
+                    data=compose(data,catalog,clip['monster_id'],project.monster_motion_overrides,project=project);sampled=current_clip(data,clip)
                 geometry['frames']=[dict(object_transforms=frame(data,sampled,index)[0]) for index in range(clip['frame_count'])]
         if clip:geometry['animation']=dict(semantic_id=clip['semantic_id'],source_record=deepcopy(clip['source_record']),
             source_frame_index=frame_index,timing='stored_rate_byte_not_runtime_cadence',runtime_state='not_observed',rate_byte=clip['rate_byte'],mapping=clip['mapping'])

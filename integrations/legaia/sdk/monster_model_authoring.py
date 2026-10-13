@@ -29,7 +29,7 @@ def snapshot(project,expected_project_path,expected_source_key,asset_id,catalog_
         from .monster_models import compose as compose_model
         current=compose_model(project,original,catalog,record['monster_id'],current)
         from .monster_motions import compose as compose_motion
-        current=compose_motion(original,catalog,record['monster_id'],project.monster_motion_overrides,current)
+        current=compose_motion(original,catalog,record['monster_id'],project.monster_motion_overrides,current,project=project)
     _fresh(project,expected_project_path,expected_source_key)
     return record,texture,original,current,raw,used
 
@@ -80,7 +80,7 @@ def review(project,binding,glb_base64,**context):
         proposed,projection=native.convert(current,record,texture,binding,content,sha256(current[model_at:model_at+size]).hexdigest())
         composed=bytearray(actual);composed[model_at:model_at+size]=proposed[model_at:model_at+size]
         from .monster_motions import compose as compose_motion
-        composed=compose_motion(original,decode_catalog(raw,record['source_record']['disc']['sha256']),record['monster_id'],project.monster_motion_overrides,bytes(composed))
+        composed=compose_motion(original,decode_catalog(raw,record['source_record']['disc']['sha256']),record['monster_id'],project.monster_motion_overrides,bytes(composed),project=project)
         projection['source_block_sha256']=sha256(actual).hexdigest();projection['candidate_block_sha256']=sha256(composed).hexdigest()
         at=record['source_record']['compressed_stream_offset'];_,capacity=serialize_lzs_decoded(raw[at:at+used],len(original),composed,'monster-model')
     except NativeError as e:raise ProjectError(str(e)) from e

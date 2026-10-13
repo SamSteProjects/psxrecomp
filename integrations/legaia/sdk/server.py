@@ -1315,7 +1315,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit=2*1024*1024
             if urlsplit(self.path).path in ('/api/monster-model-glb-review','/api/monster-model-glb-apply'):
                 request_limit=12*1024*1024
-            if urlsplit(self.path).path == '/api/monster-motion-glb-review':
+            if urlsplit(self.path).path in ('/api/monster-motion-glb-review','/api/monster-motion-glb-apply','/api/monster-motion-glb-pose'):
                 request_limit=12*1024*1024
             if urlsplit(self.path).path in ('/api/player-model-glb-review','/api/player-model-glb-apply','/api/player-action-glb-review','/api/player-action-glb-apply'):
                 request_limit = 8 * 1024 * 1024
@@ -1483,10 +1483,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     result=(apply if route.endswith('-apply') else review if route.endswith('-review') else export)(self.server.project,**body)
                     self._json(200,dict(self.server.state(),monster_model_apply=result) if route.endswith('-apply') else result)
                     return
-                if route == '/api/monster-motion-glb-review':
-                    if set(body)!={'expected_project_path','expected_source_key','asset_id','catalog_source_key','animation_id','expected_current_block_sha256','glb_base64','fps','animation_index','object_node_indices'}:raise ProjectError('Monster motion GLB Review requires exact source, input and sampling fields')
-                    from .monster_motion_glb import review
-                    self._json(200,review(self.server.project,**body))
+                if route in ('/api/monster-motion-glb-review','/api/monster-motion-glb-apply','/api/monster-motion-glb-pose'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','animation_id','expected_current_block_sha256','glb_base64','fps','animation_index','object_node_indices'}
+                    if not route.endswith('-review'):fields.add('review_key')
+                    if route.endswith('-pose'):fields.add('frame_index')
+                    if set(body)!=fields:raise ProjectError('Monster motion GLB requires exact source, input, sampling and Review fields')
+                    from .monster_motion_glb import review,apply,proposed_pose
+                    result=(proposed_pose if route.endswith('-pose') else apply if route.endswith('-apply') else review)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),monster_motion_apply=result) if route.endswith('-apply') else result)
                     return
                 if route in ('/api/monster-frame-inspect','/api/monster-frame-review','/api/monster-frame-apply','/api/monster-frame-pose'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','animation_id','frame_index','part_index'}

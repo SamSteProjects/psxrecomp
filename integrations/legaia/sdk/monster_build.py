@@ -23,7 +23,7 @@ def prepare(project,archive,disc_hash):
         original,used=block(raw,identifier);current=original;binding=palettes.get(texture['semantic_id']) if texture else None
         if binding:current=compose_palettes(original,texture,binding,project)
         current=compose_models(project,original,catalog,identifier,current);start=owner['source_record']['compressed_stream_offset']
-        current=compose_motion(original,catalog,identifier,motions,current)
+        current=compose_motion(original,catalog,identifier,motions,current,project=project)
         try:payload,capacity=serialize_lzs_decoded(raw[start:start+used],len(original),current,'monster-slot')
         except NativeError as e:raise ProjectError(str(e)) from e
         offset=(archive.node.extent_lba+archive.entry(867).start_lba)*archive.SECTOR+start
