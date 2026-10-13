@@ -1261,6 +1261,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
                  "/battle-pack-playback.js": ("battle-pack-playback.js", "text/javascript"),
                  "/battle-pack-timeline.js": ("battle-pack-timeline.js", "text/javascript"),
+                 "/battle-pack-model-authoring.js": ("battle-pack-model-authoring.js", "text/javascript"),
+                 "/native-tmd-preview.js": ("native-tmd-preview.js", "text/javascript"),
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
                  "/worldmap-asset-references.js": ("worldmap-asset-references.js", "text/javascript"),
                  "/worldmap-reference-trace.js": ("worldmap-reference-trace.js", "text/javascript"),
@@ -1328,6 +1330,8 @@ class EditorHandler(BaseHTTPRequestHandler):
             if urlsplit(self.path).path in ('/api/monster-model-glb-review','/api/monster-model-glb-apply'):
                 request_limit=12*1024*1024
             if urlsplit(self.path).path in ('/api/monster-motion-glb-review','/api/monster-motion-glb-apply','/api/monster-motion-glb-pose'):
+                request_limit=12*1024*1024
+            if urlsplit(self.path).path in ('/api/battle-pack-model-glb-review','/api/battle-pack-model-glb-apply'):
                 request_limit=12*1024*1024
             if urlsplit(self.path).path in ('/api/player-model-glb-review','/api/player-model-glb-apply','/api/player-action-glb-review','/api/player-action-glb-apply'):
                 request_limit = 8 * 1024 * 1024
@@ -1473,6 +1477,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                     action=review if route.endswith('-review') else apply if route.endswith('-apply') else proposed_preview
                     result=action(self.server.project,**body)
                     self._json(200,dict(self.server.state(),player_model_restore=result) if route.endswith('-apply') else result)
+                    return
+                if route in ('/api/battle-pack-model-current','/api/battle-pack-model-glb-export','/api/battle-pack-model-glb-review','/api/battle-pack-model-glb-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key'}
+                    if route.endswith(('-review','-apply')):fields|={'binding','glb_base64','expected_current_entry_sha256'}
+                    if route.endswith('-apply'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Battle pack model authoring requires exact fresh Current source and GLB binding fields')
+                    from .battle_pack_model_authoring import current,export,review,apply
+                    action=apply if route.endswith('-apply') else review if route.endswith('-review') else export if route.endswith('-export') else current
+                    result=action(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),battle_pack_model_apply=result) if route.endswith('-apply') else result)
                     return
                 if route == '/api/battle-pack-playback':
                     fields={'expected_project_path','expected_source_key','model_id','model_source_key','animation_id','animation_source_key'}
