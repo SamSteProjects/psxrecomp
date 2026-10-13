@@ -43,6 +43,7 @@ def authored_state_key(project) -> str:
                                 "models": getattr(project, "model_overrides", {}),
                                 **({"player_models": project.player_model_overrides} if getattr(project,"player_model_overrides",{}) else {}),
                                 **({"player_actions": project.player_action_overrides} if getattr(project,"player_action_overrides",{}) else {}),
+                                **({"player_arts": project.player_art_overrides} if getattr(project,"player_art_overrides",{}) else {}),
                                 **({"monster_palettes": project.monster_palette_overrides} if getattr(project,"monster_palette_overrides",{}) else {}),
                                 **({"monster_models": project.monster_model_overrides} if getattr(project,"monster_model_overrides",{}) else {}),
                                 **({"monster_motion": project.monster_motion_overrides} if getattr(project,"monster_motion_overrides",{}) else {}),
@@ -898,6 +899,9 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     with _disc_context(project.disc_path) as (_image, disc_hash, mapping, archive):
         from .player_model_build import prepare as prepare_player_models
         player_overlays, player_changes = prepare_player_models(project, archive, disc_hash)
+        from .player_art_store import prepare as prepare_player_arts
+        art_overlays,art_changes=prepare_player_arts(project,archive,disc_hash)
+        overlays.extend(art_overlays);audit_edits.extend(art_changes)
         from .monster_build import prepare as prepare_monster_palettes
         monster_overlays,monster_changes=prepare_monster_palettes(project,archive,disc_hash)
         from .battle_pack_model_build import prepare as prepare_pack_models
