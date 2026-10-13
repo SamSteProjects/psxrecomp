@@ -138,6 +138,7 @@ class ProjectService:
         self.model_overrides: dict[str, dict] = {}
         self.player_model_overrides: dict[str, dict] = {}
         self.player_action_overrides: dict[str, dict] = {}
+        self.monster_palette_overrides: dict[str, dict] = {}
         self.audio_overrides: dict[str, dict] = {}
         self.audio_sequence_replacements: dict[str, dict] = {}
         self.audio_bank_overrides: dict[str, dict] = {}
@@ -245,6 +246,7 @@ class ProjectService:
                 **({"audio_bank_overrides": deepcopy(self.audio_bank_overrides)} if self.audio_bank_overrides else {}),
                 **({"player_model_overrides": deepcopy(self.player_model_overrides)} if self.player_model_overrides else {}),
                 **({"player_action_overrides": deepcopy(self.player_action_overrides)} if self.player_action_overrides else {}),
+                **({"monster_palette_overrides": deepcopy(self.monster_palette_overrides)} if self.monster_palette_overrides else {}),
                 **({"model_overrides": deepcopy(self.model_overrides)} if self.model_overrides else {})}
 
     @property
@@ -285,7 +287,7 @@ class ProjectService:
                   "authored": "Scene and game-data edits", "actor_templates": "Actor presets",
                   "texture_additions": "New texture slots", "texture_overrides": "Texture replacements", "model_overrides": "Model content", "audio_sequence_replacements": "Audio sequence replacements", "audio_overrides": "Audio sequence operands", "audio_bank_overrides": "Audio bank parameters", "audio_sample_sources": "Retained WAV inputs", "audio_midi_sources": "Retained MIDI inputs", "audio_sample_overrides": "Native audio samples",
                   "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "worldmap_selection_sets": "Saved world selections", "scene_views": "Saved scene views", "animation_labels": "Animation display names", "model_vertex_groups": "Saved model vertex groups", "script_bookmarks": "Saved script bookmarks",
-                  "player_model_overrides": "PLAYER native models", "player_action_overrides": "PLAYER action channels", "model_sources": "Retained model inputs", "animation_sources": "Retained animation inputs"}
+                  "monster_palette_overrides": "Monster native palettes", "player_model_overrides": "PLAYER native models", "player_action_overrides": "PLAYER action channels", "model_sources": "Retained model inputs", "animation_sources": "Retained animation inputs"}
         return [label for key, label in labels.items()
                 if digest(document.get(key)) != self.saved_sections.get(key)]
 
@@ -295,7 +297,7 @@ class ProjectService:
         self.saved_document = deepcopy(document)
         self.saved_sections = {key: digest(document.get(key)) for key in
                                ("name", "retail_source", "imports", "active_scene",
-                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_sequence_replacements", "audio_bank_overrides", "audio_sample_sources", "audio_midi_sources", "audio_sample_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "worldmap_selection_sets", "scene_views", "animation_labels", "model_vertex_groups", "script_bookmarks", "model_sources", "animation_sources", "player_model_overrides", "player_action_overrides")}
+                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "audio_overrides", "audio_sequence_replacements", "audio_bank_overrides", "audio_sample_sources", "audio_midi_sources", "audio_sample_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "worldmap_selection_sets", "scene_views", "animation_labels", "model_vertex_groups", "script_bookmarks", "model_sources", "animation_sources", "player_model_overrides", "player_action_overrides", "monster_palette_overrides")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):
@@ -3429,6 +3431,11 @@ class ProjectService:
             from .audio_sample_sources import validate_files
             validate_files(self,value);self.audio_sample_sources=value
             source.pop();target.append(entry);return
+        if source[-1].get('target') == 'monster_palette_overrides':
+            entry=source[-1];value=deepcopy(entry[field])
+            from .monster_palettes import validate
+            self.monster_palette_overrides=validate(self,value)
+            source.pop();target.append(entry);return
         if source[-1].get('target') == 'player_action_overrides':
             entry=source[-1];value=deepcopy(entry[field])
             from .player_action_store import validate
@@ -3562,6 +3569,8 @@ class ProjectService:
         validate_player_models(self,self.player_model_overrides)
         from .player_action_store import validate as validate_player_actions
         validate_player_actions(self,self.player_action_overrides)
+        from .monster_palettes import validate as validate_monster_palettes
+        validate_monster_palettes(self,self.monster_palette_overrides)
         from .model_glb_sources import validate_files as validate_model_sources
         validate_model_sources(self,self.model_sources)
         from .audio_sample_sources import validate_files as validate_wav_sources
@@ -3623,6 +3632,8 @@ class ProjectService:
         result.disc_path = raw.get("retail_source", {}).get("disc_path")
         if result.disc_path is not None and not isinstance(result.disc_path, str):
             raise ProjectError("Project disc path must be a string or null")
+        from .monster_palettes import validate as validate_monster_palettes
+        result.monster_palette_overrides=validate_monster_palettes(result,raw.get('monster_palette_overrides',{}))
         saved_identity = raw.get("retail_source", {}).get("disc_identity")
         actual_identity = next(iter(result.imports.values()))["source"]["disc_identity"] if result.imports else None
         if saved_identity != actual_identity:

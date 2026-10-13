@@ -76,3 +76,8 @@ This advances the animation and model/equipment rows without closing their remai
 ## Monster Interchange Checkpoint — 2026-10-12
 
 [Monster GLB Interchange](legaia-monster-archive.md#monster-glb-interchange) advances useful model/texture/animation export with object-local, baked stored-frame and complete rigid-clip modes. Source geometry/images/channel samples, private downloads and bounded client/editor checks pass at the documented scope. This is FUNCTIONAL / READ-ONLY / OFFLINE INTERCHANGE. Explicit export rates remain separate from native timing. Monster replacement/delivery, eight unresolved part mappings, nine out-of-page UV cases and gameplay acceptance remain open. Full SDK objective remains incomplete and active.
+
+
+## Native Monster Palette Checkpoint — 2026-10-12
+
+[Native Monster Palette Authoring](legaia-monster-archive.md#native-monster-palette-authoring) advances texture editing, Retail/Current separation, commands/persistence and package delivery. Existing native CLUT words now pass fresh Review/Proposed/Apply, canonical replay, history, Save/Open, Current model/pose/export composition and exact private package readback. This is FUNCTIONAL / WRITABLE / OFFLINE at the documented scope. Image/model/motion replacement, growth, unresolved mappings and game-dependent appearance/acceptance remain open. The full SDK objective remains incomplete and active.

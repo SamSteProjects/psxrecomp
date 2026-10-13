@@ -1235,6 +1235,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/monster-textures.js": ("monster-textures.js", "text/javascript"),
                  "/monster-motion.js": ("monster-motion.js", "text/javascript"),
                  "/monster-export.js": ("monster-export.js", "text/javascript"),
+                 "/monster-palettes.js": ("monster-palettes.js", "text/javascript"),
+                 "/monster-palette-replay.js": ("monster-palette-replay.js", "text/javascript"),
                  "/monster-archive.js": ("monster-archive.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
@@ -1425,7 +1427,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','mode','action_slot','frame_index','fps'}
                     if set(body)!=fields:raise ProjectError('PLAYER export requires exact source, equipment, mode and frame/rate fields')
                     from .player_battle import export
-                    self._json(200,export(self.server.project,**body))
+                    self._json(200,export(self.server.project,**body,texture_layer='current' if route=='/api/monster-current-export' else 'retail'))
                     return
                 if route == '/api/player-battle-pose':
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','equipped','action_slot','frame_index'}
@@ -1450,7 +1452,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     fields={'expected_project_path','expected_source_key','model_id','model_source_key','animation_id','animation_source_key','frame_index'}
                     if set(body)!=fields:raise ProjectError('Battle pack export requires exact project, model and optional pose selection')
                     from .battle_character_resources import export
-                    self._json(200,export(self.server.project,**body))
+                    self._json(200,export(self.server.project,**body,texture_layer='current' if route=='/api/monster-current-export' else 'retail'))
                     return
                 if route in ('/api/battle-pack-animation-resources','/api/battle-pack-pose'):
                     fields={'expected_project_path','expected_source_key'}
@@ -1459,23 +1461,38 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .battle_character_resources import animations,pose
                     self._json(200,(pose if route.endswith('-pose') else animations)(self.server.project,**body))
                     return
-                if route == '/api/monster-export':
+                if route in ('/api/monster-palette-inspect','/api/monster-palette-review','/api/monster-palette-apply'):
+                    fields={'expected_project_path','expected_source_key','asset_id','palette_index'}
+                    if not route.endswith('-inspect'):fields|={'entry_index','word','expected_current_sha256'}
+                    if route.endswith('-apply'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Monster palette authoring requires exact source, cell and Review fields')
+                    from .monster_palettes import inspect,review,apply
+                    result=(inspect if route.endswith('-inspect') else apply if route.endswith('-apply') else review)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),monster_palette_apply=result) if route.endswith('-apply') else result)
+                    return
+                if route in ('/api/monster-export','/api/monster-current-export'):
                     if set(body)!={'expected_project_path','expected_source_key','asset_id','catalog_source_key','mode','animation_id','frame_index','fps'}:
                         raise ProjectError('Monster interchange requires exact source, mode and sampling fields')
                     from .monster_export import export
-                    self._json(200,export(self.server.project,**body))
+                    self._json(200,export(self.server.project,**body,texture_layer='current' if route=='/api/monster-current-export' else 'retail'))
                     return
-                if route == '/api/monster-pose':
+                if route in ('/api/monster-pose','/api/monster-current-pose'):
                     if set(body)!={'expected_project_path','expected_source_key','asset_id','catalog_source_key','animation_id','frame_index'}:
                         raise ProjectError('Monster pose requires exact project, model, animation and stored frame fields')
-                    from .monster_archive import pose
-                    self._json(200,pose(self.server.project,**body))
+                    from .monster_archive import pose,current_pose
+                    self._json(200,(current_pose if route=='/api/monster-current-pose' else pose)(self.server.project,**body))
                     return
                 if route == '/api/monster-texture-preview':
                     if set(body)!={'expected_project_path','expected_source_key','asset_id','catalog_source_key','palette_index'}:
                         raise ProjectError('Monster texture requires exact project, source and palette fields')
                     from .monster_archive import texture_preview
                     self._json(200,texture_preview(self.server.project,**body))
+                    return
+                if route == '/api/monster-current-preview':
+                    if set(body)!={'expected_project_path','expected_source_key','asset_id','catalog_source_key'}:
+                        raise ProjectError('Current monster preview requires exact project and source fields')
+                    from .monster_archive import current_preview
+                    self._json(200,current_preview(self.server.project,**body))
                     return
                 if route in ('/api/monster-resources','/api/monster-preview'):
                     fields={'expected_project_path','expected_source_key'}

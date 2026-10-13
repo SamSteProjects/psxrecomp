@@ -83,3 +83,28 @@ def pose(project,expected_project_path,expected_source_key,asset_id,catalog_sour
         catalog_source_key=catalog_source_key,base_preview=base,geometry=geometry,clip=clip,object_transforms=transforms,
         source_motion_base64=b64encode(stream).decode(),source_entry_base64=b64encode(data[clip['source_record']['entry_offset']:clip['source_record']['entry_end']]).decode(),animation_id=animation_id,frame_index=frame_index,
         layer='retail_stored_pose',read_only=True,project_changed=False,gameplay_verified=False)
+
+
+def current_preview(project,expected_project_path,expected_source_key,asset_id,catalog_source_key):
+    from .monster_palettes import snapshot
+    from importer.monster_textures import layout,material_crops
+    from copy import deepcopy
+    base=preview(project,expected_project_path,expected_source_key,asset_id,catalog_source_key)
+    texture=base['texture_record']
+    if texture is None:raise ProjectError('Current monster palette preview requires a qualified source pool')
+    catalog,record,original,current,_,_=snapshot(project,texture['semantic_id'])
+    if catalog['source_key']!=catalog_source_key or record!=texture:raise ProjectError('Current monster texture owner changed')
+    retail,width=layout(original,record['source_record']['byte_offset']);pool,_=layout(current,record['source_record']['byte_offset'])
+    base['geometry']['textures']=material_crops(base['geometry'],pool,width,record['semantic_id'])
+    for crop in base['geometry']['textures']:
+        for key in ('rgba','stp'):
+            if key in crop:crop[key+'_base64']=b64encode(crop.pop(key)).decode()
+    base.update(layer='current_palette',retail_pool_base64=b64encode(retail).decode(),source_pool_base64=b64encode(pool).decode(),palette_binding=deepcopy(project.monster_palette_overrides.get(record['semantic_id'])))
+    _fresh(project,expected_project_path,expected_source_key);return base
+
+
+def current_pose(project,expected_project_path,expected_source_key,asset_id,catalog_source_key,animation_id,frame_index):
+    current=current_preview(project,expected_project_path,expected_source_key,asset_id,catalog_source_key)
+    value=pose(project,expected_project_path,expected_source_key,asset_id,catalog_source_key,animation_id,frame_index)
+    value['base_preview']=current;value['geometry']['textures']=current['geometry']['textures'];value['layer']='current_palette_stored_pose'
+    _fresh(project,expected_project_path,expected_source_key);return value
