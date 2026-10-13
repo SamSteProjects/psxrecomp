@@ -1247,6 +1247,9 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/monster-motion-comparison.js": ("monster-motion-comparison.js", "text/javascript"),
                  "/monster-motion-glb.js": ("monster-motion-glb.js", "text/javascript"),
                  "/monster-motion-inputs.js": ("monster-motion-inputs.js", "text/javascript"),
+                 "/monster-playback.js": ("monster-playback.js", "text/javascript"),
+                 "/monster-channel-timeline.js": ("monster-channel-timeline.js", "text/javascript"),
+                 "/field-equipment-playback.js": ("field-equipment-playback.js", "text/javascript"),
                  "/monster-archive.js": ("monster-archive.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
@@ -1367,6 +1370,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body) != {'id'}:
                         raise ProjectError('Stability cancellation requires the current job identity')
                     self._json(200, {'job': self.server.stability_checks.cancel(body['id'])})
+                    return
+                if route in ('/api/field-equipment-playback','/api/field-equipment-current-playback'):
+                    if set(body)!={'expected_project_path','expected_source_key','asset_id','equipment_byte','clip_id','frame_index'}:
+                        raise ProjectError('Field equipment playback requires exact source and explicit variant/frame fields')
+                    from .field_equipment_playback import preview
+                    self._json(200,preview(self.server.project,**body,model_layer='current' if '-current-' in route else 'retail'))
                     return
                 if route in ('/api/field-equipment-preview','/api/field-equipment-export','/api/field-equipment-clip-export','/api/field-equipment-current-preview','/api/field-equipment-current-export','/api/field-equipment-current-clip-export'):
                     fields={'expected_project_path','expected_source_key','asset_id','equipment_byte','clip_id','frame_index'}
