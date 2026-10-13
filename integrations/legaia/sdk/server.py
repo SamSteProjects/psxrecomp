@@ -1263,6 +1263,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/battle-pack-timeline.js": ("battle-pack-timeline.js", "text/javascript"),
                  "/battle-pack-model-authoring.js": ("battle-pack-model-authoring.js", "text/javascript"),
                  "/native-tmd-preview.js": ("native-tmd-preview.js", "text/javascript"),
+                 "/battle-pack-current-actions.js": ("battle-pack-current-actions.js", "text/javascript"),
                 "/worldmap-assets.js": ("worldmap-assets.js", "text/javascript"),
                  "/worldmap-asset-references.js": ("worldmap-asset-references.js", "text/javascript"),
                  "/worldmap-reference-trace.js": ("worldmap-reference-trace.js", "text/javascript"),
@@ -1477,6 +1478,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     action=review if route.endswith('-review') else apply if route.endswith('-apply') else proposed_preview
                     result=action(self.server.project,**body)
                     self._json(200,dict(self.server.state(),player_model_restore=result) if route.endswith('-apply') else result)
+                    return
+                if route in ('/api/battle-pack-current-pose','/api/battle-pack-current-export'):
+                    fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key','expected_current_tmd_sha256','expected_current_entry_sha256','animation_id','animation_source_key','frame_index'}
+                    if route.endswith('-export'):fields|={'mode','fps'}
+                    if set(body)!=fields:raise ProjectError('Current pack actions require exact inspected model and reference action fields')
+                    from .battle_pack_current_actions import pose,export
+                    self._json(200,(export if route.endswith('-export') else pose)(self.server.project,**body))
                     return
                 if route in ('/api/battle-pack-model-current','/api/battle-pack-model-glb-export','/api/battle-pack-model-glb-review','/api/battle-pack-model-glb-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key'}
