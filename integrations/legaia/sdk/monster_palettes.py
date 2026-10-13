@@ -49,6 +49,8 @@ def snapshot(project,asset_id):
         if record is None:raise ProjectError('Monster palette owner is unqualified')
         original,used=block(raw,record['monster_id']);binding=project.monster_palette_overrides.get(asset_id)
         current=compose(original,record,binding,project) if binding else original
+        from .monster_models import compose as compose_model
+        current=compose_model(project,original,catalog,record['monster_id'],current)
         return catalog,record,original,current,raw,used
 
 
@@ -91,7 +93,7 @@ def review(project,expected_project_path,expected_source_key,asset_id,palette_in
     else:ledger[pair]=word
     candidate=bytearray(current);struct.pack_into('<H',candidate,at,word);candidate=bytes(candidate);proposed_pool=candidate[pool_at:]
     extras={k:deepcopy(project.monster_palette_overrides.get(asset_id,{}))[k] for k in ('image_override','png_import') if k in project.monster_palette_overrides.get(asset_id,{})}
-    binding=dict(**extras,schema_version='legaia.monster-palette-override.v1',asset_id=asset_id,source_record=deepcopy(record['source_record']),edits=[dict(palette_index=p,entry_index=e,word=w) for (p,e),w in sorted(ledger.items())],current_pool_sha256=sha256(proposed_pool).hexdigest(),current_block_sha256=sha256(candidate).hexdigest()) if ledger or 'image_override' in extras else None
+    binding=dict(**extras,schema_version='legaia.monster-palette-override.v1',asset_id=asset_id,source_record=deepcopy(record['source_record']),edits=[dict(palette_index=p,entry_index=e,word=w) for (p,e),w in sorted(ledger.items())],current_pool_sha256=sha256(proposed_pool).hexdigest(),current_block_sha256=sha256(original[:pool_at]+proposed_pool).hexdigest()) if ledger or 'image_override' in extras else None
     if binding:compose(original,record,binding,project)
     start=record['source_record']['compressed_stream_offset']
     try:_,capacity=serialize_lzs_decoded(raw[start:start+used],len(original),candidate,'monster-palette')
@@ -113,19 +115,5 @@ def apply(project,review_key,**args):
 
 
 def prepare(project,archive,disc_hash):
-    values=getattr(project,'monster_palette_overrides',{});validate(project,values)
-    if not values:return [],[]
-    raw=archive.read_entry(archive.entry(867));catalog=decode_catalog(raw,disc_hash);overlays=[];changes=[]
-    for identifier,binding in sorted(values.items()):
-        record=next(r for r in catalog['textures'] if r['semantic_id']==identifier);original,used=block(raw,record['monster_id']);current=compose(original,record,binding,project);start=record['source_record']['compressed_stream_offset']
-        try:payload,capacity=serialize_lzs_decoded(raw[start:start+used],len(original),current,'monster-palette')
-        except NativeError as e:raise ProjectError(str(e)) from e
-        offset=(archive.node.extent_lba+archive.entry(867).start_lba)*archive.SECTOR+start
-        overlays.append(dict(scene='monster-archive',offset=offset,size=used,file=f'assets/monster-{record["monster_id"]}-palette.bin',payload=payload,sha256=sha256(payload).hexdigest(),expected_sha256=sha256(raw[start:start+used]).hexdigest(),source_kind='fixed_span_monster_palette',source_record=record['source_record'],capacity=capacity,decoded_before_sha256=sha256(original).hexdigest(),decoded_after_sha256=sha256(current).hexdigest()))
-        pool_at=record['source_record']['byte_offset']
-        if 'image_override' in binding:
-            changes.append(dict(scene='monster-archive',semantic_id=identifier,field='texture.image_indices',scope='monster-native-image-indices-only',byte_offset=pool_at+480,byte_length=len(current)-pool_at-480,before_sha256=sha256(original[pool_at+480:]).hexdigest(),after_sha256=sha256(current[pool_at+480:]).hexdigest()))
-        for edit in binding['edits']:
-            at=pool_at+edit['palette_index']*32+edit['entry_index']*2
-            changes.append(dict(edit,scene='monster-archive',semantic_id=identifier,field='palette.word',scope='monster-native-palette-words-only',byte_offset=at,before_word=struct.unpack_from('<H',original,at)[0],after_word=edit['word']))
-    return overlays,changes
+    from .monster_build import prepare as prepare_slots
+    return prepare_slots(project,archive,disc_hash)

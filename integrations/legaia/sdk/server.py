@@ -1240,6 +1240,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/monster-png.js": ("monster-png.js", "text/javascript"),
                  "/monster-inputs.js": ("monster-inputs.js", "text/javascript"),
                  "/monster-model-authoring.js": ("monster-model-authoring.js", "text/javascript"),
+                 "/monster-model-replay.js": ("monster-model-replay.js", "text/javascript"),
                  "/monster-archive.js": ("monster-archive.js", "text/javascript"),
                  "/battle-character-resources.js": ("battle-character-resources.js", "text/javascript"),
                  "/battle-pack-animation.js": ("battle-pack-animation.js", "text/javascript"),
@@ -1307,7 +1308,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit=24*1024*1024
             if urlsplit(self.path).path in ('/api/field-texture-file-review','/api/field-texture-file-apply'):
                 request_limit=2*1024*1024
-            if urlsplit(self.path).path == '/api/monster-model-glb-review':
+            if urlsplit(self.path).path in ('/api/monster-model-glb-review','/api/monster-model-glb-apply'):
                 request_limit=12*1024*1024
             if urlsplit(self.path).path in ('/api/player-model-glb-review','/api/player-model-glb-apply','/api/player-action-glb-review','/api/player-action-glb-apply'):
                 request_limit = 8 * 1024 * 1024
@@ -1466,12 +1467,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .battle_character_resources import animations,pose
                     self._json(200,(pose if route.endswith('-pose') else animations)(self.server.project,**body))
                     return
-                if route in ('/api/monster-model-glb-export','/api/monster-model-glb-review'):
+                if route in ('/api/monster-model-glb-export','/api/monster-model-glb-review','/api/monster-model-glb-apply'):
                     fields={'expected_project_path','expected_source_key','asset_id','catalog_source_key'}
-                    if route.endswith('-review'):fields|={'binding','glb_base64'}
+                    if not route.endswith('-export'):fields|={'binding','glb_base64'}
+                    if route.endswith('-apply'):fields.add('review_key')
                     if set(body)!=fields:raise ProjectError('Monster model authoring requires exact source and input fields')
-                    from .monster_model_authoring import export,review
-                    self._json(200,(review if route.endswith('-review') else export)(self.server.project,**body))
+                    from .monster_model_authoring import export,review,apply
+                    result=(apply if route.endswith('-apply') else review if route.endswith('-review') else export)(self.server.project,**body)
+                    self._json(200,dict(self.server.state(),monster_model_apply=result) if route.endswith('-apply') else result)
                     return
                 if route == '/api/monster-input-download':
                     if set(body)!={'expected_project_path','expected_source_key','asset_id','expected_current_sha256','kind'}:

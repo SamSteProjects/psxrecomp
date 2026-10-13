@@ -44,6 +44,7 @@ def authored_state_key(project) -> str:
                                 **({"player_models": project.player_model_overrides} if getattr(project,"player_model_overrides",{}) else {}),
                                 **({"player_actions": project.player_action_overrides} if getattr(project,"player_action_overrides",{}) else {}),
                                 **({"monster_palettes": project.monster_palette_overrides} if getattr(project,"monster_palette_overrides",{}) else {}),
+                                **({"monster_models": project.monster_model_overrides} if getattr(project,"monster_model_overrides",{}) else {}),
                                 **({"audio": project.audio_overrides} if getattr(project, "audio_overrides", {}) else {}),
                                 **({"audio_sequence_replacements": project.audio_sequence_replacements} if getattr(project,"audio_sequence_replacements",{}) else {}),
                                 **({"audio_bank": project.audio_bank_overrides} if getattr(project, "audio_bank_overrides", {}) else {}),
@@ -892,7 +893,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     with _disc_context(project.disc_path) as (_image, disc_hash, mapping, archive):
         from .player_model_build import prepare as prepare_player_models
         player_overlays, player_changes = prepare_player_models(project, archive, disc_hash)
-        from .monster_palettes import prepare as prepare_monster_palettes
+        from .monster_build import prepare as prepare_monster_palettes
         monster_overlays,monster_changes=prepare_monster_palettes(project,archive,disc_hash)
         overlays.extend(monster_overlays);audit_edits.extend(monster_changes)
         overlays.extend(player_overlays)

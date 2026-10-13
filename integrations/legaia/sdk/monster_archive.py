@@ -98,6 +98,11 @@ def current_preview(project,expected_project_path,expected_source_key,asset_id,c
     catalog,record,original,current,_,_=snapshot(project,texture['semantic_id'])
     if catalog['source_key']!=catalog_source_key or record!=texture:raise ProjectError('Current monster texture owner changed')
     retail,width=layout(original,record['source_record']['byte_offset']);pool,_=layout(current,record['source_record']['byte_offset'])
+    from importer.assets import decode_tmd
+    model=base['record'];model_at=model['source_record']['byte_offset'];model_end=model_at+model['source_record']['byte_length'];tmd=current[model_at:model_end]
+    geometry=decode_tmd(tmd);geometry.update(semantic_id=asset_id,source_record=model['source_record'],texture_scope='monster_source_pool')
+    base['geometry']=geometry
+    base.update(source_tmd_base64=b64encode(tmd).decode(),retail_tmd_base64=b64encode(original[model_at:model_end]).decode(),model_binding=deepcopy(project.monster_model_overrides.get(asset_id)))
     base['geometry']['textures']=material_crops(base['geometry'],pool,width,record['semantic_id'])
     for crop in base['geometry']['textures']:
         for key in ('rgba','stp'):
@@ -109,5 +114,9 @@ def current_preview(project,expected_project_path,expected_source_key,asset_id,c
 def current_pose(project,expected_project_path,expected_source_key,asset_id,catalog_source_key,animation_id,frame_index):
     current=current_preview(project,expected_project_path,expected_source_key,asset_id,catalog_source_key)
     value=pose(project,expected_project_path,expected_source_key,asset_id,catalog_source_key,animation_id,frame_index)
-    value['base_preview']=current;value['geometry']['textures']=current['geometry']['textures'];value['layer']='current_palette_stored_pose'
+    from importer.animation import pose_vertices
+    from copy import deepcopy
+    g=deepcopy(current['geometry']);g['vertices']=pose_vertices(g['vertices'],g['objects'],value['object_transforms']);g.pop('triangle_normals',None);g.pop('normal_preview',None)
+    g.update(posed=True,coordinate_system='retail_psx_actor_local_y_down',bounds=dict(min=[min(v[i] for v in g['vertices']) for i in range(3)],max=[max(v[i] for v in g['vertices']) for i in range(3)]))
+    value['base_preview']=current;value['geometry']=g;value['layer']='current_palette_stored_pose'
     _fresh(project,expected_project_path,expected_source_key);return value

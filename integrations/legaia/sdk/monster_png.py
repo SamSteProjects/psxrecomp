@@ -126,7 +126,7 @@ def apply(project,review_key,**args):
             offset=p*32+e*2;word=struct.unpack_from('<H',candidate,offset)[0]
             if word!=struct.unpack_from('<H',original,at+offset)[0]:edits.append(dict(palette_index=p,entry_index=e,word=word))
     image=candidate[480:];image_binding=dict(sha256=retain(project,image,'idx'),byte_length=len(image)) if image!=original[at+480:] else None
-    binding=dict(schema_version='legaia.monster-palette-override.v1',asset_id=args['asset_id'],source_record=deepcopy(record['source_record']),edits=edits,current_pool_sha256=sha256(candidate).hexdigest(),current_block_sha256=sha256(current[:at]+candidate).hexdigest(),png_import=receipt,**({'image_override':image_binding} if image_binding else {}))
+    binding=dict(schema_version='legaia.monster-palette-override.v1',asset_id=args['asset_id'],source_record=deepcopy(record['source_record']),edits=edits,current_pool_sha256=sha256(candidate).hexdigest(),current_block_sha256=sha256(original[:at]+candidate).hexdigest(),png_import=receipt,**({'image_override':image_binding} if image_binding else {}))
     before=deepcopy(project.monster_palette_overrides);after=deepcopy(before)
     if edits or image_binding:after[args['asset_id']]=binding
     else:after.pop(args['asset_id'],None)

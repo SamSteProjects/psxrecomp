@@ -23,7 +23,7 @@ def export(project,expected_project_path,expected_source_key,asset_id,catalog_so
         raise ProjectError('Full clip export requires an explicit interchange rate from 1 to 120 fps')
     base=(current_preview if texture_layer=='current' else preview)(project,expected_project_path,expected_source_key,asset_id,catalog_source_key)
     geometry=deepcopy(base['geometry']);geometry['representation']='retail-monster-source-interchange'
-    geometry['source_record']=dict(geometry['source_record'],**({'monster_palette_binding':deepcopy(base['palette_binding'])} if texture_layer=='current' else {}),monster_texture_source=deepcopy(base['texture_record']['source_record']) if base['texture_record'] else None)
+    geometry['source_record']=dict(geometry['source_record'],**({'monster_palette_binding':deepcopy(base['palette_binding']),'monster_model_binding':deepcopy(base.get('model_binding'))} if texture_layer=='current' else {}),monster_texture_source=deepcopy(base['texture_record']['source_record']) if base['texture_record'] else None)
     clip=None
     try:
         if mode=='stored-pose':
