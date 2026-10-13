@@ -28,12 +28,14 @@ def snapshot(project,expected_project_path,expected_source_key,asset_id,catalog_
             if binding:current=compose(original,texture,binding,project)
         from .monster_models import compose as compose_model
         current=compose_model(project,original,catalog,record['monster_id'],current)
+        from .monster_motions import compose as compose_motion
+        current=compose_motion(original,catalog,record['monster_id'],project.monster_motion_overrides,current)
     _fresh(project,expected_project_path,expected_source_key)
     return record,texture,original,current,raw,used
 
 
 def export(project,**context):
-    record,texture,original,current,_,_=snapshot(project,**context)
+    record,texture,original,current,raw,_=snapshot(project,**context);actual_sha=sha256(current).hexdigest();current=model_baseline(original,current,raw,record)
     try:
         at=record['source_record']['byte_offset'];size=record['source_record']['byte_length'];current_sha=sha256(current[at:at+size]).hexdigest()
         content,binding=native.export(current,record,texture,current_sha)
@@ -42,7 +44,15 @@ def export(project,**context):
     except NativeError as e:raise ProjectError(str(e)) from e
     if len(content)>MAX_GLB:raise ProjectError('Monster authoring GLB exceeds 8 MiB')
     _fresh(project,context['expected_project_path'],context['expected_source_key'])
-    return dict(schema_version='legaia.monster-model-export.v1',project_path=str(project.root),project_source_key=context['expected_source_key'],catalog_source_key=context['catalog_source_key'],record=record,binding=binding,glb_base64=b64encode(content).decode(),glb_sha256=sha256(content).hexdigest(),glb_byte_length=len(content),filename=f'monster-{record["monster_id"]}-native-authoring.glb',layer='current_native_authoring',read_only=True,project_changed=False,gameplay_verified=False,**texture_context(project,texture,original,current),**model_context(project,record,original,current))
+    return dict(schema_version='legaia.monster-model-export.v1',project_path=str(project.root),project_source_key=context['expected_source_key'],catalog_source_key=context['catalog_source_key'],record=record,binding=binding,current_slot_sha256=actual_sha,glb_base64=b64encode(content).decode(),glb_sha256=sha256(content).hexdigest(),glb_byte_length=len(content),filename=f'monster-{record["monster_id"]}-native-authoring.glb',layer='current_native_authoring',read_only=True,project_changed=False,gameplay_verified=False,**texture_context(project,texture,original,current),**model_context(project,record,original,current))
+
+
+def model_baseline(original,current,raw,record):
+    catalog=decode_catalog(raw,record['source_record']['disc']['sha256']);data=bytearray(current)
+    for clip in catalog['animations']:
+        if clip['monster_id']==record['monster_id']:
+            at=clip['source_record']['byte_offset'];end=at+clip['source_record']['byte_length'];data[at:end]=original[at:end]
+    return bytes(data)
 
 
 def model_context(project,record,original,current):
@@ -60,6 +70,7 @@ def texture_context(project,texture,original,current):
 
 def review(project,binding,glb_base64,**context):
     record,texture,original,current,raw,used=snapshot(project,**context)
+    actual=current;current=model_baseline(original,current,raw,record)
     if not isinstance(glb_base64,str) or not 1<=len(glb_base64)<=11200000:raise ProjectError('Monster model GLB must be at most 8 MiB')
     try:content=b64decode(glb_base64,validate=True)
     except (ValueError,TypeError) as e:raise ProjectError('Monster GLB needs exact base64 bytes') from e
@@ -67,7 +78,11 @@ def review(project,binding,glb_base64,**context):
     try:
         model_at=record['source_record']['byte_offset'];size=record['source_record']['byte_length']
         proposed,projection=native.convert(current,record,texture,binding,content,sha256(current[model_at:model_at+size]).hexdigest())
-        at=record['source_record']['compressed_stream_offset'];_,capacity=serialize_lzs_decoded(raw[at:at+used],len(original),proposed,'monster-model')
+        composed=bytearray(actual);composed[model_at:model_at+size]=proposed[model_at:model_at+size]
+        from .monster_motions import compose as compose_motion
+        composed=compose_motion(original,decode_catalog(raw,record['source_record']['disc']['sha256']),record['monster_id'],project.monster_motion_overrides,bytes(composed))
+        projection['source_block_sha256']=sha256(actual).hexdigest();projection['candidate_block_sha256']=sha256(composed).hexdigest()
+        at=record['source_record']['compressed_stream_offset'];_,capacity=serialize_lzs_decoded(raw[at:at+used],len(original),composed,'monster-model')
     except NativeError as e:raise ProjectError(str(e)) from e
     geometry=projection.pop('geometry')
     for crop in geometry['textures']:
@@ -85,7 +100,7 @@ def apply(project,review_key,**args):
     from .monster_models import retain,validate
     value=review(project,**args)
     if value['review_key']!=review_key or value['projection']['source_tmd_sha256']==value['projection']['candidate_tmd_sha256']:raise ProjectError('Monster model Apply requires exact fresh changed Review')
-    record,_,original,current,_,_=snapshot(project,**{k:args[k] for k in ('expected_project_path','expected_source_key','asset_id','catalog_source_key')})
+    record,_,original,current,raw,_=snapshot(project,**{k:args[k] for k in ('expected_project_path','expected_source_key','asset_id','catalog_source_key')});current=model_baseline(original,current,raw,record)
     candidate=b64decode(value['candidate_tmd_base64']);content=b64decode(args['glb_base64']);before=deepcopy(project.monster_model_overrides);after=deepcopy(before);old=before.get(record['semantic_id']);inputs=deepcopy(old['inputs']) if old else []
     at=record['source_record']['byte_offset'];retail=original[at:at+len(candidate)]
     if len(inputs)>=16 and candidate!=retail:raise ProjectError('Monster model input chain exceeds sixteen imports')

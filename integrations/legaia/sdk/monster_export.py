@@ -23,7 +23,7 @@ def export(project,expected_project_path,expected_source_key,asset_id,catalog_so
         raise ProjectError('Full clip export requires an explicit interchange rate from 1 to 120 fps')
     base=(current_preview if texture_layer=='current' else preview)(project,expected_project_path,expected_source_key,asset_id,catalog_source_key)
     geometry=deepcopy(base['geometry']);geometry['representation']='retail-monster-source-interchange'
-    geometry['source_record']=dict(geometry['source_record'],**({'monster_palette_binding':deepcopy(base['palette_binding']),'monster_model_binding':deepcopy(base.get('model_binding'))} if texture_layer=='current' else {}),monster_texture_source=deepcopy(base['texture_record']['source_record']) if base['texture_record'] else None)
+    geometry['source_record']=dict(geometry['source_record'],**({'monster_palette_binding':deepcopy(base['palette_binding']),'monster_model_binding':deepcopy(base.get('model_binding')),'monster_motion_bindings':deepcopy(base.get('motion_bindings',{}))} if texture_layer=='current' else {}),monster_texture_source=deepcopy(base['texture_record']['source_record']) if base['texture_record'] else None)
     clip=None
     try:
         if mode=='stored-pose':
@@ -35,7 +35,12 @@ def export(project,expected_project_path,expected_source_key,asset_id,catalog_so
                 if catalog['source_key']!=catalog_source_key:raise NativeError('Monster motion source changed before export')
                 clip=next((r for r in catalog['animations'] if r['semantic_id']==animation_id),None)
                 if clip is None or clip['model_asset_id']!=asset_id or not clip['preview_supported']:raise NativeError('Monster clip has no matching qualified model parts')
-                data,_=block(raw,clip['monster_id']);geometry['frames']=[dict(object_transforms=frame(data,clip,index)[0]) for index in range(clip['frame_count'])]
+                data,_=block(raw,clip['monster_id'])
+                sampled=clip
+                if texture_layer=='current':
+                    from .monster_motions import compose,current_clip
+                    data=compose(data,catalog,clip['monster_id'],project.monster_motion_overrides);sampled=current_clip(data,clip)
+                geometry['frames']=[dict(object_transforms=frame(data,sampled,index)[0]) for index in range(clip['frame_count'])]
         if clip:geometry['animation']=dict(semantic_id=clip['semantic_id'],source_record=deepcopy(clip['source_record']),
             source_frame_index=frame_index,timing='stored_rate_byte_not_runtime_cadence',runtime_state='not_observed',rate_byte=clip['rate_byte'],mapping=clip['mapping'])
         content,audit=encode_model_glb(geometry,0 if mode=='stored-pose' else None,clip_fps=fps if mode=='full-clip' else None)

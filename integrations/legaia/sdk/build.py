@@ -45,6 +45,7 @@ def authored_state_key(project) -> str:
                                 **({"player_actions": project.player_action_overrides} if getattr(project,"player_action_overrides",{}) else {}),
                                 **({"monster_palettes": project.monster_palette_overrides} if getattr(project,"monster_palette_overrides",{}) else {}),
                                 **({"monster_models": project.monster_model_overrides} if getattr(project,"monster_model_overrides",{}) else {}),
+                                **({"monster_motion": project.monster_motion_overrides} if getattr(project,"monster_motion_overrides",{}) else {}),
                                 **({"audio": project.audio_overrides} if getattr(project, "audio_overrides", {}) else {}),
                                 **({"audio_sequence_replacements": project.audio_sequence_replacements} if getattr(project,"audio_sequence_replacements",{}) else {}),
                                 **({"audio_bank": project.audio_bank_overrides} if getattr(project, "audio_bank_overrides", {}) else {}),

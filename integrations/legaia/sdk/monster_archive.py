@@ -101,7 +101,9 @@ def current_preview(project,expected_project_path,expected_source_key,asset_id,c
     if catalog['source_key']!=catalog_source_key or record!=texture:raise ProjectError('Current monster texture owner changed')
     retail,width=layout(original,record['source_record']['byte_offset']);pool,_=layout(current,record['source_record']['byte_offset'])
     from importer.assets import decode_tmd
-    model=base['record'];model_at=model['source_record']['byte_offset'];model_end=model_at+model['source_record']['byte_length'];tmd=current[model_at:model_end]
+    model=base['record'];model_at=model['source_record']['byte_offset'];model_end=model_at+model['source_record']['byte_length']
+    from .monster_models import effective
+    tmd=effective(project,original,model,texture)
     geometry=decode_tmd(tmd);geometry.update(semantic_id=asset_id,source_record=model['source_record'],texture_scope='monster_source_pool')
     base['geometry']=geometry
     base.update(source_tmd_base64=b64encode(tmd).decode(),retail_tmd_base64=b64encode(original[model_at:model_end]).decode(),model_binding=deepcopy(project.monster_model_overrides.get(asset_id)))
@@ -110,6 +112,7 @@ def current_preview(project,expected_project_path,expected_source_key,asset_id,c
         for key in ('rgba','stp'):
             if key in crop:crop[key+'_base64']=b64encode(crop.pop(key)).decode()
     base.update(layer='current_palette',retail_pool_base64=b64encode(retail).decode(),source_pool_base64=b64encode(pool).decode(),palette_binding=deepcopy(project.monster_palette_overrides.get(record['semantic_id'])))
+    base['motion_bindings']={k:deepcopy(v) for k,v in project.monster_motion_overrides.items() if v['source_record']['monster_id']==model['monster_id']}
     _fresh(project,expected_project_path,expected_source_key);return base
 
 
@@ -118,6 +121,11 @@ def current_pose(project,expected_project_path,expected_source_key,asset_id,cata
     value=pose(project,expected_project_path,expected_source_key,asset_id,catalog_source_key,animation_id,frame_index)
     from importer.animation import pose_vertices
     from copy import deepcopy
+    from .monster_palettes import snapshot
+    from .monster_motions import current_clip
+    from importer.monster_motion import frame
+    _,_,_,slot,_,_=snapshot(project,current['texture_record']['semantic_id']);clip=value['clip'];transforms,stream=frame(slot,current_clip(slot,clip),frame_index)
+    value.update(retail_motion_base64=value['source_motion_base64'],retail_entry_base64=value['source_entry_base64'],source_motion_base64=b64encode(stream).decode(),source_entry_base64=b64encode(slot[clip['source_record']['entry_offset']:clip['source_record']['entry_end']]).decode(),motion_binding=deepcopy(project.monster_motion_overrides.get(animation_id)),current_clip=current_clip(slot,clip),object_transforms=transforms)
     g=deepcopy(current['geometry']);g['vertices']=pose_vertices(g['vertices'],g['objects'],value['object_transforms']);g.pop('triangle_normals',None);g.pop('normal_preview',None)
     g.update(posed=True,coordinate_system='retail_psx_actor_local_y_down',bounds=dict(min=[min(v[i] for v in g['vertices']) for i in range(3)],max=[max(v[i] for v in g['vertices']) for i in range(3)]))
     value['base_preview']=current;value['geometry']=g;value['layer']='current_palette_stored_pose'
