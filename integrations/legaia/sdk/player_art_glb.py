@@ -1,4 +1,4 @@
-"""Immutable physical-art import inputs; not yet registered in owner/API schemas."""
+"""Immutable physical-art import inputs and independently replayed baselines."""
 from copy import deepcopy
 from hashlib import sha256
 import re
@@ -110,6 +110,26 @@ def validate_input(project, original, catalog, value):
     return candidate, report
 
 
+def check_budget(project, evidence_values):
+    if not isinstance(evidence_values, (list, tuple)) or len(evidence_values) > 88:
+        raise ProjectError('Art retained inputs exceed the source stream catalogue')
+    files = {}
+    for evidence in evidence_values:
+        if not isinstance(evidence, dict) or set(evidence) != KEYS or evidence['schema_version'] != 'legaia.player-art-glb-input.v1':
+            raise ProjectError('Art retained budget metadata changed')
+        for key, size, kind in [(evidence['glb_sha256'], evidence['glb_byte_length'], 'glb'),
+                                (evidence['baseline_slot_sha256'], evidence['baseline_slot_byte_length'], 'bin')]:
+            path = _path(project, key, kind)
+            limit = MAX_BYTES if kind == 'glb' else SLOT_BYTES
+            if (type(size) is not int or not 1 <= size <= limit or
+                    (kind == 'bin' and size != SLOT_BYTES) or
+                    (path in files and files[path] != size)):
+                raise ProjectError('Art retained budget sizes changed')
+            files[path] = size
+    if sum(files.values()) > MAX_PROJECT_BYTES:
+        raise ProjectError('Art retained inputs exceed the 64 MiB project budget')
+
+
 def retain_inputs(project, value, current, content, *, active_inputs=()):
     """Preflight all active sizes and existing files before creating either file.
 
@@ -128,21 +148,7 @@ def retain_inputs(project, value, current, content, *, active_inputs=()):
             raise ProjectError('Art bytes differ from prepared retained input')
     if not isinstance(active_inputs, (list, tuple)) or len(active_inputs) > 87:
         raise ProjectError('Art retained inputs exceed the source stream catalogue')
-    files = {}
-    for evidence in [*active_inputs, value]:
-        if not isinstance(evidence, dict) or set(evidence) != KEYS or evidence['schema_version'] != 'legaia.player-art-glb-input.v1':
-            raise ProjectError('Art retained budget metadata changed')
-        for key, size, kind in [(evidence['glb_sha256'], evidence['glb_byte_length'], 'glb'),
-                                (evidence['baseline_slot_sha256'], evidence['baseline_slot_byte_length'], 'bin')]:
-            path = _path(project, key, kind)
-            limit = MAX_BYTES if kind == 'glb' else SLOT_BYTES
-            if (type(size) is not int or not 1 <= size <= limit or
-                    (kind == 'bin' and size != SLOT_BYTES) or
-                    (path in files and files[path] != size)):
-                raise ProjectError('Art retained budget sizes changed')
-            files[path] = size
-    if sum(files.values()) > MAX_PROJECT_BYTES:
-        raise ProjectError('Art retained inputs exceed the 64 MiB project budget')
+    check_budget(project, [*active_inputs, value])
     for evidence in active_inputs:
         _bytes(project, evidence['glb_sha256'], evidence['glb_byte_length'], 'glb')
         _bytes(project, evidence['baseline_slot_sha256'], evidence['baseline_slot_byte_length'], 'bin')

@@ -23,7 +23,7 @@ def snapshot(project,frame_index,part_index,**context):
     if type(frame_index) is not int or not 0<=frame_index<stream['frame_count'] or type(part_index) is not int or not 0<=part_index<stream['part_count']:
         raise ProjectError('Choose an existing whole art frame and native part')
     at=source['slot_offset'];original=raw[at:at+0x10800]
-    slots=composed_slots(raw,catalog,project.player_art_overrides);current=slots.get(stream['archive_asset_id'],original)
+    slots=composed_slots(raw,catalog,project.player_art_overrides,project=project);current=slots.get(stream['archive_asset_id'],original)
     decoded=entries(current)[stream['stream_index']]['decoded'];start=2+(frame_index*stream['part_count']+part_index)*9
     _fresh(project,context['expected_project_path'],context['expected_source_key'])
     return base,raw,catalog,profile,original,current,decoded,decode_part(decoded[start:start+9])
@@ -57,10 +57,12 @@ def review(project,frame_index,part_index,expected_current_slot_sha256,translati
     else:rows[(frame_index,part_index)]=dict(frame_index=frame_index,part_index=part_index,**deepcopy(requested))
     raw,catalog,_=sources(project)
     try:
-        if rows:after[identifier]=owner(original,catalog,stream['archive_asset_id'],identifier,[rows[k] for k in sorted(rows)])
+        if rows:
+            after[identifier]=owner(original,catalog,stream['archive_asset_id'],identifier,[rows[k] for k in sorted(rows)])
+            if 'glb_import' in before.get(identifier,{}):after[identifier]['glb_import']=deepcopy(before[identifier]['glb_import'])
         else:after.pop(identifier,None)
     except NativeError as error:raise ProjectError(str(error)) from error
-    candidate=composed_slots(raw,catalog,after).get(stream['archive_asset_id'],original)
+    candidate=composed_slots(raw,catalog,after,project=project).get(stream['archive_asset_id'],original)
     source=stream['source_record'];body_at=source['byte_offset']-source['slot_offset'];end=body_at+source['byte_length']
     decoded=entries(candidate)[stream['stream_index']]['decoded'];current=b64decode(inspection['current_slot_base64'])
     value=dict(schema_version='legaia.player-art-frame-review.v1',inspection=inspection,frame_index=frame_index,part_index=part_index,

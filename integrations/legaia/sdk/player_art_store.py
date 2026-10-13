@@ -23,15 +23,39 @@ def context(project):
     return raw,catalog,profile
 
 
-def composed_slots(raw,catalog,values):
+def numeric_values(values):
+    """Only optional historical import evidence may accompany native owners."""
+    if not isinstance(values,dict) or len(values)>87:raise ProjectError('PLAYER art owner collection changed')
+    required={'schema_version','asset_id','source_record','edits','decoded_sha256','current_body_sha256'}
+    result={}
+    for identifier,value in values.items():
+        if not isinstance(value,dict) or set(value) not in (required,required|{'glb_import'}):
+            raise ProjectError('PLAYER art owner fields changed')
+        result[identifier]={key:deepcopy(value[key]) for key in required}
+    return result
+
+
+def composed_slots(raw,catalog,values,*,project=None):
     if not isinstance(values,dict) or len(values)>87:
         raise ProjectError('PLAYER art owners exceed the original stream catalogue')
     streams={r['semantic_id']:r for r in catalog['streams']}
     if any(identifier not in streams for identifier in values):
         raise ProjectError('PLAYER art owner is absent from the source catalogue')
+    numeric=numeric_values(values)
+    imported=[(identifier,value['glb_import']) for identifier,value in values.items() if 'glb_import' in value]
+    if imported:
+        if project is None:raise ProjectError('Retained art inputs require project-backed validation')
+        from .player_art_glb import check_budget,validate_input
+        check_budget(project,[value for _,value in imported])
+        for identifier,evidence in imported:
+            stream=streams[identifier];at=stream['source_record']['slot_offset'];original=raw[at:at+0x10800]
+            if evidence['stream_id']!=identifier or evidence['archive_id']!=stream['archive_asset_id'] or evidence['source_record']!=stream['source_record']:
+                raise ProjectError('Art retained input belongs to another native owner')
+            _,report=validate_input(project,original,catalog,evidence)
+            if not report['edits']:raise ProjectError('Active retained art input has no imported changes')
     result={}
     for archive in catalog['archives']:
-        owned={k:v for k,v in values.items() if streams[k]['archive_asset_id']==archive['semantic_id']}
+        owned={k:v for k,v in numeric.items() if streams[k]['archive_asset_id']==archive['semantic_id']}
         if not owned:continue
         at=archive['slot_index']*0x10800;original=raw[at:at+0x10800]
         try:result[archive['semantic_id']]=compose(original,catalog,archive['semantic_id'],owned)
@@ -43,7 +67,7 @@ def composed_slots(raw,catalog,values):
 def validate(project,values):
     if not isinstance(values,dict) or len(values)>87:raise ProjectError('PLAYER art owner collection changed')
     if not values:return {}
-    raw,catalog,_=context(project);composed_slots(raw,catalog,values)
+    raw,catalog,_=context(project);composed_slots(raw,catalog,values,project=project)
     return deepcopy(values)
 
 
@@ -53,7 +77,7 @@ def prepare(project,archive,disc_hash):
     if not values:return [],[]
     raw,catalog,profile=context(project)
     if catalog['source_disc_sha256']!=disc_hash:raise ProjectError('Art Build source disc changed')
-    slots=composed_slots(raw,catalog,values);entry=archive.entry(894)
+    slots=composed_slots(raw,catalog,values,project=project);entry=archive.entry(894)
     overlays=[];changes=[]
     for stream in catalog['streams']:
         owner=values.get(stream['semantic_id'])
